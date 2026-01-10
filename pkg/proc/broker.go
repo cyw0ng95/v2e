@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -50,6 +51,8 @@ type Process struct {
 	cmd    *exec.Cmd
 	cancel context.CancelFunc
 	done   chan struct{}
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
 	mu     sync.RWMutex
 }
 
@@ -131,6 +134,150 @@ func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error)
 	go b.reapProcess(proc)
 
 	return info, nil
+}
+
+// SpawnRPC starts a new subprocess with RPC support (stdin/stdout pipes)
+// It returns the process ID and an error if the process failed to start
+func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// Check if process with this ID already exists
+	if _, exists := b.processes[id]; exists {
+		return nil, fmt.Errorf("process with id '%s' already exists", id)
+	}
+
+	// Create process context
+	ctx, cancel := context.WithCancel(b.ctx)
+	cmd := exec.CommandContext(ctx, command, args...)
+
+	// Set up stdin and stdout pipes for RPC communication
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		cancel()
+		stdin.Close()
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	// Create process info
+	info := &ProcessInfo{
+		ID:        id,
+		Command:   command,
+		Args:      args,
+		Status:    ProcessStatusRunning,
+		StartTime: time.Now(),
+	}
+
+	proc := &Process{
+		info:   info,
+		cmd:    cmd,
+		cancel: cancel,
+		done:   make(chan struct{}),
+		stdin:  stdin,
+		stdout: stdout,
+	}
+
+	// Start the process
+	if err := cmd.Start(); err != nil {
+		cancel()
+		stdin.Close()
+		stdout.Close()
+		info.Status = ProcessStatusFailed
+		return info, fmt.Errorf("failed to start process: %w", err)
+	}
+
+	info.PID = cmd.Process.Pid
+	b.processes[id] = proc
+
+	b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s", id, info.PID, command)
+
+	// Start goroutine to read messages from process stdout
+	b.wg.Add(1)
+	go b.readProcessMessages(proc)
+
+	// Start goroutine to wait for process completion
+	b.wg.Add(1)
+	go b.reapProcess(proc)
+
+	return info, nil
+}
+
+// readProcessMessages reads messages from a process's stdout and forwards them to the broker
+func (b *Broker) readProcessMessages(proc *Process) {
+	defer b.wg.Done()
+
+	scanner := bufio.NewScanner(proc.stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		// Parse the message
+		msg, err := Unmarshal([]byte(line))
+		if err != nil {
+			b.logger.Warn("Failed to parse message from process %s: %v", proc.info.ID, err)
+			continue
+		}
+
+		// Forward the message to the broker's message channel
+		select {
+		case b.messages <- msg:
+		case <-b.ctx.Done():
+			return
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		b.logger.Warn("Error reading from process %s: %v", proc.info.ID, err)
+	}
+}
+
+// SendToProcess sends a message to a specific process via stdin
+func (b *Broker) SendToProcess(processID string, msg *Message) error {
+	b.mu.RLock()
+	proc, exists := b.processes[processID]
+	b.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("process with id '%s' not found", processID)
+	}
+
+	proc.mu.RLock()
+	stdin := proc.stdin
+	status := proc.info.Status
+	proc.mu.RUnlock()
+
+	if status != ProcessStatusRunning {
+		return fmt.Errorf("process '%s' is not running", processID)
+	}
+
+	if stdin == nil {
+		return fmt.Errorf("process '%s' does not support RPC (no stdin pipe)", processID)
+	}
+
+	// Marshal the message to JSON
+	data, err := msg.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	// Write the message to the process's stdin
+	proc.mu.Lock()
+	defer proc.mu.Unlock()
+
+	if _, err := fmt.Fprintf(stdin, "%s\n", string(data)); err != nil {
+		return fmt.Errorf("failed to write message to process: %w", err)
+	}
+
+	b.logger.Debug("Sent message to process %s: type=%s id=%s", processID, msg.Type, msg.ID)
+	return nil
 }
 
 // reapProcess waits for a process to complete and updates its status
