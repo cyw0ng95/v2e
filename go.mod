@@ -2,7 +2,11 @@ module github.com/cyw0ng95/v2e
 
 go 1.24.11
 
-require github.com/go-resty/resty/v2 v2.17.1
+require (
+	github.com/go-resty/resty/v2 v2.17.1
+	gorm.io/driver/sqlite v1.6.0
+	gorm.io/gorm v1.31.1
+)
 
 require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
@@ -10,6 +14,4 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
-	gorm.io/driver/sqlite v1.6.0 // indirect
-	gorm.io/gorm v1.31.1 // indirect
 )

@@ -102,6 +102,53 @@ cveList, err := fetcher.FetchCVEs(0, 10)
 
 For production use with higher rate limits, obtain an API key from [NVD](https://nvd.nist.gov/developers/request-an-api-key) and pass it to `NewCVEFetcher()`.
 
+### CVE Database
+
+The project includes a GORM-based ORM engine for storing CVE data in a local SQLite database:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/repo"
+
+// Create or open the CVE database
+db, err := repo.NewDB("cve.db")
+if err != nil {
+    log.Fatal(err)
+}
+defer db.Close()
+
+// Save a CVE to the database
+cve := &repo.CVEItem{
+    ID:           "CVE-2021-44228",
+    SourceID:     "nvd@nist.gov",
+    Published:    time.Now(),
+    LastModified: time.Now(),
+    VulnStatus:   "Analyzed",
+    Descriptions: []repo.Description{
+        {Lang: "en", Value: "Apache Log4j vulnerability"},
+    },
+}
+err = db.SaveCVE(cve)
+
+// Retrieve a CVE by ID
+retrieved, err := db.GetCVE("CVE-2021-44228")
+
+// List CVEs with pagination
+cves, err := db.ListCVEs(0, 10) // offset=0, limit=10
+
+// Get total count
+count, err := db.Count()
+```
+
+The database file `cve.db` is created in the project root directory and is excluded from version control via `.gitignore`.
+
+To create a sample database with CVE data, run the integration test:
+
+```bash
+go test ./pkg/repo -v -run TestCreateCVEDatabase
+```
+
+This will create `cve.db` in the project root with sample CVE records that you can inspect or download.
+
 ## Development
 
 ### Logging
@@ -136,6 +183,8 @@ go mod download
 
 Key dependencies:
 - [go-resty/resty](https://github.com/go-resty/resty) - HTTP client library for making API requests
+- [GORM](https://gorm.io/) - ORM library for database operations
+- [GORM SQLite Driver](https://github.com/go-gorm/sqlite) - SQLite driver for GORM
 
 ### Testing
 
