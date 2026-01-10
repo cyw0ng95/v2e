@@ -1,22 +1,25 @@
-package repo
+package local
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 )
 
 // TestCreateCVEDatabase creates a CVE database in the project root
 // This test demonstrates the ability to save CVEs to cve.db and allows
 // users to download the database after tests run.
 func TestCreateCVEDatabase(t *testing.T) {
-	// Get the project root directory (3 levels up from pkg/repo)
+	// Get the project root directory (4 levels up from pkg/cve/local)
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	projectRoot := filepath.Join(cwd, "..", "..")
+	projectRoot := filepath.Join(cwd, "..", "..", "..")
 	dbPath := filepath.Join(projectRoot, "cve.db")
 
 	// Remove existing database if present (for clean test)
@@ -30,25 +33,25 @@ func TestCreateCVEDatabase(t *testing.T) {
 	defer db.Close()
 
 	// Create sample CVE data
-	sampleCVEs := []CVEItem{
+	sampleCVEs := []cve.CVEItem{
 		{
 			ID:           "CVE-2021-44228",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
-			LastModified: NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
+			Published:    cve.NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+			LastModified: cve.NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{
+			Descriptions: []cve.Description{
 				{
 					Lang:  "en",
 					Value: "Apache Log4j2 2.0-beta9 through 2.15.0 (excluding security releases 2.12.2, 2.12.3, and 2.3.1) JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.",
 				},
 			},
-			Metrics: &Metrics{
-				CvssMetricV31: []CVSSMetricV3{
+			Metrics: &cve.Metrics{
+				CvssMetricV31: []cve.CVSSMetricV3{
 					{
 						Source: "nvd@nist.gov",
 						Type:   "Primary",
-						CvssData: CVSSDataV3{
+						CvssData: cve.CVSSDataV3{
 							Version:               "3.1",
 							VectorString:          "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
 							BaseScore:             10.0,
@@ -67,7 +70,7 @@ func TestCreateCVEDatabase(t *testing.T) {
 					},
 				},
 			},
-			References: []Reference{
+			References: []cve.Reference{
 				{
 					URL:    "https://logging.apache.org/log4j/2.x/security.html",
 					Source: "nvd@nist.gov",
@@ -78,21 +81,21 @@ func TestCreateCVEDatabase(t *testing.T) {
 		{
 			ID:           "CVE-2021-45046",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Date(2021, 12, 14, 0, 0, 0, 0, time.UTC)),
-			LastModified: NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
+			Published:    cve.NewNVDTime(time.Date(2021, 12, 14, 0, 0, 0, 0, time.UTC)),
+			LastModified: cve.NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{
+			Descriptions: []cve.Description{
 				{
 					Lang:  "en",
 					Value: "It was found that the fix to address CVE-2021-44228 in Apache Log4j 2.15.0 was incomplete in certain non-default configurations.",
 				},
 			},
-			Metrics: &Metrics{
-				CvssMetricV31: []CVSSMetricV3{
+			Metrics: &cve.Metrics{
+				CvssMetricV31: []cve.CVSSMetricV3{
 					{
 						Source: "nvd@nist.gov",
 						Type:   "Primary",
-						CvssData: CVSSDataV3{
+						CvssData: cve.CVSSDataV3{
 							Version:               "3.1",
 							VectorString:          "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
 							BaseScore:             9.0,
@@ -115,21 +118,21 @@ func TestCreateCVEDatabase(t *testing.T) {
 		{
 			ID:           "CVE-2022-0001",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Date(2022, 3, 18, 0, 0, 0, 0, time.UTC)),
-			LastModified: NewNVDTime(time.Date(2022, 3, 25, 0, 0, 0, 0, time.UTC)),
+			Published:    cve.NewNVDTime(time.Date(2022, 3, 18, 0, 0, 0, 0, time.UTC)),
+			LastModified: cve.NewNVDTime(time.Date(2022, 3, 25, 0, 0, 0, 0, time.UTC)),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{
+			Descriptions: []cve.Description{
 				{
 					Lang:  "en",
 					Value: "Non-transparent sharing of branch predictor selectors between contexts in some Intel(R) Processors may allow an authorized user to potentially enable information disclosure via local access.",
 				},
 			},
-			Metrics: &Metrics{
-				CvssMetricV31: []CVSSMetricV3{
+			Metrics: &cve.Metrics{
+				CvssMetricV31: []cve.CVSSMetricV3{
 					{
 						Source: "nvd@nist.gov",
 						Type:   "Primary",
-						CvssData: CVSSDataV3{
+						CvssData: cve.CVSSDataV3{
 							Version:               "3.1",
 							VectorString:          "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
 							BaseScore:             6.5,
@@ -207,7 +210,7 @@ func TestFetchAndRecoverCVEFromNVD(t *testing.T) {
 	defer db.Close()
 
 	// Create CVE fetcher (no API key - using public rate limit)
-	fetcher := NewCVEFetcher("")
+	fetcher := remote.NewFetcher("")
 
 	// Fetch a well-known CVE (Log4Shell)
 	t.Log("Fetching CVE-2021-44228 from NVD...")
@@ -417,7 +420,7 @@ func TestFetchMultipleCVEsAndRecover(t *testing.T) {
 	defer db.Close()
 
 	// Create CVE fetcher
-	fetcher := NewCVEFetcher("")
+	fetcher := remote.NewFetcher("")
 
 	// Fetch a small batch of CVEs
 	t.Log("Fetching CVEs from NVD...")
@@ -433,14 +436,14 @@ func TestFetchMultipleCVEsAndRecover(t *testing.T) {
 	t.Logf("Fetched %d CVEs from NVD", len(response.Vulnerabilities))
 
 	// Extract and save all CVEs
-	originalCVEs := make(map[string]CVEItem)
+	originalCVEs := make(map[string]cve.CVEItem)
 	for _, vuln := range response.Vulnerabilities {
-		cve := vuln.CVE
-		originalCVEs[cve.ID] = cve
+		cveItem := vuln.CVE
+		originalCVEs[cveItem.ID] = cveItem
 
-		err = db.SaveCVE(&cve)
+		err = db.SaveCVE(&cveItem)
 		if err != nil {
-			t.Fatalf("Failed to save CVE %s to database: %v", cve.ID, err)
+			t.Fatalf("Failed to save CVE %s to database: %v", cveItem.ID, err)
 		}
 	}
 

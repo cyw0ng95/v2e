@@ -1,9 +1,10 @@
-package repo
+package local
 
 import (
 	"encoding/json"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/cve"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -41,25 +42,25 @@ func NewDB(dbPath string) (*DB, error) {
 }
 
 // SaveCVE saves a CVE item to the database
-func (d *DB) SaveCVE(cve *CVEItem) error {
+func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	// Marshal the full CVE data to JSON
-	data, err := json.Marshal(cve)
+	data, err := json.Marshal(cveItem)
 	if err != nil {
 		return err
 	}
 
 	record := CVERecord{
-		CVEID:        cve.ID,
-		SourceID:     cve.SourceID,
-		Published:    cve.Published.Time,
-		LastModified: cve.LastModified.Time,
-		VulnStatus:   cve.VulnStatus,
+		CVEID:        cveItem.ID,
+		SourceID:     cveItem.SourceID,
+		Published:    cveItem.Published.Time,
+		LastModified: cveItem.LastModified.Time,
+		VulnStatus:   cveItem.VulnStatus,
 		Data:         string(data),
 	}
 
 	// Check if record exists
 	var existing CVERecord
-	result := d.db.Where("cve_id = ?", cve.ID).First(&existing)
+	result := d.db.Where("cve_id = ?", cveItem.ID).First(&existing)
 	
 	if result.Error == nil {
 		// Record exists, update it
@@ -75,9 +76,9 @@ func (d *DB) SaveCVE(cve *CVEItem) error {
 }
 
 // SaveCVEs saves multiple CVE items to the database
-func (d *DB) SaveCVEs(cves []CVEItem) error {
-	for _, cve := range cves {
-		if err := d.SaveCVE(&cve); err != nil {
+func (d *DB) SaveCVEs(cves []cve.CVEItem) error {
+	for _, cveItem := range cves {
+		if err := d.SaveCVE(&cveItem); err != nil {
 			return err
 		}
 	}
@@ -85,34 +86,34 @@ func (d *DB) SaveCVEs(cves []CVEItem) error {
 }
 
 // GetCVE retrieves a CVE by ID from the database
-func (d *DB) GetCVE(cveID string) (*CVEItem, error) {
+func (d *DB) GetCVE(cveID string) (*cve.CVEItem, error) {
 	var record CVERecord
 	if err := d.db.Where("cve_id = ?", cveID).First(&record).Error; err != nil {
 		return nil, err
 	}
 
-	var cve CVEItem
-	if err := json.Unmarshal([]byte(record.Data), &cve); err != nil {
+	var cveItem cve.CVEItem
+	if err := json.Unmarshal([]byte(record.Data), &cveItem); err != nil {
 		return nil, err
 	}
 
-	return &cve, nil
+	return &cveItem, nil
 }
 
 // ListCVEs retrieves CVEs with pagination
-func (d *DB) ListCVEs(offset, limit int) ([]CVEItem, error) {
+func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 	var records []CVERecord
 	if err := d.db.Offset(offset).Limit(limit).Order("published desc").Find(&records).Error; err != nil {
 		return nil, err
 	}
 
-	cves := make([]CVEItem, 0, len(records))
+	cves := make([]cve.CVEItem, 0, len(records))
 	for _, record := range records {
-		var cve CVEItem
-		if err := json.Unmarshal([]byte(record.Data), &cve); err != nil {
+		var cveItem cve.CVEItem
+		if err := json.Unmarshal([]byte(record.Data), &cveItem); err != nil {
 			return nil, err
 		}
-		cves = append(cves, cve)
+		cves = append(cves, cveItem)
 	}
 
 	return cves, nil

@@ -1,17 +1,14 @@
-package repo
+package cve
 
 import (
-	"fmt"
 	"strings"
 	"time"
-
-	"github.com/go-resty/resty/v2"
 )
 
 const (
 	// NVDAPIURL is the base URL for the NVD CVE API v2.0
 	NVDAPIURL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-	// NVD timestamp format: "2021-12-10T10:15:09.143"
+	// nvdTimeFormat is the NVD timestamp format: "2021-12-10T10:15:09.143"
 	nvdTimeFormat = "2006-01-02T15:04:05.999"
 )
 
@@ -360,92 +357,4 @@ type Reference struct {
 	URL    string   `json:"url"`
 	Source string   `json:"source,omitempty"`
 	Tags   []string `json:"tags,omitempty"`
-}
-
-// CVEFetcher handles fetching CVE data from the NVD API
-type CVEFetcher struct {
-	client  *resty.Client
-	baseURL string
-	apiKey  string
-}
-
-// NewCVEFetcher creates a new CVE fetcher
-func NewCVEFetcher(apiKey string) *CVEFetcher {
-	client := resty.New()
-	client.SetTimeout(30 * time.Second)
-
-	return &CVEFetcher{
-		client:  client,
-		baseURL: NVDAPIURL,
-		apiKey:  apiKey,
-	}
-}
-
-// FetchCVEByID fetches a specific CVE by its ID
-func (f *CVEFetcher) FetchCVEByID(cveID string) (*CVEResponse, error) {
-	if cveID == "" {
-		return nil, fmt.Errorf("CVE ID cannot be empty")
-	}
-
-	req := f.client.R().
-		SetResult(&CVEResponse{}).
-		SetError(&map[string]interface{}{})
-
-	// Add API key if provided
-	if f.apiKey != "" {
-		req.SetHeader("apiKey", f.apiKey)
-	}
-
-	resp, err := req.Get(f.baseURL + "?cveId=" + cveID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch CVE: %w", err)
-	}
-
-	if resp.IsError() {
-		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
-	}
-
-	result, ok := resp.Result().(*CVEResponse)
-	if !ok {
-		return nil, fmt.Errorf("failed to parse CVE response")
-	}
-
-	return result, nil
-}
-
-// FetchCVEs fetches CVEs with optional filters
-func (f *CVEFetcher) FetchCVEs(startIndex, resultsPerPage int) (*CVEResponse, error) {
-	if startIndex < 0 {
-		return nil, fmt.Errorf("startIndex must be non-negative")
-	}
-	if resultsPerPage < 1 || resultsPerPage > 2000 {
-		return nil, fmt.Errorf("resultsPerPage must be between 1 and 2000")
-	}
-
-	req := f.client.R().
-		SetResult(&CVEResponse{}).
-		SetError(&map[string]interface{}{}).
-		SetQueryParam("startIndex", fmt.Sprintf("%d", startIndex)).
-		SetQueryParam("resultsPerPage", fmt.Sprintf("%d", resultsPerPage))
-
-	// Add API key if provided
-	if f.apiKey != "" {
-		req.SetHeader("apiKey", f.apiKey)
-	}
-
-	resp, err := req.Get(f.baseURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch CVEs: %w", err)
-	}
-
-	if resp.IsError() {
-		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
-	}
-
-	result, ok := resp.Result().(*CVEResponse)
-	if !ok {
-		return nil, fmt.Errorf("failed to parse CVE response")
-	}
-
-	return result, nil
 }
