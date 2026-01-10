@@ -8,10 +8,13 @@ This project contains multiple commands:
 
 - `cmd/server` - A simple HTTP server
 - `cmd/client` - A simple HTTP client
+- `cmd/broker` - Process broker demo for managing subprocesses
 
 And packages:
 
 - `pkg/common` - Common utilities and configuration
+- `pkg/repo` - Repository layer for external data sources (NVD CVE API)
+- `pkg/proc` - Process broker for managing subprocesses and inter-process communication
 - `pkg/cve` - CVE data types shared across packages
 - `pkg/cve/remote` - Remote CVE fetching from NVD API
 - `pkg/cve/local` - Local CVE storage with SQLite database
@@ -82,6 +85,22 @@ go run ./cmd/client [url]
 ```
 
 If no URL is provided, it will connect to `http://localhost:8080` by default.
+
+### Broker
+
+```bash
+# Run demo mode (spawns multiple example processes)
+go run ./cmd/broker
+
+# Execute a specific command
+go run ./cmd/broker -cmd "echo hello world"
+
+# Execute a command with a custom process ID
+go run ./cmd/broker -id my-process -cmd "sleep 5"
+```
+
+The broker command demonstrates the process management capabilities of the `pkg/proc` package. In demo mode, it spawns multiple processes and monitors their lifecycle, showing how processes are reaped and their exit codes captured.
+
 
 ## Development
 
@@ -208,6 +227,104 @@ common.SetLevel(common.DebugLevel) // DebugLevel, InfoLevel, WarnLevel, ErrorLev
 // Create a custom logger
 logger := common.NewLogger(os.Stdout, "", common.InfoLevel)
 logger.Info("Custom logger message")
+```
+
+### Process Broker
+
+The `pkg/proc` package provides a process broker for managing subprocesses and inter-process communication:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/proc"
+
+// Create a new broker
+broker := proc.NewBroker()
+defer broker.Shutdown()
+
+// Spawn a subprocess
+info, err := broker.Spawn("my-process", "echo", "hello", "world")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Started process %s with PID %d\n", info.ID, info.PID)
+
+// Get process information
+procInfo, err := broker.GetProcess("my-process")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Process status: %s\n", procInfo.Status)
+
+// List all processes
+processes := broker.ListProcesses()
+for _, p := range processes {
+    fmt.Printf("Process %s: PID=%d Status=%s\n", p.ID, p.PID, p.Status)
+}
+
+// Kill a process
+err = broker.Kill("my-process")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+#### Message Passing
+
+The broker supports message passing between processes:
+
+```go
+// Create and send a request message
+req, _ := proc.NewRequestMessage("req-1", map[string]string{
+    "action": "process_data",
+    "data":   "example",
+})
+broker.SendMessage(req)
+
+// Receive messages (blocking)
+ctx := context.Background()
+msg, err := broker.ReceiveMessage(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Unmarshal the message payload
+var payload map[string]string
+msg.UnmarshalPayload(&payload)
+
+// Different message types
+respMsg, _ := proc.NewResponseMessage("resp-1", map[string]interface{}{
+    "status": "success",
+    "result": 42,
+})
+
+eventMsg, _ := proc.NewEventMessage("evt-1", map[string]string{
+    "event": "process_completed",
+})
+
+errorMsg := proc.NewErrorMessage("err-1", errors.New("something went wrong"))
+```
+
+The broker automatically sends event messages when processes exit:
+
+```go
+// Wait for process exit events
+for {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    msg, err := broker.ReceiveMessage(ctx)
+    cancel()
+    
+    if err != nil {
+        break
+    }
+    
+    if msg.Type == proc.MessageTypeEvent {
+        var event map[string]interface{}
+        msg.UnmarshalPayload(&event)
+        if event["event"] == "process_exited" {
+            fmt.Printf("Process %s exited with code %v\n", 
+                event["id"], event["exit_code"])
+        }
+    }
+}
 ```
 
 ### Dependencies
