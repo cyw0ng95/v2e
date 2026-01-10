@@ -55,24 +55,26 @@ type Process struct {
 
 // Broker manages subprocesses and message passing
 type Broker struct {
-	processes map[string]*Process
-	messages  chan *Message
-	mu        sync.RWMutex
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	logger    *common.Logger
+	processes        map[string]*Process
+	managedProcesses map[string]ManagedProcess
+	messages         chan *Message
+	mu               sync.RWMutex
+	ctx              context.Context
+	cancel           context.CancelFunc
+	wg               sync.WaitGroup
+	logger           *common.Logger
 }
 
 // NewBroker creates a new Broker instance
 func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Broker{
-		processes: make(map[string]*Process),
-		messages:  make(chan *Message, 100),
-		ctx:       ctx,
-		cancel:    cancel,
-		logger:    common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		processes:        make(map[string]*Process),
+		managedProcesses: make(map[string]ManagedProcess),
+		messages:         make(chan *Message, 100),
+		ctx:              ctx,
+		cancel:           cancel,
+		logger:           common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
 	}
 }
 
@@ -286,6 +288,18 @@ func (b *Broker) Shutdown() error {
 	// Cancel the broker context
 	b.cancel()
 
+	// Stop all managed processes
+	b.mu.RLock()
+	managedIDs := make([]string, 0, len(b.managedProcesses))
+	for id := range b.managedProcesses {
+		managedIDs = append(managedIDs, id)
+	}
+	b.mu.RUnlock()
+
+	for _, id := range managedIDs {
+		_ = b.StopManagedProcess(id)
+	}
+
 	// Kill all running processes
 	b.mu.RLock()
 	processIDs := make([]string, 0, len(b.processes))
@@ -315,4 +329,96 @@ func (b *Broker) Shutdown() error {
 
 	b.logger.Info("Broker shutdown complete")
 	return nil
+}
+
+// RegisterManagedProcess registers a ManagedProcess with the broker and starts it
+func (b *Broker) RegisterManagedProcess(proc ManagedProcess) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	id := proc.ID()
+	if _, exists := b.managedProcesses[id]; exists {
+		return fmt.Errorf("managed process with id '%s' already exists", id)
+	}
+
+	// Start the process
+	if err := proc.Start(b.ctx, b); err != nil {
+		return fmt.Errorf("failed to start managed process: %w", err)
+	}
+
+	b.managedProcesses[id] = proc
+	b.logger.Info("Registered managed process: id=%s", id)
+
+	return nil
+}
+
+// UnregisterManagedProcess removes a ManagedProcess from the broker
+func (b *Broker) UnregisterManagedProcess(id string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if _, exists := b.managedProcesses[id]; !exists {
+		return fmt.Errorf("managed process with id '%s' not found", id)
+	}
+
+	delete(b.managedProcesses, id)
+	b.logger.Info("Unregistered managed process: id=%s", id)
+	return nil
+}
+
+// StopManagedProcess stops a managed process by ID
+func (b *Broker) StopManagedProcess(id string) error {
+	b.mu.RLock()
+	proc, exists := b.managedProcesses[id]
+	b.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("managed process with id '%s' not found", id)
+	}
+
+	b.logger.Info("Stopping managed process: id=%s", id)
+	if err := proc.Stop(); err != nil {
+		return fmt.Errorf("failed to stop managed process: %w", err)
+	}
+
+	return b.UnregisterManagedProcess(id)
+}
+
+// GetManagedProcess returns a managed process by ID
+func (b *Broker) GetManagedProcess(id string) (ManagedProcess, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	proc, exists := b.managedProcesses[id]
+	if !exists {
+		return nil, fmt.Errorf("managed process with id '%s' not found", id)
+	}
+
+	return proc, nil
+}
+
+// ListManagedProcesses returns all registered managed processes
+func (b *Broker) ListManagedProcesses() []ManagedProcess {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	result := make([]ManagedProcess, 0, len(b.managedProcesses))
+	for _, proc := range b.managedProcesses {
+		result = append(result, proc)
+	}
+
+	return result
+}
+
+// DispatchMessage sends a message to a specific managed process
+func (b *Broker) DispatchMessage(processID string, msg *Message) error {
+	b.mu.RLock()
+	proc, exists := b.managedProcesses[processID]
+	b.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("managed process with id '%s' not found", processID)
+	}
+
+	return proc.OnMessage(msg)
 }

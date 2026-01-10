@@ -1,14 +1,12 @@
 # v2e
 
-A Go-based project demonstrating a multi-command structure with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
+A Go-based project demonstrating process management with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
 
 ## Project Structure
 
-This project contains multiple commands:
+This project contains one command:
 
-- `cmd/server` - A simple HTTP server
-- `cmd/client` - A simple HTTP client
-- `cmd/broker` - Process broker demo for managing subprocesses
+- `cmd/broker` - Process broker for managing subprocesses with lifecycle control
 
 And packages:
 
@@ -25,66 +23,13 @@ And packages:
 
 ## Building
 
-To build all commands:
+To build the broker command:
 
 ```bash
-go build ./cmd/server
-go build ./cmd/client
-```
-
-Or build a specific command:
-
-```bash
-go build -o bin/server ./cmd/server
-go build -o bin/client ./cmd/client
+go build -o bin/broker ./cmd/broker
 ```
 
 ## Running
-
-### Configuration
-
-Both the server and client support optional configuration via a `config.json` file in the current directory. If the file doesn't exist, default values will be used.
-
-A sample configuration file is provided as `config.json.example`. You can copy it to `config.json` and modify as needed:
-
-```bash
-cp config.json.example config.json
-```
-
-Example `config.json`:
-
-```json
-{
-  "server": {
-    "address": ":8080"
-  },
-  "client": {
-    "url": "http://localhost:8080"
-  }
-}
-```
-
-Configuration options:
-- `server.address`: The address for the server to listen on (default: `:8080`)
-- `client.url`: The default URL for the client to connect to (default: `http://localhost:8080`)
-
-Note: Command line arguments take precedence over configuration file values.
-
-### Server
-
-```bash
-go run ./cmd/server
-```
-
-The server will start on port 8080.
-
-### Client
-
-```bash
-go run ./cmd/client [url]
-```
-
-If no URL is provided, it will connect to `http://localhost:8080` by default.
 
 ### Broker
 
@@ -231,7 +176,12 @@ logger.Info("Custom logger message")
 
 ### Process Broker
 
-The `pkg/proc` package provides a process broker for managing subprocesses and inter-process communication:
+The `pkg/proc` package provides a process broker for managing subprocesses and inter-process communication. It supports two types of processes:
+
+1. **External processes** - System commands spawned by the broker
+2. **Managed processes** - Go processes with structured lifecycle and message handling
+
+#### Managing External Processes
 
 ```go
 import "github.com/cyw0ng95/v2e/pkg/proc"
@@ -265,6 +215,95 @@ err = broker.Kill("my-process")
 if err != nil {
     log.Fatal(err)
 }
+```
+
+#### Managed Processes with Lifecycle Control
+
+The broker supports managed processes that implement the `ManagedProcess` interface, providing structured lifecycle management and message handling:
+
+```go
+import (
+    "context"
+    "github.com/cyw0ng95/v2e/pkg/proc"
+)
+
+// Define a custom managed process
+type MyProcess struct {
+    *proc.BaseProcess
+    // Add custom fields
+}
+
+// Create a new managed process
+func NewMyProcess(id string) *MyProcess {
+    return &MyProcess{
+        BaseProcess: proc.NewBaseProcess(id),
+    }
+}
+
+// Implement lifecycle hooks
+func (p *MyProcess) Start(ctx context.Context, broker *proc.Broker) error {
+    // Initialize the base process
+    if err := p.BaseProcess.Start(ctx, broker); err != nil {
+        return err
+    }
+    
+    // Custom initialization logic
+    p.SendEvent("process-started", map[string]string{
+        "id": p.ID(),
+    })
+    
+    return nil
+}
+
+func (p *MyProcess) Stop() error {
+    // Custom cleanup logic
+    p.SendEvent("process-stopping", map[string]string{
+        "id": p.ID(),
+    })
+    
+    // Stop the base process
+    return p.BaseProcess.Stop()
+}
+
+func (p *MyProcess) OnMessage(msg *proc.Message) error {
+    // Handle incoming messages from the broker
+    switch msg.Type {
+    case proc.MessageTypeRequest:
+        var payload map[string]interface{}
+        msg.UnmarshalPayload(&payload)
+        // Process request and send response
+        return p.SendResponse(msg.ID, map[string]interface{}{
+            "status": "ok",
+            "result": "processed",
+        })
+    case proc.MessageTypeEvent:
+        // Handle events
+        return nil
+    }
+    return nil
+}
+
+// Register and use the managed process
+broker := proc.NewBroker()
+defer broker.Shutdown()
+
+myProc := NewMyProcess("worker-1")
+err := broker.RegisterManagedProcess(myProc)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Send messages to the managed process
+msg, _ := proc.NewRequestMessage("req-1", map[string]string{
+    "action": "process_data",
+})
+err = broker.DispatchMessage("worker-1", msg)
+
+// List all managed processes
+managedProcs := broker.ListManagedProcesses()
+
+// Stop a managed process
+err = broker.StopManagedProcess("worker-1")
 ```
 
 #### Message Passing

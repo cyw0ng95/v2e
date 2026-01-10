@@ -32,6 +32,44 @@ func (b *threadSafeBuffer) String() string {
 	return b.buf.String()
 }
 
+// TestProcess is a test implementation of ManagedProcess for broker tests
+type TestProcess struct {
+	*BaseProcess
+	startCalled   bool
+	stopCalled    bool
+	messageCount  int
+	lastMessage   *Message
+	shouldFailMsg bool
+}
+
+func NewTestProcess(id string) *TestProcess {
+	return &TestProcess{
+		BaseProcess: NewBaseProcess(id),
+	}
+}
+
+func (p *TestProcess) Start(ctx context.Context, broker *Broker) error {
+	if err := p.BaseProcess.Start(ctx, broker); err != nil {
+		return err
+	}
+	p.startCalled = true
+	return nil
+}
+
+func (p *TestProcess) Stop() error {
+	p.stopCalled = true
+	return p.BaseProcess.Stop()
+}
+
+func (p *TestProcess) OnMessage(msg *Message) error {
+	if p.shouldFailMsg {
+		return fmt.Errorf("simulated message handling error")
+	}
+	p.messageCount++
+	p.lastMessage = msg
+	return nil
+}
+
 func TestNewBroker(t *testing.T) {
 	broker := NewBroker()
 	if broker == nil {
@@ -566,4 +604,212 @@ func TestMain(m *testing.M) {
 	// Run tests
 	code := m.Run()
 	os.Exit(code)
+}
+
+func TestBroker_RegisterManagedProcess(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	proc := NewTestProcess("managed-1")
+	err := broker.RegisterManagedProcess(proc)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess failed: %v", err)
+	}
+
+	if !proc.startCalled {
+		t.Error("Expected Start to be called on registration")
+	}
+}
+
+func TestBroker_RegisterManagedProcess_Duplicate(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	proc1 := NewTestProcess("managed-1")
+	proc2 := NewTestProcess("managed-1")
+
+	err := broker.RegisterManagedProcess(proc1)
+	if err != nil {
+		t.Fatalf("First RegisterManagedProcess failed: %v", err)
+	}
+
+	err = broker.RegisterManagedProcess(proc2)
+	if err == nil {
+		t.Error("Expected error when registering process with duplicate ID")
+	}
+}
+
+func TestBroker_GetManagedProcess(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	proc := NewTestProcess("managed-1")
+	err := broker.RegisterManagedProcess(proc)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess failed: %v", err)
+	}
+
+	retrieved, err := broker.GetManagedProcess("managed-1")
+	if err != nil {
+		t.Fatalf("GetManagedProcess failed: %v", err)
+	}
+
+	if retrieved.ID() != "managed-1" {
+		t.Errorf("Expected ID to be 'managed-1', got '%s'", retrieved.ID())
+	}
+}
+
+func TestBroker_GetManagedProcess_NotFound(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	_, err := broker.GetManagedProcess("nonexistent")
+	if err == nil {
+		t.Error("Expected error when getting nonexistent managed process")
+	}
+}
+
+func TestBroker_ListManagedProcesses(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	proc1 := NewTestProcess("managed-1")
+	proc2 := NewTestProcess("managed-2")
+
+	err := broker.RegisterManagedProcess(proc1)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess proc1 failed: %v", err)
+	}
+
+	err = broker.RegisterManagedProcess(proc2)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess proc2 failed: %v", err)
+	}
+
+	processes := broker.ListManagedProcesses()
+	if len(processes) != 2 {
+		t.Errorf("Expected 2 managed processes, got %d", len(processes))
+	}
+}
+
+func TestBroker_StopManagedProcess(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	proc := NewTestProcess("managed-1")
+	err := broker.RegisterManagedProcess(proc)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess failed: %v", err)
+	}
+
+	err = broker.StopManagedProcess("managed-1")
+	if err != nil {
+		t.Fatalf("StopManagedProcess failed: %v", err)
+	}
+
+	if !proc.stopCalled {
+		t.Error("Expected Stop to be called")
+	}
+
+	// Process should be unregistered
+	_, err = broker.GetManagedProcess("managed-1")
+	if err == nil {
+		t.Error("Expected error when getting stopped managed process")
+	}
+}
+
+func TestBroker_StopManagedProcess_NotFound(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	err := broker.StopManagedProcess("nonexistent")
+	if err == nil {
+		t.Error("Expected error when stopping nonexistent managed process")
+	}
+}
+
+func TestBroker_UnregisterManagedProcess(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	proc := NewTestProcess("managed-1")
+	err := broker.RegisterManagedProcess(proc)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess failed: %v", err)
+	}
+
+	err = broker.UnregisterManagedProcess("managed-1")
+	if err != nil {
+		t.Fatalf("UnregisterManagedProcess failed: %v", err)
+	}
+
+	// Process should not be found
+	_, err = broker.GetManagedProcess("managed-1")
+	if err == nil {
+		t.Error("Expected error when getting unregistered managed process")
+	}
+}
+
+func TestBroker_DispatchMessage(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	proc := NewTestProcess("managed-1")
+	err := broker.RegisterManagedProcess(proc)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess failed: %v", err)
+	}
+
+	msg, _ := NewRequestMessage("req-1", map[string]string{"test": "data"})
+	err = broker.DispatchMessage("managed-1", msg)
+	if err != nil {
+		t.Fatalf("DispatchMessage failed: %v", err)
+	}
+
+	if proc.messageCount != 1 {
+		t.Errorf("Expected message count to be 1, got %d", proc.messageCount)
+	}
+	if proc.lastMessage != msg {
+		t.Error("Expected lastMessage to match dispatched message")
+	}
+}
+
+func TestBroker_DispatchMessage_NotFound(t *testing.T) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	msg, _ := NewRequestMessage("req-1", nil)
+	err := broker.DispatchMessage("nonexistent", msg)
+	if err == nil {
+		t.Error("Expected error when dispatching to nonexistent managed process")
+	}
+}
+
+func TestBroker_Shutdown_WithManagedProcesses(t *testing.T) {
+	broker := NewBroker()
+
+	proc1 := NewTestProcess("managed-1")
+	proc2 := NewTestProcess("managed-2")
+
+	err := broker.RegisterManagedProcess(proc1)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess proc1 failed: %v", err)
+	}
+
+	err = broker.RegisterManagedProcess(proc2)
+	if err != nil {
+		t.Fatalf("RegisterManagedProcess proc2 failed: %v", err)
+	}
+
+	err = broker.Shutdown()
+	if err != nil {
+		t.Errorf("Shutdown failed: %v", err)
+	}
+
+	if !proc1.stopCalled {
+		t.Error("Expected proc1 Stop to be called during shutdown")
+	}
+	if !proc2.stopCalled {
+		t.Error("Expected proc2 Stop to be called during shutdown")
+	}
 }
