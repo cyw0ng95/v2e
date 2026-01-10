@@ -7,7 +7,7 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 This project contains multiple commands:
 
 - `cmd/access` - RESTful API service using Gin framework
-- `cmd/broker` - Process broker demo for managing subprocesses
+- `cmd/broker` - RPC service for managing subprocesses and process lifecycle
 - `cmd/broker-stats` - RPC service for accessing broker message statistics
 - `cmd/worker` - Example subprocess using the subprocess framework
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
@@ -86,20 +86,54 @@ go run ./cmd/access -port 3000 -debug
 
 The Access service demonstrates the use of the Gin framework for building RESTful APIs. It can be extended with additional endpoints as needed.
 
-### Broker
+### Broker (RPC Service)
+
+The Broker service provides RPC interfaces for managing subprocesses:
 
 ```bash
-# Run demo mode (spawns multiple example processes)
+# Run the service (it reads RPC requests from stdin and writes responses to stdout)
 go run ./cmd/broker
 
-# Execute a specific command
-go run ./cmd/broker -cmd "echo hello world"
+# Example: Spawn a process
+echo '{"type":"request","id":"RPCSpawn","payload":{"id":"my-echo","command":"echo","args":["hello","world"]}}' | go run ./cmd/broker
 
-# Execute a command with a custom process ID
-go run ./cmd/broker -id my-process -cmd "sleep 5"
+# Example: List all processes
+echo '{"type":"request","id":"RPCListProcesses","payload":{}}' | go run ./cmd/broker
+
+# Example: Get process info
+echo '{"type":"request","id":"RPCGetProcess","payload":{"id":"my-echo"}}' | go run ./cmd/broker
+
+# Example: Kill a process
+echo '{"type":"request","id":"RPCKill","payload":{"id":"my-echo"}}' | go run ./cmd/broker
 ```
 
-The broker command demonstrates the process management capabilities of the `pkg/proc` package. In demo mode, it spawns multiple processes and monitors their lifecycle, showing how processes are reaped and their exit codes captured.
+**Available RPC Interfaces:**
+- `RPCSpawn` - Spawns a new subprocess with the specified command and arguments
+- `RPCSpawnRPC` - Spawns a new RPC-enabled subprocess (with stdin/stdout pipes)
+- `RPCGetProcess` - Gets information about a specific process by ID
+- `RPCListProcesses` - Lists all managed processes
+- `RPCKill` - Terminates a process by ID
+
+**Request Format for RPCSpawn:**
+```json
+{
+  "id": "unique-process-id",
+  "command": "echo",
+  "args": ["hello", "world"]
+}
+```
+
+**Response Format:**
+```json
+{
+  "id": "unique-process-id",
+  "pid": 12345,
+  "command": "echo",
+  "status": "running"
+}
+```
+
+This service can be spawned by a broker to provide remote access to process management via RPC.
 
 ### Worker
 
