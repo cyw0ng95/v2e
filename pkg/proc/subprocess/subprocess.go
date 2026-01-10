@@ -201,17 +201,17 @@ func (s *Subprocess) SendMessage(msg *Message) error {
 
 // sendMessage is the internal method to send a message
 func (s *Subprocess) sendMessage(msg *Message) error {
-	s.mu.RLock()
-	output := s.output
-	s.mu.RUnlock()
-
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
+	// Lock for the entire write operation to prevent race conditions
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	// Write the message as a single line
-	if _, err := fmt.Fprintf(output, "%s\n", string(data)); err != nil {
+	if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
 		return fmt.Errorf("failed to write message: %w", err)
 	}
 
