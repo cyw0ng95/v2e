@@ -6,7 +6,7 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 
 This project contains multiple commands:
 
-- `cmd/server` - A simple HTTP server with CVE API integration
+- `cmd/server` - A simple HTTP server
 - `cmd/client` - A simple HTTP client
 
 And packages:
@@ -72,16 +72,6 @@ go run ./cmd/server
 ```
 
 The server will start on port 8080.
-
-#### API Endpoints
-
-- `GET /` - Server information
-- `GET /cve/{cve-id}` - Fetch CVE data from the National Vulnerability Database (NVD)
-
-Example:
-```bash
-curl http://localhost:8080/cve/CVE-2021-44228
-```
 
 ### Client
 
