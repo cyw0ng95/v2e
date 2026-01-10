@@ -1,13 +1,18 @@
 # v2e
 
-A basic Go-based project demonstrating a multi-command structure.
+A Go-based project demonstrating a multi-command structure with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
 
 ## Project Structure
 
 This project contains multiple commands:
 
-- `cmd/server` - A simple HTTP server
+- `cmd/server` - A simple HTTP server with CVE API integration
 - `cmd/client` - A simple HTTP client
+
+And packages:
+
+- `pkg/common` - Common utilities and configuration
+- `pkg/repo` - Repository layer for external data sources (NVD CVE API)
 
 ## Prerequisites
 
@@ -68,6 +73,16 @@ go run ./cmd/server
 
 The server will start on port 8080.
 
+#### API Endpoints
+
+- `GET /` - Server information
+- `GET /cve/{cve-id}` - Fetch CVE data from the National Vulnerability Database (NVD)
+
+Example:
+```bash
+curl http://localhost:8080/cve/CVE-2021-44228
+```
+
 ### Client
 
 ```bash
@@ -75,6 +90,27 @@ go run ./cmd/client [url]
 ```
 
 If no URL is provided, it will connect to `http://localhost:8080` by default.
+
+## Development
+
+### CVE Fetcher
+
+The `pkg/repo` package provides a CVE fetcher that integrates with the NVD API v2.0:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/repo"
+
+// Create a new CVE fetcher (optionally with API key for higher rate limits)
+fetcher := repo.NewCVEFetcher("")
+
+// Fetch a specific CVE by ID
+cveData, err := fetcher.FetchCVEByID("CVE-2021-44228")
+
+// Fetch multiple CVEs with pagination
+cveList, err := fetcher.FetchCVEs(0, 10)
+```
+
+For production use with higher rate limits, obtain an API key from [NVD](https://nvd.nist.gov/developers/request-an-api-key) and pass it to `NewCVEFetcher()`.
 
 ## Development
 
@@ -86,6 +122,9 @@ This project uses Go modules for dependency management:
 go mod tidy
 go mod download
 ```
+
+Key dependencies:
+- [go-resty/resty](https://github.com/go-resty/resty) - HTTP client library for making API requests
 
 ### Testing
 
