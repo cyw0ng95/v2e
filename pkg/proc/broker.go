@@ -56,6 +56,26 @@ type Process struct {
 	mu     sync.RWMutex
 }
 
+// MessageStats contains statistics about messages processed by the broker
+type MessageStats struct {
+	// TotalSent is the total number of messages sent through the broker
+	TotalSent int64
+	// TotalReceived is the total number of messages received by the broker
+	TotalReceived int64
+	// RequestCount is the number of request messages
+	RequestCount int64
+	// ResponseCount is the number of response messages
+	ResponseCount int64
+	// EventCount is the number of event messages
+	EventCount int64
+	// ErrorCount is the number of error messages
+	ErrorCount int64
+	// FirstMessageTime is when the first message was processed
+	FirstMessageTime time.Time
+	// LastMessageTime is when the last message was processed
+	LastMessageTime time.Time
+}
+
 // Broker manages subprocesses and message passing
 type Broker struct {
 	processes map[string]*Process
@@ -65,6 +85,8 @@ type Broker struct {
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
 	logger    *common.Logger
+	stats     MessageStats
+	statsMu   sync.RWMutex
 }
 
 // NewBroker creates a new Broker instance
@@ -227,11 +249,7 @@ func (b *Broker) readProcessMessages(proc *Process) {
 		}
 
 		// Forward the message to the broker's message channel
-		select {
-		case b.messages <- msg:
-		case <-b.ctx.Done():
-			return
-		}
+		b.sendMessageInternal(msg)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -318,10 +336,7 @@ func (b *Broker) reapProcess(proc *Process) {
 		"pid":       proc.info.PID,
 		"exit_code": proc.info.ExitCode,
 	})
-	select {
-	case b.messages <- event:
-	case <-b.ctx.Done():
-	}
+	b.sendMessageInternal(event)
 }
 
 // Kill terminates a process by ID
@@ -407,9 +422,20 @@ func (b *Broker) SendMessage(msg *Message) (err error) {
 	
 	select {
 	case b.messages <- msg:
+		b.updateStats(msg, true)
 		return nil
 	case <-b.ctx.Done():
 		return fmt.Errorf("broker is shutting down")
+	}
+}
+
+// sendMessageInternal sends a message internally (from broker processes) without error handling
+// This is used by readProcessMessages and reapProcess to avoid blocking
+func (b *Broker) sendMessageInternal(msg *Message) {
+	select {
+	case b.messages <- msg:
+		b.updateStats(msg, true)
+	case <-b.ctx.Done():
 	}
 }
 
@@ -418,12 +444,60 @@ func (b *Broker) SendMessage(msg *Message) (err error) {
 func (b *Broker) ReceiveMessage(ctx context.Context) (*Message, error) {
 	select {
 	case msg := <-b.messages:
+		b.updateStats(msg, false)
 		return msg, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-b.ctx.Done():
 		return nil, fmt.Errorf("broker is shutting down")
 	}
+}
+
+// updateStats updates message statistics
+func (b *Broker) updateStats(msg *Message, isSent bool) {
+	b.statsMu.Lock()
+	defer b.statsMu.Unlock()
+
+	now := time.Now()
+	
+	// Update first message time if not set
+	if b.stats.FirstMessageTime.IsZero() {
+		b.stats.FirstMessageTime = now
+	}
+	b.stats.LastMessageTime = now
+
+	// Update counters
+	if isSent {
+		b.stats.TotalSent++
+	} else {
+		b.stats.TotalReceived++
+	}
+
+	// Update type-specific counters
+	switch msg.Type {
+	case MessageTypeRequest:
+		b.stats.RequestCount++
+	case MessageTypeResponse:
+		b.stats.ResponseCount++
+	case MessageTypeEvent:
+		b.stats.EventCount++
+	case MessageTypeError:
+		b.stats.ErrorCount++
+	}
+}
+
+// GetMessageStats returns a copy of the current message statistics
+func (b *Broker) GetMessageStats() MessageStats {
+	b.statsMu.RLock()
+	defer b.statsMu.RUnlock()
+	return b.stats
+}
+
+// GetMessageCount returns the total number of messages processed (sent + received)
+func (b *Broker) GetMessageCount() int64 {
+	b.statsMu.RLock()
+	defer b.statsMu.RUnlock()
+	return b.stats.TotalSent + b.stats.TotalReceived
 }
 
 // Shutdown gracefully shuts down the broker and all managed processes
