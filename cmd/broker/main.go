@@ -98,7 +98,7 @@ func runDemo(broker *proc.Broker, logger *common.Logger, sigChan chan os.Signal)
 			common.Error("Failed to spawn %s: %v", p.id, err)
 			continue
 		}
-		common.Info("Spawned process: ID=%s PID=%d Command=%s", 
+		common.Info("Spawned process: ID=%s PID=%d Command=%s",
 			info.ID, info.PID, info.Command)
 	}
 

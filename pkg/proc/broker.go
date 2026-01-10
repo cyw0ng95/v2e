@@ -161,7 +161,7 @@ func (b *Broker) reapProcess(proc *Process) {
 		proc.info.ExitCode = 0
 	}
 
-	b.logger.Info("Process exited: id=%s pid=%d exit_code=%d", 
+	b.logger.Info("Process exited: id=%s pid=%d exit_code=%d",
 		proc.info.ID, proc.info.PID, proc.info.ExitCode)
 
 	// Send event message about process exit

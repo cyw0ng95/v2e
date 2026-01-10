@@ -42,7 +42,7 @@ func TestNewMessage(t *testing.T) {
 
 func TestNewRequestMessage(t *testing.T) {
 	type TestPayload struct {
-		Command string `json:"command"`
+		Command string   `json:"command"`
 		Args    []string `json:"args"`
 	}
 
