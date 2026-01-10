@@ -1,30 +1,12 @@
 {
   "server": {
     "host": "localhost",
-    "port": 8080,
-    "environment": "development"
+    "port": 8080
   },
   "database": {
-    "type": "sqlite",
-    "path": "./data/v2e.db",
-    "connection_pool_size": 10
-  },
-  "vulnerabilities": {
-    "sources": [
-      "nvd",
-      "github-advisory"
-    ],
-    "update_interval": "24h",
-    "cache_enabled": true
+    "path": "./data/v2e.db"
   },
   "logging": {
-    "level": "info",
-    "format": "json",
-    "output": "stdout"
-  },
-  "api": {
-    "rate_limit": 100,
-    "timeout": "30s",
-    "enable_cors": true
+    "level": "info"
   }
 }
