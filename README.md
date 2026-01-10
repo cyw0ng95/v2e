@@ -8,6 +8,7 @@ This project contains multiple commands:
 
 - `cmd/server` - A simple HTTP server
 - `cmd/client` - A simple HTTP client
+- `cmd/broker` - Process broker demo for managing subprocesses
 
 And packages:
 
@@ -81,6 +82,22 @@ go run ./cmd/client [url]
 ```
 
 If no URL is provided, it will connect to `http://localhost:8080` by default.
+
+### Broker
+
+```bash
+# Run demo mode (spawns multiple example processes)
+go run ./cmd/broker
+
+# Execute a specific command
+go run ./cmd/broker -cmd "echo hello world"
+
+# Execute a command with a custom process ID
+go run ./cmd/broker -id my-process -cmd "sleep 5"
+```
+
+The broker command demonstrates the process management capabilities of the `pkg/proc` package. In demo mode, it spawns multiple processes and monitors their lifecycle, showing how processes are reaped and their exit codes captured.
+
 
 ## Development
 
