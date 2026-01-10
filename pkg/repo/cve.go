@@ -45,26 +45,102 @@ type Description struct {
 
 // Metrics contains CVSS metrics for a CVE
 type Metrics struct {
-	CvssMetricV31 []CVSSMetric `json:"cvssMetricV31,omitempty"`
-	CvssMetricV30 []CVSSMetric `json:"cvssMetricV30,omitempty"`
-	CvssMetricV2  []CVSSMetric `json:"cvssMetricV2,omitempty"`
+	CvssMetricV31 []CVSSMetricV3 `json:"cvssMetricV31,omitempty"`
+	CvssMetricV30 []CVSSMetricV3 `json:"cvssMetricV30,omitempty"`
+	CvssMetricV2  []CVSSMetricV2 `json:"cvssMetricV2,omitempty"`
 }
 
-// CVSSMetric represents CVSS scoring data
-type CVSSMetric struct {
-	Source              string  `json:"source"`
-	Type                string  `json:"type"`
-	CvssData            CVSSData `json:"cvssData,omitempty"`
-	ExploitabilityScore float64 `json:"exploitabilityScore,omitempty"`
-	ImpactScore         float64 `json:"impactScore,omitempty"`
+// CVSSMetricV3 represents CVSS v3.x scoring data
+type CVSSMetricV3 struct {
+	Source              string     `json:"source"`
+	Type                string     `json:"type"`
+	CvssData            CVSSDataV3 `json:"cvssData"`
+	ExploitabilityScore float64    `json:"exploitabilityScore,omitempty"`
+	ImpactScore         float64    `json:"impactScore,omitempty"`
 }
 
-// CVSSData contains the actual CVSS score information
-type CVSSData struct {
+// CVSSDataV3 contains the actual CVSS v3.x score information
+type CVSSDataV3 struct {
 	Version      string  `json:"version"`
 	VectorString string  `json:"vectorString"`
 	BaseScore    float64 `json:"baseScore"`
 	BaseSeverity string  `json:"baseSeverity"`
+	
+	// Base Metric Group
+	AttackVector          string `json:"attackVector,omitempty"`
+	AttackComplexity      string `json:"attackComplexity,omitempty"`
+	PrivilegesRequired    string `json:"privilegesRequired,omitempty"`
+	UserInteraction       string `json:"userInteraction,omitempty"`
+	Scope                 string `json:"scope,omitempty"`
+	ConfidentialityImpact string `json:"confidentialityImpact,omitempty"`
+	IntegrityImpact       string `json:"integrityImpact,omitempty"`
+	AvailabilityImpact    string `json:"availabilityImpact,omitempty"`
+	
+	// Temporal Metric Group
+	TemporalScore        float64 `json:"temporalScore,omitempty"`
+	TemporalSeverity     string  `json:"temporalSeverity,omitempty"`
+	ExploitCodeMaturity  string  `json:"exploitCodeMaturity,omitempty"`
+	RemediationLevel     string  `json:"remediationLevel,omitempty"`
+	ReportConfidence     string  `json:"reportConfidence,omitempty"`
+	
+	// Environmental Metric Group
+	EnvironmentalScore         float64 `json:"environmentalScore,omitempty"`
+	EnvironmentalSeverity      string  `json:"environmentalSeverity,omitempty"`
+	ConfidentialityRequirement string  `json:"confidentialityRequirement,omitempty"`
+	IntegrityRequirement       string  `json:"integrityRequirement,omitempty"`
+	AvailabilityRequirement    string  `json:"availabilityRequirement,omitempty"`
+	ModifiedAttackVector       string  `json:"modifiedAttackVector,omitempty"`
+	ModifiedAttackComplexity   string  `json:"modifiedAttackComplexity,omitempty"`
+	ModifiedPrivilegesRequired string  `json:"modifiedPrivilegesRequired,omitempty"`
+	ModifiedUserInteraction    string  `json:"modifiedUserInteraction,omitempty"`
+	ModifiedScope              string  `json:"modifiedScope,omitempty"`
+	ModifiedConfidentialityImpact string `json:"modifiedConfidentialityImpact,omitempty"`
+	ModifiedIntegrityImpact       string `json:"modifiedIntegrityImpact,omitempty"`
+	ModifiedAvailabilityImpact    string `json:"modifiedAvailabilityImpact,omitempty"`
+}
+
+// CVSSMetricV2 represents CVSS v2.0 scoring data
+type CVSSMetricV2 struct {
+	Source                   string     `json:"source"`
+	Type                     string     `json:"type"`
+	CvssData                 CVSSDataV2 `json:"cvssData"`
+	BaseSeverity             string     `json:"baseSeverity,omitempty"`
+	ExploitabilityScore      float64    `json:"exploitabilityScore,omitempty"`
+	ImpactScore              float64    `json:"impactScore,omitempty"`
+	AcInsufInfo              bool       `json:"acInsufInfo,omitempty"`
+	ObtainAllPrivilege       bool       `json:"obtainAllPrivilege,omitempty"`
+	ObtainUserPrivilege      bool       `json:"obtainUserPrivilege,omitempty"`
+	ObtainOtherPrivilege     bool       `json:"obtainOtherPrivilege,omitempty"`
+	UserInteractionRequired  bool       `json:"userInteractionRequired,omitempty"`
+}
+
+// CVSSDataV2 contains the actual CVSS v2.0 score information
+type CVSSDataV2 struct {
+	Version      string  `json:"version"`
+	VectorString string  `json:"vectorString"`
+	BaseScore    float64 `json:"baseScore"`
+	
+	// Base Metric Group
+	AccessVector          string `json:"accessVector,omitempty"`
+	AccessComplexity      string `json:"accessComplexity,omitempty"`
+	Authentication        string `json:"authentication,omitempty"`
+	ConfidentialityImpact string `json:"confidentialityImpact,omitempty"`
+	IntegrityImpact       string `json:"integrityImpact,omitempty"`
+	AvailabilityImpact    string `json:"availabilityImpact,omitempty"`
+	
+	// Temporal Metric Group
+	TemporalScore    float64 `json:"temporalScore,omitempty"`
+	Exploitability   string  `json:"exploitability,omitempty"`
+	RemediationLevel string  `json:"remediationLevel,omitempty"`
+	ReportConfidence string  `json:"reportConfidence,omitempty"`
+	
+	// Environmental Metric Group
+	EnvironmentalScore         float64 `json:"environmentalScore,omitempty"`
+	CollateralDamagePotential  string  `json:"collateralDamagePotential,omitempty"`
+	TargetDistribution         string  `json:"targetDistribution,omitempty"`
+	ConfidentialityRequirement string  `json:"confidentialityRequirement,omitempty"`
+	IntegrityRequirement       string  `json:"integrityRequirement,omitempty"`
+	AvailabilityRequirement    string  `json:"availabilityRequirement,omitempty"`
 }
 
 // Reference represents a reference link for a CVE
