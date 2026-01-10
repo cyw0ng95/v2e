@@ -37,8 +37,8 @@ func TestSaveCVE(t *testing.T) {
 	cve := &CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    time.Now(),
-		LastModified: time.Now(),
+		Published:    NewNVDTime(time.Now()),
+		LastModified: NewNVDTime(time.Now()),
 		VulnStatus:   "Analyzed",
 		Descriptions: []Description{
 			{
@@ -79,8 +79,8 @@ func TestSaveCVE_Update(t *testing.T) {
 	cve := &CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    time.Now(),
-		LastModified: time.Now(),
+		Published:    NewNVDTime(time.Now()),
+		LastModified: NewNVDTime(time.Now()),
 		VulnStatus:   "Analyzed",
 		Descriptions: []Description{
 			{
@@ -138,16 +138,16 @@ func TestSaveCVEs(t *testing.T) {
 		{
 			ID:           "CVE-2021-44228",
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Now(),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Now()),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "Log4j"}},
 		},
 		{
 			ID:           "CVE-2021-45046",
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Now(),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Now()),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "Log4j 2"}},
 		},
@@ -184,8 +184,8 @@ func TestGetCVE(t *testing.T) {
 	cve := &CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC),
-		LastModified: time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC),
+		Published:    NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+		LastModified: NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
 		VulnStatus:   "Analyzed",
 		Descriptions: []Description{
 			{
@@ -257,24 +257,24 @@ func TestListCVEs(t *testing.T) {
 		{
 			ID:           "CVE-2021-44228",
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "CVE 1"}},
 		},
 		{
 			ID:           "CVE-2021-45046",
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Date(2021, 12, 14, 0, 0, 0, 0, time.UTC),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Date(2021, 12, 14, 0, 0, 0, 0, time.UTC)),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "CVE 2"}},
 		},
 		{
 			ID:           "CVE-2022-12345",
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "CVE 3"}},
 		},
@@ -318,8 +318,8 @@ func TestListCVEs_Pagination(t *testing.T) {
 		cves = append(cves, CVEItem{
 			ID:           "CVE-2021-" + string(rune(10000+i)),
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Date(2021, 12, i, 0, 0, 0, 0, time.UTC),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Date(2021, 12, i, 0, 0, 0, 0, time.UTC)),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "CVE"}},
 		})
@@ -379,16 +379,16 @@ func TestCount(t *testing.T) {
 		{
 			ID:           "CVE-2021-44228",
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Now(),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Now()),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "CVE 1"}},
 		},
 		{
 			ID:           "CVE-2021-45046",
 			SourceID:     "nvd@nist.gov",
-			Published:    time.Now(),
-			LastModified: time.Now(),
+			Published:    NewNVDTime(time.Now()),
+			LastModified: NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
 			Descriptions: []Description{{Lang: "en", Value: "CVE 2"}},
 		},
@@ -424,8 +424,8 @@ func TestSaveCVE_WithFullData(t *testing.T) {
 	cve := &CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC),
-		LastModified: time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC),
+		Published:    NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+		LastModified: NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
 		VulnStatus:   "Analyzed",
 		Descriptions: []Description{
 			{
