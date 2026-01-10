@@ -8,6 +8,9 @@ This project contains multiple commands:
 
 - `cmd/broker` - Process broker demo for managing subprocesses
 - `cmd/worker` - Example subprocess using the subprocess framework
+- `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
+- `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
+- `cmd/rpc-demo` - Demonstration of broker-mediated RPC communication between CVE services
 
 And packages:
 
@@ -30,6 +33,9 @@ To build all commands:
 ```bash
 go build ./cmd/broker
 go build ./cmd/worker
+go build ./cmd/cve-remote
+go build ./cmd/cve-local
+go build ./cmd/rpc-demo
 ```
 
 Or build a specific command:
@@ -37,6 +43,9 @@ Or build a specific command:
 ```bash
 go build -o bin/broker ./cmd/broker
 go build -o bin/worker ./cmd/worker
+go build -o bin/cve-remote ./cmd/cve-remote
+go build -o bin/cve-local ./cmd/cve-local
+go build -o bin/rpc-demo ./cmd/rpc-demo
 ```
 
 ## Running
@@ -72,6 +81,77 @@ echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}
 ```
 
 The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
+
+### CVE Remote (RPC Service)
+
+The CVE Remote service provides RPC interfaces for fetching CVE data from the NVD API:
+
+```bash
+# Run the service (it reads RPC requests from stdin and writes responses to stdout)
+go run ./cmd/cve-remote
+
+# Example: Get total CVE count from NVD
+echo '{"type":"request","id":"RPCGetCVECnt","payload":{}}' | go run ./cmd/cve-remote
+
+# Example: Fetch a specific CVE by ID
+echo '{"type":"request","id":"RPCGetCVEByID","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-remote
+```
+
+**Available RPC Interfaces:**
+- `RPCGetCVECnt` - Returns the total count of CVEs in the NVD database
+- `RPCGetCVEByID` - Fetches a specific CVE by its ID from the NVD API
+
+**Environment Variables:**
+- `NVD_API_KEY` - Optional NVD API key for higher rate limits
+
+### CVE Local (RPC Service)
+
+The CVE Local service provides RPC interfaces for storing and retrieving CVE data from a local SQLite database:
+
+```bash
+# Run the service (it reads RPC requests from stdin and writes responses to stdout)
+go run ./cmd/cve-local
+
+# Example: Check if a CVE is stored locally
+echo '{"type":"request","id":"RPCIsCVEStoredByID","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-local
+
+# Example: Save a CVE to local database
+echo '{"type":"request","id":"RPCSaveCVEByID","payload":{"cve":{"id":"CVE-2021-44228",...}}}' | go run ./cmd/cve-local
+```
+
+**Available RPC Interfaces:**
+- `RPCIsCVEStoredByID` - Checks if a CVE exists in the local database
+- `RPCSaveCVEByID` - Saves a CVE to the local database
+
+**Environment Variables:**
+- `CVE_DB_PATH` - Path to the SQLite database file (default: `cve.db`)
+
+### RPC Demo
+
+The RPC demo demonstrates how to use the broker to coordinate communication between CVE services:
+
+```bash
+# Run the demo (fetches a CVE from NVD and stores it locally)
+go run ./cmd/rpc-demo
+
+# Specify a different CVE ID
+go run ./cmd/rpc-demo -cve-id CVE-2024-1234
+
+# Specify a different database path
+go run ./cmd/rpc-demo -db /path/to/cve.db
+```
+
+The demo performs the following workflow:
+1. Spawns `cve-local` and `cve-remote` services as subprocesses
+2. Checks if the specified CVE is already stored locally
+3. If not stored, fetches it from the NVD API via `cve-remote`
+4. Saves the fetched CVE to the local database via `cve-local`
+5. Gets the total CVE count from NVD
+
+This demonstrates the broker-mediated RPC communication pattern where:
+- All messages are sent to the broker first
+- The broker routes messages to the appropriate service
+- Services respond through the broker
 
 ## Development
 
@@ -286,6 +366,54 @@ if err != nil {
     log.Fatal(err)
 }
 ```
+
+#### RPC Communication
+
+The broker supports RPC-style communication with subprocesses via stdin/stdout pipes:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/proc"
+
+// Create a new broker
+broker := proc.NewBroker()
+defer broker.Shutdown()
+
+// Spawn a subprocess with RPC support (stdin/stdout pipes)
+info, err := broker.SpawnRPC("cve-remote", "go", "run", "./cmd/cve-remote")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Started RPC process %s with PID %d\n", info.ID, info.PID)
+
+// Send a message to the subprocess
+req, _ := proc.NewRequestMessage("RPCGetCVEByID", map[string]string{
+    "cve_id": "CVE-2021-44228",
+})
+err = broker.SendToProcess("cve-remote", req)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Receive the response from the subprocess
+ctx := context.Background()
+msg, err := broker.ReceiveMessage(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Process the response
+if msg.Type == proc.MessageTypeResponse {
+    var response map[string]interface{}
+    msg.UnmarshalPayload(&response)
+    fmt.Printf("Received response: %v\n", response)
+}
+```
+
+Key RPC features:
+- **SpawnRPC**: Spawns a subprocess with stdin/stdout pipes for message passing
+- **SendToProcess**: Sends a message to a specific subprocess via its stdin
+- **Automatic message routing**: The broker reads messages from subprocess stdout and forwards them to the message channel
+- **Broker-mediated communication**: All messages are sent through the broker, which routes them to target services
 
 #### Message Passing
 

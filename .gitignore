@@ -13,6 +13,9 @@
 /client
 /broker
 /worker
+/cve-local
+/cve-remote
+/rpc-demo
 /bin/
 
 # Test binary, built with `go test -c`
