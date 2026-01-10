@@ -13,6 +13,7 @@ And packages:
 
 - `pkg/common` - Common utilities and configuration
 - `pkg/repo` - Repository layer for external data sources (NVD CVE API)
+- `pkg/proc` - Process broker for managing subprocesses and inter-process communication
 
 ## Prerequisites
 
@@ -170,6 +171,104 @@ common.SetLevel(common.DebugLevel) // DebugLevel, InfoLevel, WarnLevel, ErrorLev
 // Create a custom logger
 logger := common.NewLogger(os.Stdout, "", common.InfoLevel)
 logger.Info("Custom logger message")
+```
+
+### Process Broker
+
+The `pkg/proc` package provides a process broker for managing subprocesses and inter-process communication:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/proc"
+
+// Create a new broker
+broker := proc.NewBroker()
+defer broker.Shutdown()
+
+// Spawn a subprocess
+info, err := broker.Spawn("my-process", "echo", "hello", "world")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Started process %s with PID %d\n", info.ID, info.PID)
+
+// Get process information
+procInfo, err := broker.GetProcess("my-process")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Process status: %s\n", procInfo.Status)
+
+// List all processes
+processes := broker.ListProcesses()
+for _, p := range processes {
+    fmt.Printf("Process %s: PID=%d Status=%s\n", p.ID, p.PID, p.Status)
+}
+
+// Kill a process
+err = broker.Kill("my-process")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+#### Message Passing
+
+The broker supports message passing between processes:
+
+```go
+// Create and send a request message
+req, _ := proc.NewRequestMessage("req-1", map[string]string{
+    "action": "process_data",
+    "data":   "example",
+})
+broker.SendMessage(req)
+
+// Receive messages (blocking)
+ctx := context.Background()
+msg, err := broker.ReceiveMessage(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Unmarshal the message payload
+var payload map[string]string
+msg.UnmarshalPayload(&payload)
+
+// Different message types
+respMsg, _ := proc.NewResponseMessage("resp-1", map[string]interface{}{
+    "status": "success",
+    "result": 42,
+})
+
+eventMsg, _ := proc.NewEventMessage("evt-1", map[string]string{
+    "event": "process_completed",
+})
+
+errorMsg := proc.NewErrorMessage("err-1", errors.New("something went wrong"))
+```
+
+The broker automatically sends event messages when processes exit:
+
+```go
+// Wait for process exit events
+for {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    msg, err := broker.ReceiveMessage(ctx)
+    cancel()
+    
+    if err != nil {
+        break
+    }
+    
+    if msg.Type == proc.MessageTypeEvent {
+        var event map[string]interface{}
+        msg.UnmarshalPayload(&event)
+        if event["event"] == "process_exited" {
+            fmt.Printf("Process %s exited with code %v\n", 
+                event["id"], event["exit_code"])
+        }
+    }
+}
 ```
 
 ### Dependencies
