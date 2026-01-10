@@ -1,4 +1,4 @@
-package repo
+package remote
 
 import (
 	"encoding/json"
@@ -6,28 +6,30 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/cve"
 )
 
-func TestNewCVEFetcher(t *testing.T) {
-	fetcher := NewCVEFetcher("")
+func TestNewFetcher(t *testing.T) {
+	fetcher := NewFetcher("")
 	if fetcher == nil {
-		t.Error("NewCVEFetcher should not return nil")
+		t.Error("NewFetcher should not return nil")
 	}
-	if fetcher.baseURL != NVDAPIURL {
-		t.Errorf("Expected baseURL %s, got %s", NVDAPIURL, fetcher.baseURL)
+	if fetcher.baseURL != cve.NVDAPIURL {
+		t.Errorf("Expected baseURL %s, got %s", cve.NVDAPIURL, fetcher.baseURL)
 	}
 }
 
-func TestNewCVEFetcher_WithAPIKey(t *testing.T) {
+func TestNewFetcher_WithAPIKey(t *testing.T) {
 	apiKey := "test-api-key"
-	fetcher := NewCVEFetcher(apiKey)
+	fetcher := NewFetcher(apiKey)
 	if fetcher.apiKey != apiKey {
 		t.Errorf("Expected API key %s, got %s", apiKey, fetcher.apiKey)
 	}
 }
 
 func TestFetchCVEByID_EmptyID(t *testing.T) {
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	_, err := fetcher.FetchCVEByID("")
 	if err == nil {
 		t.Error("FetchCVEByID should return error for empty CVE ID")
@@ -43,24 +45,24 @@ func TestFetchCVEByID_Success(t *testing.T) {
 		}
 
 		// Return a mock response
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Format:         "NVD_CVE",
 			Version:        "2.0",
-			Timestamp:      NewNVDTime(time.Now()),
+			Timestamp:      cve.NewNVDTime(time.Now()),
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID:           "CVE-2021-44228",
 						SourceID:     "nvd@nist.gov",
-						Published:    NewNVDTime(time.Now()),
-						LastModified: NewNVDTime(time.Now()),
+						Published:    cve.NewNVDTime(time.Now()),
+						LastModified: cve.NewNVDTime(time.Now()),
 						VulnStatus:   "Analyzed",
-						Descriptions: []Description{
+						Descriptions: []cve.Description{
 							{
 								Lang:  "en",
 								Value: "Apache Log4j2 vulnerability",
@@ -77,7 +79,7 @@ func TestFetchCVEByID_Success(t *testing.T) {
 	defer server.Close()
 
 	// Create fetcher with mock server URL
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	// Fetch CVE
@@ -98,9 +100,9 @@ func TestFetchCVEByID_Success(t *testing.T) {
 		t.Fatalf("Expected 1 vulnerability, got %d", len(result.Vulnerabilities))
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if cve.ID != "CVE-2021-44228" {
-		t.Errorf("Expected CVE ID CVE-2021-44228, got %s", cve.ID)
+	cveItem := result.Vulnerabilities[0].CVE
+	if cveItem.ID != "CVE-2021-44228" {
+		t.Errorf("Expected CVE ID CVE-2021-44228, got %s", cveItem.ID)
 	}
 }
 
@@ -115,15 +117,15 @@ func TestFetchCVEByID_WithAPIKey(t *testing.T) {
 		}
 
 		// Return a mock response
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID: "CVE-2021-44228",
 					},
 				},
@@ -136,7 +138,7 @@ func TestFetchCVEByID_WithAPIKey(t *testing.T) {
 	defer server.Close()
 
 	// Create fetcher with API key and mock server URL
-	fetcher := NewCVEFetcher(apiKey)
+	fetcher := NewFetcher(apiKey)
 	fetcher.baseURL = server.URL
 
 	// Fetch CVE
@@ -154,7 +156,7 @@ func TestFetchCVEByID_ServerError(t *testing.T) {
 	defer server.Close()
 
 	// Create fetcher with mock server URL
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	// Fetch CVE - should fail
@@ -165,7 +167,7 @@ func TestFetchCVEByID_ServerError(t *testing.T) {
 }
 
 func TestFetchCVEs_InvalidParameters(t *testing.T) {
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 
 	// Test negative startIndex
 	_, err := fetcher.FetchCVEs(-1, 10)
@@ -201,24 +203,24 @@ func TestFetchCVEs_Success(t *testing.T) {
 		}
 
 		// Return a mock response with multiple CVEs
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 10,
 			StartIndex:     0,
 			TotalResults:   100,
 			Format:         "NVD_CVE",
 			Version:        "2.0",
-			Timestamp:      NewNVDTime(time.Now()),
+			Timestamp:      cve.NewNVDTime(time.Now()),
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID:         "CVE-2021-44228",
 						VulnStatus: "Analyzed",
 					},
 				},
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID:         "CVE-2021-45046",
 						VulnStatus: "Analyzed",
 					},
@@ -232,7 +234,7 @@ func TestFetchCVEs_Success(t *testing.T) {
 	defer server.Close()
 
 	// Create fetcher with mock server URL
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	// Fetch CVEs
@@ -262,7 +264,7 @@ func TestFetchCVEs_ServerError(t *testing.T) {
 	defer server.Close()
 
 	// Create fetcher with mock server URL
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	// Fetch CVEs - should fail
@@ -275,22 +277,22 @@ func TestFetchCVEs_ServerError(t *testing.T) {
 func TestCVSSV3_FullFields(t *testing.T) {
 	// Create a mock server that returns a CVE with full CVSS v3.1 data
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID: "CVE-2021-44228",
-						Metrics: &Metrics{
-							CvssMetricV31: []CVSSMetricV3{
+						Metrics: &cve.Metrics{
+							CvssMetricV31: []cve.CVSSMetricV3{
 								{
 									Source: "nvd@nist.gov",
 									Type:   "Primary",
-									CvssData: CVSSDataV3{
+									CvssData: cve.CVSSDataV3{
 										Version:               "3.1",
 										VectorString:          "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
 										BaseScore:             10.0,
@@ -324,7 +326,7 @@ func TestCVSSV3_FullFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -336,16 +338,16 @@ func TestCVSSV3_FullFields(t *testing.T) {
 		t.Fatalf("Expected 1 vulnerability, got %d", len(result.Vulnerabilities))
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if cve.Metrics == nil {
+	cveItem := result.Vulnerabilities[0].CVE
+	if cveItem.Metrics == nil {
 		t.Fatal("Metrics should not be nil")
 	}
 
-	if len(cve.Metrics.CvssMetricV31) != 1 {
-		t.Fatalf("Expected 1 CVSS v3.1 metric, got %d", len(cve.Metrics.CvssMetricV31))
+	if len(cveItem.Metrics.CvssMetricV31) != 1 {
+		t.Fatalf("Expected 1 CVSS v3.1 metric, got %d", len(cveItem.Metrics.CvssMetricV31))
 	}
 
-	metric := cve.Metrics.CvssMetricV31[0]
+	metric := cveItem.Metrics.CvssMetricV31[0]
 	if metric.Source != "nvd@nist.gov" {
 		t.Errorf("Expected source nvd@nist.gov, got %s", metric.Source)
 	}
@@ -413,23 +415,23 @@ func TestCVSSV3_FullFields(t *testing.T) {
 func TestCVSSV2_FullFields(t *testing.T) {
 	// Create a mock server that returns a CVE with full CVSS v2.0 data
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID: "CVE-2021-44228",
-						Metrics: &Metrics{
-							CvssMetricV2: []CVSSMetricV2{
+						Metrics: &cve.Metrics{
+							CvssMetricV2: []cve.CVSSMetricV2{
 								{
 									Source:       "nvd@nist.gov",
 									Type:         "Primary",
 									BaseSeverity: "HIGH",
-									CvssData: CVSSDataV2{
+									CvssData: cve.CVSSDataV2{
 										Version:               "2.0",
 										VectorString:          "AV:N/AC:M/Au:N/C:C/I:C/A:C",
 										BaseScore:             9.3,
@@ -464,7 +466,7 @@ func TestCVSSV2_FullFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -476,16 +478,16 @@ func TestCVSSV2_FullFields(t *testing.T) {
 		t.Fatalf("Expected 1 vulnerability, got %d", len(result.Vulnerabilities))
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if cve.Metrics == nil {
+	cveItem := result.Vulnerabilities[0].CVE
+	if cveItem.Metrics == nil {
 		t.Fatal("Metrics should not be nil")
 	}
 
-	if len(cve.Metrics.CvssMetricV2) != 1 {
-		t.Fatalf("Expected 1 CVSS v2.0 metric, got %d", len(cve.Metrics.CvssMetricV2))
+	if len(cveItem.Metrics.CvssMetricV2) != 1 {
+		t.Fatalf("Expected 1 CVSS v2.0 metric, got %d", len(cveItem.Metrics.CvssMetricV2))
 	}
 
-	metric := cve.Metrics.CvssMetricV2[0]
+	metric := cveItem.Metrics.CvssMetricV2[0]
 	if metric.Source != "nvd@nist.gov" {
 		t.Errorf("Expected source nvd@nist.gov, got %s", metric.Source)
 	}
@@ -553,15 +555,15 @@ func TestCVSSV2_FullFields(t *testing.T) {
 // TestCVEItem_ExtendedFields tests the new extended fields in CVEItem
 func TestCVEItem_ExtendedFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID:                    "CVE-2021-44228",
 						EvaluatorComment:      "Critical vulnerability",
 						EvaluatorSolution:     "Update to latest version",
@@ -570,13 +572,13 @@ func TestCVEItem_ExtendedFields(t *testing.T) {
 						CisaActionDue:         "2021-12-24",
 						CisaRequiredAction:    "Apply updates",
 						CisaVulnerabilityName: "Log4Shell",
-						CVETags: []CVETag{
+						CVETags: []cve.CVETag{
 							{
 								SourceIdentifier: "nvd@nist.gov",
 								Tags:             []string{"disputed"},
 							},
 						},
-						Descriptions: []Description{
+						Descriptions: []cve.Description{
 							{Lang: "en", Value: "Test description"},
 						},
 					},
@@ -589,7 +591,7 @@ func TestCVEItem_ExtendedFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -597,62 +599,62 @@ func TestCVEItem_ExtendedFields(t *testing.T) {
 		t.Fatalf("FetchCVEByID failed: %v", err)
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if cve.EvaluatorComment != "Critical vulnerability" {
-		t.Errorf("Expected evaluator comment 'Critical vulnerability', got %s", cve.EvaluatorComment)
+	cveItem := result.Vulnerabilities[0].CVE
+	if cveItem.EvaluatorComment != "Critical vulnerability" {
+		t.Errorf("Expected evaluator comment 'Critical vulnerability', got %s", cveItem.EvaluatorComment)
 	}
-	if cve.EvaluatorSolution != "Update to latest version" {
-		t.Errorf("Expected evaluator solution 'Update to latest version', got %s", cve.EvaluatorSolution)
+	if cveItem.EvaluatorSolution != "Update to latest version" {
+		t.Errorf("Expected evaluator solution 'Update to latest version', got %s", cveItem.EvaluatorSolution)
 	}
-	if cve.EvaluatorImpact != "Remote code execution" {
-		t.Errorf("Expected evaluator impact 'Remote code execution', got %s", cve.EvaluatorImpact)
+	if cveItem.EvaluatorImpact != "Remote code execution" {
+		t.Errorf("Expected evaluator impact 'Remote code execution', got %s", cveItem.EvaluatorImpact)
 	}
-	if cve.CisaExploitAdd != "2021-12-10" {
-		t.Errorf("Expected CISA exploit add '2021-12-10', got %s", cve.CisaExploitAdd)
+	if cveItem.CisaExploitAdd != "2021-12-10" {
+		t.Errorf("Expected CISA exploit add '2021-12-10', got %s", cveItem.CisaExploitAdd)
 	}
-	if cve.CisaActionDue != "2021-12-24" {
-		t.Errorf("Expected CISA action due '2021-12-24', got %s", cve.CisaActionDue)
+	if cveItem.CisaActionDue != "2021-12-24" {
+		t.Errorf("Expected CISA action due '2021-12-24', got %s", cveItem.CisaActionDue)
 	}
-	if cve.CisaRequiredAction != "Apply updates" {
-		t.Errorf("Expected CISA required action 'Apply updates', got %s", cve.CisaRequiredAction)
+	if cveItem.CisaRequiredAction != "Apply updates" {
+		t.Errorf("Expected CISA required action 'Apply updates', got %s", cveItem.CisaRequiredAction)
 	}
-	if cve.CisaVulnerabilityName != "Log4Shell" {
-		t.Errorf("Expected CISA vulnerability name 'Log4Shell', got %s", cve.CisaVulnerabilityName)
+	if cveItem.CisaVulnerabilityName != "Log4Shell" {
+		t.Errorf("Expected CISA vulnerability name 'Log4Shell', got %s", cveItem.CisaVulnerabilityName)
 	}
-	if len(cve.CVETags) != 1 {
-		t.Fatalf("Expected 1 CVE tag, got %d", len(cve.CVETags))
+	if len(cveItem.CVETags) != 1 {
+		t.Fatalf("Expected 1 CVE tag, got %d", len(cveItem.CVETags))
 	}
-	if cve.CVETags[0].SourceIdentifier != "nvd@nist.gov" {
-		t.Errorf("Expected source identifier 'nvd@nist.gov', got %s", cve.CVETags[0].SourceIdentifier)
+	if cveItem.CVETags[0].SourceIdentifier != "nvd@nist.gov" {
+		t.Errorf("Expected source identifier 'nvd@nist.gov', got %s", cveItem.CVETags[0].SourceIdentifier)
 	}
-	if len(cve.CVETags[0].Tags) != 1 || cve.CVETags[0].Tags[0] != "disputed" {
-		t.Errorf("Expected tag 'disputed', got %v", cve.CVETags[0].Tags)
+	if len(cveItem.CVETags[0].Tags) != 1 || cveItem.CVETags[0].Tags[0] != "disputed" {
+		t.Errorf("Expected tag 'disputed', got %v", cveItem.CVETags[0].Tags)
 	}
 }
 
 // TestWeakness tests the Weakness object
 func TestWeakness(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID: "CVE-2021-44228",
-						Weaknesses: []Weakness{
+						Weaknesses: []cve.Weakness{
 							{
 								Source: "nvd@nist.gov",
 								Type:   "Primary",
-								Description: []Description{
+								Description: []cve.Description{
 									{Lang: "en", Value: "CWE-502"},
 								},
 							},
 						},
-						Descriptions: []Description{
+						Descriptions: []cve.Description{
 							{Lang: "en", Value: "Test description"},
 						},
 					},
@@ -665,7 +667,7 @@ func TestWeakness(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -673,11 +675,11 @@ func TestWeakness(t *testing.T) {
 		t.Fatalf("FetchCVEByID failed: %v", err)
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if len(cve.Weaknesses) != 1 {
-		t.Fatalf("Expected 1 weakness, got %d", len(cve.Weaknesses))
+	cveItem := result.Vulnerabilities[0].CVE
+	if len(cveItem.Weaknesses) != 1 {
+		t.Fatalf("Expected 1 weakness, got %d", len(cveItem.Weaknesses))
 	}
-	weakness := cve.Weaknesses[0]
+	weakness := cveItem.Weaknesses[0]
 	if weakness.Source != "nvd@nist.gov" {
 		t.Errorf("Expected source 'nvd@nist.gov', got %s", weakness.Source)
 	}
@@ -692,25 +694,25 @@ func TestWeakness(t *testing.T) {
 // TestConfiguration tests the Configuration object
 func TestConfiguration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID: "CVE-2021-44228",
-						Configurations: []Config{
+						Configurations: []cve.Config{
 							{
 								Operator: "AND",
 								Negate:   false,
-								Nodes: []Node{
+								Nodes: []cve.Node{
 									{
 										Operator: "OR",
 										Negate:   false,
-										CPEMatch: []CPEMatch{
+										CPEMatch: []cve.CPEMatch{
 											{
 												Vulnerable:            true,
 												Criteria:              "cpe:2.3:a:apache:log4j:2.0:*:*:*:*:*:*:*",
@@ -723,7 +725,7 @@ func TestConfiguration(t *testing.T) {
 								},
 							},
 						},
-						Descriptions: []Description{
+						Descriptions: []cve.Description{
 							{Lang: "en", Value: "Test description"},
 						},
 					},
@@ -736,7 +738,7 @@ func TestConfiguration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -744,12 +746,12 @@ func TestConfiguration(t *testing.T) {
 		t.Fatalf("FetchCVEByID failed: %v", err)
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if len(cve.Configurations) != 1 {
-		t.Fatalf("Expected 1 configuration, got %d", len(cve.Configurations))
+	cveItem := result.Vulnerabilities[0].CVE
+	if len(cveItem.Configurations) != 1 {
+		t.Fatalf("Expected 1 configuration, got %d", len(cveItem.Configurations))
 	}
 
-	config := cve.Configurations[0]
+	config := cveItem.Configurations[0]
 	if config.Operator != "AND" {
 		t.Errorf("Expected operator 'AND', got %s", config.Operator)
 	}
@@ -789,24 +791,24 @@ func TestConfiguration(t *testing.T) {
 // TestVendorComment tests the VendorComment object
 func TestVendorComment(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID: "CVE-2021-44228",
-						VendorComments: []VendorComment{
+						VendorComments: []cve.VendorComment{
 							{
 								Organization: "Apache Software Foundation",
 								Comment:      "Fixed in version 2.15.0",
-								LastModified: NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+								LastModified: cve.NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
 							},
 						},
-						Descriptions: []Description{
+						Descriptions: []cve.Description{
 							{Lang: "en", Value: "Test description"},
 						},
 					},
@@ -819,7 +821,7 @@ func TestVendorComment(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -827,12 +829,12 @@ func TestVendorComment(t *testing.T) {
 		t.Fatalf("FetchCVEByID failed: %v", err)
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if len(cve.VendorComments) != 1 {
-		t.Fatalf("Expected 1 vendor comment, got %d", len(cve.VendorComments))
+	cveItem := result.Vulnerabilities[0].CVE
+	if len(cveItem.VendorComments) != 1 {
+		t.Fatalf("Expected 1 vendor comment, got %d", len(cveItem.VendorComments))
 	}
 
-	comment := cve.VendorComments[0]
+	comment := cveItem.VendorComments[0]
 	if comment.Organization != "Apache Software Foundation" {
 		t.Errorf("Expected organization 'Apache Software Foundation', got %s", comment.Organization)
 	}
@@ -848,22 +850,22 @@ func TestVendorComment(t *testing.T) {
 // TestCVSSV40_FullFields tests CVSS v4.0 with full fields
 func TestCVSSV40_FullFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := CVEResponse{
+		response := cve.CVEResponse{
 			ResultsPerPage: 1,
 			StartIndex:     0,
 			TotalResults:   1,
 			Vulnerabilities: []struct {
-				CVE CVEItem `json:"cve"`
+				CVE cve.CVEItem `json:"cve"`
 			}{
 				{
-					CVE: CVEItem{
+					CVE: cve.CVEItem{
 						ID: "CVE-2021-44228",
-						Metrics: &Metrics{
-							CvssMetricV40: []CVSSMetricV40{
+						Metrics: &cve.Metrics{
+							CvssMetricV40: []cve.CVSSMetricV40{
 								{
 									Source: "nvd@nist.gov",
 									Type:   "Primary",
-									CvssData: CVSSDataV40{
+									CvssData: cve.CVSSDataV40{
 										Version:                           "4.0",
 										VectorString:                      "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
 										BaseScore:                         10.0,
@@ -901,7 +903,7 @@ func TestCVSSV40_FullFields(t *testing.T) {
 								},
 							},
 						},
-						Descriptions: []Description{
+						Descriptions: []cve.Description{
 							{Lang: "en", Value: "Test description"},
 						},
 					},
@@ -914,7 +916,7 @@ func TestCVSSV40_FullFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewCVEFetcher("")
+	fetcher := NewFetcher("")
 	fetcher.baseURL = server.URL
 
 	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -922,15 +924,15 @@ func TestCVSSV40_FullFields(t *testing.T) {
 		t.Fatalf("FetchCVEByID failed: %v", err)
 	}
 
-	cve := result.Vulnerabilities[0].CVE
-	if cve.Metrics == nil {
+	cveItem := result.Vulnerabilities[0].CVE
+	if cveItem.Metrics == nil {
 		t.Fatal("Metrics should not be nil")
 	}
-	if len(cve.Metrics.CvssMetricV40) != 1 {
-		t.Fatalf("Expected 1 CVSS v4.0 metric, got %d", len(cve.Metrics.CvssMetricV40))
+	if len(cveItem.Metrics.CvssMetricV40) != 1 {
+		t.Fatalf("Expected 1 CVSS v4.0 metric, got %d", len(cveItem.Metrics.CvssMetricV40))
 	}
 
-	metric := cve.Metrics.CvssMetricV40[0]
+	metric := cveItem.Metrics.CvssMetricV40[0]
 	if metric.Source != "nvd@nist.gov" {
 		t.Errorf("Expected source 'nvd@nist.gov', got %s", metric.Source)
 	}

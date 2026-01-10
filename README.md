@@ -15,6 +15,9 @@ And packages:
 - `pkg/common` - Common utilities and configuration
 - `pkg/repo` - Repository layer for external data sources (NVD CVE API)
 - `pkg/proc` - Process broker for managing subprocesses and inter-process communication
+- `pkg/cve` - CVE data types shared across packages
+- `pkg/cve/remote` - Remote CVE fetching from NVD API
+- `pkg/cve/local` - Local CVE storage with SQLite database
 
 ## Prerequisites
 
@@ -101,15 +104,15 @@ The broker command demonstrates the process management capabilities of the `pkg/
 
 ## Development
 
-### CVE Fetcher
+### CVE Remote Fetcher
 
-The `pkg/repo` package provides a CVE fetcher that integrates with the NVD API v2.0:
+The `pkg/cve/remote` package provides a CVE fetcher that integrates with the NVD API v2.0:
 
 ```go
-import "github.com/cyw0ng95/v2e/pkg/repo"
+import "github.com/cyw0ng95/v2e/pkg/cve/remote"
 
 // Create a new CVE fetcher (optionally with API key for higher rate limits)
-fetcher := repo.NewCVEFetcher("")
+fetcher := remote.NewFetcher("")
 
 // Fetch a specific CVE by ID
 cveData, err := fetcher.FetchCVEByID("CVE-2021-44228")
@@ -118,34 +121,37 @@ cveData, err := fetcher.FetchCVEByID("CVE-2021-44228")
 cveList, err := fetcher.FetchCVEs(0, 10)
 ```
 
-For production use with higher rate limits, obtain an API key from [NVD](https://nvd.nist.gov/developers/request-an-api-key) and pass it to `NewCVEFetcher()`.
+For production use with higher rate limits, obtain an API key from [NVD](https://nvd.nist.gov/developers/request-an-api-key) and pass it to `NewFetcher()`.
 
-### CVE Database
+### CVE Local Storage
 
-The project includes a GORM-based ORM engine for storing CVE data in a local SQLite database:
+The `pkg/cve/local` package includes a GORM-based ORM engine for storing CVE data in a local SQLite database:
 
 ```go
-import "github.com/cyw0ng95/v2e/pkg/repo"
+import (
+    "github.com/cyw0ng95/v2e/pkg/cve"
+    "github.com/cyw0ng95/v2e/pkg/cve/local"
+)
 
 // Create or open the CVE database
-db, err := repo.NewDB("cve.db")
+db, err := local.NewDB("cve.db")
 if err != nil {
     log.Fatal(err)
 }
 defer db.Close()
 
 // Save a CVE to the database
-cve := &repo.CVEItem{
+cveItem := &cve.CVEItem{
     ID:           "CVE-2021-44228",
     SourceID:     "nvd@nist.gov",
-    Published:    time.Now(),
-    LastModified: time.Now(),
+    Published:    cve.NewNVDTime(time.Now()),
+    LastModified: cve.NewNVDTime(time.Now()),
     VulnStatus:   "Analyzed",
-    Descriptions: []repo.Description{
+    Descriptions: []cve.Description{
         {Lang: "en", Value: "Apache Log4j vulnerability"},
     },
 }
-err = db.SaveCVE(cve)
+err = db.SaveCVE(cveItem)
 
 // Retrieve a CVE by ID
 retrieved, err := db.GetCVE("CVE-2021-44228")
@@ -162,10 +168,43 @@ The database file `cve.db` is created in the project root directory and is exclu
 To create a sample database with CVE data, run the integration test:
 
 ```bash
-go test ./pkg/repo -v -run TestCreateCVEDatabase
+go test ./pkg/cve/local -v -run TestCreateCVEDatabase
 ```
 
 This will create `cve.db` in the project root with sample CVE records that you can inspect or download.
+
+### Working with Remote and Local Together
+
+You can combine the remote fetcher with local storage to build a CVE database:
+
+```go
+import (
+    "github.com/cyw0ng95/v2e/pkg/cve/remote"
+    "github.com/cyw0ng95/v2e/pkg/cve/local"
+)
+
+// Initialize remote fetcher and local database
+fetcher := remote.NewFetcher("")
+db, err := local.NewDB("cve.db")
+if err != nil {
+    log.Fatal(err)
+}
+defer db.Close()
+
+// Fetch CVE from NVD and save to local database
+response, err := fetcher.FetchCVEByID("CVE-2021-44228")
+if err != nil {
+    log.Fatal(err)
+}
+
+if len(response.Vulnerabilities) > 0 {
+    cveItem := response.Vulnerabilities[0].CVE
+    err = db.SaveCVE(&cveItem)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
 
 ## Development
 

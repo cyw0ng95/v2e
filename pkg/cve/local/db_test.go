@@ -1,9 +1,11 @@
-package repo
+package local
 
 import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/cve"
 )
 
 func TestNewDB(t *testing.T) {
@@ -34,13 +36,13 @@ func TestSaveCVE(t *testing.T) {
 	defer db.Close()
 
 	// Create a test CVE
-	cve := &CVEItem{
+	cveItem := &cve.CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    NewNVDTime(time.Now()),
-		LastModified: NewNVDTime(time.Now()),
+		Published:    cve.NewNVDTime(time.Now()),
+		LastModified: cve.NewNVDTime(time.Now()),
 		VulnStatus:   "Analyzed",
-		Descriptions: []Description{
+		Descriptions: []cve.Description{
 			{
 				Lang:  "en",
 				Value: "Apache Log4j2 vulnerability",
@@ -49,7 +51,7 @@ func TestSaveCVE(t *testing.T) {
 	}
 
 	// Save CVE
-	err = db.SaveCVE(cve)
+	err = db.SaveCVE(cveItem)
 	if err != nil {
 		t.Errorf("Failed to save CVE: %v", err)
 	}
@@ -76,13 +78,13 @@ func TestSaveCVE_Update(t *testing.T) {
 	defer db.Close()
 
 	// Create a test CVE
-	cve := &CVEItem{
+	cveItem := &cve.CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    NewNVDTime(time.Now()),
-		LastModified: NewNVDTime(time.Now()),
+		Published:    cve.NewNVDTime(time.Now()),
+		LastModified: cve.NewNVDTime(time.Now()),
 		VulnStatus:   "Analyzed",
-		Descriptions: []Description{
+		Descriptions: []cve.Description{
 			{
 				Lang:  "en",
 				Value: "Original description",
@@ -91,14 +93,14 @@ func TestSaveCVE_Update(t *testing.T) {
 	}
 
 	// Save CVE
-	err = db.SaveCVE(cve)
+	err = db.SaveCVE(cveItem)
 	if err != nil {
 		t.Errorf("Failed to save CVE: %v", err)
 	}
 
 	// Update CVE
-	cve.Descriptions[0].Value = "Updated description"
-	err = db.SaveCVE(cve)
+	cveItem.Descriptions[0].Value = "Updated description"
+	err = db.SaveCVE(cveItem)
 	if err != nil {
 		t.Errorf("Failed to update CVE: %v", err)
 	}
@@ -134,22 +136,22 @@ func TestSaveCVEs(t *testing.T) {
 	defer db.Close()
 
 	// Create multiple test CVEs
-	cves := []CVEItem{
+	cves := []cve.CVEItem{
 		{
 			ID:           "CVE-2021-44228",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Now()),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Now()),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "Log4j"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "Log4j"}},
 		},
 		{
 			ID:           "CVE-2021-45046",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Now()),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Now()),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "Log4j 2"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "Log4j 2"}},
 		},
 	}
 
@@ -181,13 +183,13 @@ func TestGetCVE(t *testing.T) {
 	defer db.Close()
 
 	// Create and save a test CVE
-	cve := &CVEItem{
+	cveItem := &cve.CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
-		LastModified: NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
+		Published:    cve.NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+		LastModified: cve.NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
 		VulnStatus:   "Analyzed",
-		Descriptions: []Description{
+		Descriptions: []cve.Description{
 			{
 				Lang:  "en",
 				Value: "Apache Log4j2 vulnerability",
@@ -195,7 +197,7 @@ func TestGetCVE(t *testing.T) {
 		},
 	}
 
-	err = db.SaveCVE(cve)
+	err = db.SaveCVE(cveItem)
 	if err != nil {
 		t.Errorf("Failed to save CVE: %v", err)
 	}
@@ -253,30 +255,30 @@ func TestListCVEs(t *testing.T) {
 	defer db.Close()
 
 	// Create and save multiple CVEs with different publish dates
-	cves := []CVEItem{
+	cves := []cve.CVEItem{
 		{
 			ID:           "CVE-2021-44228",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "CVE 1"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "CVE 1"}},
 		},
 		{
 			ID:           "CVE-2021-45046",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Date(2021, 12, 14, 0, 0, 0, 0, time.UTC)),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Date(2021, 12, 14, 0, 0, 0, 0, time.UTC)),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "CVE 2"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "CVE 2"}},
 		},
 		{
 			ID:           "CVE-2022-12345",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "CVE 3"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "CVE 3"}},
 		},
 	}
 
@@ -313,15 +315,15 @@ func TestListCVEs_Pagination(t *testing.T) {
 	defer db.Close()
 
 	// Create and save 5 CVEs
-	cves := []CVEItem{}
+	cves := []cve.CVEItem{}
 	for i := 1; i <= 5; i++ {
-		cves = append(cves, CVEItem{
+		cves = append(cves, cve.CVEItem{
 			ID:           "CVE-2021-" + string(rune(10000+i)),
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Date(2021, 12, i, 0, 0, 0, 0, time.UTC)),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Date(2021, 12, i, 0, 0, 0, 0, time.UTC)),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "CVE"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "CVE"}},
 		})
 	}
 
@@ -375,22 +377,22 @@ func TestCount(t *testing.T) {
 	}
 
 	// Add CVEs
-	cves := []CVEItem{
+	cves := []cve.CVEItem{
 		{
 			ID:           "CVE-2021-44228",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Now()),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Now()),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "CVE 1"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "CVE 1"}},
 		},
 		{
 			ID:           "CVE-2021-45046",
 			SourceID:     "nvd@nist.gov",
-			Published:    NewNVDTime(time.Now()),
-			LastModified: NewNVDTime(time.Now()),
+			Published:    cve.NewNVDTime(time.Now()),
+			LastModified: cve.NewNVDTime(time.Now()),
 			VulnStatus:   "Analyzed",
-			Descriptions: []Description{{Lang: "en", Value: "CVE 2"}},
+			Descriptions: []cve.Description{{Lang: "en", Value: "CVE 2"}},
 		},
 	}
 
@@ -421,24 +423,24 @@ func TestSaveCVE_WithFullData(t *testing.T) {
 	defer db.Close()
 
 	// Create a CVE with full data including metrics
-	cve := &CVEItem{
+	cveItem := &cve.CVEItem{
 		ID:           "CVE-2021-44228",
 		SourceID:     "nvd@nist.gov",
-		Published:    NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
-		LastModified: NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
+		Published:    cve.NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
+		LastModified: cve.NewNVDTime(time.Date(2021, 12, 15, 0, 0, 0, 0, time.UTC)),
 		VulnStatus:   "Analyzed",
-		Descriptions: []Description{
+		Descriptions: []cve.Description{
 			{
 				Lang:  "en",
 				Value: "Apache Log4j2 vulnerability",
 			},
 		},
-		Metrics: &Metrics{
-			CvssMetricV31: []CVSSMetricV3{
+		Metrics: &cve.Metrics{
+			CvssMetricV31: []cve.CVSSMetricV3{
 				{
 					Source: "nvd@nist.gov",
 					Type:   "Primary",
-					CvssData: CVSSDataV3{
+					CvssData: cve.CVSSDataV3{
 						Version:               "3.1",
 						VectorString:          "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
 						BaseScore:             10.0,
@@ -457,7 +459,7 @@ func TestSaveCVE_WithFullData(t *testing.T) {
 				},
 			},
 		},
-		References: []Reference{
+		References: []cve.Reference{
 			{
 				URL:    "https://logging.apache.org/log4j/2.x/security.html",
 				Source: "nvd@nist.gov",
@@ -467,7 +469,7 @@ func TestSaveCVE_WithFullData(t *testing.T) {
 	}
 
 	// Save CVE
-	err = db.SaveCVE(cve)
+	err = db.SaveCVE(cveItem)
 	if err != nil {
 		t.Errorf("Failed to save CVE with full data: %v", err)
 	}
