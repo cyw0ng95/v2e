@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -10,7 +11,48 @@ import (
 const (
 	// NVDAPIURL is the base URL for the NVD CVE API v2.0
 	NVDAPIURL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+	// NVD timestamp format: "2021-12-10T10:15:09.143"
+	nvdTimeFormat = "2006-01-02T15:04:05.999"
 )
+
+// NVDTime is a custom time type that handles NVD API timestamp format
+type NVDTime struct {
+	time.Time
+}
+
+// UnmarshalJSON implements json.Unmarshaler for NVDTime
+func (t *NVDTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" || s == "" {
+		t.Time = time.Time{}
+		return nil
+	}
+	
+	// Try parsing with the NVD format first
+	parsed, err := time.Parse(nvdTimeFormat, s)
+	if err != nil {
+		// Fallback to RFC3339 format for compatibility
+		parsed, err = time.Parse(time.RFC3339, s)
+		if err != nil {
+			return err
+		}
+	}
+	t.Time = parsed
+	return nil
+}
+
+// MarshalJSON implements json.Marshaler for NVDTime
+func (t NVDTime) MarshalJSON() ([]byte, error) {
+	if t.Time.IsZero() {
+		return []byte("null"), nil
+	}
+	return []byte("\"" + t.Time.Format(nvdTimeFormat) + "\""), nil
+}
+
+// NewNVDTime creates a new NVDTime from a time.Time
+func NewNVDTime(t time.Time) NVDTime {
+	return NVDTime{Time: t}
+}
 
 // CVEResponse represents the top-level response from the NVD API
 type CVEResponse struct {
@@ -19,7 +61,7 @@ type CVEResponse struct {
 	TotalResults    int       `json:"totalResults"`
 	Format          string    `json:"format"`
 	Version         string    `json:"version"`
-	Timestamp       time.Time `json:"timestamp"`
+	Timestamp       NVDTime   `json:"timestamp"`
 	Vulnerabilities []struct {
 		CVE CVEItem `json:"cve"`
 	} `json:"vulnerabilities"`
@@ -29,8 +71,8 @@ type CVEResponse struct {
 type CVEItem struct {
 	ID                    string          `json:"id"`
 	SourceID              string          `json:"sourceIdentifier"`
-	Published             time.Time       `json:"published"`
-	LastModified          time.Time       `json:"lastModified"`
+	Published             NVDTime         `json:"published"`
+	LastModified          NVDTime         `json:"lastModified"`
 	VulnStatus            string          `json:"vulnStatus"`
 	EvaluatorComment      string          `json:"evaluatorComment,omitempty"`
 	EvaluatorSolution     string          `json:"evaluatorSolution,omitempty"`
@@ -94,9 +136,9 @@ type CPEMatch struct {
 
 // VendorComment represents a comment from a vendor
 type VendorComment struct {
-	Organization string    `json:"organization"`
-	Comment      string    `json:"comment"`
-	LastModified time.Time `json:"lastModified"`
+	Organization string  `json:"organization"`
+	Comment      string  `json:"comment"`
+	LastModified NVDTime `json:"lastModified"`
 }
 
 // Metrics contains CVSS metrics for a CVE

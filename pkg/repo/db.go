@@ -51,8 +51,8 @@ func (d *DB) SaveCVE(cve *CVEItem) error {
 	record := CVERecord{
 		CVEID:        cve.ID,
 		SourceID:     cve.SourceID,
-		Published:    cve.Published,
-		LastModified: cve.LastModified,
+		Published:    cve.Published.Time,
+		LastModified: cve.LastModified.Time,
 		VulnStatus:   cve.VulnStatus,
 		Data:         string(data),
 	}

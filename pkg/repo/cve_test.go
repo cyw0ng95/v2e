@@ -49,7 +49,7 @@ func TestFetchCVEByID_Success(t *testing.T) {
 			TotalResults:   1,
 			Format:         "NVD_CVE",
 			Version:        "2.0",
-			Timestamp:      time.Now(),
+			Timestamp:      NewNVDTime(time.Now()),
 			Vulnerabilities: []struct {
 				CVE CVEItem `json:"cve"`
 			}{
@@ -57,8 +57,8 @@ func TestFetchCVEByID_Success(t *testing.T) {
 					CVE: CVEItem{
 						ID:           "CVE-2021-44228",
 						SourceID:     "nvd@nist.gov",
-						Published:    time.Now(),
-						LastModified: time.Now(),
+						Published:    NewNVDTime(time.Now()),
+						LastModified: NewNVDTime(time.Now()),
 						VulnStatus:   "Analyzed",
 						Descriptions: []Description{
 							{
@@ -207,7 +207,7 @@ func TestFetchCVEs_Success(t *testing.T) {
 			TotalResults:   100,
 			Format:         "NVD_CVE",
 			Version:        "2.0",
-			Timestamp:      time.Now(),
+			Timestamp:      NewNVDTime(time.Now()),
 			Vulnerabilities: []struct {
 				CVE CVEItem `json:"cve"`
 			}{
@@ -803,7 +803,7 @@ func TestVendorComment(t *testing.T) {
 							{
 								Organization: "Apache Software Foundation",
 								Comment:      "Fixed in version 2.15.0",
-								LastModified: time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC),
+								LastModified: NewNVDTime(time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)),
 							},
 						},
 						Descriptions: []Description{
