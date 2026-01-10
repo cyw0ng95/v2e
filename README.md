@@ -7,6 +7,7 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 This project contains multiple commands:
 
 - `cmd/broker` - Process broker demo for managing subprocesses
+- `cmd/broker-stats` - RPC service for accessing broker message statistics
 - `cmd/worker` - Example subprocess using the subprocess framework
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
@@ -32,6 +33,7 @@ To build all commands:
 
 ```bash
 go build ./cmd/broker
+go build ./cmd/broker-stats
 go build ./cmd/worker
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
@@ -42,6 +44,7 @@ Or build a specific command:
 
 ```bash
 go build -o bin/broker ./cmd/broker
+go build -o bin/broker-stats ./cmd/broker-stats
 go build -o bin/worker ./cmd/worker
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
@@ -81,6 +84,48 @@ echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}
 ```
 
 The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
+
+### Broker Stats (RPC Service)
+
+The Broker Stats service provides RPC interfaces for accessing message statistics from a broker instance:
+
+```bash
+# Run the service (it reads RPC requests from stdin and writes responses to stdout)
+go run ./cmd/broker-stats
+
+# Example: Get total message count
+echo '{"type":"request","id":"RPCGetMessageCount","payload":{}}' | go run ./cmd/broker-stats
+
+# Example: Get detailed message statistics
+echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/broker-stats
+```
+
+**Available RPC Interfaces:**
+- `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
+- `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
+
+**Response Format for RPCGetMessageCount:**
+```json
+{
+  "total_count": 42
+}
+```
+
+**Response Format for RPCGetMessageStats:**
+```json
+{
+  "total_sent": 21,
+  "total_received": 21,
+  "request_count": 10,
+  "response_count": 10,
+  "event_count": 1,
+  "error_count": 1,
+  "first_message_time": "2026-01-10T15:00:00Z",
+  "last_message_time": "2026-01-10T15:30:00Z"
+}
+```
+
+This service can be spawned by a broker to provide remote access to message statistics via RPC.
 
 ### CVE Remote (RPC Service)
 
@@ -405,6 +450,7 @@ Key statistics features:
   - Message counts by type (request, response, event, error)
   - Timestamp of first and last message
 - **Thread-safe**: All statistics methods are safe for concurrent access
+- **RPC Access**: Statistics can also be accessed remotely via the `broker-stats` RPC service (see [Broker Stats](#broker-stats-rpc-service) section)
 
 #### RPC Communication
 
