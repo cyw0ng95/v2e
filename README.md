@@ -9,6 +9,10 @@ This project contains multiple commands:
 - `cmd/server` - A simple HTTP server
 - `cmd/client` - A simple HTTP client
 
+Common packages:
+
+- `pkg/common` - Shared utilities including configuration and logging
+
 ## Prerequisites
 
 - Go 1.24 or later
@@ -77,6 +81,27 @@ go run ./cmd/client [url]
 If no URL is provided, it will connect to `http://localhost:8080` by default.
 
 ## Development
+
+### Logging
+
+The project includes a structured logging module in `pkg/common`:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/common"
+
+// Use the default logger
+common.Info("Server starting on port %d", 8080)
+common.Debug("Debug information")
+common.Warn("Warning message")
+common.Error("Error occurred: %v", err)
+
+// Set log level
+common.SetLevel(common.DebugLevel) // DebugLevel, InfoLevel, WarnLevel, ErrorLevel
+
+// Create a custom logger
+logger := common.NewLogger(os.Stdout, "", common.InfoLevel)
+logger.Info("Custom logger message")
+```
 
 ### Dependencies
 
