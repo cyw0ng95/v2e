@@ -6,15 +6,15 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 
 This project contains multiple commands:
 
-- `cmd/server` - A simple HTTP server
-- `cmd/client` - A simple HTTP client
 - `cmd/broker` - Process broker demo for managing subprocesses
+- `cmd/worker` - Example subprocess using the subprocess framework
 
 And packages:
 
 - `pkg/common` - Common utilities and configuration
 - `pkg/repo` - Repository layer for external data sources (NVD CVE API)
 - `pkg/proc` - Process broker for managing subprocesses and inter-process communication
+- `pkg/proc/subprocess` - Common subprocess framework for message-driven subprocesses
 - `pkg/cve` - CVE data types shared across packages
 - `pkg/cve/remote` - Remote CVE fetching from NVD API
 - `pkg/cve/local` - Local CVE storage with SQLite database
@@ -28,63 +28,18 @@ And packages:
 To build all commands:
 
 ```bash
-go build ./cmd/server
-go build ./cmd/client
+go build ./cmd/broker
+go build ./cmd/worker
 ```
 
 Or build a specific command:
 
 ```bash
-go build -o bin/server ./cmd/server
-go build -o bin/client ./cmd/client
+go build -o bin/broker ./cmd/broker
+go build -o bin/worker ./cmd/worker
 ```
 
 ## Running
-
-### Configuration
-
-Both the server and client support optional configuration via a `config.json` file in the current directory. If the file doesn't exist, default values will be used.
-
-A sample configuration file is provided as `config.json.example`. You can copy it to `config.json` and modify as needed:
-
-```bash
-cp config.json.example config.json
-```
-
-Example `config.json`:
-
-```json
-{
-  "server": {
-    "address": ":8080"
-  },
-  "client": {
-    "url": "http://localhost:8080"
-  }
-}
-```
-
-Configuration options:
-- `server.address`: The address for the server to listen on (default: `:8080`)
-- `client.url`: The default URL for the client to connect to (default: `http://localhost:8080`)
-
-Note: Command line arguments take precedence over configuration file values.
-
-### Server
-
-```bash
-go run ./cmd/server
-```
-
-The server will start on port 8080.
-
-### Client
-
-```bash
-go run ./cmd/client [url]
-```
-
-If no URL is provided, it will connect to `http://localhost:8080` by default.
 
 ### Broker
 
@@ -101,8 +56,73 @@ go run ./cmd/broker -id my-process -cmd "sleep 5"
 
 The broker command demonstrates the process management capabilities of the `pkg/proc` package. In demo mode, it spawns multiple processes and monitors their lifecycle, showing how processes are reaped and their exit codes captured.
 
+### Worker
+
+The worker is an example subprocess that demonstrates the `pkg/proc/subprocess` framework:
+
+```bash
+# Run the worker (it reads messages from stdin and writes to stdout)
+go run ./cmd/worker
+
+# Example: Send a ping message
+echo '{"type":"request","id":"ping"}' | go run ./cmd/worker
+
+# Example: Send an echo request
+echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}' | go run ./cmd/worker
+```
+
+The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
 
 ## Development
+
+### Subprocess Framework
+
+The `pkg/proc/subprocess` package provides a framework for building message-driven subprocesses:
+
+```go
+import (
+    "context"
+    "github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+)
+
+// Create a new subprocess
+sp := subprocess.New("my-worker")
+
+// Register message handlers
+sp.RegisterHandler("request", func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+    // Parse request payload
+    var req map[string]interface{}
+    if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+        return nil, err
+    }
+    
+    // Process the request and create a response
+    response := &subprocess.Message{
+        Type: subprocess.MessageTypeResponse,
+        ID:   msg.ID,
+    }
+    
+    return response, nil
+})
+
+// Run the subprocess (blocks until stopped)
+if err := sp.Run(); err != nil {
+    log.Fatal(err)
+}
+```
+
+Key features:
+- **Message-driven architecture**: Communication via JSON messages over stdin/stdout
+- **No broker dependencies**: Subprocess code is completely independent of the broker
+- **Handler-based routing**: Register handlers for different message types or IDs
+- **Graceful shutdown**: Built-in signal handling and cleanup
+- **Type-safe messaging**: Structured message types (Request, Response, Event, Error)
+
+The subprocess framework allows you to build worker processes that:
+1. Are controlled by the broker through message passing
+2. Can be spawned and monitored by the broker
+3. Have a clear lifecycle with proper initialization and shutdown
+4. Focus on business logic without worrying about process management
 
 ### CVE Remote Fetcher
 
