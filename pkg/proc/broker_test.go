@@ -718,12 +718,12 @@ func TestBroker_MessageStats_Timestamps(t *testing.T) {
 	broker.SendMessage(msg2)
 
 	stats = broker.GetMessageStats()
-	
+
 	// FirstMessageTime should not change
 	if !stats.FirstMessageTime.Equal(firstTime) {
 		t.Error("Expected FirstMessageTime to remain unchanged")
 	}
-	
+
 	// LastMessageTime should be updated
 	if !stats.LastMessageTime.After(lastTime) {
 		t.Error("Expected LastMessageTime to be updated to a later time")

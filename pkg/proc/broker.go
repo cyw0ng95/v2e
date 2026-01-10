@@ -419,7 +419,7 @@ func (b *Broker) SendMessage(msg *Message) (err error) {
 			err = fmt.Errorf("broker message channel is closed")
 		}
 	}()
-	
+
 	select {
 	case b.messages <- msg:
 		b.updateStats(msg, true)
@@ -459,7 +459,7 @@ func (b *Broker) updateStats(msg *Message, isSent bool) {
 	defer b.statsMu.Unlock()
 
 	now := time.Now()
-	
+
 	// Update first message time if not set
 	if b.stats.FirstMessageTime.IsZero() {
 		b.stats.FirstMessageTime = now
