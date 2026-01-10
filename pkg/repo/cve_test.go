@@ -549,3 +549,442 @@ func TestCVSSV2_FullFields(t *testing.T) {
 		t.Errorf("Expected report confidence CONFIRMED, got %s", cvss.ReportConfidence)
 	}
 }
+
+// TestCVEItem_ExtendedFields tests the new extended fields in CVEItem
+func TestCVEItem_ExtendedFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := CVEResponse{
+			ResultsPerPage: 1,
+			StartIndex:     0,
+			TotalResults:   1,
+			Vulnerabilities: []struct {
+				CVE CVEItem `json:"cve"`
+			}{
+				{
+					CVE: CVEItem{
+						ID:                    "CVE-2021-44228",
+						EvaluatorComment:      "Critical vulnerability",
+						EvaluatorSolution:     "Update to latest version",
+						EvaluatorImpact:       "Remote code execution",
+						CisaExploitAdd:        "2021-12-10",
+						CisaActionDue:         "2021-12-24",
+						CisaRequiredAction:    "Apply updates",
+						CisaVulnerabilityName: "Log4Shell",
+						CVETags: []CVETag{
+							{
+								SourceIdentifier: "nvd@nist.gov",
+								Tags:             []string{"disputed"},
+							},
+						},
+						Descriptions: []Description{
+							{Lang: "en", Value: "Test description"},
+						},
+					},
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	fetcher := NewCVEFetcher("")
+	fetcher.baseURL = server.URL
+
+	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
+	if err != nil {
+		t.Fatalf("FetchCVEByID failed: %v", err)
+	}
+
+	cve := result.Vulnerabilities[0].CVE
+	if cve.EvaluatorComment != "Critical vulnerability" {
+		t.Errorf("Expected evaluator comment 'Critical vulnerability', got %s", cve.EvaluatorComment)
+	}
+	if cve.EvaluatorSolution != "Update to latest version" {
+		t.Errorf("Expected evaluator solution 'Update to latest version', got %s", cve.EvaluatorSolution)
+	}
+	if cve.EvaluatorImpact != "Remote code execution" {
+		t.Errorf("Expected evaluator impact 'Remote code execution', got %s", cve.EvaluatorImpact)
+	}
+	if cve.CisaExploitAdd != "2021-12-10" {
+		t.Errorf("Expected CISA exploit add '2021-12-10', got %s", cve.CisaExploitAdd)
+	}
+	if cve.CisaActionDue != "2021-12-24" {
+		t.Errorf("Expected CISA action due '2021-12-24', got %s", cve.CisaActionDue)
+	}
+	if cve.CisaRequiredAction != "Apply updates" {
+		t.Errorf("Expected CISA required action 'Apply updates', got %s", cve.CisaRequiredAction)
+	}
+	if cve.CisaVulnerabilityName != "Log4Shell" {
+		t.Errorf("Expected CISA vulnerability name 'Log4Shell', got %s", cve.CisaVulnerabilityName)
+	}
+	if len(cve.CVETags) != 1 {
+		t.Fatalf("Expected 1 CVE tag, got %d", len(cve.CVETags))
+	}
+	if cve.CVETags[0].SourceIdentifier != "nvd@nist.gov" {
+		t.Errorf("Expected source identifier 'nvd@nist.gov', got %s", cve.CVETags[0].SourceIdentifier)
+	}
+	if len(cve.CVETags[0].Tags) != 1 || cve.CVETags[0].Tags[0] != "disputed" {
+		t.Errorf("Expected tag 'disputed', got %v", cve.CVETags[0].Tags)
+	}
+}
+
+// TestWeakness tests the Weakness object
+func TestWeakness(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := CVEResponse{
+			ResultsPerPage: 1,
+			StartIndex:     0,
+			TotalResults:   1,
+			Vulnerabilities: []struct {
+				CVE CVEItem `json:"cve"`
+			}{
+				{
+					CVE: CVEItem{
+						ID: "CVE-2021-44228",
+						Weaknesses: []Weakness{
+							{
+								Source: "nvd@nist.gov",
+								Type:   "Primary",
+								Description: []Description{
+									{Lang: "en", Value: "CWE-502"},
+								},
+							},
+						},
+						Descriptions: []Description{
+							{Lang: "en", Value: "Test description"},
+						},
+					},
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	fetcher := NewCVEFetcher("")
+	fetcher.baseURL = server.URL
+
+	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
+	if err != nil {
+		t.Fatalf("FetchCVEByID failed: %v", err)
+	}
+
+	cve := result.Vulnerabilities[0].CVE
+	if len(cve.Weaknesses) != 1 {
+		t.Fatalf("Expected 1 weakness, got %d", len(cve.Weaknesses))
+	}
+	weakness := cve.Weaknesses[0]
+	if weakness.Source != "nvd@nist.gov" {
+		t.Errorf("Expected source 'nvd@nist.gov', got %s", weakness.Source)
+	}
+	if weakness.Type != "Primary" {
+		t.Errorf("Expected type 'Primary', got %s", weakness.Type)
+	}
+	if len(weakness.Description) != 1 || weakness.Description[0].Value != "CWE-502" {
+		t.Errorf("Expected description 'CWE-502', got %v", weakness.Description)
+	}
+}
+
+// TestConfiguration tests the Configuration object
+func TestConfiguration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := CVEResponse{
+			ResultsPerPage: 1,
+			StartIndex:     0,
+			TotalResults:   1,
+			Vulnerabilities: []struct {
+				CVE CVEItem `json:"cve"`
+			}{
+				{
+					CVE: CVEItem{
+						ID: "CVE-2021-44228",
+						Configurations: []Config{
+							{
+								Operator: "AND",
+								Negate:   false,
+								Nodes: []Node{
+									{
+										Operator: "OR",
+										Negate:   false,
+										CPEMatch: []CPEMatch{
+											{
+												Vulnerable:            true,
+												Criteria:              "cpe:2.3:a:apache:log4j:2.0:*:*:*:*:*:*:*",
+												MatchCriteriaID:       "12345678-1234-1234-1234-123456789012",
+												VersionStartIncluding: "2.0",
+												VersionEndExcluding:   "2.15.0",
+											},
+										},
+									},
+								},
+							},
+						},
+						Descriptions: []Description{
+							{Lang: "en", Value: "Test description"},
+						},
+					},
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	fetcher := NewCVEFetcher("")
+	fetcher.baseURL = server.URL
+
+	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
+	if err != nil {
+		t.Fatalf("FetchCVEByID failed: %v", err)
+	}
+
+	cve := result.Vulnerabilities[0].CVE
+	if len(cve.Configurations) != 1 {
+		t.Fatalf("Expected 1 configuration, got %d", len(cve.Configurations))
+	}
+
+	config := cve.Configurations[0]
+	if config.Operator != "AND" {
+		t.Errorf("Expected operator 'AND', got %s", config.Operator)
+	}
+	if config.Negate != false {
+		t.Errorf("Expected negate false, got %t", config.Negate)
+	}
+	if len(config.Nodes) != 1 {
+		t.Fatalf("Expected 1 node, got %d", len(config.Nodes))
+	}
+
+	node := config.Nodes[0]
+	if node.Operator != "OR" {
+		t.Errorf("Expected node operator 'OR', got %s", node.Operator)
+	}
+	if len(node.CPEMatch) != 1 {
+		t.Fatalf("Expected 1 CPE match, got %d", len(node.CPEMatch))
+	}
+
+	cpeMatch := node.CPEMatch[0]
+	if !cpeMatch.Vulnerable {
+		t.Errorf("Expected vulnerable true, got %t", cpeMatch.Vulnerable)
+	}
+	if cpeMatch.Criteria != "cpe:2.3:a:apache:log4j:2.0:*:*:*:*:*:*:*" {
+		t.Errorf("Expected criteria 'cpe:2.3:a:apache:log4j:2.0:*:*:*:*:*:*:*', got %s", cpeMatch.Criteria)
+	}
+	if cpeMatch.MatchCriteriaID != "12345678-1234-1234-1234-123456789012" {
+		t.Errorf("Expected match criteria ID '12345678-1234-1234-1234-123456789012', got %s", cpeMatch.MatchCriteriaID)
+	}
+	if cpeMatch.VersionStartIncluding != "2.0" {
+		t.Errorf("Expected version start including '2.0', got %s", cpeMatch.VersionStartIncluding)
+	}
+	if cpeMatch.VersionEndExcluding != "2.15.0" {
+		t.Errorf("Expected version end excluding '2.15.0', got %s", cpeMatch.VersionEndExcluding)
+	}
+}
+
+// TestVendorComment tests the VendorComment object
+func TestVendorComment(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := CVEResponse{
+			ResultsPerPage: 1,
+			StartIndex:     0,
+			TotalResults:   1,
+			Vulnerabilities: []struct {
+				CVE CVEItem `json:"cve"`
+			}{
+				{
+					CVE: CVEItem{
+						ID: "CVE-2021-44228",
+						VendorComments: []VendorComment{
+							{
+								Organization: "Apache Software Foundation",
+								Comment:      "Fixed in version 2.15.0",
+								LastModified: time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC),
+							},
+						},
+						Descriptions: []Description{
+							{Lang: "en", Value: "Test description"},
+						},
+					},
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	fetcher := NewCVEFetcher("")
+	fetcher.baseURL = server.URL
+
+	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
+	if err != nil {
+		t.Fatalf("FetchCVEByID failed: %v", err)
+	}
+
+	cve := result.Vulnerabilities[0].CVE
+	if len(cve.VendorComments) != 1 {
+		t.Fatalf("Expected 1 vendor comment, got %d", len(cve.VendorComments))
+	}
+
+	comment := cve.VendorComments[0]
+	if comment.Organization != "Apache Software Foundation" {
+		t.Errorf("Expected organization 'Apache Software Foundation', got %s", comment.Organization)
+	}
+	if comment.Comment != "Fixed in version 2.15.0" {
+		t.Errorf("Expected comment 'Fixed in version 2.15.0', got %s", comment.Comment)
+	}
+	expectedTime := time.Date(2021, 12, 10, 0, 0, 0, 0, time.UTC)
+	if !comment.LastModified.Equal(expectedTime) {
+		t.Errorf("Expected last modified %v, got %v", expectedTime, comment.LastModified)
+	}
+}
+
+// TestCVSSV40_FullFields tests CVSS v4.0 with full fields
+func TestCVSSV40_FullFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := CVEResponse{
+			ResultsPerPage: 1,
+			StartIndex:     0,
+			TotalResults:   1,
+			Vulnerabilities: []struct {
+				CVE CVEItem `json:"cve"`
+			}{
+				{
+					CVE: CVEItem{
+						ID: "CVE-2021-44228",
+						Metrics: &Metrics{
+							CvssMetricV40: []CVSSMetricV40{
+								{
+									Source: "nvd@nist.gov",
+									Type:   "Primary",
+									CvssData: CVSSDataV40{
+										Version:                           "4.0",
+										VectorString:                      "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+										BaseScore:                         10.0,
+										BaseSeverity:                      "CRITICAL",
+										AttackVector:                      "NETWORK",
+										AttackComplexity:                  "LOW",
+										AttackRequirements:                "NONE",
+										PrivilegesRequired:                "NONE",
+										UserInteraction:                   "NONE",
+										VulnConfidentialityImpact:         "HIGH",
+										VulnIntegrityImpact:               "HIGH",
+										VulnAvailabilityImpact:            "HIGH",
+										SubConfidentialityImpact:          "NONE",
+										SubIntegrityImpact:                "NONE",
+										SubAvailabilityImpact:             "NONE",
+										ExploitMaturity:                   "ATTACKED",
+										ConfidentialityRequirement:        "HIGH",
+										IntegrityRequirement:              "HIGH",
+										AvailabilityRequirement:           "HIGH",
+										ModifiedAttackVector:              "NETWORK",
+										ModifiedAttackComplexity:          "LOW",
+										ModifiedAttackRequirements:        "NONE",
+										ModifiedPrivilegesRequired:        "NONE",
+										ModifiedUserInteraction:           "NONE",
+										ModifiedVulnConfidentialityImpact: "HIGH",
+										ModifiedVulnIntegrityImpact:       "HIGH",
+										ModifiedVulnAvailabilityImpact:    "HIGH",
+										Safety:                            "NOT_DEFINED",
+										Automatable:                       "YES",
+										Recovery:                          "NOT_DEFINED",
+										ValueDensity:                      "NOT_DEFINED",
+										VulnerabilityResponseEffort:       "NOT_DEFINED",
+										ProviderUrgency:                   "NOT_DEFINED",
+									},
+								},
+							},
+						},
+						Descriptions: []Description{
+							{Lang: "en", Value: "Test description"},
+						},
+					},
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	fetcher := NewCVEFetcher("")
+	fetcher.baseURL = server.URL
+
+	result, err := fetcher.FetchCVEByID("CVE-2021-44228")
+	if err != nil {
+		t.Fatalf("FetchCVEByID failed: %v", err)
+	}
+
+	cve := result.Vulnerabilities[0].CVE
+	if cve.Metrics == nil {
+		t.Fatal("Metrics should not be nil")
+	}
+	if len(cve.Metrics.CvssMetricV40) != 1 {
+		t.Fatalf("Expected 1 CVSS v4.0 metric, got %d", len(cve.Metrics.CvssMetricV40))
+	}
+
+	metric := cve.Metrics.CvssMetricV40[0]
+	if metric.Source != "nvd@nist.gov" {
+		t.Errorf("Expected source 'nvd@nist.gov', got %s", metric.Source)
+	}
+	if metric.Type != "Primary" {
+		t.Errorf("Expected type 'Primary', got %s", metric.Type)
+	}
+
+	cvss := metric.CvssData
+	if cvss.Version != "4.0" {
+		t.Errorf("Expected version '4.0', got %s", cvss.Version)
+	}
+	if cvss.BaseScore != 10.0 {
+		t.Errorf("Expected base score 10.0, got %f", cvss.BaseScore)
+	}
+	if cvss.BaseSeverity != "CRITICAL" {
+		t.Errorf("Expected base severity 'CRITICAL', got %s", cvss.BaseSeverity)
+	}
+	if cvss.AttackVector != "NETWORK" {
+		t.Errorf("Expected attack vector 'NETWORK', got %s", cvss.AttackVector)
+	}
+	if cvss.AttackComplexity != "LOW" {
+		t.Errorf("Expected attack complexity 'LOW', got %s", cvss.AttackComplexity)
+	}
+	if cvss.AttackRequirements != "NONE" {
+		t.Errorf("Expected attack requirements 'NONE', got %s", cvss.AttackRequirements)
+	}
+	if cvss.PrivilegesRequired != "NONE" {
+		t.Errorf("Expected privileges required 'NONE', got %s", cvss.PrivilegesRequired)
+	}
+	if cvss.UserInteraction != "NONE" {
+		t.Errorf("Expected user interaction 'NONE', got %s", cvss.UserInteraction)
+	}
+	if cvss.VulnConfidentialityImpact != "HIGH" {
+		t.Errorf("Expected vulnerable confidentiality impact 'HIGH', got %s", cvss.VulnConfidentialityImpact)
+	}
+	if cvss.VulnIntegrityImpact != "HIGH" {
+		t.Errorf("Expected vulnerable integrity impact 'HIGH', got %s", cvss.VulnIntegrityImpact)
+	}
+	if cvss.VulnAvailabilityImpact != "HIGH" {
+		t.Errorf("Expected vulnerable availability impact 'HIGH', got %s", cvss.VulnAvailabilityImpact)
+	}
+	if cvss.SubConfidentialityImpact != "NONE" {
+		t.Errorf("Expected subsequent confidentiality impact 'NONE', got %s", cvss.SubConfidentialityImpact)
+	}
+	if cvss.SubIntegrityImpact != "NONE" {
+		t.Errorf("Expected subsequent integrity impact 'NONE', got %s", cvss.SubIntegrityImpact)
+	}
+	if cvss.SubAvailabilityImpact != "NONE" {
+		t.Errorf("Expected subsequent availability impact 'NONE', got %s", cvss.SubAvailabilityImpact)
+	}
+	if cvss.ExploitMaturity != "ATTACKED" {
+		t.Errorf("Expected exploit maturity 'ATTACKED', got %s", cvss.ExploitMaturity)
+	}
+	if cvss.Automatable != "YES" {
+		t.Errorf("Expected automatable 'YES', got %s", cvss.Automatable)
+	}
+}
