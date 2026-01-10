@@ -35,6 +35,12 @@ go build -o bin/client ./cmd/client
 
 Both the server and client support optional configuration via a `config.json` file in the current directory. If the file doesn't exist, default values will be used.
 
+A sample configuration file is provided as `config.json.example`. You can copy it to `config.json` and modify as needed:
+
+```bash
+cp config.json.example config.json
+```
+
 Example `config.json`:
 
 ```json
