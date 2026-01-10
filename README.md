@@ -6,6 +6,7 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 
 This project contains multiple commands:
 
+- `cmd/access` - RESTful API service using Gin framework
 - `cmd/broker` - Process broker demo for managing subprocesses
 - `cmd/worker` - Example subprocess using the subprocess framework
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
@@ -31,6 +32,7 @@ And packages:
 To build all commands:
 
 ```bash
+go build ./cmd/access
 go build ./cmd/broker
 go build ./cmd/worker
 go build ./cmd/cve-remote
@@ -41,6 +43,7 @@ go build ./cmd/cve-meta
 Or build a specific command:
 
 ```bash
+go build -o bin/access ./cmd/access
 go build -o bin/broker ./cmd/broker
 go build -o bin/worker ./cmd/worker
 go build -o bin/cve-remote ./cmd/cve-remote
@@ -49,6 +52,33 @@ go build -o bin/cve-meta ./cmd/cve-meta
 ```
 
 ## Running
+
+### Access (RESTful API Service)
+
+The Access service provides a RESTful API server using the Gin framework:
+
+```bash
+# Run with default settings (port 8080)
+go run ./cmd/access
+
+# Run on a custom port
+go run ./cmd/access -port 3000
+
+# Run in debug mode
+go run ./cmd/access -debug
+
+# Combine options
+go run ./cmd/access -port 3000 -debug
+```
+
+**Available Endpoints:**
+- `GET /health` - Health check endpoint that returns the server status
+
+**Command Line Options:**
+- `-port` - Port to listen on (default: 8080)
+- `-debug` - Enable debug mode (default: false)
+
+The Access service demonstrates the use of the Gin framework for building RESTful APIs. It can be extended with additional endpoints as needed.
 
 ### Broker
 
@@ -485,6 +515,7 @@ go mod download
 ```
 
 Key dependencies:
+- [Gin](https://github.com/gin-gonic/gin) - HTTP web framework for building RESTful APIs
 - [go-resty/resty](https://github.com/go-resty/resty) - HTTP client library for making API requests
 - [GORM](https://gorm.io/) - ORM library for database operations
 - [GORM SQLite Driver](https://github.com/go-gorm/sqlite) - SQLite driver for GORM
