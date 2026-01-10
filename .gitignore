@@ -37,6 +37,9 @@ go.work.sum
 # Config files (may contain sensitive data)
 config.json
 
+# Database files
+cve.db
+
 # Editor/IDE
 # .idea/
 # .vscode/
