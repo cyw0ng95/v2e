@@ -10,7 +10,7 @@ This project contains multiple commands:
 - `cmd/worker` - Example subprocess using the subprocess framework
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
-- `cmd/rpc-demo` - Demonstration of broker-mediated RPC communication between CVE services
+- `cmd/cve-meta` - CVE metadata service that composes operations on cve-remote and cve-local
 
 And packages:
 
@@ -35,7 +35,7 @@ go build ./cmd/broker
 go build ./cmd/worker
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
-go build ./cmd/rpc-demo
+go build ./cmd/cve-meta
 ```
 
 Or build a specific command:
@@ -45,7 +45,7 @@ go build -o bin/broker ./cmd/broker
 go build -o bin/worker ./cmd/worker
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
-go build -o bin/rpc-demo ./cmd/rpc-demo
+go build -o bin/cve-meta ./cmd/cve-meta
 ```
 
 ## Running
@@ -126,22 +126,22 @@ echo '{"type":"request","id":"RPCSaveCVEByID","payload":{"cve":{"id":"CVE-2021-4
 **Environment Variables:**
 - `CVE_DB_PATH` - Path to the SQLite database file (default: `cve.db`)
 
-### RPC Demo
+### CVE Meta Service
 
-The RPC demo demonstrates how to use the broker to coordinate communication between CVE services:
+The CVE Meta service is a composer that orchestrates operations on cve-remote and cve-local services:
 
 ```bash
-# Run the demo (fetches a CVE from NVD and stores it locally)
-go run ./cmd/rpc-demo
+# Run the service (fetches a CVE from NVD and stores it locally)
+go run ./cmd/cve-meta
 
 # Specify a different CVE ID
-go run ./cmd/rpc-demo -cve-id CVE-2024-1234
+go run ./cmd/cve-meta -cve-id CVE-2024-1234
 
 # Specify a different database path
-go run ./cmd/rpc-demo -db /path/to/cve.db
+go run ./cmd/cve-meta -db /path/to/cve.db
 ```
 
-The demo performs the following workflow:
+The service performs the following workflow:
 1. Spawns `cve-local` and `cve-remote` services as subprocesses
 2. Checks if the specified CVE is already stored locally
 3. If not stored, fetches it from the NVD API via `cve-remote`
