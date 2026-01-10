@@ -7,11 +7,30 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 )
+
+// threadSafeBuffer wraps bytes.Buffer with a mutex for thread-safe access
+type threadSafeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *threadSafeBuffer) Write(p []byte) (n int, err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *threadSafeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 func TestNewBroker(t *testing.T) {
 	broker := NewBroker()
@@ -34,16 +53,17 @@ func TestBroker_SetLogger(t *testing.T) {
 	broker := NewBroker()
 	defer broker.Shutdown()
 
-	var buf bytes.Buffer
-	logger := common.NewLogger(&buf, "", common.DebugLevel)
+	buf := &threadSafeBuffer{}
+	logger := common.NewLogger(buf, "", common.DebugLevel)
 
 	broker.SetLogger(logger)
 
 	// Spawn a process to generate logs
 	_, _ = broker.Spawn("test", "echo", "hello")
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
-	if buf.Len() == 0 {
+	output := buf.String()
+	if len(output) == 0 {
 		t.Error("Expected logger to capture output")
 	}
 }
@@ -501,8 +521,8 @@ func TestBroker_Integration_MultipleProcesses(t *testing.T) {
 	defer broker.Shutdown()
 
 	// Set up logger to capture output
-	var buf bytes.Buffer
-	logger := common.NewLogger(&buf, "", common.DebugLevel)
+	buf := &threadSafeBuffer{}
+	logger := common.NewLogger(buf, "", common.DebugLevel)
 	broker.SetLogger(logger)
 
 	var cmd string

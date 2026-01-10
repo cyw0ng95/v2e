@@ -251,7 +251,13 @@ func (b *Broker) ListProcesses() []*ProcessInfo {
 }
 
 // SendMessage sends a message to the broker's message channel
-func (b *Broker) SendMessage(msg *Message) error {
+func (b *Broker) SendMessage(msg *Message) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("broker message channel is closed")
+		}
+	}()
+	
 	select {
 	case b.messages <- msg:
 		return nil
