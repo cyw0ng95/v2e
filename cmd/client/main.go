@@ -13,7 +13,19 @@ func main() {
 	fmt.Println("Starting client...")
 	fmt.Printf("Version: %s\n", common.Version)
 
+	// Load configuration
+	config, err := common.LoadConfig("")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Determine URL to connect to
+	// Priority: 1. Command line arg, 2. Config file, 3. Default
 	url := "http://localhost:8080"
+	if config.Client.URL != "" {
+		url = config.Client.URL
+	}
 	if len(os.Args) > 1 {
 		url = os.Args[1]
 	}

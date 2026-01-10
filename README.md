@@ -31,6 +31,35 @@ go build -o bin/client ./cmd/client
 
 ## Running
 
+### Configuration
+
+Both the server and client support optional configuration via a `config.json` file in the current directory. If the file doesn't exist, default values will be used.
+
+A sample configuration file is provided as `config.json.example`. You can copy it to `config.json` and modify as needed:
+
+```bash
+cp config.json.example config.json
+```
+
+Example `config.json`:
+
+```json
+{
+  "server": {
+    "address": ":8080"
+  },
+  "client": {
+    "url": "http://localhost:8080"
+  }
+}
+```
+
+Configuration options:
+- `server.address`: The address for the server to listen on (default: `:8080`)
+- `client.url`: The default URL for the client to connect to (default: `http://localhost:8080`)
+
+Note: Command line arguments take precedence over configuration file values.
+
 ### Server
 
 ```bash
