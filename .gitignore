@@ -12,6 +12,7 @@
 /server
 /client
 /broker
+/broker-stats
 /worker
 /cve-local
 /cve-remote
