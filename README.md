@@ -367,6 +367,45 @@ if err != nil {
 }
 ```
 
+#### Message Statistics
+
+The broker tracks message statistics to help monitor message flow:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/proc"
+
+// Create a new broker
+broker := proc.NewBroker()
+defer broker.Shutdown()
+
+// Send some messages
+reqMsg, _ := proc.NewRequestMessage("req-1", map[string]string{"action": "test"})
+broker.SendMessage(reqMsg)
+
+respMsg, _ := proc.NewResponseMessage("resp-1", map[string]string{"result": "ok"})
+broker.SendMessage(respMsg)
+
+// Get total message count
+count := broker.GetMessageCount()
+fmt.Printf("Total messages processed: %d\n", count)
+
+// Get detailed statistics
+stats := broker.GetMessageStats()
+fmt.Printf("Sent: %d, Received: %d\n", stats.TotalSent, stats.TotalReceived)
+fmt.Printf("Requests: %d, Responses: %d, Events: %d, Errors: %d\n",
+    stats.RequestCount, stats.ResponseCount, stats.EventCount, stats.ErrorCount)
+fmt.Printf("First message: %v\n", stats.FirstMessageTime)
+fmt.Printf("Last message: %v\n", stats.LastMessageTime)
+```
+
+Key statistics features:
+- **GetMessageCount()**: Returns the total number of messages processed (sent + received)
+- **GetMessageStats()**: Returns detailed statistics including:
+  - Total messages sent and received
+  - Message counts by type (request, response, event, error)
+  - Timestamp of first and last message
+- **Thread-safe**: All statistics methods are safe for concurrent access
+
 #### RPC Communication
 
 The broker supports RPC-style communication with subprocesses via stdin/stdout pipes:
