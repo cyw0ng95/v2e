@@ -104,6 +104,27 @@ For production use with higher rate limits, obtain an API key from [NVD](https:/
 
 ## Development
 
+### Logging
+
+The project includes a structured logging module in `pkg/common`:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/common"
+
+// Use the default logger
+common.Info("Server starting on port %d", 8080)
+common.Debug("Debug information")
+common.Warn("Warning message")
+common.Error("Error occurred: %v", err)
+
+// Set log level
+common.SetLevel(common.DebugLevel) // DebugLevel, InfoLevel, WarnLevel, ErrorLevel
+
+// Create a custom logger
+logger := common.NewLogger(os.Stdout, "", common.InfoLevel)
+logger.Info("Custom logger message")
+```
+
 ### Dependencies
 
 This project uses Go modules for dependency management:

@@ -2,20 +2,19 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 func main() {
-	fmt.Println("Starting server...")
-	fmt.Printf("Version: %s\n", common.Version)
+	common.Info("Starting server...")
+	common.Info("Version: %s", common.Version)
 
 	// Load configuration
 	config, err := common.LoadConfig("")
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		common.Fatal("Failed to load config: %v", err)
 	}
 
 	// Use config or default values
@@ -25,11 +24,12 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		common.Info("Request received from %s", r.RemoteAddr)
 		fmt.Fprintf(w, "Hello from v2e server! Version: %s\n", common.Version)
 	})
 
-	fmt.Printf("Server listening on %s\n", addr)
+	common.Info("Server listening on %s", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Fatal(err)
+		common.Fatal("Server error: %v", err)
 	}
 }
