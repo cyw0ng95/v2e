@@ -11,6 +11,8 @@
 # Built binaries
 /server
 /client
+/broker
+/managed_process
 /bin/
 
 # Test binary, built with `go test -c`
