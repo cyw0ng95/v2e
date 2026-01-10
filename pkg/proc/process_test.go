@@ -24,7 +24,7 @@ func TestBaseProcess_Start(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -47,12 +47,12 @@ func TestBaseProcess_Stop(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
 
-	err = proc.Stop()
+	err = proc.stop()
 	if err != nil {
 		t.Fatalf("Stop failed: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestBaseProcess_SendMessage(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestBaseProcess_SendRequest(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestBaseProcess_SendResponse(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestBaseProcess_SendEvent(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestBaseProcess_SendError(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestBaseProcess_Context(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestBaseProcess_Broker(t *testing.T) {
 	proc := NewBaseProcess("test-proc")
 	ctx := context.Background()
 
-	err := proc.Start(ctx, broker)
+	err := proc.start(ctx, broker)
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -293,15 +293,18 @@ func TestTestProcess_Lifecycle(t *testing.T) {
 	defer broker.Shutdown()
 
 	proc := NewTestProcess("test-proc")
-	ctx := context.Background()
 
-	// Test Start
-	err := proc.Start(ctx, broker)
+	// Test initialization via broker registration
+	err := broker.RegisterManagedProcess(proc)
 	if err != nil {
-		t.Fatalf("Start failed: %v", err)
+		t.Fatalf("RegisterManagedProcess failed: %v", err)
 	}
-	if !proc.startCalled {
-		t.Error("Expected Start to be called")
+	
+	if proc.Broker() == nil {
+		t.Error("Expected Broker to be set")
+	}
+	if proc.Context() == nil {
+		t.Error("Expected Context to be set")
 	}
 
 	// Test OnMessage
@@ -317,13 +320,18 @@ func TestTestProcess_Lifecycle(t *testing.T) {
 		t.Error("Expected lastMessage to match sent message")
 	}
 
-	// Test Stop
-	err = proc.Stop()
+	// Test Stop via broker
+	err = broker.StopManagedProcess("test-proc")
 	if err != nil {
-		t.Fatalf("Stop failed: %v", err)
+		t.Fatalf("StopManagedProcess failed: %v", err)
 	}
-	if !proc.stopCalled {
-		t.Error("Expected Stop to be called")
+	
+	// Verify context was cancelled
+	select {
+	case <-proc.Context().Done():
+		// Expected
+	default:
+		t.Error("Expected context to be cancelled after stop")
 	}
 }
 

@@ -35,8 +35,6 @@ func (b *threadSafeBuffer) String() string {
 // TestProcess is a test implementation of ManagedProcess for broker tests
 type TestProcess struct {
 	*BaseProcess
-	startCalled   bool
-	stopCalled    bool
 	messageCount  int
 	lastMessage   *Message
 	shouldFailMsg bool
@@ -46,19 +44,6 @@ func NewTestProcess(id string) *TestProcess {
 	return &TestProcess{
 		BaseProcess: NewBaseProcess(id),
 	}
-}
-
-func (p *TestProcess) Start(ctx context.Context, broker *Broker) error {
-	if err := p.BaseProcess.Start(ctx, broker); err != nil {
-		return err
-	}
-	p.startCalled = true
-	return nil
-}
-
-func (p *TestProcess) Stop() error {
-	p.stopCalled = true
-	return p.BaseProcess.Stop()
 }
 
 func (p *TestProcess) OnMessage(msg *Message) error {
@@ -616,9 +601,14 @@ func TestBroker_RegisterManagedProcess(t *testing.T) {
 		t.Fatalf("RegisterManagedProcess failed: %v", err)
 	}
 
-	if !proc.startCalled {
-		t.Error("Expected Start to be called on registration")
-	}
+
+// Verify process is initialized
+if proc.Broker() == nil {
+t.Error("Expected broker to be set on registration")
+}
+if proc.Context() == nil {
+t.Error("Expected context to be set on registration")
+}
 }
 
 func TestBroker_RegisterManagedProcess_Duplicate(t *testing.T) {
@@ -707,9 +697,14 @@ func TestBroker_StopManagedProcess(t *testing.T) {
 		t.Fatalf("StopManagedProcess failed: %v", err)
 	}
 
-	if !proc.stopCalled {
-		t.Error("Expected Stop to be called")
-	}
+
+// Verify context was cancelled
+select {
+case <-proc.Context().Done():
+// Expected - context should be cancelled
+default:
+t.Error("Expected context to be cancelled after stop")
+}
 
 	// Process should be unregistered
 	_, err = broker.GetManagedProcess("managed-1")
@@ -806,10 +801,19 @@ func TestBroker_Shutdown_WithManagedProcesses(t *testing.T) {
 		t.Errorf("Shutdown failed: %v", err)
 	}
 
-	if !proc1.stopCalled {
-		t.Error("Expected proc1 Stop to be called during shutdown")
-	}
-	if !proc2.stopCalled {
-		t.Error("Expected proc2 Stop to be called during shutdown")
-	}
+
+// Verify contexts were cancelled
+select {
+case <-proc1.Context().Done():
+// Expected
+default:
+t.Error("Expected proc1 context to be cancelled during shutdown")
+}
+
+select {
+case <-proc2.Context().Done():
+// Expected
+default:
+t.Error("Expected proc2 context to be cancelled during shutdown")
+}
 }

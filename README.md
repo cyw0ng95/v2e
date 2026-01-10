@@ -233,18 +233,18 @@ if err != nil {
 
 #### Managed Processes with Lifecycle Control
 
-The broker supports managed processes that implement the `ManagedProcess` interface, providing structured lifecycle management and message handling:
+The broker supports managed processes that implement the `ManagedProcess` interface. **Users only need to implement `OnMessage()` for business logic** - lifecycle management is handled automatically by the broker:
 
 ```go
 import (
-    "context"
     "github.com/cyw0ng95/v2e/pkg/proc"
 )
 
-// Define a custom managed process
+// Define a custom managed process - just embed BaseProcess and implement OnMessage
 type MyProcess struct {
     *proc.BaseProcess
-    // Add custom fields
+    // Add custom fields for your business logic
+    taskCount int
 }
 
 // Create a new managed process
@@ -254,41 +254,20 @@ func NewMyProcess(id string) *MyProcess {
     }
 }
 
-// Implement lifecycle hooks
-func (p *MyProcess) Start(ctx context.Context, broker *proc.Broker) error {
-    // Initialize the base process
-    if err := p.BaseProcess.Start(ctx, broker); err != nil {
-        return err
-    }
-    
-    // Custom initialization logic
-    p.SendEvent("process-started", map[string]string{
-        "id": p.ID(),
-    })
-    
-    return nil
-}
-
-func (p *MyProcess) Stop() error {
-    // Custom cleanup logic
-    p.SendEvent("process-stopping", map[string]string{
-        "id": p.ID(),
-    })
-    
-    // Stop the base process
-    return p.BaseProcess.Stop()
-}
-
+// Implement OnMessage to handle business logic
 func (p *MyProcess) OnMessage(msg *proc.Message) error {
     // Handle incoming messages from the broker
     switch msg.Type {
     case proc.MessageTypeRequest:
         var payload map[string]interface{}
         msg.UnmarshalPayload(&payload)
+        
         // Process request and send response
+        p.taskCount++
         return p.SendResponse(msg.ID, map[string]interface{}{
-            "status": "ok",
-            "result": "processed",
+            "status":     "ok",
+            "result":     "processed",
+            "task_count": p.taskCount,
         })
     case proc.MessageTypeEvent:
         // Handle events
@@ -302,7 +281,7 @@ broker := proc.NewBroker()
 defer broker.Shutdown()
 
 myProc := NewMyProcess("worker-1")
-err := broker.RegisterManagedProcess(myProc)
+err := broker.RegisterManagedProcess(myProc)  // Lifecycle handled automatically
 if err != nil {
     log.Fatal(err)
 }

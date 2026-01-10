@@ -7,22 +7,25 @@ import (
 
 // ManagedProcess represents a process that can be controlled by the broker
 // and interact with it through message passing.
+// Users only need to implement OnMessage to handle business logic.
 type ManagedProcess interface {
-	// Start initializes the process and begins execution
-	// The broker context is passed for lifecycle management
-	Start(ctx context.Context, broker *Broker) error
-
-	// Stop gracefully stops the process
-	Stop() error
-
 	// OnMessage handles messages received from the broker
+	// This is where business logic should be implemented
 	OnMessage(msg *Message) error
 
 	// ID returns the unique identifier of this process
 	ID() string
 }
 
-// BaseProcess provides a default implementation of common ManagedProcess functionality
+// managedProcessInternal is an internal interface for lifecycle management
+type managedProcessInternal interface {
+	start(ctx context.Context, broker *Broker) error
+	stop() error
+}
+
+// BaseProcess provides a complete implementation of ManagedProcess
+// with convenient helper methods for sending messages.
+// Users can embed this to get full functionality with minimal boilerplate.
 type BaseProcess struct {
 	id     string
 	broker *Broker
@@ -37,23 +40,8 @@ func NewBaseProcess(id string) *BaseProcess {
 	}
 }
 
-// Start initializes the base process
-func (p *BaseProcess) Start(ctx context.Context, broker *Broker) error {
-	p.ctx, p.cancel = context.WithCancel(ctx)
-	p.broker = broker
-	return nil
-}
-
-// Stop gracefully stops the base process
-func (p *BaseProcess) Stop() error {
-	if p.cancel != nil {
-		p.cancel()
-	}
-	return nil
-}
-
 // OnMessage is a default no-op message handler
-// Subprocesses should override this to handle messages
+// Users should override this to implement their business logic
 func (p *BaseProcess) OnMessage(msg *Message) error {
 	return fmt.Errorf("message handling not implemented")
 }
@@ -61,6 +49,21 @@ func (p *BaseProcess) OnMessage(msg *Message) error {
 // ID returns the process identifier
 func (p *BaseProcess) ID() string {
 	return p.id
+}
+
+// start initializes the base process (internal method)
+func (p *BaseProcess) start(ctx context.Context, broker *Broker) error {
+	p.ctx, p.cancel = context.WithCancel(ctx)
+	p.broker = broker
+	return nil
+}
+
+// stop gracefully stops the base process (internal method)
+func (p *BaseProcess) stop() error {
+	if p.cancel != nil {
+		p.cancel()
+	}
+	return nil
 }
 
 // SendMessage sends a message to the broker

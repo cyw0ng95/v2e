@@ -341,9 +341,11 @@ func (b *Broker) RegisterManagedProcess(proc ManagedProcess) error {
 		return fmt.Errorf("managed process with id '%s' already exists", id)
 	}
 
-	// Start the process
-	if err := proc.Start(b.ctx, b); err != nil {
-		return fmt.Errorf("failed to start managed process: %w", err)
+	// Initialize the process internally if it implements the internal interface
+	if internal, ok := proc.(managedProcessInternal); ok {
+		if err := internal.start(b.ctx, b); err != nil {
+			return fmt.Errorf("failed to start managed process: %w", err)
+		}
 	}
 
 	b.managedProcesses[id] = proc
@@ -377,8 +379,12 @@ func (b *Broker) StopManagedProcess(id string) error {
 	}
 
 	b.logger.Info("Stopping managed process: id=%s", id)
-	if err := proc.Stop(); err != nil {
-		return fmt.Errorf("failed to stop managed process: %w", err)
+	
+	// Stop the process internally if it implements the internal interface
+	if internal, ok := proc.(managedProcessInternal); ok {
+		if err := internal.stop(); err != nil {
+			return fmt.Errorf("failed to stop managed process: %w", err)
+		}
 	}
 
 	return b.UnregisterManagedProcess(id)

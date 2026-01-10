@@ -14,6 +14,7 @@ import (
 )
 
 // WorkerProcess is an example of a managed process that handles tasks
+// Users only need to implement OnMessage - lifecycle is handled automatically
 type WorkerProcess struct {
 	*proc.BaseProcess
 	taskCount int
@@ -24,33 +25,6 @@ func NewWorkerProcess(id string) *WorkerProcess {
 	return &WorkerProcess{
 		BaseProcess: proc.NewBaseProcess(id),
 	}
-}
-
-// Start initializes the worker and sends a ready event
-func (w *WorkerProcess) Start(ctx context.Context, broker *proc.Broker) error {
-	if err := w.BaseProcess.Start(ctx, broker); err != nil {
-		return err
-	}
-
-	common.Info("Worker %s started", w.ID())
-	
-	// Send ready event
-	return w.SendEvent("worker-ready", map[string]string{
-		"id": w.ID(),
-	})
-}
-
-// Stop performs cleanup before stopping
-func (w *WorkerProcess) Stop() error {
-	common.Info("Worker %s stopping after processing %d tasks", w.ID(), w.taskCount)
-	
-	// Send completion event
-	_ = w.SendEvent("worker-stopped", map[string]interface{}{
-		"id":         w.ID(),
-		"task_count": w.taskCount,
-	})
-	
-	return w.BaseProcess.Stop()
 }
 
 // OnMessage handles incoming messages
@@ -132,29 +106,10 @@ func main() {
 		if err := broker.RegisterManagedProcess(worker); err != nil {
 			log.Fatalf("Failed to register worker: %v", err)
 		}
+		common.Info("Worker registered: worker-%d", i)
 	}
 
-	// Monitor worker ready events
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	readyCount := 0
-	for readyCount < numWorkers {
-		msg, err := broker.ReceiveMessage(ctx)
-		if err != nil {
-			break
-		}
-		if msg.Type == proc.MessageTypeEvent {
-			var payload map[string]interface{}
-			if err := msg.UnmarshalPayload(&payload); err == nil {
-				if payload["event"] == "worker-ready" {
-					readyCount++
-					common.Info("Worker ready: %s", payload["id"])
-				}
-			}
-		}
-	}
-	cancel()
-
-	common.Info("All workers ready. Sending tasks...")
+	common.Info("All workers registered. Sending tasks...")
 
 	// Send tasks to workers
 	for i := 0; i < 10; i++ {
