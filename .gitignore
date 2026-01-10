@@ -8,6 +8,11 @@
 *.so
 *.dylib
 
+# Built binaries
+/server
+/client
+/bin/
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -29,6 +34,8 @@ go.work.sum
 
 # Build directory
 .build/
+# Config files (may contain sensitive data)
+config.json
 
 # Editor/IDE
 # .idea/
