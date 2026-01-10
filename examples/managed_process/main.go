@@ -1,0 +1,203 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc"
+)
+
+// WorkerProcess is an example of a managed process that handles tasks
+type WorkerProcess struct {
+	*proc.BaseProcess
+	taskCount int
+}
+
+// NewWorkerProcess creates a new worker process
+func NewWorkerProcess(id string) *WorkerProcess {
+	return &WorkerProcess{
+		BaseProcess: proc.NewBaseProcess(id),
+	}
+}
+
+// Start initializes the worker and sends a ready event
+func (w *WorkerProcess) Start(ctx context.Context, broker *proc.Broker) error {
+	if err := w.BaseProcess.Start(ctx, broker); err != nil {
+		return err
+	}
+
+	common.Info("Worker %s started", w.ID())
+	
+	// Send ready event
+	return w.SendEvent("worker-ready", map[string]string{
+		"id": w.ID(),
+	})
+}
+
+// Stop performs cleanup before stopping
+func (w *WorkerProcess) Stop() error {
+	common.Info("Worker %s stopping after processing %d tasks", w.ID(), w.taskCount)
+	
+	// Send completion event
+	_ = w.SendEvent("worker-stopped", map[string]interface{}{
+		"id":         w.ID(),
+		"task_count": w.taskCount,
+	})
+	
+	return w.BaseProcess.Stop()
+}
+
+// OnMessage handles incoming messages
+func (w *WorkerProcess) OnMessage(msg *proc.Message) error {
+	switch msg.Type {
+	case proc.MessageTypeRequest:
+		return w.handleRequest(msg)
+	case proc.MessageTypeEvent:
+		return w.handleEvent(msg)
+	default:
+		common.Debug("Worker %s ignoring message type: %s", w.ID(), msg.Type)
+	}
+	return nil
+}
+
+func (w *WorkerProcess) handleRequest(msg *proc.Message) error {
+	var payload map[string]interface{}
+	if err := msg.UnmarshalPayload(&payload); err != nil {
+		return w.SendError(msg.ID, err)
+	}
+
+	action, ok := payload["action"].(string)
+	if !ok {
+		return w.SendError(msg.ID, fmt.Errorf("missing action field"))
+	}
+
+	common.Info("Worker %s processing action: %s", w.ID(), action)
+	
+	switch action {
+	case "process_task":
+		w.taskCount++
+		time.Sleep(100 * time.Millisecond) // Simulate work
+		return w.SendResponse(msg.ID, map[string]interface{}{
+			"status":     "completed",
+			"task_count": w.taskCount,
+			"worker_id":  w.ID(),
+		})
+	case "get_status":
+		return w.SendResponse(msg.ID, map[string]interface{}{
+			"status":     "running",
+			"task_count": w.taskCount,
+			"worker_id":  w.ID(),
+		})
+	default:
+		return w.SendError(msg.ID, fmt.Errorf("unknown action: %s", action))
+	}
+}
+
+func (w *WorkerProcess) handleEvent(msg *proc.Message) error {
+	var payload map[string]interface{}
+	if err := msg.UnmarshalPayload(&payload); err != nil {
+		return nil // Ignore malformed events
+	}
+
+	event, ok := payload["event"].(string)
+	if !ok {
+		return nil
+	}
+
+	common.Debug("Worker %s received event: %s", w.ID(), event)
+	return nil
+}
+
+func main() {
+	// Set up logger
+	common.SetLevel(common.InfoLevel)
+	
+	common.Info("Starting managed process example...")
+	
+	// Create broker
+	broker := proc.NewBroker()
+	broker.SetLogger(common.NewLogger(os.Stdout, "", common.InfoLevel))
+	defer broker.Shutdown()
+
+	// Create and register workers
+	numWorkers := 3
+	for i := 0; i < numWorkers; i++ {
+		worker := NewWorkerProcess(fmt.Sprintf("worker-%d", i))
+		if err := broker.RegisterManagedProcess(worker); err != nil {
+			log.Fatalf("Failed to register worker: %v", err)
+		}
+	}
+
+	// Monitor worker ready events
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	readyCount := 0
+	for readyCount < numWorkers {
+		msg, err := broker.ReceiveMessage(ctx)
+		if err != nil {
+			break
+		}
+		if msg.Type == proc.MessageTypeEvent {
+			var payload map[string]interface{}
+			if err := msg.UnmarshalPayload(&payload); err == nil {
+				if payload["event"] == "worker-ready" {
+					readyCount++
+					common.Info("Worker ready: %s", payload["id"])
+				}
+			}
+		}
+	}
+	cancel()
+
+	common.Info("All workers ready. Sending tasks...")
+
+	// Send tasks to workers
+	for i := 0; i < 10; i++ {
+		workerID := fmt.Sprintf("worker-%d", i%numWorkers)
+		
+		msg, _ := proc.NewRequestMessage(fmt.Sprintf("task-%d", i), map[string]interface{}{
+			"action": "process_task",
+			"data":   fmt.Sprintf("task %d", i),
+		})
+		
+		if err := broker.DispatchMessage(workerID, msg); err != nil {
+			common.Error("Failed to dispatch to %s: %v", workerID, err)
+		}
+	}
+
+	// Wait a bit for tasks to complete
+	time.Sleep(1 * time.Second)
+
+	// Get status from all workers
+	common.Info("Requesting status from workers...")
+	for i := 0; i < numWorkers; i++ {
+		workerID := fmt.Sprintf("worker-%d", i)
+		
+		msg, _ := proc.NewRequestMessage(fmt.Sprintf("status-%d", i), map[string]interface{}{
+			"action": "get_status",
+		})
+		
+		if err := broker.DispatchMessage(workerID, msg); err != nil {
+			common.Error("Failed to get status from %s: %v", workerID, err)
+		}
+	}
+
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Wait for signal or timeout
+	select {
+	case <-sigChan:
+		common.Info("Received shutdown signal")
+	case <-time.After(3 * time.Second):
+		common.Info("Example completed")
+	}
+
+	common.Info("Shutting down...")
+}

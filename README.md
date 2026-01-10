@@ -46,6 +46,20 @@ go run ./cmd/broker -id my-process -cmd "sleep 5"
 
 The broker command demonstrates the process management capabilities of the `pkg/proc` package. In demo mode, it spawns multiple processes and monitors their lifecycle, showing how processes are reaped and their exit codes captured.
 
+### Managed Process Example
+
+An example demonstrating the ManagedProcess interface is available:
+
+```bash
+go run ./examples/managed_process
+```
+
+This example creates multiple worker processes that communicate with the broker through message passing, demonstrating:
+- Process registration and lifecycle management
+- Request/response message handling
+- Event publishing and monitoring
+- Graceful shutdown of managed processes
+
 
 ## Development
 
