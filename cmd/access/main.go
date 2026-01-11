@@ -53,6 +53,38 @@ c.JSON(http.StatusOK, gin.H{
 })
 })
 
+// Message statistics endpoints
+// TODO: These currently return mock data. When RPC forwarding is implemented
+// in the access service (issue #74), these should forward requests to the
+// broker's RPCGetMessageStats and RPCGetMessageCount handlers.
+
+// Get message statistics from broker
+restful.GET("/stats/messages", func(c *gin.Context) {
+// TODO: Forward RPC request to broker's RPCGetMessageStats handler
+// For now, return placeholder response for integration testing
+c.JSON(http.StatusOK, gin.H{
+"total_sent":       0,
+"total_received":   0,
+"request_count":    0,
+"response_count":   0,
+"event_count":      0,
+"error_count":      0,
+"first_message_time": nil,
+"last_message_time":  nil,
+"note": "This endpoint will be fully functional when RPC forwarding is implemented (issue #74)",
+})
+})
+
+// Get message count from broker
+restful.GET("/stats/message-count", func(c *gin.Context) {
+// TODO: Forward RPC request to broker's RPCGetMessageCount handler
+// For now, return placeholder response for integration testing
+c.JSON(http.StatusOK, gin.H{
+"count": 0,
+"note": "This endpoint will be fully functional when RPC forwarding is implemented (issue #74)",
+})
+})
+
 // TODO: Process management endpoints removed
 // Access service needs to be redesigned to communicate with broker via RPC
 // instead of creating its own broker instance.

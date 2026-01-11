@@ -57,6 +57,34 @@ class AccessClient:
         response.raise_for_status()
         return response.json()
     
+    def get_message_stats(self) -> Dict[str, Any]:
+        """Get message statistics from the broker.
+        
+        Note: This currently returns placeholder data. Will be fully functional
+        when RPC forwarding is implemented in the access service (issue #74).
+        
+        Returns:
+            Message statistics including counts by type and timestamps
+        """
+        url = f"{self.base_url}{self.restful_prefix}/stats/messages"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def get_message_count(self) -> Dict[str, Any]:
+        """Get total message count from the broker.
+        
+        Note: This currently returns placeholder data. Will be fully functional
+        when RPC forwarding is implemented in the access service (issue #74).
+        
+        Returns:
+            Total message count (sent + received)
+        """
+        url = f"{self.base_url}{self.restful_prefix}/stats/message-count"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
     def wait_for_ready(self, timeout: int = 10) -> bool:
         """Wait for the access service to be ready.
         

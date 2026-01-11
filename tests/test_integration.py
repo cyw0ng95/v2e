@@ -87,6 +87,98 @@ class TestBrokerDeployment:
         assert elapsed_time < 1.0, f"Health check took too long: {elapsed_time:.2f}s"
 
 
+@pytest.mark.integration
+class TestBrokerMessageStats:
+    """Integration tests for broker message statistics via REST API."""
+    
+    def test_get_message_stats_endpoint_exists(self, access_service):
+        """Test that the message stats endpoint exists and returns expected structure.
+        
+        This verifies:
+        - GET /restful/stats/messages endpoint is accessible
+        - Response contains expected fields for message statistics
+        - Endpoint is ready for RPC forwarding implementation
+        
+        Note: Currently returns placeholder data. Will return actual broker stats
+        when RPC forwarding is implemented (issue #74).
+        """
+        access = access_service
+        
+        # Call message stats endpoint
+        response = access.get_message_stats()
+        
+        # Verify response has expected structure
+        assert "total_sent" in response
+        assert "total_received" in response
+        assert "request_count" in response
+        assert "response_count" in response
+        assert "event_count" in response
+        assert "error_count" in response
+        
+        # Note field indicates this is placeholder
+        assert "note" in response
+        
+    def test_get_message_count_endpoint_exists(self, access_service):
+        """Test that the message count endpoint exists and returns expected structure.
+        
+        This verifies:
+        - GET /restful/stats/message-count endpoint is accessible
+        - Response contains count field
+        - Endpoint is ready for RPC forwarding implementation
+        
+        Note: Currently returns placeholder data. Will return actual broker count
+        when RPC forwarding is implemented (issue #74).
+        """
+        access = access_service
+        
+        # Call message count endpoint
+        response = access.get_message_count()
+        
+        # Verify response has expected structure
+        assert "count" in response
+        assert isinstance(response["count"], int)
+        
+        # Note field indicates this is placeholder
+        assert "note" in response
+    
+    def test_message_stats_endpoint_stability(self, access_service):
+        """Test message stats endpoint handles multiple requests.
+        
+        This verifies:
+        - Endpoint remains stable across multiple calls
+        - No errors or crashes
+        - Consistent response structure
+        """
+        access = access_service
+        
+        # Make multiple calls
+        for i in range(3):
+            response = access.get_message_stats()
+            assert "total_sent" in response
+            assert "total_received" in response
+            
+            if i < 2:
+                time.sleep(0.1)
+    
+    def test_message_count_endpoint_stability(self, access_service):
+        """Test message count endpoint handles multiple requests.
+        
+        This verifies:
+        - Endpoint remains stable across multiple calls
+        - No errors or crashes
+        - Consistent response structure
+        """
+        access = access_service
+        
+        # Make multiple calls
+        for i in range(3):
+            response = access.get_message_count()
+            assert "count" in response
+            
+            if i < 2:
+                time.sleep(0.1)
+
+
 # TODO: Additional integration tests for CVE functionality will be added
 # once RPC forwarding is implemented in the access service (tracked in issue #74).
 # Currently, the access service only provides a health check endpoint.
