@@ -45,14 +45,22 @@ User runs:    broker config.json
 Broker spawns: access, cve-remote, cve-local, cve-meta
               ↓
 External user → REST API (access) → Broker → Backend Services
+                                       ↓
+                         Message Routing (RPCInvoke)
+                                       ↓
+              cve-remote ←→ Broker ←→ cve-local
+                             ↓
+                          cve-meta
 ```
 
 This architecture provides:
 - **Process isolation**: Services cannot directly access each other
-- **Message routing**: Broker controls all inter-process communication
+- **Message routing**: Broker controls all inter-process communication via RPCInvoke
+- **Request-response correlation**: Broker tracks requests and matches responses using correlation IDs
 - **Security**: Single point of control for spawning and managing processes
 - **Monitoring**: Centralized message statistics and process management
 - **No direct RPC**: External users cannot bypass access service to reach backends
+- **Cross-service calls**: Services can invoke each other through the broker's message routing
 
 ### Security Principles
 
@@ -369,6 +377,43 @@ echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/
 *Message Statistics:*
 - `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
 - `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
+
+*Cross-Service RPC Invocation:*
+- `RPCInvoke` - Invokes an RPC method on a target subprocess and waits for the response
+
+**Cross-Service RPC Calls:**
+
+The broker supports routing RPC messages between subprocess services using the `RPCInvoke` interface. This enables services to call each other through the broker's message routing infrastructure:
+
+```bash
+# Example: Call cve-remote's RPCGetCVECnt from broker
+echo '{"type":"request","id":"RPCInvoke","payload":{"target":"cve-remote","method":"RPCGetCVECnt","payload":{},"timeout":30}}' | go run ./cmd/broker
+
+# Example: Call cve-local's RPCIsCVEStoredByID
+echo '{"type":"request","id":"RPCInvoke","payload":{"target":"cve-local","method":"RPCIsCVEStoredByID","payload":{"cve_id":"CVE-2021-44228"},"timeout":10}}' | go run ./cmd/broker
+```
+
+**RPCInvoke Request Format:**
+```json
+{
+  "target": "target-process-id",
+  "method": "RPCMethodName",
+  "payload": {
+    "param1": "value1",
+    "param2": "value2"
+  },
+  "timeout": 30
+}
+```
+
+**Message Routing Fields:**
+
+The broker uses the following fields for message routing:
+- `source` - Process ID of the message sender (automatically set by the broker)
+- `target` - Process ID of the message recipient (used to route messages between services)
+- `correlation_id` - Used to match responses to requests (automatically managed by the broker)
+
+Messages with a `target` field are automatically routed to that subprocess. Messages without a `target` are handled locally by the broker.
 
 **Auto-Restart Feature:**
 
