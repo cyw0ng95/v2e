@@ -72,12 +72,19 @@ class TestBrokerDeployment:
         """
         access = access_service
         
+        # Measure response time to verify service is responsive
+        start_time = time.time()
+        response = access.health()
+        elapsed_time = time.time() - start_time
+        
         # Successful REST API call proves:
         # - Broker is running
         # - Broker spawned access service
         # - Access service is listening on configured port
-        response = access.health()
         assert response["status"] == "ok"
+        
+        # Response should be fast (< 1 second) when all services are healthy
+        assert elapsed_time < 1.0, f"Health check took too long: {elapsed_time:.2f}s"
 
 
 # Note: Additional integration tests for CVE functionality will be added
