@@ -36,6 +36,8 @@ func main() {
 	sp.RegisterHandler("RPCGetProcess", createGetProcessHandler(broker))
 	sp.RegisterHandler("RPCListProcesses", createListProcessesHandler(broker))
 	sp.RegisterHandler("RPCKill", createKillHandler(broker))
+	sp.RegisterHandler("RPCGetMessageCount", createGetMessageCountHandler(broker))
+	sp.RegisterHandler("RPCGetMessageStats", createGetMessageStatsHandler(broker))
 
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -275,6 +277,69 @@ func createKillHandler(broker *proc.Broker) subprocess.Handler {
 		result := map[string]interface{}{
 			"success": true,
 			"id":      req.ID,
+		}
+
+		// Create response message
+		respMsg := &subprocess.Message{
+			Type: subprocess.MessageTypeResponse,
+			ID:   msg.ID,
+		}
+
+		// Marshal the result
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal result: %w", err)
+		}
+		respMsg.Payload = jsonData
+
+		return respMsg, nil
+	}
+}
+
+// createGetMessageCountHandler creates a handler for RPCGetMessageCount
+func createGetMessageCountHandler(broker *proc.Broker) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Get message count from broker
+		count := broker.GetMessageCount()
+
+		// Create response
+		result := map[string]interface{}{
+			"total_count": count,
+		}
+
+		// Create response message
+		respMsg := &subprocess.Message{
+			Type: subprocess.MessageTypeResponse,
+			ID:   msg.ID,
+		}
+
+		// Marshal the result
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal result: %w", err)
+		}
+		respMsg.Payload = jsonData
+
+		return respMsg, nil
+	}
+}
+
+// createGetMessageStatsHandler creates a handler for RPCGetMessageStats
+func createGetMessageStatsHandler(broker *proc.Broker) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Get message statistics from broker
+		stats := broker.GetMessageStats()
+
+		// Create response with all statistics
+		result := map[string]interface{}{
+			"total_sent":         stats.TotalSent,
+			"total_received":     stats.TotalReceived,
+			"request_count":      stats.RequestCount,
+			"response_count":     stats.ResponseCount,
+			"event_count":        stats.EventCount,
+			"error_count":        stats.ErrorCount,
+			"first_message_time": stats.FirstMessageTime,
+			"last_message_time":  stats.LastMessageTime,
 		}
 
 		// Create response message

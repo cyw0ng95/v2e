@@ -9,11 +9,9 @@ This project contains multiple commands:
 - `cmd/access` - RESTful API service using Gin framework
 - `cmd/broker` - RPC service for managing subprocesses and process lifecycle
 - `cmd/broker-stats` - RPC service for accessing broker message statistics
-- `cmd/worker` - Example subprocess using the subprocess framework
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
 - `cmd/cve-meta` - Backend RPC service that orchestrates CVE fetching and storage operations
-- `cmd/cve-meta-client` - Demo client for interacting with the cve-meta service
 
 And packages:
 
@@ -37,11 +35,9 @@ To build all commands:
 go build ./cmd/access
 go build ./cmd/broker
 go build ./cmd/broker-stats
-go build ./cmd/worker
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
 go build ./cmd/cve-meta
-go build ./cmd/cve-meta-client
 ```
 
 Or build a specific command:
@@ -50,11 +46,9 @@ Or build a specific command:
 go build -o bin/access ./cmd/access
 go build -o bin/broker ./cmd/broker
 go build -o bin/broker-stats ./cmd/broker-stats
-go build -o bin/worker ./cmd/worker
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
 go build -o bin/cve-meta ./cmd/cve-meta
-go build -o bin/cve-meta-client ./cmd/cve-meta-client
 ```
 
 ## Running
@@ -88,7 +82,7 @@ The Access service demonstrates the use of the Gin framework for building RESTfu
 
 ### Broker (RPC Service)
 
-The Broker service provides RPC interfaces for managing subprocesses:
+The Broker service provides RPC interfaces for managing subprocesses and accessing message statistics:
 
 ```bash
 # Run the service (it reads RPC requests from stdin and writes responses to stdout)
@@ -105,14 +99,26 @@ echo '{"type":"request","id":"RPCGetProcess","payload":{"id":"my-echo"}}' | go r
 
 # Example: Kill a process
 echo '{"type":"request","id":"RPCKill","payload":{"id":"my-echo"}}' | go run ./cmd/broker
+
+# Example: Get total message count
+echo '{"type":"request","id":"RPCGetMessageCount","payload":{}}' | go run ./cmd/broker
+
+# Example: Get detailed message statistics
+echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/broker
 ```
 
 **Available RPC Interfaces:**
+
+*Process Management:*
 - `RPCSpawn` - Spawns a new subprocess with the specified command and arguments
 - `RPCSpawnRPC` - Spawns a new RPC-enabled subprocess (with stdin/stdout pipes)
 - `RPCGetProcess` - Gets information about a specific process by ID
 - `RPCListProcesses` - Lists all managed processes
 - `RPCKill` - Terminates a process by ID
+
+*Message Statistics:*
+- `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
+- `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
 
 **Request Format for RPCSpawn:**
 ```json
@@ -123,7 +129,7 @@ echo '{"type":"request","id":"RPCKill","payload":{"id":"my-echo"}}' | go run ./c
 }
 ```
 
-**Response Format:**
+**Response Format for RPCSpawn:**
 ```json
 {
   "id": "unique-process-id",
@@ -134,23 +140,6 @@ echo '{"type":"request","id":"RPCKill","payload":{"id":"my-echo"}}' | go run ./c
 ```
 
 This service can be spawned by a broker to provide remote access to process management via RPC.
-
-### Worker
-
-The worker is an example subprocess that demonstrates the `pkg/proc/subprocess` framework:
-
-```bash
-# Run the worker (it reads messages from stdin and writes to stdout)
-go run ./cmd/worker
-
-# Example: Send a ping message
-echo '{"type":"request","id":"ping"}' | go run ./cmd/worker
-
-# Example: Send an echo request
-echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}' | go run ./cmd/worker
-```
-
-The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
 
 ### Broker Stats (RPC Service)
 
@@ -192,7 +181,24 @@ echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/
 }
 ```
 
-This service can be spawned by a broker to provide remote access to message statistics via RPC.
+This service can be spawned by a broker to provide remote access to process management and message statistics via RPC.
+
+### Worker
+
+The worker is an example subprocess that demonstrates the `pkg/proc/subprocess` framework:
+
+```bash
+# Run the worker (it reads messages from stdin and writes to stdout)
+go run ./cmd/worker
+
+# Example: Send a ping message
+echo '{"type":"request","id":"ping"}' | go run ./cmd/worker
+
+# Example: Send an echo request
+echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}' | go run ./cmd/worker
+```
+
+The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
 
 ### CVE Remote (RPC Service)
 
@@ -282,27 +288,6 @@ This demonstrates the broker-mediated RPC communication pattern where:
 - All communication happens via RPC messages
 - The service runs continuously accepting commands
 - Batch jobs can be executed efficiently
-
-### CVE Meta Client
-
-A demo client for interacting with the CVE Meta service:
-
-```bash
-# Fetch a single CVE
-go run ./cmd/cve-meta-client -cve-id CVE-2021-44228
-
-# Specify a different database path
-go run ./cmd/cve-meta-client -db /path/to/cve.db -cve-id CVE-2024-1234
-
-# Run in batch mode to fetch multiple CVEs
-go run ./cmd/cve-meta-client -batch
-```
-
-The client demonstrates:
-- How to spawn the cve-meta service as a subprocess
-- How to send RPC requests to the service
-- How to receive and process RPC responses
-- Single and batch mode operations
 
 ## Development
 
@@ -556,7 +541,7 @@ Key statistics features:
   - Message counts by type (request, response, event, error)
   - Timestamp of first and last message
 - **Thread-safe**: All statistics methods are safe for concurrent access
-- **RPC Access**: Statistics can also be accessed remotely via the `broker-stats` RPC service (see [Broker Stats](#broker-stats-rpc-service) section)
+- **RPC Access**: Statistics can also be accessed remotely via the broker's RPC service using `RPCGetMessageCount` and `RPCGetMessageStats` handlers (see [Broker](#broker-rpc-service) section)
 
 #### RPC Communication
 

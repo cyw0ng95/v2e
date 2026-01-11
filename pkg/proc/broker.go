@@ -151,11 +151,15 @@ func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error)
 
 	b.logger.Info("Spawned process: id=%s pid=%d command=%s", id, info.PID, command)
 
+	// Create a copy of the process info before starting the reaper goroutine
+	// to avoid data races when the caller accesses the returned info
+	infoCopy := *info
+
 	// Start goroutine to wait for process completion
 	b.wg.Add(1)
 	go b.reapProcess(proc)
 
-	return info, nil
+	return &infoCopy, nil
 }
 
 // SpawnRPC starts a new subprocess with RPC support (stdin/stdout pipes)
@@ -219,6 +223,10 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 
 	b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s", id, info.PID, command)
 
+	// Create a copy of the process info before starting the reaper goroutine
+	// to avoid data races when the caller accesses the returned info
+	infoCopy := *info
+
 	// Start goroutine to read messages from process stdout
 	b.wg.Add(1)
 	go b.readProcessMessages(proc)
@@ -227,7 +235,7 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 	b.wg.Add(1)
 	go b.reapProcess(proc)
 
-	return info, nil
+	return &infoCopy, nil
 }
 
 // readProcessMessages reads messages from a process's stdout and forwards them to the broker
