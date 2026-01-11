@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,7 +59,10 @@ func (f *CustomFormatter) WriteLevel(level, message string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05.000")
 	entity := f.Prefix
 	if entity == "" {
-		entity = "[MAIN] "
+		entity = "[main]"
+	} else {
+		// Remove brackets and spaces, convert to lowercase
+		entity = "[" + strings.ToLower(strings.Trim(entity, "[] ")) + "]"
 	}
 	fmt.Fprintf(f.Out, "[%s][%s]%s %s\n", timestamp, level, entity, message)
 }
