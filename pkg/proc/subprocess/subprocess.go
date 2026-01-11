@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"github.com/bytedance/sonic"
 )
@@ -281,4 +283,49 @@ func UnmarshalPayload(msg *Message, v interface{}) error {
 		return fmt.Errorf("no payload to unmarshal")
 	}
 	return sonic.Unmarshal(msg.Payload, v)
+}
+
+// RunConfig holds configuration for running a subprocess
+type RunConfig struct {
+	// ProcessID is the unique identifier for the subprocess
+	ProcessID string
+	// HandleSignals indicates whether to set up signal handling
+	HandleSignals bool
+	// OnShutdown is called when the subprocess is shutting down
+	OnShutdown func()
+}
+
+// RunWithSignalHandling runs a subprocess with common signal handling setup.
+// It blocks until the subprocess stops or receives a termination signal.
+// Returns error if the subprocess fails to run.
+func RunWithSignalHandling(sp *Subprocess, onShutdown func()) error {
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Run the subprocess in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- sp.Run()
+	}()
+
+	// Wait for either completion or signal
+	select {
+	case err := <-errChan:
+		if err != nil {
+			sp.SendError("fatal", fmt.Errorf("subprocess error: %w", err))
+			return err
+		}
+		return nil
+	case <-sigChan:
+		sp.SendEvent("subprocess_shutdown", map[string]string{
+			"id":     sp.ID,
+			"reason": "signal received",
+		})
+		if onShutdown != nil {
+			onShutdown()
+		}
+		sp.Stop()
+		return nil
+	}
 }

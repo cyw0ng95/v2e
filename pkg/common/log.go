@@ -222,3 +222,19 @@ func Error(format string, v ...interface{}) {
 func Fatal(format string, v ...interface{}) {
 	defaultLogger.Fatal(format, v...)
 }
+
+// ParseLogLevel converts a string log level to LogLevel
+func ParseLogLevel(level string) LogLevel {
+	switch level {
+	case "debug":
+		return DebugLevel
+	case "info":
+		return InfoLevel
+	case "warn":
+		return WarnLevel
+	case "error":
+		return ErrorLevel
+	default:
+		return InfoLevel
+	}
+}

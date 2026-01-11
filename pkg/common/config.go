@@ -20,6 +20,16 @@ type Config struct {
 	Client ClientConfig `json:"client,omitempty"`
 	// Broker configuration
 	Broker BrokerConfig `json:"broker,omitempty"`
+	// Logging configuration
+	Logging LoggingConfig `json:"logging,omitempty"`
+}
+
+// LoggingConfig holds logging configuration
+type LoggingConfig struct {
+	// Level is the minimum log level (debug, info, warn, error)
+	Level string `json:"level,omitempty"`
+	// LogPath is the path where log files should be stored
+	LogPath string `json:"log_path,omitempty"`
 }
 
 // ServerConfig holds server-specific configuration
