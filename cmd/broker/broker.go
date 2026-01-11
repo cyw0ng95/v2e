@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
@@ -825,7 +826,30 @@ func (b *Broker) ProcessMessage(msg *proc.Message) error {
 	case "RPCGetMessageCount":
 		respMsg, err = b.HandleRPCGetMessageCount(msg)
 	default:
-		// Unknown RPC method
+		// Check if any subprocess has registered this RPC endpoint
+		b.endpointsMu.RLock()
+		var targetProcess string
+		for processID, endpoints := range b.rpcEndpoints {
+			for _, endpoint := range endpoints {
+				if endpoint == msg.ID {
+					targetProcess = processID
+					break
+				}
+			}
+			if targetProcess != "" {
+				break
+			}
+		}
+		b.endpointsMu.RUnlock()
+
+		if targetProcess != "" {
+			// Route message to the subprocess that registered this endpoint
+			b.logger.Debug("Routing RPC %s to process %s", msg.ID, targetProcess)
+			msg.Target = targetProcess
+			return b.RouteMessage(msg, "broker")
+		}
+
+		// Unknown RPC method - no subprocess has registered it
 		errMsg := proc.NewErrorMessage(msg.ID, fmt.Errorf("unknown RPC method: %s", msg.ID))
 		errMsg.Source = "broker"
 		errMsg.Target = msg.Source
@@ -938,6 +962,32 @@ func (b *Broker) GetAllEndpoints() map[string][]string {
 	return result
 }
 
+// handleSubprocessReady handles the subprocess_ready event and registers RPC endpoints
+func (b *Broker) handleSubprocessReady(msg *proc.Message) error {
+	// Parse the payload to get RPC endpoints
+	var readyData struct {
+		ID           string   `json:"id"`
+		RPCEndpoints []string `json:"rpc_endpoints"`
+	}
+
+	if msg.Payload != nil {
+		if err := sonic.Unmarshal(msg.Payload, &readyData); err != nil {
+			b.logger.Warn("Failed to parse subprocess_ready payload from %s: %v", msg.Source, err)
+			return nil // Don't fail, just log the warning
+		}
+
+		// Register RPC endpoints for this process
+		if len(readyData.RPCEndpoints) > 0 {
+			for _, endpoint := range readyData.RPCEndpoints {
+				b.RegisterEndpoint(msg.Source, endpoint)
+			}
+			b.logger.Info("Registered %d RPC endpoint(s) for process %s: %v", len(readyData.RPCEndpoints), msg.Source, readyData.RPCEndpoints)
+		}
+	}
+
+	return nil
+}
+
 // GenerateCorrelationID generates a unique correlation ID for request-response matching
 func (b *Broker) GenerateCorrelationID() string {
 	seq := atomic.AddUint64(&b.correlationSeq, 1)
@@ -949,6 +999,11 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 	// Set source if not already set
 	if msg.Source == "" {
 		msg.Source = sourceProcess
+	}
+
+	// Special handling for subprocess_ready event
+	if msg.Type == proc.MessageTypeEvent && msg.ID == "subprocess_ready" {
+		return b.handleSubprocessReady(msg)
 	}
 
 	// If message has a target, route it to that process or broker

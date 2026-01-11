@@ -100,6 +100,20 @@ class AccessClient:
         result = self.rpc_call("RPCGetMessageCount")
         return result
     
+    def get_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Get CVE data from cve-meta service via the broker.
+        
+        This calls the cve-meta service's RPCGetCVE handler through the broker.
+        
+        Args:
+            cve_id: CVE identifier (e.g., "CVE-2021-44228")
+            
+        Returns:
+            Response in format: {"retcode": int, "message": str, "payload": CVE data}
+        """
+        result = self.rpc_call("RPCGetCVE", {"cve_id": cve_id})
+        return result
+    
     def wait_for_ready(self, timeout: int = 10) -> bool:
         """Wait for the access service to be ready.
         

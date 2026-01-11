@@ -202,18 +202,124 @@ class TestBrokerMessageStats:
         assert response["payload"] is None
 
 
+@pytest.mark.integration
+class TestCVEMetaRPC:
+    """Integration tests for cve-meta RPC calls via broker."""
+    
+    def test_rpc_get_cve_success(self, access_service):
+        """Test RPCGetCVE via generic RPC endpoint.
+        
+        This verifies:
+        - POST /restful/rpc endpoint accepts RPCGetCVE method
+        - Request is routed through broker to cve-meta service
+        - cve-meta service processes the request
+        - Response uses standardized format: {retcode, message, payload}
+        - Payload contains CVE data structure
+        """
+        access = access_service
+        
+        # Call RPCGetCVE for a well-known CVE
+        response = access.get_cve("CVE-2021-44228")
+        
+        # Verify standardized response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert "payload" in response
+        
+        # Verify success
+        assert response["retcode"] == 0
+        assert response["message"] == "success"
+        
+        # Verify payload has CVE structure
+        payload = response["payload"]
+        assert payload is not None
+        assert "ID" in payload or "id" in payload
+        
+        # Check that CVE ID matches request
+        cve_id = payload.get("ID") or payload.get("id")
+        assert cve_id == "CVE-2021-44228"
+    
+    def test_rpc_get_cve_missing_param(self, access_service):
+        """Test RPCGetCVE with missing cve_id parameter.
+        
+        This verifies:
+        - RPC endpoint validates required parameters
+        - Error response follows standardized format
+        - Error message is descriptive
+        """
+        access = access_service
+        
+        # Call RPCGetCVE without cve_id parameter
+        response = access.rpc_call("RPCGetCVE", {})
+        
+        # Verify standardized response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert "payload" in response
+        
+        # Verify error
+        assert response["retcode"] == 500
+        assert "cve_id" in response["message"].lower() or "required" in response["message"].lower()
+    
+    def test_rpc_get_cve_empty_id(self, access_service):
+        """Test RPCGetCVE with empty cve_id parameter.
+        
+        This verifies:
+        - RPC endpoint validates parameter values
+        - Empty strings are rejected appropriately
+        - Error response follows standardized format
+        """
+        access = access_service
+        
+        # Call RPCGetCVE with empty cve_id
+        response = access.get_cve("")
+        
+        # Verify standardized response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert "payload" in response
+        
+        # Verify error
+        assert response["retcode"] == 500
+        assert "cve_id" in response["message"].lower() or "required" in response["message"].lower()
+    
+    def test_rpc_get_cve_stability(self, access_service):
+        """Test RPCGetCVE handles multiple requests.
+        
+        This verifies:
+        - cve-meta service remains stable across multiple calls
+        - No memory leaks or connection issues
+        - Response structure remains consistent
+        """
+        access = access_service
+        
+        # Make multiple calls to RPCGetCVE
+        for i in range(3):
+            response = access.get_cve(f"CVE-2021-{44228 + i}")
+            
+            # Verify standardized response structure
+            assert "retcode" in response
+            assert "message" in response
+            assert "payload" in response
+            
+            # Verify success
+            assert response["retcode"] == 0
+            
+            if i < 2:
+                time.sleep(0.1)
+
+
 # TODO: Additional integration tests for CVE functionality will be added
-# once RPC forwarding is implemented in the access service (tracked in issue #74).
-# Currently, the access service only provides a health check endpoint.
+# once full cross-service orchestration is implemented in cve-meta.
 # 
 # Future tests will include:
 #
-# - POST /restful/rpc/{process_id}/{endpoint} - Forward RPC calls to backend
+# - Multi-service workflows (cve-meta orchestrating cve-local and cve-remote)
 # - CVE search and retrieval workflows via REST API
-# - Multi-service workflows (remote fetch + local storage)
+# - Local caching and remote fetching integration
 #
 # These tests will verify the complete broker-first architecture where:
 # - External users send REST requests to access service
 # - Access service forwards requests to broker via RPC
-# - Broker routes messages to appropriate backend services
+# - Broker routes messages to appropriate backend services (cve-meta, cve-local, cve-remote)
 # - Responses flow back through broker to access to user

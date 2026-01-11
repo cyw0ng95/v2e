@@ -116,9 +116,22 @@ func (s *Subprocess) RegisterHandler(pattern string, handler Handler) {
 // Run starts the subprocess and processes incoming messages
 // It blocks until the subprocess is stopped or an error occurs
 func (s *Subprocess) Run() error {
+	// Get list of registered RPC handlers
+	s.mu.RLock()
+	rpcHandlers := make([]string, 0, len(s.handlers))
+	for handlerName := range s.handlers {
+		// Only include handlers that start with "RPC" as RPC endpoints
+		if len(handlerName) > 3 && handlerName[:3] == "RPC" {
+			rpcHandlers = append(rpcHandlers, handlerName)
+		}
+	}
+	s.mu.RUnlock()
+
 	// Send a ready event to signal that the subprocess is initialized
+	// Include the list of RPC endpoints this subprocess can handle
 	if err := s.SendEvent("subprocess_ready", map[string]interface{}{
-		"id": s.ID,
+		"id":            s.ID,
+		"rpc_endpoints": rpcHandlers,
 	}); err != nil {
 		return fmt.Errorf("failed to send ready event: %w", err)
 	}
@@ -179,9 +192,11 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	if !exists {
 		// No handler found, send error
 		errMsg := &Message{
-			Type:  MessageTypeError,
-			ID:    msg.ID,
-			Error: fmt.Sprintf("no handler found for message: %s", msg.ID),
+			Type:          MessageTypeError,
+			ID:            msg.ID,
+			Error:         fmt.Sprintf("no handler found for message: %s", msg.ID),
+			Target:        msg.Source,
+			CorrelationID: msg.CorrelationID,
 		}
 		_ = s.sendMessage(errMsg)
 		return
@@ -192,9 +207,11 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	if err != nil {
 		// Send error response
 		errMsg := &Message{
-			Type:  MessageTypeError,
-			ID:    msg.ID,
-			Error: err.Error(),
+			Type:          MessageTypeError,
+			ID:            msg.ID,
+			Error:         err.Error(),
+			Target:        msg.Source,
+			CorrelationID: msg.CorrelationID,
 		}
 		_ = s.sendMessage(errMsg)
 		return
@@ -202,6 +219,13 @@ func (s *Subprocess) handleMessage(msg *Message) {
 
 	// Send the response if provided
 	if response != nil {
+		// Ensure correlation ID and target are set in the response
+		if response.CorrelationID == "" {
+			response.CorrelationID = msg.CorrelationID
+		}
+		if response.Target == "" {
+			response.Target = msg.Source
+		}
 		_ = s.sendMessage(response)
 	}
 }
