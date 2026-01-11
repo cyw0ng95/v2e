@@ -17,7 +17,7 @@ type NVDTime struct {
 	time.Time
 }
 
-// UnmarshalJSON implements sonic.Unmarshaler for NVDTime
+// UnmarshalJSON implements json.Unmarshaler for NVDTime
 func (t *NVDTime) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(string(b), "\"")
 	if s == "null" || s == "" {
@@ -38,7 +38,7 @@ func (t *NVDTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// MarshalJSON implements sonic.Marshaler for NVDTime
+// MarshalJSON implements json.Marshaler for NVDTime
 func (t NVDTime) MarshalJSON() ([]byte, error) {
 	if t.Time.IsZero() {
 		return []byte("null"), nil
