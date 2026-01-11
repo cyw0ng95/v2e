@@ -76,101 +76,95 @@ def package_binaries():
 
 @pytest.fixture(scope="module")
 def access_service(package_binaries, setup_logs_directory):
-    """Start the access service for testing.
+    """Start the broker with full configuration to test access service.
     
-    The access service acts as the central gateway for all integration tests.
-    All tests should interact with backend services through the access REST API.
+    This fixture follows the broker-first architecture:
+    1. Broker starts with config.json from the package
+    2. Broker spawns all subprocess services including access
+    3. Tests interact with access REST API
+    4. Access service is the external gateway for the system
     """
-    # Project root directory
-    project_root = os.path.dirname(os.path.dirname(__file__))
+    # Use the config.json from the package directory
+    package_dir = os.path.dirname(package_binaries["broker"])
+    config_path = os.path.join(package_dir, "config.json")
     
-    # Backup existing config.json if it exists
-    config_path = os.path.join(project_root, "config.json")
-    backup_path = config_path + ".backup"
-    has_backup = False
+    # Verify config.json exists in package
+    if not os.path.exists(config_path):
+        pytest.fail(f"config.json not found in package directory: {package_dir}")
     
-    if os.path.exists(config_path):
-        shutil.copy2(config_path, backup_path)
-        has_backup = True
+    print(f"\n  → Using config from package: {config_path}")
     
-    try:
-        # Create a temporary config file
-        config_content = {
-            "server": {
-                "address": "0.0.0.0:8080"
-            },
-            "broker": {
-                "logs_dir": setup_logs_directory,
-                "processes": []  # Start with no processes, tests will spawn as needed
-            }
-        }
-        
-        with open(config_path, 'w') as f:
-            import json
-            json.dump(config_content, f, indent=2)
-        
-        # Get test name for log file naming
-        test_module = os.environ.get('PYTEST_CURRENT_TEST', 'unknown').split(':')[0].replace('/', '_')
-        log_file = os.path.join(setup_logs_directory, f"{test_module}_access.log")
-        
-        # Start access service
-        env = os.environ.copy()
-        
-        # Start access service with the config
-        with open(log_file, 'w') as log:
-            log.write(f"=== Access Service Log ===\n")
-            log.write(f"Started at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            log.write(f"Config: {config_path}\n")
-            log.write("=" * 60 + "\n\n")
-        
-        process = subprocess.Popen(
-            [package_binaries["access"]],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            cwd=project_root,
-            env=env
-        )
-        
-        # Log output in background
-        import threading
-        def log_output():
-            with open(log_file, 'a') as log:
-                for line in process.stdout:
-                    log.write(line)
-                    log.flush()
-        
-        log_thread = threading.Thread(target=log_output, daemon=True)
-        log_thread.start()
-        
-        # Wait for service to be ready
-        client = AccessClient()
-        if not client.wait_for_ready(timeout=10):
-            process.terminate()
-            process.wait()
-            pytest.fail("Access service failed to start within 10 seconds")
-        
-        print(f"\n  ✓ Access service started on http://localhost:8080")
-        print(f"  ✓ Logs saved to: {log_file}")
-        
-        yield client
-        
-        # Cleanup
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-        
+    # Get test name for log file naming
+    test_module = os.environ.get('PYTEST_CURRENT_TEST', 'unknown').split(':')[0].replace('/', '_')
+    log_file = os.path.join(setup_logs_directory, f"{test_module}_broker.log")
+    
+    # Start broker with the package config.json
+    print(f"  → Starting broker with config.json from package...")
+    
+    # Start broker process with output to both console and log file
+    process = subprocess.Popen(
+        [package_binaries["broker"], config_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        cwd=package_dir  # Run in package directory
+    )
+    
+    # Create log file
+    with open(log_file, 'w') as log:
+        log.write(f"=== Broker Integration Test Log ===\n")
+        log.write(f"Started at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log.write(f"Config: {config_path}\n")
+        log.write("=" * 60 + "\n\n")
+    
+    # Log output in background and also print to console
+    import threading
+    def log_output():
         with open(log_file, 'a') as log:
-            log.write(f"\n{'=' * 60}\n")
-            log.write(f"Process stopped at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            for line in process.stdout:
+                # Write to log file
+                log.write(line)
+                log.flush()
+                # Also print to console for visibility during tests
+                print(f"  [BROKER] {line.rstrip()}")
     
-    finally:
-        # Restore original config.json
-        if has_backup:
-            shutil.move(backup_path, config_path)
-        elif os.path.exists(config_path):
-            os.remove(config_path)
+    log_thread = threading.Thread(target=log_output, daemon=True)
+    log_thread.start()
+    
+    # Wait for broker and services to start
+    print(f"  → Waiting for services to start...")
+    time.sleep(3)
+    
+    # Check if broker is still running
+    if process.poll() is not None:
+        pytest.fail(f"Broker failed to start. Check logs at {log_file}")
+    
+    # Wait for access service to be ready
+    client = AccessClient()
+    if not client.wait_for_ready(timeout=15):
+        process.terminate()
+        process.wait()
+        pytest.fail(f"Access service failed to start within 15 seconds. Check logs at {log_file}")
+    
+    print(f"  ✓ Broker started successfully")
+    print(f"  ✓ Access service available on http://localhost:8080")
+    print(f"  ✓ All services spawned from config.json")
+    print(f"  ✓ Test logs: {log_file}")
+    
+    yield client
+    
+    # Cleanup
+    print(f"\n  → Shutting down broker and services...")
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+    
+    with open(log_file, 'a') as log:
+        log.write(f"\n{'=' * 60}\n")
+        log.write(f"Process stopped at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    print(f"  ✓ Broker shutdown complete")

@@ -9,7 +9,7 @@
         "id": "access",
         "command": "./access",
         "args": [],
-        "rpc": false,
+        "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
