@@ -1,4 +1,4 @@
-package proc
+package main
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
 // threadSafeBuffer wraps bytes.Buffer with a mutex for thread-safe access
@@ -363,7 +364,7 @@ func TestBroker_SendReceiveMessage(t *testing.T) {
 	broker := NewBroker()
 	defer broker.Shutdown()
 
-	msg, err := NewRequestMessage("req-1", map[string]string{"test": "data"})
+	msg, err := proc.NewRequestMessage("req-1", map[string]string{"test": "data"})
 	if err != nil {
 		t.Fatalf("NewRequestMessage failed: %v", err)
 	}
@@ -430,7 +431,7 @@ func TestBroker_ProcessExitEvent(t *testing.T) {
 		t.Fatalf("ReceiveMessage failed: %v", err)
 	}
 
-	if msg.Type != MessageTypeEvent {
+	if msg.Type != proc.MessageTypeEvent {
 		t.Errorf("Expected MessageTypeEvent, got %s", msg.Type)
 	}
 
@@ -490,7 +491,7 @@ func TestBroker_Shutdown_MessageChannel(t *testing.T) {
 	}
 
 	// Try to send a message after shutdown
-	msg, _ := NewRequestMessage("req-1", nil)
+	msg, _ := proc.NewRequestMessage("req-1", nil)
 	err = broker.SendMessage(msg)
 	if err == nil {
 		t.Error("Expected error when sending message after shutdown")
@@ -579,7 +580,7 @@ func TestBroker_GetMessageCount(t *testing.T) {
 	}
 
 	// Send a message
-	msg, _ := NewRequestMessage("req-1", nil)
+	msg, _ := proc.NewRequestMessage("req-1", nil)
 	err := broker.SendMessage(msg)
 	if err != nil {
 		t.Fatalf("SendMessage failed: %v", err)
@@ -626,10 +627,10 @@ func TestBroker_GetMessageStats(t *testing.T) {
 	}
 
 	// Send different types of messages
-	reqMsg, _ := NewRequestMessage("req-1", nil)
-	respMsg, _ := NewResponseMessage("resp-1", nil)
-	eventMsg, _ := NewEventMessage("event-1", nil)
-	errorMsg := NewErrorMessage("err-1", fmt.Errorf("test error"))
+	reqMsg, _ := proc.NewRequestMessage("req-1", nil)
+	respMsg, _ := proc.NewResponseMessage("resp-1", nil)
+	eventMsg, _ := proc.NewEventMessage("event-1", nil)
+	errorMsg := proc.NewErrorMessage("err-1", fmt.Errorf("test error"))
 
 	broker.SendMessage(reqMsg)
 	broker.SendMessage(respMsg)
@@ -698,7 +699,7 @@ func TestBroker_MessageStats_Timestamps(t *testing.T) {
 	defer broker.Shutdown()
 
 	// Send first message
-	msg1, _ := NewRequestMessage("req-1", nil)
+	msg1, _ := proc.NewRequestMessage("req-1", nil)
 	broker.SendMessage(msg1)
 
 	stats := broker.GetMessageStats()
@@ -714,7 +715,7 @@ func TestBroker_MessageStats_Timestamps(t *testing.T) {
 
 	// Wait a bit and send another message
 	time.Sleep(10 * time.Millisecond)
-	msg2, _ := NewRequestMessage("req-2", nil)
+	msg2, _ := proc.NewRequestMessage("req-2", nil)
 	broker.SendMessage(msg2)
 
 	stats = broker.GetMessageStats()
@@ -745,7 +746,7 @@ func TestBroker_MessageStats_ConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < messagesPerGoroutine; j++ {
-				msg, _ := NewRequestMessage(fmt.Sprintf("req-%d-%d", id, j), nil)
+				msg, _ := proc.NewRequestMessage(fmt.Sprintf("req-%d-%d", id, j), nil)
 				broker.SendMessage(msg)
 			}
 		}(i)

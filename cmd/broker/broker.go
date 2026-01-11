@@ -1,4 +1,4 @@
-package proc
+package main
 
 import (
 	"bufio"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
 // ProcessStatus represents the status of a subprocess
@@ -95,7 +96,7 @@ type MessageStats struct {
 // Broker manages subprocesses and message passing
 type Broker struct {
 	processes    map[string]*Process
-	messages     chan *Message
+	messages     chan *proc.Message
 	mu           sync.RWMutex
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -112,7 +113,7 @@ func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Broker{
 		processes:    make(map[string]*Process),
-		messages:     make(chan *Message, 100),
+		messages:     make(chan *proc.Message, 100),
 		ctx:          ctx,
 		cancel:       cancel,
 		logger:       common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
@@ -400,10 +401,10 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 }
 
 // readProcessMessages reads messages from a process's stdout and forwards them to the broker
-func (b *Broker) readProcessMessages(proc *Process) {
+func (b *Broker) readProcessMessages(p *Process) {
 	defer b.wg.Done()
 
-	scanner := bufio.NewScanner(proc.stdout)
+	scanner := bufio.NewScanner(p.stdout)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
@@ -411,9 +412,9 @@ func (b *Broker) readProcessMessages(proc *Process) {
 		}
 
 		// Parse the message
-		msg, err := Unmarshal([]byte(line))
+		msg, err := proc.Unmarshal([]byte(line))
 		if err != nil {
-			b.logger.Warn("Failed to parse message from process %s: %v", proc.info.ID, err)
+			b.logger.Warn("Failed to parse message from process %s: %v", p.info.ID, err)
 			continue
 		}
 
@@ -422,24 +423,24 @@ func (b *Broker) readProcessMessages(proc *Process) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		b.logger.Warn("Error reading from process %s: %v", proc.info.ID, err)
+		b.logger.Warn("Error reading from process %s: %v", p.info.ID, err)
 	}
 }
 
 // SendToProcess sends a message to a specific process via stdin
-func (b *Broker) SendToProcess(processID string, msg *Message) error {
+func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 	b.mu.RLock()
-	proc, exists := b.processes[processID]
+	p, exists := b.processes[processID]
 	b.mu.RUnlock()
 
 	if !exists {
 		return fmt.Errorf("process with id '%s' not found", processID)
 	}
 
-	proc.mu.RLock()
-	stdin := proc.stdin
-	status := proc.info.Status
-	proc.mu.RUnlock()
+	p.mu.RLock()
+	stdin := p.stdin
+	status := p.info.Status
+	p.mu.RUnlock()
 
 	if status != ProcessStatusRunning {
 		return fmt.Errorf("process '%s' is not running", processID)
@@ -456,8 +457,8 @@ func (b *Broker) SendToProcess(processID string, msg *Message) error {
 	}
 
 	// Write the message to the process's stdin
-	proc.mu.Lock()
-	defer proc.mu.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	if _, err := fmt.Fprintf(stdin, "%s\n", string(data)); err != nil {
 		return fmt.Errorf("failed to write message to process: %w", err)
@@ -468,67 +469,67 @@ func (b *Broker) SendToProcess(processID string, msg *Message) error {
 }
 
 // reapProcess waits for a process to complete and updates its status
-func (b *Broker) reapProcess(proc *Process) {
+func (b *Broker) reapProcess(p *Process) {
 	defer b.wg.Done()
-	defer close(proc.done)
+	defer close(p.done)
 
 	// Wait for the process to complete
-	err := proc.cmd.Wait()
+	err := p.cmd.Wait()
 
 	// Lock is acquired here and explicitly unlocked later (not deferred)
 	// because the restart logic requires early unlock to avoid deadlock
-	proc.mu.Lock()
+	p.mu.Lock()
 
-	proc.info.EndTime = time.Now()
-	proc.info.Status = ProcessStatusExited
+	p.info.EndTime = time.Now()
+	p.info.Status = ProcessStatusExited
 
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-				proc.info.ExitCode = status.ExitStatus()
+				p.info.ExitCode = status.ExitStatus()
 			} else {
-				proc.info.ExitCode = -1
+				p.info.ExitCode = -1
 			}
 		} else {
-			proc.info.ExitCode = -1
+			p.info.ExitCode = -1
 		}
 	} else {
-		proc.info.ExitCode = 0
+		p.info.ExitCode = 0
 	}
 
 	b.logger.Info("Process exited: id=%s pid=%d exit_code=%d",
-		proc.info.ID, proc.info.PID, proc.info.ExitCode)
+		p.info.ID, p.info.PID, p.info.ExitCode)
 
 	// Send event message about process exit
-	event, _ := NewEventMessage(proc.info.ID, map[string]interface{}{
+	event, _ := proc.NewEventMessage(p.info.ID, map[string]interface{}{
 		"event":     "process_exited",
-		"id":        proc.info.ID,
-		"pid":       proc.info.PID,
-		"exit_code": proc.info.ExitCode,
+		"id":        p.info.ID,
+		"pid":       p.info.PID,
+		"exit_code": p.info.ExitCode,
 	})
 	b.sendMessageInternal(event)
 
 	// Check if auto-restart is enabled
-	if proc.restartConfig != nil && proc.restartConfig.Enabled {
+	if p.restartConfig != nil && p.restartConfig.Enabled {
 		// Check if we've exceeded max restarts
-		if proc.restartConfig.MaxRestarts >= 0 && proc.restartConfig.RestartCount >= proc.restartConfig.MaxRestarts {
-			b.logger.Warn("Process %s exceeded max restarts (%d), not restarting", proc.info.ID, proc.restartConfig.MaxRestarts)
-			proc.mu.Unlock()
+		if p.restartConfig.MaxRestarts >= 0 && p.restartConfig.RestartCount >= p.restartConfig.MaxRestarts {
+			b.logger.Warn("Process %s exceeded max restarts (%d), not restarting", p.info.ID, p.restartConfig.MaxRestarts)
+			p.mu.Unlock()
 			return
 		}
 
 		// Increment restart count
-		proc.restartConfig.RestartCount++
+		p.restartConfig.RestartCount++
 
-		processID := proc.info.ID
-		command := proc.restartConfig.Command
-		args := proc.restartConfig.Args
-		isRPC := proc.restartConfig.IsRPC
-		maxRestarts := proc.restartConfig.MaxRestarts
-		restartCount := proc.restartConfig.RestartCount
+		processID := p.info.ID
+		command := p.restartConfig.Command
+		args := p.restartConfig.Args
+		isRPC := p.restartConfig.IsRPC
+		maxRestarts := p.restartConfig.MaxRestarts
+		restartCount := p.restartConfig.RestartCount
 
 		// Unlock before restarting
-		proc.mu.Unlock()
+		p.mu.Unlock()
 
 		b.logger.Info("Restarting process %s (attempt %d/%d)", processID, restartCount, maxRestarts)
 
@@ -565,7 +566,7 @@ func (b *Broker) reapProcess(proc *Process) {
 		return
 	}
 
-	proc.mu.Unlock()
+	p.mu.Unlock()
 }
 
 // Kill terminates a process by ID
@@ -642,7 +643,7 @@ func (b *Broker) ListProcesses() []*ProcessInfo {
 }
 
 // SendMessage sends a message to the broker's message channel
-func (b *Broker) SendMessage(msg *Message) (err error) {
+func (b *Broker) SendMessage(msg *proc.Message) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("broker message channel is closed")
@@ -660,7 +661,7 @@ func (b *Broker) SendMessage(msg *Message) (err error) {
 
 // sendMessageInternal sends a message internally (from broker processes) without error handling
 // This is used by readProcessMessages and reapProcess to avoid blocking
-func (b *Broker) sendMessageInternal(msg *Message) {
+func (b *Broker) sendMessageInternal(msg *proc.Message) {
 	select {
 	case b.messages <- msg:
 		b.updateStats(msg, true)
@@ -670,7 +671,7 @@ func (b *Broker) sendMessageInternal(msg *Message) {
 
 // ReceiveMessage receives a message from the broker's message channel
 // It blocks until a message is available or the context is cancelled
-func (b *Broker) ReceiveMessage(ctx context.Context) (*Message, error) {
+func (b *Broker) ReceiveMessage(ctx context.Context) (*proc.Message, error) {
 	select {
 	case msg := <-b.messages:
 		b.updateStats(msg, false)
@@ -683,7 +684,7 @@ func (b *Broker) ReceiveMessage(ctx context.Context) (*Message, error) {
 }
 
 // updateStats updates message statistics
-func (b *Broker) updateStats(msg *Message, isSent bool) {
+func (b *Broker) updateStats(msg *proc.Message, isSent bool) {
 	b.statsMu.Lock()
 	defer b.statsMu.Unlock()
 
@@ -704,13 +705,13 @@ func (b *Broker) updateStats(msg *Message, isSent bool) {
 
 	// Update type-specific counters
 	switch msg.Type {
-	case MessageTypeRequest:
+	case proc.MessageTypeRequest:
 		b.stats.RequestCount++
-	case MessageTypeResponse:
+	case proc.MessageTypeResponse:
 		b.stats.ResponseCount++
-	case MessageTypeEvent:
+	case proc.MessageTypeEvent:
 		b.stats.EventCount++
-	case MessageTypeError:
+	case proc.MessageTypeError:
 		b.stats.ErrorCount++
 	}
 }

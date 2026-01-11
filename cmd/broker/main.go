@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/proc"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -47,7 +46,7 @@ func main() {
 	common.SetLevel(common.InfoLevel)
 
 	// Create broker instance
-	broker := proc.NewBroker()
+	broker := NewBroker()
 	defer broker.Shutdown()
 
 	// Set up broker logger with dual output
@@ -101,7 +100,7 @@ func main() {
 }
 
 // createSpawnHandler creates a handler for RPCSpawn
-func createSpawnHandler(broker *proc.Broker) subprocess.Handler {
+func createSpawnHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -152,7 +151,7 @@ func createSpawnHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createSpawnRPCHandler creates a handler for RPCSpawnRPC
-func createSpawnRPCHandler(broker *proc.Broker) subprocess.Handler {
+func createSpawnRPCHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -203,7 +202,7 @@ func createSpawnRPCHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetProcessHandler creates a handler for RPCGetProcess
-func createGetProcessHandler(broker *proc.Broker) subprocess.Handler {
+func createGetProcessHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -250,7 +249,7 @@ func createGetProcessHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createListProcessesHandler creates a handler for RPCListProcesses
-func createListProcessesHandler(broker *proc.Broker) subprocess.Handler {
+func createListProcessesHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get all processes
 		processes := broker.ListProcesses()
@@ -288,7 +287,7 @@ func createListProcessesHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createKillHandler creates a handler for RPCKill
-func createKillHandler(broker *proc.Broker) subprocess.Handler {
+func createKillHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -332,7 +331,7 @@ func createKillHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetMessageCountHandler creates a handler for RPCGetMessageCount
-func createGetMessageCountHandler(broker *proc.Broker) subprocess.Handler {
+func createGetMessageCountHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get message count from broker
 		count := broker.GetMessageCount()
@@ -360,7 +359,7 @@ func createGetMessageCountHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetMessageStatsHandler creates a handler for RPCGetMessageStats
-func createGetMessageStatsHandler(broker *proc.Broker) subprocess.Handler {
+func createGetMessageStatsHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get message statistics from broker
 		stats := broker.GetMessageStats()
@@ -395,7 +394,7 @@ func createGetMessageStatsHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createRegisterEndpointHandler creates a handler for RPCRegisterEndpoint
-func createRegisterEndpointHandler(broker *proc.Broker) subprocess.Handler {
+func createRegisterEndpointHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -441,7 +440,7 @@ func createRegisterEndpointHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetEndpointsHandler creates a handler for RPCGetEndpoints
-func createGetEndpointsHandler(broker *proc.Broker) subprocess.Handler {
+func createGetEndpointsHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -483,7 +482,7 @@ func createGetEndpointsHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetAllEndpointsHandler creates a handler for RPCGetAllEndpoints
-func createGetAllEndpointsHandler(broker *proc.Broker) subprocess.Handler {
+func createGetAllEndpointsHandler(broker *Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get all endpoints
 		allEndpoints := broker.GetAllEndpoints()
