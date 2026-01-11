@@ -101,7 +101,7 @@ jobs:
       
       - name: Run benchmark tests
         run: |
-          pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-json=benchmark-results.json --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup=false --benchmark-disable-gc
+          pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-json=benchmark-results.json --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup=false --benchmark-warmup-iterations=0 --benchmark-disable-gc
       
       - name: Upload benchmark results
         if: always()

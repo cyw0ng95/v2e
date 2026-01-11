@@ -749,7 +749,7 @@ pytest tests/ -m "not slow"
 pytest tests/ -m slow --timeout=300
 
 # Run benchmark tests (fast, optimized for CI)
-pytest tests/ -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0
+pytest tests/ -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup-iterations=0
 
 # Run all benchmark tests (including slow ones)
 pytest tests/ -m benchmark --benchmark-only
@@ -920,7 +920,7 @@ pip install -r tests/requirements.txt
 pytest tests/ -v -m "not slow and not benchmark"
 
 # Benchmark tests (optimized like CI)
-pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0
+pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup-iterations=0
 
 # Slow tests (optional)
 pytest tests/ -v -m slow --timeout=300
