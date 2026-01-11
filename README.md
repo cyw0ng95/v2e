@@ -28,18 +28,31 @@ And packages:
 
 ### Deployment Model
 
-This project follows a **broker-mediated architecture** for RPC-based subprocess services:
+This project follows a **broker-first architecture** with strict subprocess isolation:
 
-1. **Users run the broker** with a configuration file (`config.json`)
-2. **The broker spawns all subprocess services** as defined in the configuration
-3. **All services communicate via RPC messages** routed through the broker
-4. **Subprocesses only accept input from the broker** via pipes
+1. **Broker is the entry point**: Users run `broker` with `config.json` as the first argument
+2. **Broker spawns all subprocesses**: Includes access (REST API), cve-remote, cve-local, cve-meta
+3. **External users access via REST**: HTTP requests to access service (http://localhost:8080/restful/*)
+4. **Access forwards to broker**: Converts REST → RPC messages sent to broker (future implementation)
+5. **Broker routes to services**: Routes RPC messages to appropriate backend subprocess
+6. **No direct subprocess access**: External users cannot directly communicate with backend services
+
+**Deployment Flow:**
+
+```
+User runs:    broker config.json
+              ↓
+Broker spawns: access, cve-remote, cve-local, cve-meta
+              ↓
+External user → REST API (access) → Broker → Backend Services
+```
 
 This architecture provides:
 - **Process isolation**: Services cannot directly access each other
 - **Message routing**: Broker controls all inter-process communication
 - **Security**: Single point of control for spawning and managing processes
 - **Monitoring**: Centralized message statistics and process management
+- **No direct RPC**: External users cannot bypass access service to reach backends
 
 ### Security Principles
 
@@ -200,116 +213,115 @@ The `config.json` file defines which services to start:
 
 ### Access (RESTful API Service)
 
-The Access service is the central entry point for external requests to the v2e system. It provides a RESTful API server using the Gin framework and acts as a gateway to the broker and all backend services.
+The Access service is the external entry point for the v2e system. It provides a RESTful API server that external users interact with. The access service is spawned by the broker as a subprocess and communicates with the broker via RPC to fulfill requests.
+
+**Deployment Model:**
+
+In the correct v2e architecture:
+
+1. **Broker is the entry point**: Run broker with `config.json` as the first argument
+2. **Broker spawns all subprocesses**: Including access, cve-remote, cve-local, cve-meta
+3. **Access provides REST API**: External interface for the system
+4. **Access forwards to broker**: Converts REST requests to RPC messages sent to broker
+5. **Broker routes messages**: Routes RPC requests to appropriate backend services
 
 **Key Features:**
-- Single interface for all external system interactions
+- Single REST interface for external system interactions
 - RESTful API schema under `/restful/` prefix
-- Process management through HTTP endpoints
-- RPC forwarding to backend services via broker
+- Runs as a subprocess spawned by the broker
 - Configurable listen address (default: `0.0.0.0:8080`)
 
-**Running the Service:**
+**Running the System:**
 
 ```bash
-# Run with configuration from config.json
-go run ./cmd/broker config.jsom
+# Run broker with configuration
+go run ./cmd/broker config.json
 
-# The service will:
+# The broker will:
 # 1. Load configuration from config.json
-# 2. Boot all subproesses including access
-# 3. Serve RESTful API endpoints
+# 2. Spawn all configured subprocesses including access
+# 3. Access service starts REST API server
+# 4. Backend CVE services are spawned and ready
 ```
 
 **Configuration:**
 
-The access service is configured via `config.json`:
+The access service is configured in `config.json`:
+
+```json
+{
+  "server": {
+    "address": "0.0.0.0:8080"
+  },
+  "broker": {
+    "logs_dir": "logs",
+    "processes": [
+      {
+        "id": "access",
+        "command": "go",
+        "args": ["run", "./cmd/access"],
+        "rpc": false,
+        "restart": true
+      },
+      {
+        "id": "cve-remote",
+        "command": "go",
+        "args": ["run", "./cmd/cve-remote"],
+        "rpc": true,
+        "restart": true
+      }
+    ]
+  }
+}
+```
 
 **Available RESTful Endpoints:**
 
-*Health & Status:*
+*Currently Implemented:*
 - `GET /restful/health` - Health check endpoint
   ```bash
   curl http://localhost:8080/restful/health
   # Response: {"status":"ok"}
   ```
 
-- `GET /restful/stats` - Get broker message statistics
-  ```bash
-  curl http://localhost:8080/restful/stats
-  # Response: {"total_sent":10,"total_received":5,...}
-  ```
+*Future Implementation (requires RPC forwarding):*
 
-*Process Management:*
-- `GET /restful/processes` - List all managed processes
-  ```bash
-  curl http://localhost:8080/restful/processes
-  # Response: {"processes":[...],"count":2}
-  ```
+The following endpoints require implementing RPC message correlation and forwarding between access service and broker:
 
-- `GET /restful/processes/:id` - Get details of a specific process
-  ```bash
-  curl http://localhost:8080/restful/processes/cve-remote
-  # Response: {"id":"cve-remote","pid":12345,"command":"go","status":"running"}
-  ```
-
-- `POST /restful/processes` - Spawn a new process
-  ```bash
-  curl -X POST http://localhost:8080/restful/processes \
-    -H "Content-Type: application/json" \
-    -d '{"id":"my-service","command":"echo","args":["hello"],"rpc":false}'
-  # Response: {"id":"my-service","pid":12346,"command":"echo","status":"running"}
-  ```
-
-- `DELETE /restful/processes/:id` - Kill a process
-  ```bash
-  curl -X DELETE http://localhost:8080/restful/processes/my-service
-  # Response: {"success":true,"id":"my-service"}
-  ```
-
-*RPC Forwarding:*
-- `POST /restful/rpc/:process_id/:endpoint` - Forward RPC request to a backend process
-  ```bash
-  # Example: Get CVE count from cve-remote service
-  curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVECnt \
-    -H "Content-Type: application/json" \
-    -d '{}'
-  # Response: {"total_count":250000}
-  
-  # Example: Fetch CVE by ID
-  curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVEByID \
-    -H "Content-Type: application/json" \
-    -d '{"cve_id":"CVE-2021-44228"}'
-  # Response: CVE data object
-  ```
+- `GET /restful/stats` - Get broker message statistics (via RPC to broker)
+- `GET /restful/processes` - List all managed processes (via RPC to broker)
+- `GET /restful/processes/:id` - Get process details (via RPC to broker)
+- `POST /restful/rpc/:process_id/:endpoint` - Forward RPC to backend services
 
 **Architecture:**
 
-The Access service acts as a unified gateway:
+The Access service acts as a REST-to-RPC gateway:
 
 ```
-External Clients → Access (REST API)
-                    ↓
-                  Broker
-                    ↓
-        ┌──────────┼──────────┐
-        ↓          ↓          ↓
-    cve-local  cve-remote  cve-meta
+External Clients → Access (REST API) → Broker (RPC Router)
+                                         ↓
+                             ┌──────────┼──────────┐
+                             ↓          ↓          ↓
+                         cve-local  cve-remote  cve-meta
 ```
 
 All external requests are handled by the Access service, which:
 1. Receives HTTP requests on RESTful endpoints
-2. Translates them to RPC messages transferrd via broker
-3. broker forwads messages to the appropriate backend service
-4. Returns responses from backend services as JSON
+2. Translates them to RPC messages (future implementation)
+3. Sends RPC messages to broker via subprocess communication
+4. Broker forwards messages to the appropriate backend service
+5. Returns responses from backend services as JSON (via broker)
 
 **Security:**
 
 The Access service provides a controlled interface to the system:
 - Single point of entry for external requests
-- All backend services are isolated and only accessible via the broker
-- Process management endpoints allow controlled spawning and termination
-- RPC forwarding ensures messages are properly routed through the broker
+- All backend services are isolated and only accessible via broker
+- Access service is spawned by broker (not standalone)
+- No direct RPC access to backend services from external clients
+- All communication routes through broker's secure message passing
+
+**Note:** Full RPC forwarding implementation is future work. Currently, only health check endpoint is implemented.
 
 ### Broker Manual RPC Commands (Testing/Development)
 

@@ -83,4 +83,10 @@ htmlcov/
 
 # Integration test logs
 logs/
-access
+
+# Binaries (not source directories)
+/access
+/broker
+/cve-local
+/cve-remote
+/cve-meta
