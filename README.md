@@ -9,7 +9,6 @@ This project contains multiple commands:
 - `cmd/access` - RESTful API service using Gin framework
 - `cmd/broker` - RPC service for managing subprocesses and process lifecycle
 - `cmd/broker-stats` - RPC service for accessing broker message statistics
-- `cmd/worker` - Example subprocess using the subprocess framework
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
 - `cmd/cve-meta` - Backend RPC service that orchestrates CVE fetching and storage operations
@@ -36,7 +35,6 @@ To build all commands:
 go build ./cmd/access
 go build ./cmd/broker
 go build ./cmd/broker-stats
-go build ./cmd/worker
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
 go build ./cmd/cve-meta
@@ -48,7 +46,6 @@ Or build a specific command:
 go build -o bin/access ./cmd/access
 go build -o bin/broker ./cmd/broker
 go build -o bin/broker-stats ./cmd/broker-stats
-go build -o bin/worker ./cmd/worker
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
 go build -o bin/cve-meta ./cmd/cve-meta
@@ -131,23 +128,6 @@ echo '{"type":"request","id":"RPCKill","payload":{"id":"my-echo"}}' | go run ./c
 ```
 
 This service can be spawned by a broker to provide remote access to process management via RPC.
-
-### Worker
-
-The worker is an example subprocess that demonstrates the `pkg/proc/subprocess` framework:
-
-```bash
-# Run the worker (it reads messages from stdin and writes to stdout)
-go run ./cmd/worker
-
-# Example: Send a ping message
-echo '{"type":"request","id":"ping"}' | go run ./cmd/worker
-
-# Example: Send an echo request
-echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}' | go run ./cmd/worker
-```
-
-The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
 
 ### Broker Stats (RPC Service)
 
