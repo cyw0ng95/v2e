@@ -116,9 +116,61 @@ echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/
 - `RPCListProcesses` - Lists all managed processes
 - `RPCKill` - Terminates a process by ID
 
+*RPC Endpoint Management:*
+- `RPCRegisterEndpoint` - Registers an RPC endpoint for a process
+- `RPCGetEndpoints` - Gets all registered RPC endpoints for a specific process
+- `RPCGetAllEndpoints` - Gets all registered RPC endpoints for all processes
+
 *Message Statistics:*
 - `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
 - `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
+
+**Configuration File Support:**
+
+The broker can load process configurations from `config.json`:
+
+```json
+{
+  "broker": {
+    "log_file": "broker.log",
+    "processes": [
+      {
+        "id": "cve-remote",
+        "command": "go",
+        "args": ["run", "./cmd/cve-remote"],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      }
+    ]
+  }
+}
+```
+
+Configuration options:
+- `log_file` - Path to log file (logs will be written to both stdout and file)
+- `processes` - Array of processes to automatically start
+  - `id` - Unique process identifier
+  - `command` - Command to execute
+  - `args` - Command arguments
+  - `rpc` - Whether to enable RPC communication (stdin/stdout pipes)
+  - `restart` - Whether to automatically restart on exit
+  - `max_restarts` - Maximum restart attempts (-1 for unlimited)
+
+**Auto-Restart Feature:**
+
+Processes can be configured to automatically restart on exit:
+
+```bash
+# Spawn a process with auto-restart (max 3 restarts)
+echo '{"type":"request","id":"RPCSpawn","payload":{"id":"my-worker","command":"./worker","args":[],"restart":true,"max_restarts":3}}' | go run ./cmd/broker
+```
+
+The broker will monitor process exits and restart them automatically according to the configuration.
+
+**Dual Logging:**
+
+When a log file is configured, the broker writes logs to both stdout and the specified file simultaneously, ensuring that log messages are visible in real-time while also being persisted to disk.
 
 **Request Format for RPCSpawn:**
 ```json
