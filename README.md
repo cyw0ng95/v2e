@@ -29,7 +29,7 @@ And packages:
 
 ### Deployment Model
 
-This project follows a **broker-mediated architecture** where the broker is the central entry point:
+This project follows a **broker-mediated architecture** for RPC-based subprocess services:
 
 1. **Users run the broker** with a configuration file (`config.json`)
 2. **The broker spawns all subprocess services** as defined in the configuration
@@ -42,11 +42,13 @@ This architecture provides:
 - **Security**: Single point of control for spawning and managing processes
 - **Monitoring**: Centralized message statistics and process management
 
+**Note:** The `cmd/access` service is a standalone REST API server (not a subprocess service) and follows a different architecture pattern. It accepts HTTP requests directly and does not participate in the broker-mediated RPC communication. All other services (broker, cve-local, cve-remote, cve-meta) follow the secure RPC-only pattern described below.
+
 ### Security Principles
 
-#### RPC-Only Communication
+#### RPC-Only Communication (for Subprocess Services)
 
-All inter-process communication MUST use RPC messages in JSON format:
+All inter-process communication between subprocess services MUST use RPC messages in JSON format:
 
 ```json
 {
@@ -56,10 +58,10 @@ All inter-process communication MUST use RPC messages in JSON format:
 }
 ```
 
-Messages are exchanged via stdin/stdout pipes, never through:
-- Network sockets (except for the Access service which is a separate API server)
-- Files or shared memory
-- Direct subprocess communication
+Messages are exchanged via stdin/stdout pipes between subprocess services. Subprocess services never use:
+- Network sockets for inter-process communication
+- Files or shared memory for commands
+- Direct subprocess-to-subprocess communication
 
 #### Broker-Mediated Message Routing
 
@@ -464,7 +466,7 @@ This demonstrates the broker-mediated RPC communication pattern where:
 - Batch jobs can be executed efficiently
 - Services are isolated and cannot accept external input
 
-**Security Note:** The cve-meta service spawns its own broker internally to manage cve-local and cve-remote subprocesses. This demonstrates nested broker architecture where each level maintains process isolation and RPC-only communication.
+**Security Note:** The cve-meta service spawns its own broker internally to manage cve-local and cve-remote subprocesses. This demonstrates how services can act as orchestrators by creating their own broker instance while still maintaining process isolation and RPC-only communication within their subprocess tree.
 
 ## Development
 
