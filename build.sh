@@ -164,11 +164,8 @@ build_and_package() {
         if [ "$VERBOSE" = true ]; then
             echo "Copying assets to package..."
         fi
-        if [ -f "config.json.example" ]; then
-            cp config.json.example "$PACKAGE_DIR/"
-        fi
-        if [ -f "README.md" ]; then
-            cp README.md "$PACKAGE_DIR/"
+        if [ -f "config.json" ]; then
+            cp config.json "$PACKAGE_DIR/"
         fi
         
         echo "Package created successfully in: $PACKAGE_DIR"

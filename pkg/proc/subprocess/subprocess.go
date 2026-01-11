@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // MessageType represents the type of message being sent
@@ -281,4 +282,36 @@ func UnmarshalPayload(msg *Message, v interface{}) error {
 		return fmt.Errorf("no payload to unmarshal")
 	}
 	return sonic.Unmarshal(msg.Payload, v)
+}
+
+// SetupLogging sets up logging for a subprocess based on environment variables
+// It looks for SUBPROCESS_LOG_PATH environment variable to determine the log file path
+// If not set, it logs to stdout only
+func SetupLogging(processID string) error {
+	// Get log path from environment
+	logPath := os.Getenv("SUBPROCESS_LOG_PATH")
+	
+	if logPath == "" {
+		// No log file specified, use stdout only
+		common.SetLevel(common.InfoLevel)
+		common.SetOutput(os.Stdout)
+		return nil
+	}
+	
+	// Create or open the log file
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open log file %s: %w", logPath, err)
+	}
+	
+	// Create a multi-writer that writes to both stdout and file
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	
+	// Set up the default logger
+	common.SetLevel(common.InfoLevel)
+	common.SetOutput(multiWriter)
+	
+	common.Info("Subprocess %s logging to %s", processID, logPath)
+	
+	return nil
 }

@@ -60,6 +60,8 @@ type ProcessConfig struct {
 	Restart bool `json:"restart,omitempty"`
 	// MaxRestarts is the maximum number of restart attempts (-1 for unlimited)
 	MaxRestarts int `json:"max_restarts,omitempty"`
+	// LogPath is the path to the log file for this process
+	LogPath string `json:"log_path,omitempty"`
 }
 
 // AuthenticationConfig holds authentication settings for RPC endpoints
