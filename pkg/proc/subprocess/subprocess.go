@@ -9,12 +9,16 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 )
+
+// RPCPrefix is the prefix used to identify RPC handler methods
+const RPCPrefix = "RPC"
 
 // MessageType represents the type of message being sent
 type MessageType string

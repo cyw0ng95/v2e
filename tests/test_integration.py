@@ -17,6 +17,10 @@ import pytest
 import time
 
 
+# Test constants
+REQUEST_DELAY_SECONDS = 0.1  # Delay between sequential test requests
+
+
 @pytest.mark.integration
 class TestBrokerDeployment:
     """Integration tests for broker-first deployment model."""
@@ -55,7 +59,7 @@ class TestBrokerDeployment:
             
             # Small delay between requests
             if i < 4:
-                time.sleep(0.1)
+                time.sleep(REQUEST_DELAY_SECONDS)
     
     def test_broker_spawns_access_service(self, access_service):
         """Test that broker properly spawns and manages access service.
@@ -176,7 +180,7 @@ class TestBrokerMessageStats:
             assert "payload" in response2
             
             if i < 2:
-                time.sleep(0.1)
+                time.sleep(REQUEST_DELAY_SECONDS)
     
     def test_rpc_unknown_method(self, access_service):
         """Test generic RPC endpoint handles unknown methods correctly.
@@ -293,9 +297,12 @@ class TestCVEMetaRPC:
         """
         access = access_service
         
+        # Test CVE IDs to use (stub service will return the same structure for any ID)
+        test_cve_ids = ["CVE-2021-44228", "CVE-2022-12345", "CVE-2023-00001"]
+        
         # Make multiple calls to RPCGetCVE
-        for i in range(3):
-            response = access.get_cve(f"CVE-2021-{44228 + i}")
+        for i, cve_id in enumerate(test_cve_ids):
+            response = access.get_cve(cve_id)
             
             # Verify standardized response structure
             assert "retcode" in response
@@ -305,8 +312,8 @@ class TestCVEMetaRPC:
             # Verify success
             assert response["retcode"] == 0
             
-            if i < 2:
-                time.sleep(0.1)
+            if i < len(test_cve_ids) - 1:
+                time.sleep(REQUEST_DELAY_SECONDS)
 
 
 # TODO: Additional integration tests for CVE functionality will be added
