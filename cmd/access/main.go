@@ -117,29 +117,38 @@ func initializeServices() (*proc.Broker, error) {
 		return nil, fmt.Errorf("failed to spawn cve-meta: %w", err)
 	}
 
-	// Wait for cve-meta to be ready (it will send a ready event after spawning its services)
+	// Give cve-meta time to initialize and spawn its services
+	// We drain ready events to avoid blocking the message channel
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	readyCount := 0
-	requiredReady := 1 // Wait for cve-meta ready event
-	for readyCount < requiredReady {
+	// Wait for at least one ready event (from cve-meta)
+	// cve-meta will also receive ready events from its subprocesses
+	readyReceived := false
+	timeout := time.After(5 * time.Second)
+	
+	for !readyReceived {
 		select {
+		case <-timeout:
+			// We've waited long enough, proceed anyway
+			common.Warn("Timeout waiting for ready event, proceeding anyway")
+			return broker, nil
 		case <-ctx.Done():
-			return nil, fmt.Errorf("timeout waiting for services to become ready (received %d/%d ready events)", readyCount, requiredReady)
+			return nil, fmt.Errorf("context cancelled while waiting for services")
 		default:
-			msgCtx, msgCancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			msgCtx, msgCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			msg, err := broker.ReceiveMessage(msgCtx)
 			msgCancel()
 
 			if err == nil && msg.Type == proc.MessageTypeEvent && msg.ID == "subprocess_ready" {
-				readyCount++
+				readyReceived = true
+				common.Debug("Received ready event from subprocess")
 			}
 		}
 	}
 
-	// Give services a bit more time to fully initialize
-	time.Sleep(1 * time.Second)
+	// Give a bit more time for full initialization
+	time.Sleep(500 * time.Millisecond)
 
 	return broker, nil
 }

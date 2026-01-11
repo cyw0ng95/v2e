@@ -1,12 +1,21 @@
 {
   "server": {
-    "host": "localhost",
-    "port": 8080
+    "address": "0.0.0.0:8080"
   },
-  "database": {
-    "path": "./data/v2e.db"
+  "client": {
+    "url": "http://localhost:8080"
   },
-  "logging": {
-    "level": "info"
+  "broker": {
+    "log_file": "broker.log",
+    "processes": [
+      {
+        "id": "cve-meta",
+        "command": "go",
+        "args": ["run", "./cmd/cve-meta"],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      }
+    ]
   }
 }

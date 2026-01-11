@@ -1,6 +1,6 @@
 {
   "server": {
-    "address": ":8080"
+    "address": "0.0.0.0:8080"
   },
   "client": {
     "url": "http://localhost:8080"
@@ -9,17 +9,9 @@
     "log_file": "broker.log",
     "processes": [
       {
-        "id": "cve-remote",
+        "id": "cve-meta",
         "command": "go",
-        "args": ["run", "./cmd/cve-remote"],
-        "rpc": true,
-        "restart": true,
-        "max_restarts": -1
-      },
-      {
-        "id": "cve-local",
-        "command": "go",
-        "args": ["run", "./cmd/cve-local"],
+        "args": ["run", "./cmd/cve-meta"],
         "rpc": true,
         "restart": true,
         "max_restarts": -1

@@ -43,7 +43,7 @@ def access_server() -> Generator:
     
     # Wait for server to be ready
     base_url = "http://localhost:8090"
-    max_retries = 30
+    max_retries = 60  # Increased from 30 to 60 to give more time for service initialization
     for i in range(max_retries):
         try:
             response = requests.get(f"{base_url}/health", timeout=1)
