@@ -41,6 +41,12 @@ type Message struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 	// Error contains error information if Type is MessageTypeError
 	Error string `json:"error,omitempty"`
+	// Source is the process ID of the message sender (for routing)
+	Source string `json:"source,omitempty"`
+	// Target is the process ID of the message recipient (for routing)
+	Target string `json:"target,omitempty"`
+	// CorrelationID is used to match responses to requests
+	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
 // Handler is a function that handles incoming messages
@@ -335,11 +341,17 @@ func SetupLogging(processID string) (*common.Logger, error) {
 	// Create log file path
 	logFile := filepath.Join(logsDir, fmt.Sprintf("%s.log", processID))
 
-	// Create logger with file output
-	logger, err := common.NewLoggerWithFile(logFile, fmt.Sprintf("[%s] ", processID), logLevel)
+	// Open log file
+	file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create logger: %w", err)
+		return nil, fmt.Errorf("failed to open log file: %w", err)
 	}
+
+	// For RPC subprocesses, log to stderr and file (not stdout, since stdout is used for RPC messages)
+	multiWriter := io.MultiWriter(os.Stderr, file)
+
+	// Create logger with the multi-writer
+	logger := common.NewLogger(multiWriter, fmt.Sprintf("[%s] ", processID), logLevel)
 
 	return logger, nil
 }

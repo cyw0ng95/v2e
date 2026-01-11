@@ -62,11 +62,14 @@ func TestLogger_Debug(t *testing.T) {
 	logger.Debug("test debug message")
 	output := buf.String()
 
-	if !strings.Contains(output, `"level":"debug"`) {
-		t.Errorf("Expected output to contain JSON level field with debug, got: %s", output)
+	if !strings.Contains(output, "[DEBUG]") {
+		t.Errorf("Expected output to contain [DEBUG], got: %s", output)
 	}
 	if !strings.Contains(output, "test debug message") {
 		t.Errorf("Expected output to contain 'test debug message', got: %s", output)
+	}
+	if !strings.Contains(output, "[main]") {
+		t.Errorf("Expected output to contain [main] entity, got: %s", output)
 	}
 }
 
@@ -77,8 +80,8 @@ func TestLogger_Info(t *testing.T) {
 	logger.Info("test info message")
 	output := buf.String()
 
-	if !strings.Contains(output, `"level":"info"`) {
-		t.Errorf("Expected output to contain JSON level field with info, got: %s", output)
+	if !strings.Contains(output, "[INFO]") {
+		t.Errorf("Expected output to contain [INFO], got: %s", output)
 	}
 	if !strings.Contains(output, "test info message") {
 		t.Errorf("Expected output to contain 'test info message', got: %s", output)
@@ -92,8 +95,8 @@ func TestLogger_Warn(t *testing.T) {
 	logger.Warn("test warn message")
 	output := buf.String()
 
-	if !strings.Contains(output, `"level":"warn"`) {
-		t.Errorf("Expected output to contain JSON level field with warn, got: %s", output)
+	if !strings.Contains(output, "[WARN]") {
+		t.Errorf("Expected output to contain [WARN], got: %s", output)
 	}
 	if !strings.Contains(output, "test warn message") {
 		t.Errorf("Expected output to contain 'test warn message', got: %s", output)
@@ -107,8 +110,8 @@ func TestLogger_Error(t *testing.T) {
 	logger.Error("test error message")
 	output := buf.String()
 
-	if !strings.Contains(output, `"level":"error"`) {
-		t.Errorf("Expected output to contain JSON level field with error, got: %s", output)
+	if !strings.Contains(output, "[ERROR]") {
+		t.Errorf("Expected output to contain [ERROR], got: %s", output)
 	}
 	if !strings.Contains(output, "test error message") {
 		t.Errorf("Expected output to contain 'test error message', got: %s", output)
@@ -211,8 +214,8 @@ func TestDefaultLogger(t *testing.T) {
 	Info("test default logger")
 	output := buf.String()
 
-	if !strings.Contains(output, `"level":"info"`) {
-		t.Errorf("Expected output to contain JSON level field with info, got: %s", output)
+	if !strings.Contains(output, "[INFO]") {
+		t.Errorf("Expected output to contain [INFO], got: %s", output)
 	}
 	if !strings.Contains(output, "test default logger") {
 		t.Errorf("Expected output to contain 'test default logger', got: %s", output)
@@ -232,10 +235,10 @@ func TestDefaultLogger_AllLevels(t *testing.T) {
 	output := buf.String()
 
 	expectedMessages := []string{
-		`"level":"debug"`,
-		`"level":"info"`,
-		`"level":"warn"`,
-		`"level":"error"`,
+		"[DEBUG]",
+		"[INFO]",
+		"[WARN]",
+		"[ERROR]",
 		"debug message",
 		"info message",
 		"warn message",

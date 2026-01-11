@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -39,6 +41,32 @@ func (l LogLevel) String() string {
 	}
 }
 
+// CustomFormatter is a custom writer that formats logs as [Timestamp][Level][Entity] Message
+type CustomFormatter struct {
+	Out    io.Writer
+	Prefix string
+}
+
+// Write formats the log output
+func (f *CustomFormatter) Write(p []byte) (n int, err error) {
+	// Parse the JSON from zerolog and reformat it
+	// For simplicity, we'll just format directly in the logger methods
+	return f.Out.Write(p)
+}
+
+// WriteLevel formats and writes a log message
+func (f *CustomFormatter) WriteLevel(level, message string) {
+	timestamp := time.Now().Format("2006-01-02 15:04:05.000")
+	entity := f.Prefix
+	if entity == "" {
+		entity = "[main]"
+	} else {
+		// Remove brackets and spaces, convert to lowercase
+		entity = "[" + strings.ToLower(strings.Trim(entity, "[] ")) + "]"
+	}
+	fmt.Fprintf(f.Out, "[%s][%s]%s %s\n", timestamp, level, entity, message)
+}
+
 // toZerologLevel converts our LogLevel to zerolog.Level
 func (l LogLevel) toZerologLevel() zerolog.Level {
 	switch l {
@@ -57,11 +85,11 @@ func (l LogLevel) toZerologLevel() zerolog.Level {
 
 // Logger represents a logger instance
 type Logger struct {
-	mu     sync.Mutex
-	level  LogLevel
-	logger zerolog.Logger
-	output io.Writer
-	prefix string
+	mu        sync.Mutex
+	level     LogLevel
+	output    io.Writer
+	prefix    string
+	formatter *CustomFormatter
 }
 
 // defaultLogger is the default logger instance
@@ -75,17 +103,13 @@ func init() {
 
 // NewLogger creates a new Logger instance
 func NewLogger(out io.Writer, prefix string, level LogLevel) *Logger {
-	zlog := zerolog.New(out).With().Timestamp().Logger()
-	if prefix != "" {
-		zlog = zlog.With().Str("prefix", prefix).Logger()
-	}
 	zerolog.SetGlobalLevel(level.toZerologLevel())
 	
 	return &Logger{
-		level:  level,
-		logger: zlog,
-		output: out,
-		prefix: prefix,
+		level:     level,
+		output:    out,
+		prefix:    prefix,
+		formatter: &CustomFormatter{Out: out, Prefix: prefix},
 	}
 }
 
@@ -100,17 +124,13 @@ func NewLoggerWithFile(filename, prefix string, level LogLevel) (*Logger, error)
 	// Create a multi-writer that writes to both stdout and file
 	multiWriter := io.MultiWriter(os.Stdout, file)
 
-	zlog := zerolog.New(multiWriter).With().Timestamp().Logger()
-	if prefix != "" {
-		zlog = zlog.With().Str("prefix", prefix).Logger()
-	}
 	zerolog.SetGlobalLevel(level.toZerologLevel())
 
 	return &Logger{
-		level:  level,
-		logger: zlog,
-		output: multiWriter,
-		prefix: prefix,
+		level:     level,
+		output:    multiWriter,
+		prefix:    prefix,
+		formatter: &CustomFormatter{Out: multiWriter, Prefix: prefix},
 	}, nil
 }
 
@@ -134,10 +154,7 @@ func (l *Logger) SetOutput(w io.Writer) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.output = w
-	l.logger = zerolog.New(w).With().Timestamp().Logger()
-	if l.prefix != "" {
-		l.logger = l.logger.With().Str("prefix", l.prefix).Logger()
-	}
+	l.formatter = &CustomFormatter{Out: w, Prefix: l.prefix}
 }
 
 // Debug logs a debug message
@@ -145,7 +162,8 @@ func (l *Logger) Debug(format string, v ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.level <= DebugLevel {
-		l.logger.Debug().Msgf(format, v...)
+		message := fmt.Sprintf(format, v...)
+		l.formatter.WriteLevel("DEBUG", message)
 	}
 }
 
@@ -154,7 +172,8 @@ func (l *Logger) Info(format string, v ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.level <= InfoLevel {
-		l.logger.Info().Msgf(format, v...)
+		message := fmt.Sprintf(format, v...)
+		l.formatter.WriteLevel("INFO", message)
 	}
 }
 
@@ -163,7 +182,8 @@ func (l *Logger) Warn(format string, v ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.level <= WarnLevel {
-		l.logger.Warn().Msgf(format, v...)
+		message := fmt.Sprintf(format, v...)
+		l.formatter.WriteLevel("WARN", message)
 	}
 }
 
@@ -171,14 +191,17 @@ func (l *Logger) Warn(format string, v ...interface{}) {
 func (l *Logger) Error(format string, v ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.logger.Error().Msgf(format, v...)
+	message := fmt.Sprintf(format, v...)
+	l.formatter.WriteLevel("ERROR", message)
 }
 
 // Fatal logs an error message and exits the program
 func (l *Logger) Fatal(format string, v ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.logger.Fatal().Msgf(format, v...)
+	message := fmt.Sprintf(format, v...)
+	l.formatter.WriteLevel("ERROR", message)
+	os.Exit(1)
 }
 
 // Default logger functions

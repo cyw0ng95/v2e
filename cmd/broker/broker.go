@@ -7,6 +7,7 @@ import (
 	"io"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -93,31 +94,46 @@ type MessageStats struct {
 	LastMessageTime time.Time
 }
 
+// PendingRequest represents a pending request awaiting a response
+type PendingRequest struct {
+	// SourceProcess is the process ID that sent the request
+	SourceProcess string
+	// ResponseChan is the channel to send the response back
+	ResponseChan chan *proc.Message
+	// Timestamp is when the request was made
+	Timestamp time.Time
+}
+
 // Broker manages subprocesses and message passing
 type Broker struct {
-	processes    map[string]*Process
-	messages     chan *proc.Message
-	mu           sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
-	logger       *common.Logger
-	stats        MessageStats
-	statsMu      sync.RWMutex
-	rpcEndpoints map[string][]string // processID -> list of RPC endpoints
-	endpointsMu  sync.RWMutex
+	processes       map[string]*Process
+	messages        chan *proc.Message
+	mu              sync.RWMutex
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
+	logger          *common.Logger
+	stats           MessageStats
+	statsMu         sync.RWMutex
+	rpcEndpoints    map[string][]string // processID -> list of RPC endpoints
+	endpointsMu     sync.RWMutex
+	pendingRequests map[string]*PendingRequest // correlationID -> PendingRequest
+	pendingMu       sync.RWMutex
+	correlationSeq  uint64 // Atomic counter for generating correlation IDs
 }
 
 // NewBroker creates a new Broker instance
 func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Broker{
-		processes:    make(map[string]*Process),
-		messages:     make(chan *proc.Message, 100),
-		ctx:          ctx,
-		cancel:       cancel,
-		logger:       common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
-		rpcEndpoints: make(map[string][]string),
+		processes:       make(map[string]*Process),
+		messages:        make(chan *proc.Message, 100),
+		ctx:             ctx,
+		cancel:          cancel,
+		logger:          common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		rpcEndpoints:    make(map[string][]string),
+		pendingRequests: make(map[string]*PendingRequest),
+		correlationSeq:  0,
 	}
 }
 
@@ -418,8 +434,10 @@ func (b *Broker) readProcessMessages(p *Process) {
 			continue
 		}
 
-		// Forward the message to the broker's message channel
-		b.sendMessageInternal(msg)
+		// Route the message based on its target
+		if err := b.RouteMessage(msg, p.info.ID); err != nil {
+			b.logger.Warn("Failed to route message from process %s: %v", p.info.ID, err)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -820,6 +838,106 @@ func (b *Broker) GetAllEndpoints() map[string][]string {
 		result[processID] = endpointsCopy
 	}
 	return result
+}
+
+// GenerateCorrelationID generates a unique correlation ID for request-response matching
+func (b *Broker) GenerateCorrelationID() string {
+	seq := atomic.AddUint64(&b.correlationSeq, 1)
+	return fmt.Sprintf("corr-%d-%d", time.Now().UnixNano(), seq)
+}
+
+// RouteMessage routes a message to its target process or handles it locally
+func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
+	// Set source if not already set
+	if msg.Source == "" {
+		msg.Source = sourceProcess
+	}
+
+	// If message has a target, route it to that process
+	if msg.Target != "" {
+		b.logger.Debug("Routing message from %s to %s: type=%s id=%s", msg.Source, msg.Target, msg.Type, msg.ID)
+		return b.SendToProcess(msg.Target, msg)
+	}
+
+	// If message is a response with correlation ID, route it back to the pending request
+	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
+		b.pendingMu.Lock()
+		pending, exists := b.pendingRequests[msg.CorrelationID]
+		if exists {
+			delete(b.pendingRequests, msg.CorrelationID)
+		}
+		b.pendingMu.Unlock()
+
+		if exists {
+			b.logger.Debug("Routing response to pending request: correlation_id=%s", msg.CorrelationID)
+			select {
+			case pending.ResponseChan <- msg:
+				return nil
+			case <-time.After(5 * time.Second):
+				return fmt.Errorf("timeout sending response to pending request")
+			}
+		}
+		b.logger.Warn("Received response with unknown correlation ID: %s", msg.CorrelationID)
+		return fmt.Errorf("unknown correlation ID: %s", msg.CorrelationID)
+	}
+
+	// Otherwise, send to broker's message channel for local processing
+	return b.SendMessage(msg)
+}
+
+// InvokeRPC invokes an RPC method on a target process and waits for the response
+func (b *Broker) InvokeRPC(sourceProcess, targetProcess, rpcMethod string, payload interface{}, timeout time.Duration) (*proc.Message, error) {
+	// Generate correlation ID
+	correlationID := b.GenerateCorrelationID()
+
+	// Create response channel
+	responseChan := make(chan *proc.Message, 1)
+
+	// Register pending request
+	b.pendingMu.Lock()
+	b.pendingRequests[correlationID] = &PendingRequest{
+		SourceProcess: sourceProcess,
+		ResponseChan:  responseChan,
+		Timestamp:     time.Now(),
+	}
+	b.pendingMu.Unlock()
+
+	// Clean up pending request on exit
+	defer func() {
+		b.pendingMu.Lock()
+		delete(b.pendingRequests, correlationID)
+		b.pendingMu.Unlock()
+		close(responseChan)
+	}()
+
+	// Create request message
+	reqMsg, err := proc.NewRequestMessage(rpcMethod, payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request message: %w", err)
+	}
+
+	// Set routing information
+	reqMsg.Source = sourceProcess
+	reqMsg.Target = targetProcess
+	reqMsg.CorrelationID = correlationID
+
+	// Send request to target process
+	if err := b.SendToProcess(targetProcess, reqMsg); err != nil {
+		return nil, fmt.Errorf("failed to send request to %s: %w", targetProcess, err)
+	}
+
+	b.logger.Debug("Invoked RPC: source=%s target=%s method=%s correlation_id=%s",
+		sourceProcess, targetProcess, rpcMethod, correlationID)
+
+	// Wait for response with timeout
+	select {
+	case response := <-responseChan:
+		return response, nil
+	case <-time.After(timeout):
+		return nil, fmt.Errorf("timeout waiting for response from %s", targetProcess)
+	case <-b.ctx.Done():
+		return nil, fmt.Errorf("broker is shutting down")
+	}
 }
 
 // LoadProcessesFromConfig loads and starts processes from a configuration
