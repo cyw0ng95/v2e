@@ -314,16 +314,16 @@ func TestRPCGetMessageStats(t *testing.T) {
 	}
 
 	// Check counts
-	if result["total_sent"].(float64) != 3 {
+	if totalSent, ok := result["total_sent"].(float64); !ok || totalSent != 3 {
 		t.Errorf("Expected total_sent to be 3, got %v", result["total_sent"])
 	}
-	if result["request_count"].(float64) != 1 {
+	if requestCount, ok := result["request_count"].(float64); !ok || requestCount != 1 {
 		t.Errorf("Expected request_count to be 1, got %v", result["request_count"])
 	}
-	if result["response_count"].(float64) != 1 {
+	if responseCount, ok := result["response_count"].(float64); !ok || responseCount != 1 {
 		t.Errorf("Expected response_count to be 1, got %v", result["response_count"])
 	}
-	if result["event_count"].(float64) != 1 {
+	if eventCount, ok := result["event_count"].(float64); !ok || eventCount != 1 {
 		t.Errorf("Expected event_count to be 1, got %v", result["event_count"])
 	}
 }
