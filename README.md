@@ -7,12 +7,11 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 This project contains multiple commands:
 
 - `cmd/access` - RESTful API service using Gin framework
-- `cmd/broker` - RPC service for managing subprocesses, process lifecycle, and broker message statistics
-- `cmd/worker` - Example subprocess using the subprocess framework
+- `cmd/broker` - RPC service for managing subprocesses and process lifecycle
+- `cmd/broker-stats` - RPC service for accessing broker message statistics
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
 - `cmd/cve-meta` - Backend RPC service that orchestrates CVE fetching and storage operations
-- `cmd/cve-meta-client` - Demo client for interacting with the cve-meta service
 
 And packages:
 
@@ -35,11 +34,10 @@ To build all commands:
 ```bash
 go build ./cmd/access
 go build ./cmd/broker
-go build ./cmd/worker
+go build ./cmd/broker-stats
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
 go build ./cmd/cve-meta
-go build ./cmd/cve-meta-client
 ```
 
 Or build a specific command:
@@ -47,11 +45,10 @@ Or build a specific command:
 ```bash
 go build -o bin/access ./cmd/access
 go build -o bin/broker ./cmd/broker
-go build -o bin/worker ./cmd/worker
+go build -o bin/broker-stats ./cmd/broker-stats
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
 go build -o bin/cve-meta ./cmd/cve-meta
-go build -o bin/cve-meta-client ./cmd/cve-meta-client
 ```
 
 ## Running
@@ -141,6 +138,27 @@ echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/
   "status": "running"
 }
 ```
+
+This service can be spawned by a broker to provide remote access to process management via RPC.
+
+### Broker Stats (RPC Service)
+
+The Broker Stats service provides RPC interfaces for accessing message statistics from a broker instance:
+
+```bash
+# Run the service (it reads RPC requests from stdin and writes responses to stdout)
+go run ./cmd/broker-stats
+
+# Example: Get total message count
+echo '{"type":"request","id":"RPCGetMessageCount","payload":{}}' | go run ./cmd/broker-stats
+
+# Example: Get detailed message statistics
+echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/broker-stats
+```
+
+**Available RPC Interfaces:**
+- `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
+- `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
 
 **Response Format for RPCGetMessageCount:**
 ```json
@@ -270,27 +288,6 @@ This demonstrates the broker-mediated RPC communication pattern where:
 - All communication happens via RPC messages
 - The service runs continuously accepting commands
 - Batch jobs can be executed efficiently
-
-### CVE Meta Client
-
-A demo client for interacting with the CVE Meta service:
-
-```bash
-# Fetch a single CVE
-go run ./cmd/cve-meta-client -cve-id CVE-2021-44228
-
-# Specify a different database path
-go run ./cmd/cve-meta-client -db /path/to/cve.db -cve-id CVE-2024-1234
-
-# Run in batch mode to fetch multiple CVEs
-go run ./cmd/cve-meta-client -batch
-```
-
-The client demonstrates:
-- How to spawn the cve-meta service as a subprocess
-- How to send RPC requests to the service
-- How to receive and process RPC responses
-- Single and batch mode operations
 
 ## Development
 
