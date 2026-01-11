@@ -17,7 +17,7 @@ func TestHealthEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Create broker instance
-	broker := proc.NewBroker()
+	broker := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Create router
@@ -56,7 +56,7 @@ func TestListProcesses(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Create broker instance
-	broker := proc.NewBroker()
+	broker := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Spawn a test process
@@ -119,7 +119,7 @@ func TestSpawnProcess(t *testing.T) {
 	common.SetLevel(common.ErrorLevel) // Suppress logs during testing
 
 	// Create broker instance
-	broker := proc.NewBroker()
+	broker := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Create router
@@ -202,7 +202,7 @@ func TestGetProcess(t *testing.T) {
 	common.SetLevel(common.ErrorLevel) // Suppress logs during testing
 
 	// Create broker instance
-	broker := proc.NewBroker()
+	broker := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Spawn a test process
@@ -260,7 +260,7 @@ func TestGetProcessNotFound(t *testing.T) {
 	common.SetLevel(common.ErrorLevel) // Suppress logs during testing
 
 	// Create broker instance
-	broker := proc.NewBroker()
+	broker := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Create router

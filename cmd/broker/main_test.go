@@ -11,11 +11,11 @@ import (
 
 func TestRPCSpawn(t *testing.T) {
 	// Create broker
-	broker := proc.NewBroker()
+	brokerInstance := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Create handler
-	handler := createSpawnHandler(broker)
+	handler := createSpawnHandler(brokerInstance)
 
 	// Create request message
 	payload, _ := sonic.Marshal(map[string]interface{}{
@@ -68,7 +68,7 @@ func TestRPCSpawn(t *testing.T) {
 
 func TestRPCGetProcess(t *testing.T) {
 	// Create broker and spawn a process
-	broker := proc.NewBroker()
+	brokerInstance := broker.NewBroker()
 	defer broker.Shutdown()
 
 	_, err := broker.Spawn("test-process", "sleep", "1")
@@ -77,7 +77,7 @@ func TestRPCGetProcess(t *testing.T) {
 	}
 
 	// Create handler
-	handler := createGetProcessHandler(broker)
+	handler := createGetProcessHandler(brokerInstance)
 
 	// Create request message
 	payload, _ := sonic.Marshal(map[string]string{
@@ -119,14 +119,14 @@ func TestRPCGetProcess(t *testing.T) {
 
 func TestRPCListProcesses(t *testing.T) {
 	// Create broker and spawn processes
-	broker := proc.NewBroker()
+	brokerInstance := broker.NewBroker()
 	defer broker.Shutdown()
 
 	broker.Spawn("proc-1", "echo", "test1")
 	broker.Spawn("proc-2", "echo", "test2")
 
 	// Create handler
-	handler := createListProcessesHandler(broker)
+	handler := createListProcessesHandler(brokerInstance)
 
 	// Create request message
 	msg := &subprocess.Message{
@@ -165,7 +165,7 @@ func TestRPCListProcesses(t *testing.T) {
 
 func TestRPCKill(t *testing.T) {
 	// Create broker and spawn a long-running process
-	broker := proc.NewBroker()
+	brokerInstance := broker.NewBroker()
 	defer broker.Shutdown()
 
 	_, err := broker.Spawn("test-kill", "sleep", "10")
@@ -174,7 +174,7 @@ func TestRPCKill(t *testing.T) {
 	}
 
 	// Create handler
-	handler := createKillHandler(broker)
+	handler := createKillHandler(brokerInstance)
 
 	// Create request message
 	payload, _ := sonic.Marshal(map[string]string{
@@ -216,11 +216,11 @@ func TestRPCKill(t *testing.T) {
 
 func TestRPCGetMessageCount(t *testing.T) {
 	// Create broker and send some messages
-	broker := proc.NewBroker()
+	brokerInstance := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Send a few messages
-	msg1, _ := proc.NewRequestMessage("req-1", nil)
+	msg1, _ := broker.NewRequestMessage("req-1", nil)
 	broker.SendMessage(msg1)
 	msg2, _ := proc.NewResponseMessage("resp-1", nil)
 	broker.SendMessage(msg2)
@@ -263,11 +263,11 @@ func TestRPCGetMessageCount(t *testing.T) {
 
 func TestRPCGetMessageStats(t *testing.T) {
 	// Create broker and send different types of messages
-	broker := proc.NewBroker()
+	brokerInstance := broker.NewBroker()
 	defer broker.Shutdown()
 
 	// Send different types of messages
-	reqMsg, _ := proc.NewRequestMessage("req-1", nil)
+	reqMsg, _ := broker.NewRequestMessage("req-1", nil)
 	broker.SendMessage(reqMsg)
 	respMsg, _ := proc.NewResponseMessage("resp-1", nil)
 	broker.SendMessage(respMsg)
@@ -275,7 +275,7 @@ func TestRPCGetMessageStats(t *testing.T) {
 	broker.SendMessage(eventMsg)
 
 	// Create handler
-	handler := createGetMessageStatsHandler(broker)
+	handler := createGetMessageStatsHandler(brokerInstance)
 
 	// Create request message
 	req := &subprocess.Message{

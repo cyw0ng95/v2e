@@ -102,3 +102,11 @@ func main() {
 - Run `./build.sh -t` to execute unit tests
 - Run `./build.sh -i` to execute integration tests
 - Test case generation should be comprehensive and follow existing patterns in the codebase
+
+### Integration Test Requirements
+
+- **IMPORTANT**: All integration tests must start the broker first before accessing subprocesses
+- Integration tests should use the broker as the central entry point for all subprocess communication
+- Do NOT attempt to directly start or communicate with subprocesses in integration tests
+- Instead, use the broker's RPC interface to spawn and interact with subprocesses
+- This ensures that the security model (broker-mediated communication) is properly tested
