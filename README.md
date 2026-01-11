@@ -699,6 +699,8 @@ pip3 install -r tests/requirements.txt
 
 #### Running Integration Tests
 
+The integration tests use a shared broker instance that spawns and manages all services. This approach mirrors real-world usage where broker coordinates multiple RPC services.
+
 Run fast integration tests (recommended):
 
 ```bash
@@ -720,6 +722,9 @@ pytest tests/test_broker_integration.py
 
 # Test cve-meta service with multiple cooperating services
 pytest tests/test_cve_meta_integration.py
+
+# Run benchmark tests to measure RPC performance
+pytest tests/test_benchmarks.py --benchmark-only
 ```
 
 Run with verbose output:
@@ -742,6 +747,19 @@ pytest tests/ -m "not slow"
 
 # Run only slow tests with extended timeout (requires NVD API access)
 pytest tests/ -m slow --timeout=300
+
+# Run benchmark tests
+pytest tests/ -m benchmark --benchmark-only
+```
+
+# Run only RPC tests
+pytest tests/ -m rpc
+
+# Skip slow tests (recommended for CI/CD)
+pytest tests/ -m "not slow"
+
+# Run only slow tests with extended timeout (requires NVD API access)
+pytest tests/ -m slow --timeout=300
 ```
 
 **Note on Slow Tests:**
@@ -752,22 +770,61 @@ Tests marked with `@pytest.mark.slow` make calls to the external NVD API and may
 
 These tests are designed to use minimal API calls (1-2 CVEs) but may still encounter issues due to NVD API availability. For CI/CD pipelines, it's recommended to run only the fast tests using `-m "not slow"`.
 
+#### Test Architecture
+
+The integration tests follow a broker-centric architecture that mirrors real-world usage:
+
+1. **Shared Broker Fixture** (`broker_with_services`): A module-scoped fixture that:
+   - Builds all required binaries once per test session
+   - Starts a broker instance
+   - Uses the broker to spawn all required RPC services (worker, cve-remote, cve-local)
+   - Verifies services are running before tests begin
+   - Automatically cleans up after tests complete
+
+2. **Service Interaction**: Tests interact with spawned services through the broker using RPC messages, ensuring:
+   - Services are managed via broker (spawn, kill, list)
+   - Message routing through broker is tested
+   - Real-world multi-service cooperation is validated
+
+3. **Performance Benchmarks**: Benchmark tests measure RPC endpoint performance:
+   - `test_benchmarks.py` contains benchmarks for all RPC endpoints
+   - Uses pytest-benchmark to measure operations per second
+   - Provides statistics (min, max, mean, median, IQR, outliers)
+   - Helps track performance regressions
+
+Example benchmark output:
+```
+Name (time in us)                     Min       Max      Mean   StdDev    Median     IQR  Outliers  OPS (Kops/s)
+test_benchmark_list_processes     56.1350  490.6160  102.3540  17.8387  100.0690  8.7930   315;394        9.7700
+```
+
 #### Test Structure
 
 The integration tests are located in the `tests/` directory:
 
 - `tests/__init__.py` - Package initialization
+- `tests/conftest.py` - Shared fixtures (broker_with_services, test_binaries)
 - `tests/helpers.py` - Helper utilities for RPC testing
-- `tests/test_broker_integration.py` - Integration tests for broker service
-- `tests/test_cve_meta_integration.py` - Integration tests for cve-meta service
+- `tests/test_broker_integration.py` - Integration tests for broker service (5 tests)
+- `tests/test_cve_meta_integration.py` - Integration tests for cve-meta service (4 tests)
+- `tests/test_benchmarks.py` - Performance benchmarks for RPC endpoints
 - `tests/requirements.txt` - Python dependencies for testing
 - `pytest.ini` - Pytest configuration
 
 #### Writing Integration Tests
 
-The test framework provides utilities for testing RPC services:
+The test framework provides utilities and shared fixtures for testing RPC services:
 
 ```python
+# Use the shared broker fixture with all services running
+def test_my_feature(broker_with_services):
+    broker = broker_with_services
+    
+    # Services are already running, interact with them via broker
+    response = broker.send_request("RPCListProcesses", {})
+    assert response["type"] == "response"
+
+# Or build and manage processes manually
 from tests.helpers import RPCProcess, build_go_binary
 
 # Build a Go binary for testing
@@ -794,20 +851,27 @@ Key features:
 
 The integration tests cover:
 
-1. **Broker Service** (`test_broker_integration.py`):
+1. **Broker Service** (`test_broker_integration.py` - 5 tests):
    - Spawning processes
    - Listing processes
    - Getting process information
    - Spawning RPC processes
    - Killing processes
 
-2. **CVE Meta Service** (`test_cve_meta_integration.py`):
+2. **CVE Meta Service** (`test_cve_meta_integration.py` - 4 tests):
    - Multi-service cooperation (cve-meta, cve-local, cve-remote)
    - Getting remote CVE count
    - Batch fetching CVEs
    - Service orchestration and message routing
 
-These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication.
+3. **Performance Benchmarks** (`test_benchmarks.py`):
+   - RPCSpawn performance
+   - RPCListProcesses performance
+   - RPCGetProcess performance
+   - RPCSpawnRPC performance
+   - Provides ops/sec metrics for all RPC endpoints
+
+These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication. The benchmark suite ensures RPC operations meet performance requirements and helps identify performance regressions.
 
 ## License
 
