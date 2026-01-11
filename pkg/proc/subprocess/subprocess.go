@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"sync"
+	"syscall"
 
 	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // MessageType represents the type of message being sent
@@ -281,4 +285,95 @@ func UnmarshalPayload(msg *Message, v interface{}) error {
 		return fmt.Errorf("no payload to unmarshal")
 	}
 	return sonic.Unmarshal(msg.Payload, v)
+}
+
+// SetupSignalHandler sets up signal handling for graceful shutdown
+// Returns a channel that will receive signals
+func SetupSignalHandler() chan os.Signal {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	return sigChan
+}
+
+// SetupLogging initializes logging for a subprocess
+// It reads config from config.json and sets up logging to both stdout and a file
+func SetupLogging(processID string) (*common.Logger, error) {
+	// Load configuration
+	config, err := common.LoadConfig("config.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Determine log level
+	logLevel := common.InfoLevel
+	if config.Logging.Level != "" {
+		switch config.Logging.Level {
+		case "debug":
+			logLevel = common.DebugLevel
+		case "info":
+			logLevel = common.InfoLevel
+		case "warn":
+			logLevel = common.WarnLevel
+		case "error":
+			logLevel = common.ErrorLevel
+		}
+	}
+
+	// Determine log directory
+	logsDir := "./logs"
+	if config.Logging.Dir != "" {
+		logsDir = config.Logging.Dir
+	} else if config.Broker.LogsDir != "" {
+		logsDir = config.Broker.LogsDir
+	}
+
+	// Create logs directory if it doesn't exist
+	if err := os.MkdirAll(logsDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create logs directory: %w", err)
+	}
+
+	// Create log file path
+	logFile := filepath.Join(logsDir, fmt.Sprintf("%s.log", processID))
+
+	// Create logger with file output
+	logger, err := common.NewLoggerWithFile(logFile, fmt.Sprintf("[%s] ", processID), logLevel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+
+	return logger, nil
+}
+
+// RunWithDefaults runs a subprocess with default signal handling and error handling
+// This is a convenience function that wraps the common pattern of running a subprocess
+func RunWithDefaults(sp *Subprocess, logger *common.Logger) {
+	// Set up signal handling
+	sigChan := SetupSignalHandler()
+
+	// Run the subprocess in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- sp.Run()
+	}()
+
+	// Wait for either completion or signal
+	select {
+	case err := <-errChan:
+		if err != nil {
+			if logger != nil {
+				logger.Error("Subprocess error: %v", err)
+			}
+			sp.SendError("fatal", fmt.Errorf("subprocess error: %w", err))
+			os.Exit(1)
+		}
+	case <-sigChan:
+		if logger != nil {
+			logger.Info("Signal received, shutting down...")
+		}
+		sp.SendEvent("subprocess_shutdown", map[string]string{
+			"id":     sp.ID,
+			"reason": "signal received",
+		})
+		sp.Stop()
+	}
 }

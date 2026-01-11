@@ -20,6 +20,8 @@ type Config struct {
 	Client ClientConfig `json:"client,omitempty"`
 	// Broker configuration
 	Broker BrokerConfig `json:"broker,omitempty"`
+	// Logging configuration
+	Logging LoggingConfig `json:"logging,omitempty"`
 }
 
 // ServerConfig holds server-specific configuration
@@ -76,6 +78,14 @@ type TokenPermissions struct {
 	Endpoints []string `json:"endpoints,omitempty"`
 	// Processes is a list of allowed process IDs
 	Processes []string `json:"processes,omitempty"`
+}
+
+// LoggingConfig holds logging configuration
+type LoggingConfig struct {
+	// Level is the log level (debug, info, warn, error)
+	Level string `json:"level,omitempty"`
+	// Dir is the directory where logs are stored
+	Dir string `json:"dir,omitempty"`
 }
 
 // LoadConfig loads configuration from the specified file

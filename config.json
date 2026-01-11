@@ -6,6 +6,7 @@
     "logs_dir": "./logs"
   },
   "logging": {
-    "level": "info"
+    "level": "info",
+    "dir": "./logs"
   }
 }
