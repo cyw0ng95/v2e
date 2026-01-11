@@ -144,6 +144,11 @@ func (b *Broker) SetLogger(logger *common.Logger) {
 	b.logger = logger
 }
 
+// Context returns the broker's context
+func (b *Broker) Context() context.Context {
+	return b.ctx
+}
+
 // Spawn starts a new subprocess with the given command and arguments
 // It returns the process ID and an error if the process failed to start
 func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error) {
@@ -750,6 +755,99 @@ func (b *Broker) GetMessageCount() int64 {
 	b.statsMu.RLock()
 	defer b.statsMu.RUnlock()
 	return b.stats.TotalSent + b.stats.TotalReceived
+}
+
+// HandleRPCGetMessageStats handles the RPCGetMessageStats RPC request
+func (b *Broker) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message, error) {
+	// Get message stats
+	stats := b.GetMessageStats()
+
+	// Create response message
+	respMsg, err := proc.NewResponseMessage(reqMsg.ID, stats)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set correlation ID if present
+	if reqMsg.CorrelationID != "" {
+		respMsg.CorrelationID = reqMsg.CorrelationID
+	}
+
+	// Set source and target for routing
+	respMsg.Source = "broker"
+	respMsg.Target = reqMsg.Source
+
+	return respMsg, nil
+}
+
+// HandleRPCGetMessageCount handles the RPCGetMessageCount RPC request
+func (b *Broker) HandleRPCGetMessageCount(reqMsg *proc.Message) (*proc.Message, error) {
+	// Get message count
+	count := b.GetMessageCount()
+
+	// Create response payload
+	payload := map[string]interface{}{
+		"count": count,
+	}
+
+	// Create response message
+	respMsg, err := proc.NewResponseMessage(reqMsg.ID, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set correlation ID if present
+	if reqMsg.CorrelationID != "" {
+		respMsg.CorrelationID = reqMsg.CorrelationID
+	}
+
+	// Set source and target for routing
+	respMsg.Source = "broker"
+	respMsg.Target = reqMsg.Source
+
+	return respMsg, nil
+}
+
+// ProcessMessage processes a message directed at the broker
+func (b *Broker) ProcessMessage(msg *proc.Message) error {
+	// Only process request messages
+	if msg.Type != proc.MessageTypeRequest {
+		return nil
+	}
+
+	// Handle based on message ID (RPC method name)
+	var respMsg *proc.Message
+	var err error
+
+	switch msg.ID {
+	case "RPCGetMessageStats":
+		respMsg, err = b.HandleRPCGetMessageStats(msg)
+	case "RPCGetMessageCount":
+		respMsg, err = b.HandleRPCGetMessageCount(msg)
+	default:
+		// Unknown RPC method
+		errMsg := proc.NewErrorMessage(msg.ID, fmt.Errorf("unknown RPC method: %s", msg.ID))
+		errMsg.Source = "broker"
+		errMsg.Target = msg.Source
+		if msg.CorrelationID != "" {
+			errMsg.CorrelationID = msg.CorrelationID
+		}
+		return b.RouteMessage(errMsg, "broker")
+	}
+
+	if err != nil {
+		// Send error response
+		errMsg := proc.NewErrorMessage(msg.ID, err)
+		errMsg.Source = "broker"
+		errMsg.Target = msg.Source
+		if msg.CorrelationID != "" {
+			errMsg.CorrelationID = msg.CorrelationID
+		}
+		return b.RouteMessage(errMsg, "broker")
+	}
+
+	// Send successful response
+	return b.RouteMessage(respMsg, "broker")
 }
 
 // Shutdown gracefully shuts down the broker and all managed processes

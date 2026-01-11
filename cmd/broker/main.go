@@ -56,6 +56,22 @@ common.Error("Error loading processes from config: %v", err)
 
 common.Info("Broker started, managing %d processes", len(config.Broker.Processes))
 
+// Start message processing goroutine
+// This processes RPC requests directed at the broker
+go func() {
+	for {
+		select {
+		case msg := <-broker.messages:
+			// Process messages directed at the broker
+			if err := broker.ProcessMessage(msg); err != nil {
+				common.Warn("Error processing broker message: %v", err)
+			}
+		case <-broker.Context().Done():
+			return
+		}
+	}
+}()
+
 // Set up signal handling for graceful shutdown
 sigChan := make(chan os.Signal, 1)
 signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
