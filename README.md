@@ -1,6 +1,6 @@
 # v2e
 
-[![CI Tests](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml)
+[![CI Tests](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml/badge.svg)](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml)
 
 A Go-based project demonstrating a multi-command structure with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
 
