@@ -66,6 +66,25 @@ func NewLogger(out io.Writer, prefix string, level LogLevel) *Logger {
 	}
 }
 
+// NewLoggerWithFile creates a new Logger instance that writes to both stdout and a file
+func NewLoggerWithFile(filename, prefix string, level LogLevel) (*Logger, error) {
+	// Create or open the log file
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log file: %w", err)
+	}
+
+	// Create a multi-writer that writes to both stdout and file
+	multiWriter := io.MultiWriter(os.Stdout, file)
+
+	return &Logger{
+		level:  level,
+		logger: log.New(multiWriter, prefix, log.LstdFlags),
+		output: multiWriter,
+		prefix: prefix,
+	}, nil
+}
+
 // SetLevel sets the minimum log level
 func (l *Logger) SetLevel(level LogLevel) {
 	l.mu.Lock()

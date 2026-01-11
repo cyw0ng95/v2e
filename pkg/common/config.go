@@ -17,6 +17,8 @@ type Config struct {
 	Server ServerConfig `json:"server,omitempty"`
 	// Client configuration
 	Client ClientConfig `json:"client,omitempty"`
+	// Broker configuration
+	Broker BrokerConfig `json:"broker,omitempty"`
 }
 
 // ServerConfig holds server-specific configuration
@@ -29,6 +31,48 @@ type ServerConfig struct {
 type ClientConfig struct {
 	// URL to connect to (e.g., "http://localhost:8080")
 	URL string `json:"url,omitempty"`
+}
+
+// BrokerConfig holds broker-specific configuration
+type BrokerConfig struct {
+	// Processes is a list of processes to manage
+	Processes []ProcessConfig `json:"processes,omitempty"`
+	// LogFile is the path to the log file
+	LogFile string `json:"log_file,omitempty"`
+	// Authentication settings for RPC endpoints
+	Authentication AuthenticationConfig `json:"authentication,omitempty"`
+}
+
+// ProcessConfig represents a process to be managed by the broker
+type ProcessConfig struct {
+	// ID is a unique identifier for the process
+	ID string `json:"id"`
+	// Command is the executable to run
+	Command string `json:"command"`
+	// Args are the command-line arguments
+	Args []string `json:"args,omitempty"`
+	// RPC indicates if this is an RPC-enabled process
+	RPC bool `json:"rpc,omitempty"`
+	// Restart indicates if the process should be restarted on exit
+	Restart bool `json:"restart,omitempty"`
+	// MaxRestarts is the maximum number of restart attempts (-1 for unlimited)
+	MaxRestarts int `json:"max_restarts,omitempty"`
+}
+
+// AuthenticationConfig holds authentication settings for RPC endpoints
+type AuthenticationConfig struct {
+	// Enabled indicates if authentication is enabled
+	Enabled bool `json:"enabled,omitempty"`
+	// Tokens is a map of allowed tokens and their permissions
+	Tokens map[string]TokenPermissions `json:"tokens,omitempty"`
+}
+
+// TokenPermissions represents permissions for a token
+type TokenPermissions struct {
+	// Endpoints is a list of allowed RPC endpoint patterns
+	Endpoints []string `json:"endpoints,omitempty"`
+	// Processes is a list of allowed process IDs
+	Processes []string `json:"processes,omitempty"`
 }
 
 // LoadConfig loads configuration from the specified file
