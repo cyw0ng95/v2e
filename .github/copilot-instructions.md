@@ -35,11 +35,12 @@
 When implementing a new subprocess service:
 
 1. **Use the subprocess framework**: Always use `pkg/proc/subprocess` package
-2. **stdin/stdout only**: Only read from stdin and write to stdout
-3. **No external inputs**: Do NOT accept command-line arguments, environment variables (except PROCESS_ID and service-specific config), or network connections for control
-4. **RPC handlers only**: All functionality must be exposed via RPC message handlers
-5. **Broker-spawned**: Services must be designed to be spawned by the broker via `SpawnRPC`
-6. **Signal handling**: Implement graceful shutdown with signal handlers (SIGINT, SIGTERM)
+2. **Use common logging**: Call `subprocess.SetupLogging(processID)` to initialize logging from config.json
+3. **Use common lifecycle**: Call `subprocess.RunWithDefaults(sp, logger)` for standard signal handling and error handling
+4. **stdin/stdout only**: Only read from stdin and write to stdout
+5. **No external inputs**: Do NOT accept command-line arguments, environment variables (except PROCESS_ID and service-specific config), or network connections for control
+6. **RPC handlers only**: All functionality must be exposed via RPC message handlers
+7. **Broker-spawned**: Services must be designed to be spawned by the broker via `SpawnRPC`
 
 Example subprocess pattern:
 ```go
@@ -50,42 +51,30 @@ func main() {
         processID = "my-service"
     }
 
+    // Set up logging using common subprocess framework
+    logger, err := subprocess.SetupLogging(processID)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Failed to setup logging: %v\n", err)
+        os.Exit(1)
+    }
+
     // Create subprocess instance
     sp := subprocess.New(processID)
 
     // Register RPC handlers
     sp.RegisterHandler("RPCMyFunction", createMyFunctionHandler())
 
-    // Set up signal handling
-    sigChan := make(chan os.Signal, 1)
-    signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+    logger.Info("My service started")
 
-    // Run subprocess
-    errChan := make(chan error, 1)
-    go func() {
-        errChan <- sp.Run()
-    }()
-
-    // Wait for completion or signal
-    select {
-    case err := <-errChan:
-        if err != nil {
-            sp.SendError("fatal", err)
-            os.Exit(1)
-        }
-    case <-sigChan:
-        sp.SendEvent("subprocess_shutdown", map[string]string{
-            "id": sp.ID,
-            "reason": "signal received",
-        })
-        sp.Stop()
-    }
+    // Run with default lifecycle management
+    subprocess.RunWithDefaults(sp, logger)
 }
 ```
 
 ### Configuration Guidelines
 
-- Use `config.json` to define broker settings and processes to spawn
+- Use `config.json` to define broker settings, logging, and processes to spawn
+- Logging configuration in `config.json` applies to all subprocesses via the subprocess framework
 - All process configurations should be in the broker config
 - Subprocesses should only use environment variables for service-specific settings (e.g., database paths, API keys)
 
@@ -102,3 +91,14 @@ func main() {
 - Run `./build.sh -t` to execute unit tests
 - Run `./build.sh -i` to execute integration tests
 - Test case generation should be comprehensive and follow existing patterns in the codebase
+
+### Integration Test Constraints
+
+**IMPORTANT**: All integration tests MUST follow the broker-first architecture:
+
+1. **Start broker first**: The broker (or access service which embeds a broker) must be started before any subprocess
+2. **No direct subprocess testing**: Do NOT start or test subprocesses directly without going through the broker
+3. **Use access service as gateway**: Integration tests should use the access REST API as the primary entry point
+4. **Broker spawns subprocesses**: Let the broker spawn and manage all subprocess services via configuration or REST API
+
+This ensures integration tests follow the same deployment model as production, where the broker is the central entry point.
