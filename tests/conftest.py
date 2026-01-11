@@ -9,31 +9,53 @@ from tests.helpers import RPCProcess, build_go_binary
 
 @pytest.fixture(scope="session")
 def test_binaries():
-    """Build all test binaries once for the entire test session."""
-    # Use a fixed directory instead of temporary to avoid cleanup issues
-    import shutil
-    tmpdir = "/tmp/pytest-v2e-binaries"
+    """Build all test binaries once for the entire test session, or use pre-built package."""
+    # Check if package binaries exist (from build.sh -p)
+    package_dir = os.path.join(os.path.dirname(__file__), "..", ".build", "package")
+    package_dir = os.path.abspath(package_dir)
     
-    # Clean up old binaries if they exist
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir)
-    os.makedirs(tmpdir)
-    
-    binaries = {}
-    services = ["broker", "cve-meta", "cve-local", "cve-remote"]
-    
-    print("\nBuilding test binaries...")
-    for service in services:
-        binary_path = os.path.join(tmpdir, service)
-        build_go_binary(f"./cmd/{service}", binary_path)
-        binaries[service] = binary_path
-        print(f"  ✓ Built {service}")
-    
-    yield binaries
-    
-    # Cleanup after all tests complete
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir)
+    if os.path.exists(package_dir) and os.path.isdir(package_dir):
+        print(f"\nUsing pre-built package binaries from: {package_dir}")
+        binaries = {}
+        services = ["broker", "cve-meta", "cve-local", "cve-remote"]
+        
+        for service in services:
+            binary_path = os.path.join(package_dir, service)
+            if os.path.exists(binary_path):
+                binaries[service] = binary_path
+                print(f"  ✓ Found {service}")
+            else:
+                raise RuntimeError(f"Package binary not found: {binary_path}")
+        
+        yield binaries
+        # No cleanup needed for package binaries
+    else:
+        # Fallback: Build binaries if package doesn't exist
+        print(f"\nPackage directory not found: {package_dir}")
+        print("Building test binaries...")
+        
+        import shutil
+        tmpdir = "/tmp/pytest-v2e-binaries"
+        
+        # Clean up old binaries if they exist
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir)
+        os.makedirs(tmpdir)
+        
+        binaries = {}
+        services = ["broker", "cve-meta", "cve-local", "cve-remote"]
+        
+        for service in services:
+            binary_path = os.path.join(tmpdir, service)
+            build_go_binary(f"./cmd/{service}", binary_path)
+            binaries[service] = binary_path
+            print(f"  ✓ Built {service}")
+        
+        yield binaries
+        
+        # Cleanup after all tests complete
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir)
 
 
 @pytest.fixture(scope="module")

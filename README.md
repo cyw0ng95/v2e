@@ -2,6 +2,21 @@
 
 A Go-based project demonstrating a multi-command structure with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
 
+## Architecture Principles
+
+**Important: Broker-First Architecture**
+
+The broker (`cmd/broker`) is a standalone process that boots and manages all subprocesses in the system. All other services (including `access`, `cve-remote`, `cve-local`, `cve-meta`, etc.) are subprocesses managed by the broker.
+
+**Key Rules:**
+- The broker is the only entry point for process management
+- Subprocesses must NOT embed broker logic or create their own broker instances
+- The `access` service is a subprocess like any other - it provides a REST API but does not manage processes itself
+- All process spawning, lifecycle management, and inter-process communication goes through the broker
+- Subprocesses communicate with each other only through broker-mediated RPC messages
+
+This architecture ensures clean separation of concerns and prevents circular dependencies.
+
 ## Project Structure
 
 This project contains multiple commands:
@@ -79,6 +94,9 @@ go run ./cmd/access -port 3000 -debug
 - `-debug` - Enable debug mode (default: false)
 
 The Access service demonstrates the use of the Gin framework for building RESTful APIs. It can be extended with additional endpoints as needed.
+
+**Important Note on Architecture:**
+The Access service is a subprocess managed by the broker. It should NOT have endpoints for managing processes (like spawning, listing, or killing processes). All process management must go through the broker. If you need to expose process management via REST API, create a separate service that communicates with the broker via RPC, rather than embedding broker functionality in the access service.
 
 ### Broker (RPC Service)
 
@@ -778,9 +796,9 @@ These tests are designed to use minimal API calls (1-2 CVEs) but may still encou
 The integration tests follow a broker-centric architecture that mirrors real-world usage:
 
 1. **Shared Broker Fixture** (`broker_with_services`): A module-scoped fixture that:
-   - Builds all required binaries once per test session
+   - Uses pre-built binaries from `./build.sh -p` when available, or builds them on-demand
    - Starts a broker instance
-   - Uses the broker to spawn all required RPC services (worker, cve-remote, cve-local)
+   - Uses the broker to spawn all required RPC services (cve-remote, cve-local)
    - Verifies services are running before tests begin
    - Automatically cleans up after tests complete
 
@@ -794,6 +812,12 @@ The integration tests follow a broker-centric architecture that mirrors real-wor
    - Uses pytest-benchmark to measure operations per second
    - Available for local testing and performance regression tracking
    - Not included in CI due to environment variability
+
+**Important Testing Principles:**
+- All tests must follow the broker-first architecture
+- Services like `access` are subprocesses - they should NOT have process management endpoints
+- If testing REST APIs that need process management, the REST service should communicate with broker via RPC
+- Never embed broker logic in subprocess tests
 
 Example benchmark output (local testing):
 ```

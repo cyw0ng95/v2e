@@ -7,6 +7,7 @@ set -e
 
 # Configuration
 BUILD_DIR=".build"
+PACKAGE_DIR="$BUILD_DIR/package"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Help function
@@ -15,11 +16,13 @@ show_help() {
 Usage: $0 [OPTIONS]
 
 Options:
+    -p          Build and package binaries to .build/package directory
     -t          Run tests and return result for GitHub CI
     -h          Show this help message
 
 Examples:
     $0          # Build the project
+    $0 -p       # Build and package binaries
     $0 -t       # Run tests for CI
 EOF
 }
@@ -41,6 +44,32 @@ build_project() {
         go build -o "$BUILD_DIR/v2e" ./...
         echo "Build completed successfully"
         echo "Binary saved to: $BUILD_DIR/v2e"
+    else
+        echo "No go.mod found. Skipping build."
+    fi
+}
+
+# Build and package binaries
+build_and_package() {
+    echo "Building and packaging v2e project..."
+    setup_build_dir
+    mkdir -p "$PACKAGE_DIR"
+    
+    # Check if go.mod exists
+    if [ -f "go.mod" ]; then
+        echo "Building all command binaries..."
+        
+        # List of commands to build
+        COMMANDS=("access" "broker" "cve-local" "cve-meta" "cve-remote")
+        
+        for cmd in "${COMMANDS[@]}"; do
+            echo "  Building $cmd..."
+            go build -o "$PACKAGE_DIR/$cmd" "./cmd/$cmd"
+        done
+        
+        echo "Package completed successfully"
+        echo "Binaries saved to: $PACKAGE_DIR"
+        ls -lh "$PACKAGE_DIR"
     else
         echo "No go.mod found. Skipping build."
     fi
@@ -86,9 +115,13 @@ main() {
     
     # Parse command line arguments
     RUN_TESTS=false
+    BUILD_PACKAGE=false
     
-    while getopts "th" opt; do
+    while getopts "pth" opt; do
         case $opt in
+            p)
+                BUILD_PACKAGE=true
+                ;;
             t)
                 RUN_TESTS=true
                 ;;
@@ -107,6 +140,9 @@ main() {
     # Execute based on options
     if [ "$RUN_TESTS" = true ]; then
         run_tests
+        exit $?
+    elif [ "$BUILD_PACKAGE" = true ]; then
+        build_and_package
         exit $?
     else
         build_project
