@@ -85,7 +85,8 @@ jobs:
           path: .build/package/
       
       - name: Make binaries executable
-        run: chmod +x .build/package/*
+        run: |
+          find .build/package/ -type f ! -name "*.md" ! -name "*.json*" -exec chmod +x {} \;
       
       - name: Set up Python
         uses: actions/setup-python@v5
