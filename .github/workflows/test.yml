@@ -28,7 +28,7 @@ jobs:
           go-version: '1.24.11'
       
       - name: Run unit tests via build.sh
-        run: ./build.sh -t
+        run: ./build.sh -t -v
       
       - name: Upload coverage report
         if: always()
@@ -109,7 +109,15 @@ jobs:
           pip install -r tests/requirements.txt
       
       - name: Run integration tests via build.sh
-        run: ./build.sh -i
+        run: ./build.sh -i -v
+      
+      - name: Upload integration test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: logs/
+          if-no-files-found: ignore
       
       - name: Upload integration test results
         if: always()
