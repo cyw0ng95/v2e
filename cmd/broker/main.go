@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bytedance/sonic"
 
@@ -73,6 +74,7 @@ func main() {
 	sp.RegisterHandler("RPCRegisterEndpoint", createRegisterEndpointHandler(broker))
 	sp.RegisterHandler("RPCGetEndpoints", createGetEndpointsHandler(broker))
 	sp.RegisterHandler("RPCGetAllEndpoints", createGetAllEndpointsHandler(broker))
+	sp.RegisterHandler("RPCInvoke", createInvokeHandler(broker))
 
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -506,6 +508,56 @@ func createGetAllEndpointsHandler(broker *Broker) subprocess.Handler {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
 		respMsg.Payload = jsonData
+
+		return respMsg, nil
+	}
+}
+
+// createInvokeHandler creates a handler for RPCInvoke
+func createInvokeHandler(broker *Broker) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Parse the request payload
+		var req struct {
+			Target  string                 `json:"target"`
+			Method  string                 `json:"method"`
+			Payload map[string]interface{} `json:"payload"`
+			Timeout int                    `json:"timeout"` // timeout in seconds
+		}
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			return nil, fmt.Errorf("failed to parse request: %w", err)
+		}
+
+		if req.Target == "" {
+			return nil, fmt.Errorf("target is required")
+		}
+		if req.Method == "" {
+			return nil, fmt.Errorf("method is required")
+		}
+
+		// Set default timeout if not specified
+		timeout := 30 * time.Second
+		if req.Timeout > 0 {
+			timeout = time.Duration(req.Timeout) * time.Second
+		}
+
+		// Invoke RPC on target process
+		// Source is "broker" for requests initiated directly to the broker
+		response, err := broker.InvokeRPC("broker", req.Target, req.Method, req.Payload, timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to invoke RPC: %w", err)
+		}
+
+		// If the response is an error, convert it to an error message
+		if string(response.Type) == "error" {
+			return nil, fmt.Errorf("RPC error: %s", response.Error)
+		}
+
+		// Create response message
+		respMsg := &subprocess.Message{
+			Type:    subprocess.MessageTypeResponse,
+			ID:      msg.ID,
+			Payload: response.Payload,
+		}
 
 		return respMsg, nil
 	}

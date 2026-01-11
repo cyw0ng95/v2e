@@ -41,6 +41,12 @@ type Message struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 	// Error contains error information if Type is MessageTypeError
 	Error string `json:"error,omitempty"`
+	// Source is the process ID of the message sender (for routing)
+	Source string `json:"source,omitempty"`
+	// Target is the process ID of the message recipient (for routing)
+	Target string `json:"target,omitempty"`
+	// CorrelationID is used to match responses to requests
+	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
 // Handler is a function that handles incoming messages
