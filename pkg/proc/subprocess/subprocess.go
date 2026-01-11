@@ -119,12 +119,6 @@ func (s *Subprocess) Run() error {
 
 	// Start processing messages
 	scanner := bufio.NewScanner(s.input)
-	// Increase buffer size to handle large messages (e.g., CVE data from NVD)
-	// Default is 64KB, we increase to 1MB
-	const maxTokenSize = 1024 * 1024 // 1MB
-	buf := make([]byte, maxTokenSize)
-	scanner.Buffer(buf, maxTokenSize)
-	
 	for scanner.Scan() {
 		select {
 		case <-s.ctx.Done():
