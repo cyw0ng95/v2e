@@ -47,13 +47,29 @@ type ProcessInfo struct {
 
 // Process represents a managed subprocess
 type Process struct {
-	info   *ProcessInfo
-	cmd    *exec.Cmd
-	cancel context.CancelFunc
-	done   chan struct{}
-	stdin  io.WriteCloser
-	stdout io.ReadCloser
-	mu     sync.RWMutex
+	info          *ProcessInfo
+	cmd           *exec.Cmd
+	cancel        context.CancelFunc
+	done          chan struct{}
+	stdin         io.WriteCloser
+	stdout        io.ReadCloser
+	mu            sync.RWMutex
+	restartConfig *RestartConfig
+}
+
+// RestartConfig holds restart configuration for a process
+type RestartConfig struct {
+	// Enabled indicates if auto-restart is enabled
+	Enabled bool
+	// MaxRestarts is the maximum number of restart attempts (-1 for unlimited)
+	MaxRestarts int
+	// RestartCount is the current number of restarts
+	RestartCount int
+	// Command and Args for restarting
+	Command string
+	Args    []string
+	// IsRPC indicates if this is an RPC process
+	IsRPC bool
 }
 
 // MessageStats contains statistics about messages processed by the broker
@@ -78,26 +94,29 @@ type MessageStats struct {
 
 // Broker manages subprocesses and message passing
 type Broker struct {
-	processes map[string]*Process
-	messages  chan *Message
-	mu        sync.RWMutex
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	logger    *common.Logger
-	stats     MessageStats
-	statsMu   sync.RWMutex
+	processes    map[string]*Process
+	messages     chan *Message
+	mu           sync.RWMutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	wg           sync.WaitGroup
+	logger       *common.Logger
+	stats        MessageStats
+	statsMu      sync.RWMutex
+	rpcEndpoints map[string][]string // processID -> list of RPC endpoints
+	endpointsMu  sync.RWMutex
 }
 
 // NewBroker creates a new Broker instance
 func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Broker{
-		processes: make(map[string]*Process),
-		messages:  make(chan *Message, 100),
-		ctx:       ctx,
-		cancel:    cancel,
-		logger:    common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		processes:    make(map[string]*Process),
+		messages:     make(chan *Message, 100),
+		ctx:          ctx,
+		cancel:       cancel,
+		logger:       common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		rpcEndpoints: make(map[string][]string),
 	}
 }
 
@@ -238,6 +257,148 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 	return &infoCopy, nil
 }
 
+// SpawnWithRestart starts a new subprocess with auto-restart capability
+func (b *Broker) SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// Check if process with this ID already exists
+	if _, exists := b.processes[id]; exists {
+		return nil, fmt.Errorf("process with id '%s' already exists", id)
+	}
+
+	// Create process context
+	ctx, cancel := context.WithCancel(b.ctx)
+	cmd := exec.CommandContext(ctx, command, args...)
+
+	// Create process info
+	info := &ProcessInfo{
+		ID:        id,
+		Command:   command,
+		Args:      args,
+		Status:    ProcessStatusRunning,
+		StartTime: time.Now(),
+	}
+
+	proc := &Process{
+		info:   info,
+		cmd:    cmd,
+		cancel: cancel,
+		done:   make(chan struct{}),
+		restartConfig: &RestartConfig{
+			Enabled:      true,
+			MaxRestarts:  maxRestarts,
+			RestartCount: 0,
+			Command:      command,
+			Args:         args,
+			IsRPC:        false,
+		},
+	}
+
+	// Start the process
+	if err := cmd.Start(); err != nil {
+		cancel()
+		info.Status = ProcessStatusFailed
+		return info, fmt.Errorf("failed to start process: %w", err)
+	}
+
+	info.PID = cmd.Process.Pid
+	b.processes[id] = proc
+
+	b.logger.Info("Spawned process with restart: id=%s pid=%d command=%s max_restarts=%d", id, info.PID, command, maxRestarts)
+
+	// Create a copy of the process info before starting the reaper goroutine
+	infoCopy := *info
+
+	// Start goroutine to wait for process completion
+	b.wg.Add(1)
+	go b.reapProcess(proc)
+
+	return &infoCopy, nil
+}
+
+// SpawnRPCWithRestart starts a new RPC subprocess with auto-restart capability
+func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// Check if process with this ID already exists
+	if _, exists := b.processes[id]; exists {
+		return nil, fmt.Errorf("process with id '%s' already exists", id)
+	}
+
+	// Create process context
+	ctx, cancel := context.WithCancel(b.ctx)
+	cmd := exec.CommandContext(ctx, command, args...)
+
+	// Set up stdin and stdout pipes for RPC communication
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		cancel()
+		stdin.Close()
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	// Create process info
+	info := &ProcessInfo{
+		ID:        id,
+		Command:   command,
+		Args:      args,
+		Status:    ProcessStatusRunning,
+		StartTime: time.Now(),
+	}
+
+	proc := &Process{
+		info:   info,
+		cmd:    cmd,
+		cancel: cancel,
+		done:   make(chan struct{}),
+		stdin:  stdin,
+		stdout: stdout,
+		restartConfig: &RestartConfig{
+			Enabled:      true,
+			MaxRestarts:  maxRestarts,
+			RestartCount: 0,
+			Command:      command,
+			Args:         args,
+			IsRPC:        true,
+		},
+	}
+
+	// Start the process
+	if err := cmd.Start(); err != nil {
+		cancel()
+		stdin.Close()
+		stdout.Close()
+		info.Status = ProcessStatusFailed
+		return info, fmt.Errorf("failed to start process: %w", err)
+	}
+
+	info.PID = cmd.Process.Pid
+	b.processes[id] = proc
+
+	b.logger.Info("Spawned RPC process with restart: id=%s pid=%d command=%s max_restarts=%d", id, info.PID, command, maxRestarts)
+
+	// Create a copy of the process info before starting goroutines
+	infoCopy := *info
+
+	// Start goroutine to read messages from process stdout
+	b.wg.Add(1)
+	go b.readProcessMessages(proc)
+
+	// Start goroutine to wait for process completion
+	b.wg.Add(1)
+	go b.reapProcess(proc)
+
+	return &infoCopy, nil
+}
+
 // readProcessMessages reads messages from a process's stdout and forwards them to the broker
 func (b *Broker) readProcessMessages(proc *Process) {
 	defer b.wg.Done()
@@ -314,8 +475,9 @@ func (b *Broker) reapProcess(proc *Process) {
 	// Wait for the process to complete
 	err := proc.cmd.Wait()
 
+	// Lock is acquired here and explicitly unlocked later (not deferred)
+	// because the restart logic requires early unlock to avoid deadlock
 	proc.mu.Lock()
-	defer proc.mu.Unlock()
 
 	proc.info.EndTime = time.Now()
 	proc.info.Status = ProcessStatusExited
@@ -345,6 +507,65 @@ func (b *Broker) reapProcess(proc *Process) {
 		"exit_code": proc.info.ExitCode,
 	})
 	b.sendMessageInternal(event)
+
+	// Check if auto-restart is enabled
+	if proc.restartConfig != nil && proc.restartConfig.Enabled {
+		// Check if we've exceeded max restarts
+		if proc.restartConfig.MaxRestarts >= 0 && proc.restartConfig.RestartCount >= proc.restartConfig.MaxRestarts {
+			b.logger.Warn("Process %s exceeded max restarts (%d), not restarting", proc.info.ID, proc.restartConfig.MaxRestarts)
+			proc.mu.Unlock()
+			return
+		}
+
+		// Increment restart count
+		proc.restartConfig.RestartCount++
+
+		processID := proc.info.ID
+		command := proc.restartConfig.Command
+		args := proc.restartConfig.Args
+		isRPC := proc.restartConfig.IsRPC
+		maxRestarts := proc.restartConfig.MaxRestarts
+		restartCount := proc.restartConfig.RestartCount
+
+		// Unlock before restarting
+		proc.mu.Unlock()
+
+		b.logger.Info("Restarting process %s (attempt %d/%d)", processID, restartCount, maxRestarts)
+
+		// Remove old process from map
+		b.mu.Lock()
+		delete(b.processes, processID)
+		b.mu.Unlock()
+
+		// Wait a bit before restarting
+		time.Sleep(1 * time.Second)
+
+		// Restart the process
+		var restartErr error
+		if isRPC {
+			_, restartErr = b.SpawnRPCWithRestart(processID, command, maxRestarts, args...)
+		} else {
+			_, restartErr = b.SpawnWithRestart(processID, command, maxRestarts, args...)
+		}
+
+		if restartErr != nil {
+			b.logger.Error("Failed to restart process %s: %v", processID, restartErr)
+		} else {
+			// Update restart count in the new process
+			b.mu.RLock()
+			if newProc, exists := b.processes[processID]; exists {
+				newProc.mu.Lock()
+				if newProc.restartConfig != nil {
+					newProc.restartConfig.RestartCount = restartCount
+				}
+				newProc.mu.Unlock()
+			}
+			b.mu.RUnlock()
+		}
+		return
+	}
+
+	proc.mu.Unlock()
 }
 
 // Kill terminates a process by ID
@@ -543,5 +764,103 @@ func (b *Broker) Shutdown() error {
 	close(b.messages)
 
 	b.logger.Info("Broker shutdown complete")
+	return nil
+}
+
+// RegisterEndpoint registers an RPC endpoint for a process
+func (b *Broker) RegisterEndpoint(processID, endpoint string) {
+	b.endpointsMu.Lock()
+	defer b.endpointsMu.Unlock()
+
+	if _, exists := b.rpcEndpoints[processID]; !exists {
+		b.rpcEndpoints[processID] = make([]string, 0)
+	}
+
+	// Avoid duplicates
+	for _, e := range b.rpcEndpoints[processID] {
+		if e == endpoint {
+			return
+		}
+	}
+
+	b.rpcEndpoints[processID] = append(b.rpcEndpoints[processID], endpoint)
+	b.logger.Info("Registered endpoint %s for process %s", endpoint, processID)
+}
+
+// GetEndpoints returns all registered RPC endpoints for a process
+func (b *Broker) GetEndpoints(processID string) []string {
+	b.endpointsMu.RLock()
+	defer b.endpointsMu.RUnlock()
+
+	endpoints, exists := b.rpcEndpoints[processID]
+	if !exists {
+		return []string{}
+	}
+
+	// Return a copy to avoid race conditions
+	result := make([]string, len(endpoints))
+	copy(result, endpoints)
+	return result
+}
+
+// GetAllEndpoints returns all registered RPC endpoints for all processes
+func (b *Broker) GetAllEndpoints() map[string][]string {
+	b.endpointsMu.RLock()
+	defer b.endpointsMu.RUnlock()
+
+	result := make(map[string][]string)
+	for processID, endpoints := range b.rpcEndpoints {
+		endpointsCopy := make([]string, len(endpoints))
+		copy(endpointsCopy, endpoints)
+		result[processID] = endpointsCopy
+	}
+	return result
+}
+
+// LoadProcessesFromConfig loads and starts processes from a configuration
+func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
+	if config == nil || len(config.Broker.Processes) == 0 {
+		b.logger.Info("No processes configured to start")
+		return nil
+	}
+
+	b.logger.Info("Loading %d processes from configuration", len(config.Broker.Processes))
+
+	for _, procConfig := range config.Broker.Processes {
+		if procConfig.ID == "" || procConfig.Command == "" {
+			b.logger.Warn("Skipping invalid process config: missing ID or command")
+			continue
+		}
+
+		var err error
+		var info *ProcessInfo
+
+		if procConfig.Restart {
+			maxRestarts := procConfig.MaxRestarts
+			if maxRestarts == 0 {
+				maxRestarts = -1 // Default to unlimited restarts
+			}
+
+			if procConfig.RPC {
+				info, err = b.SpawnRPCWithRestart(procConfig.ID, procConfig.Command, maxRestarts, procConfig.Args...)
+			} else {
+				info, err = b.SpawnWithRestart(procConfig.ID, procConfig.Command, maxRestarts, procConfig.Args...)
+			}
+		} else {
+			if procConfig.RPC {
+				info, err = b.SpawnRPC(procConfig.ID, procConfig.Command, procConfig.Args...)
+			} else {
+				info, err = b.Spawn(procConfig.ID, procConfig.Command, procConfig.Args...)
+			}
+		}
+
+		if err != nil {
+			b.logger.Error("Failed to spawn process %s: %v", procConfig.ID, err)
+			continue
+		}
+
+		b.logger.Info("Started process %s (PID: %d) from configuration", info.ID, info.PID)
+	}
+
 	return nil
 }

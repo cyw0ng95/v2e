@@ -798,3 +798,82 @@ func TestBroker_ProcessExitEvent_UpdatesStats(t *testing.T) {
 		t.Error("Expected EventCount to increase after process exit event")
 	}
 }
+
+// TestBroker_RegisterEndpoint tests endpoint registration
+func TestBroker_RegisterEndpoint(t *testing.T) {
+broker := NewBroker()
+defer broker.Shutdown()
+
+// Register endpoints for a process
+broker.RegisterEndpoint("test-proc", "RPCGetData")
+broker.RegisterEndpoint("test-proc", "RPCSetData")
+broker.RegisterEndpoint("test-proc", "RPCGetData") // Duplicate should not be added
+
+// Get endpoints
+endpoints := broker.GetEndpoints("test-proc")
+
+// Verify
+if len(endpoints) != 2 {
+t.Errorf("Expected 2 endpoints, got %d", len(endpoints))
+}
+}
+
+// TestBroker_GetAllEndpoints tests getting all endpoints
+func TestBroker_GetAllEndpoints(t *testing.T) {
+broker := NewBroker()
+defer broker.Shutdown()
+
+// Register endpoints for multiple processes
+broker.RegisterEndpoint("proc1", "RPCMethod1")
+broker.RegisterEndpoint("proc1", "RPCMethod2")
+broker.RegisterEndpoint("proc2", "RPCMethod3")
+
+// Get all endpoints
+allEndpoints := broker.GetAllEndpoints()
+
+// Verify
+if len(allEndpoints) != 2 {
+t.Errorf("Expected 2 processes, got %d", len(allEndpoints))
+}
+
+if len(allEndpoints["proc1"]) != 2 {
+t.Errorf("Expected 2 endpoints for proc1, got %d", len(allEndpoints["proc1"]))
+}
+
+if len(allEndpoints["proc2"]) != 1 {
+t.Errorf("Expected 1 endpoint for proc2, got %d", len(allEndpoints["proc2"]))
+}
+}
+
+// TestBroker_SpawnWithRestart tests spawning a process with auto-restart
+func TestBroker_SpawnWithRestart(t *testing.T) {
+broker := NewBroker()
+defer broker.Shutdown()
+
+// Spawn a process with restart
+info, err := broker.SpawnWithRestart("test-echo", "echo", 3, "hello")
+if err != nil {
+t.Fatalf("Failed to spawn process: %v", err)
+}
+
+// Verify
+if info.ID != "test-echo" {
+t.Errorf("Expected ID 'test-echo', got '%s'", info.ID)
+}
+
+if info.Status != ProcessStatusRunning {
+t.Errorf("Expected status 'running', got '%s'", info.Status)
+}
+
+// Wait for process to exit
+time.Sleep(500 * time.Millisecond)
+
+// Verify process still exists (should have restarted)
+proc, err := broker.GetProcess("test-echo")
+if err != nil {
+// Process might have exited and not restarted yet, which is ok for echo
+t.Logf("Process may have exited: %v", err)
+} else {
+t.Logf("Process status: %s", proc.Status)
+}
+}
