@@ -1,9 +1,10 @@
-"""Helper utilities for RPC integration testing."""
+"""Helper utilities for integration testing."""
 
 import json
 import subprocess
 import time
 import os
+import requests
 from typing import Dict, List, Optional, Any
 
 
@@ -187,6 +188,9 @@ def build_go_binary(package_path: str, output_path: str) -> None:
     Args:
         package_path: Path to the Go package (e.g., "./cmd/broker")
         output_path: Output path for the binary
+        
+    Note: This function is deprecated in favor of using pre-built binaries
+    from build.sh -p (located in .build/package/).
     """
     result = subprocess.run(
         ['go', 'build', '-o', output_path, package_path],
@@ -214,3 +218,98 @@ def wait_for_condition(condition_fn, timeout: int = 10, poll_interval: float = 0
             return True
         time.sleep(poll_interval)
     return False
+
+
+class AccessClient:
+    """Client for interacting with the access REST API."""
+    
+    def __init__(self, base_url: str = "http://localhost:8080"):
+        """Initialize the access client.
+        
+        Args:
+            base_url: Base URL of the access service (default: http://localhost:8080)
+        """
+        self.base_url = base_url
+        self.restful_prefix = "/restful"
+    
+    def health(self) -> Dict[str, Any]:
+        """Check health of the access service."""
+        url = f"{self.base_url}{self.restful_prefix}/health"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def list_processes(self) -> Dict[str, Any]:
+        """List all processes."""
+        url = f"{self.base_url}{self.restful_prefix}/processes"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def get_process(self, process_id: str) -> Dict[str, Any]:
+        """Get details of a specific process."""
+        url = f"{self.base_url}{self.restful_prefix}/processes/{process_id}"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def spawn_process(self, process_id: str, command: str, args: List[str] = None, rpc: bool = False) -> Dict[str, Any]:
+        """Spawn a new process."""
+        url = f"{self.base_url}{self.restful_prefix}/processes"
+        data = {
+            "id": process_id,
+            "command": command,
+            "args": args or [],
+            "rpc": rpc
+        }
+        response = requests.post(url, json=data)
+        response.raise_for_status()
+        return response.json()
+    
+    def kill_process(self, process_id: str) -> Dict[str, Any]:
+        """Kill a process."""
+        url = f"{self.base_url}{self.restful_prefix}/processes/{process_id}"
+        response = requests.delete(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get broker statistics."""
+        url = f"{self.base_url}{self.restful_prefix}/stats"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def rpc_call(self, process_id: str, endpoint: str, payload: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Forward an RPC call to a backend process.
+        
+        Args:
+            process_id: ID of the process to send the RPC call to
+            endpoint: RPC endpoint name (e.g., "RPCGetCVECnt")
+            payload: Request payload
+            
+        Returns:
+            Response from the RPC call
+        """
+        url = f"{self.base_url}{self.restful_prefix}/rpc/{process_id}/{endpoint}"
+        response = requests.post(url, json=payload or {})
+        response.raise_for_status()
+        return response.json()
+    
+    def wait_for_ready(self, timeout: int = 10) -> bool:
+        """Wait for the access service to be ready.
+        
+        Args:
+            timeout: Maximum time to wait in seconds
+            
+        Returns:
+            True if service is ready, False if timeout occurred
+        """
+        def check_health():
+            try:
+                self.health()
+                return True
+            except:
+                return False
+        
+        return wait_for_condition(check_health, timeout=timeout)

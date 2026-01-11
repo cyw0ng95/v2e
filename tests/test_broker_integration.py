@@ -1,117 +1,152 @@
-"""Integration tests for the broker RPC service.
+"""Integration tests for process management via access REST API.
 
-These tests use a shared broker instance with services already running,
-following the pattern of using broker to manage all processes.
+These tests use the access service as the central entry point,
+demonstrating process management through RESTful endpoints.
 """
 
 import pytest
 import time
+import uuid
+
+
+def unique_id(prefix="test"):
+    """Generate a unique ID for processes to avoid conflicts."""
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
 @pytest.mark.integration
-@pytest.mark.rpc
-class TestBrokerIntegration:
-    """Integration tests for broker service RPC functionality."""
+class TestProcessManagementViaAccess:
+    """Integration tests for process management via access REST API."""
     
-    def test_broker_spawn_process(self, broker_with_services):
-        """Test spawning a simple process via broker RPC."""
-        broker = broker_with_services
-        # Send RPCSpawn request to spawn an echo command
-        response = broker.send_request("RPCSpawn", {
-            "id": "test-echo",
-            "command": "echo",
-            "args": ["hello", "world"]
-        })
+    def test_spawn_process_via_rest(self, access_service):
+        """Test spawning a simple process via REST API."""
+        access = access_service
+        process_id = unique_id("echo")
+        
+        # Spawn an echo command via REST API
+        response = access.spawn_process(
+            process_id=process_id,
+            command="echo",
+            args=["hello", "world"]
+        )
         
         # Verify response
-        assert response["type"] == "response"
-        assert response["id"] == "RPCSpawn"
-        payload = response["payload"]
-        assert payload["id"] == "test-echo"
-        assert payload["command"] == "echo"
-        assert "pid" in payload
-        assert payload["pid"] > 0
+        assert response["id"] == process_id
+        assert response["command"] == "echo"
+        assert "pid" in response
+        assert response["pid"] > 0
     
-    def test_broker_list_processes(self, broker_with_services):
-        """Test listing processes via broker RPC."""
-        broker = broker_with_services
-        # First spawn a process
-        broker.send_request("RPCSpawn", {
-            "id": "test-sleep",
-            "command": "sleep",
-            "args": ["1"]
-        })
+    def test_list_processes_via_rest(self, access_service):
+        """Test listing processes via REST API."""
+        access = access_service
         
-        # Now list processes
-        response = broker.send_request("RPCListProcesses", {})
+        # Spawn a process first
+        process_id = unique_id("sleep")
+        access.spawn_process(
+            process_id=process_id,
+            command="sleep",
+            args=["1"]
+        )
+        
+        # List processes via REST API
+        response = access.list_processes()
         
         # Verify response
-        assert response["type"] == "response"
-        assert response["id"] == "RPCListProcesses"
-        payload = response["payload"]
-        assert "processes" in payload
-        assert "count" in payload
-        assert payload["count"] >= 1
+        assert "processes" in response
+        assert "count" in response
+        assert response["count"] >= 1
         
-        # Should have at least the services we spawned in the fixture
-        process_ids = [p["id"] for p in payload["processes"]]
-        assert "cve-remote" in process_ids or "cve-local" in process_ids
+        # Should have the process we just spawned
+        process_ids = [p["id"] for p in response["processes"]]
+        assert process_id in process_ids
     
-    def test_broker_get_process(self, broker_with_services):
-        """Test getting process info via broker RPC."""
-        broker = broker_with_services
-        # Use an existing service spawned by the fixture
-        # Get process info for cve-remote
-        response = broker.send_request("RPCGetProcess", {
-            "id": "cve-remote"
-        })
+    def test_get_process_via_rest(self, access_service):
+        """Test getting process info via REST API."""
+        access = access_service
+        process_id = unique_id("gettest")
         
-        # Verify response
-        assert response["type"] == "response"
-        assert response["id"] == "RPCGetProcess"
-        payload = response["payload"]
-        assert payload["id"] == "cve-remote"
-        assert "pid" in payload
-        assert payload["pid"] > 0
-    
-    def test_broker_spawn_rpc_process(self, broker_with_services, test_binaries):
-        """Test spawning an RPC process via broker."""
-        broker = broker_with_services
-        # Spawn a new RPC process (cve-meta as an example)
-        response = broker.send_request("RPCSpawnRPC", {
-            "id": "test-cve-meta",
-            "command": test_binaries["cve-meta"],
-            "args": []
-        })
+        # Spawn a process first
+        access.spawn_process(
+            process_id=process_id,
+            command="echo",
+            args=["test"]
+        )
+        
+        # Get process info via REST API
+        response = access.get_process(process_id)
         
         # Verify response
-        assert response["type"] == "response"
-        assert response["id"] == "RPCSpawnRPC"
-        payload = response["payload"]
-        assert payload["id"] == "test-cve-meta"
-        assert "pid" in payload
-        assert payload["pid"] > 0
+        assert response["id"] == process_id
+        assert "pid" in response
+        assert response["pid"] > 0
     
-    def test_broker_kill_process(self, broker_with_services):
-        """Test killing a process via broker RPC."""
-        broker = broker_with_services
+    def test_spawn_rpc_process_via_rest(self, access_service, package_binaries):
+        """Test spawning an RPC process via REST API."""
+        access = access_service
+        process_id = unique_id("rpc-test")
+        
+        # Spawn an RPC process via REST API
+        response = access.spawn_process(
+            process_id=process_id,
+            command=package_binaries["cve-remote"],
+            args=[],
+            rpc=True
+        )
+        
+        # Verify response
+        assert response["id"] == process_id
+        assert "pid" in response
+        assert response["pid"] > 0
+        
+        # Give it time to initialize
+        time.sleep(0.5)
+        
+        # Verify it's running
+        process_info = access.get_process(process_id)
+        assert process_info["status"] == "running"
+    
+    def test_kill_process_via_rest(self, access_service):
+        """Test killing a process via REST API."""
+        access = access_service
+        process_id = unique_id("killable")
+        
         # Spawn a long-running process
-        broker.send_request("RPCSpawn", {
-            "id": "test-killable",
-            "command": "sleep",
-            "args": ["30"]
-        })
+        access.spawn_process(
+            process_id=process_id,
+            command="sleep",
+            args=["30"]
+        )
         
-        time.sleep(0.1)
+        time.sleep(0.2)
         
-        # Kill the process
-        response = broker.send_request("RPCKill", {
-            "id": "test-killable"
-        })
+        # Kill the process via REST API
+        response = access.kill_process(process_id)
         
         # Verify response
-        assert response["type"] == "response"
-        assert response["id"] == "RPCKill"
-        payload = response["payload"]
-        assert payload["success"] is True
-        assert payload["id"] == "test-killable"
+        assert response["success"] is True
+        assert response["id"] == process_id
+    
+    def test_health_check_via_rest(self, access_service):
+        """Test health check endpoint."""
+        access = access_service
+        
+        # Check health via REST API
+        response = access.health()
+        
+        # Verify response
+        assert response["status"] == "ok"
+    
+    def test_stats_via_rest(self, access_service):
+        """Test getting broker statistics via REST API."""
+        access = access_service
+        
+        # Get stats via REST API
+        response = access.get_stats()
+        
+        # Verify response has expected fields
+        assert "total_sent" in response
+        assert "total_received" in response
+        assert "request_count" in response
+        assert "response_count" in response
+        assert "event_count" in response
+        assert "error_count" in response
