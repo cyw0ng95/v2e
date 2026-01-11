@@ -10,7 +10,6 @@ This project contains multiple commands:
 
 - `cmd/access` - RESTful API gateway service (the central entry point for external requests)
 - `cmd/broker` - RPC service for managing subprocesses and process lifecycle
-- `cmd/broker-stats` - RPC service for accessing broker message statistics
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
 - `cmd/cve-meta` - Backend RPC service that orchestrates CVE fetching and storage operations
@@ -34,15 +33,13 @@ This project follows a **broker-mediated architecture** for RPC-based subprocess
 1. **Users run the broker** with a configuration file (`config.json`)
 2. **The broker spawns all subprocess services** as defined in the configuration
 3. **All services communicate via RPC messages** routed through the broker
-4. **Subprocesses only accept input from the broker** via stdin/stdout pipes
+4. **Subprocesses only accept input from the broker** via pipes
 
 This architecture provides:
 - **Process isolation**: Services cannot directly access each other
 - **Message routing**: Broker controls all inter-process communication
 - **Security**: Single point of control for spawning and managing processes
 - **Monitoring**: Centralized message statistics and process management
-
-**Note:** The `cmd/access` service is a standalone REST API server (not a subprocess service) and follows a different architecture pattern. It accepts HTTP requests directly and does not participate in the broker-mediated RPC communication. All other services (broker, cve-local, cve-remote, cve-meta) follow the secure RPC-only pattern described below.
 
 ### Security Principles
 
@@ -127,7 +124,6 @@ To build all commands:
 ```bash
 go build ./cmd/access
 go build ./cmd/broker
-go build ./cmd/broker-stats
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
 go build ./cmd/cve-meta
@@ -138,7 +134,6 @@ Or build a specific command:
 ```bash
 go build -o bin/access ./cmd/access
 go build -o bin/broker ./cmd/broker
-go build -o bin/broker-stats ./cmd/broker-stats
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
 go build -o bin/cve-meta ./cmd/cve-meta
@@ -211,46 +206,24 @@ The Access service is the central entry point for external requests to the v2e s
 - Single interface for all external system interactions
 - RESTful API schema under `/restful/` prefix
 - Process management through HTTP endpoints
-- RPC forwarding to backend services
+- RPC forwarding to backend services via broker
 - Configurable listen address (default: `0.0.0.0:8080`)
 
 **Running the Service:**
 
 ```bash
 # Run with configuration from config.json
-go run ./cmd/access
+go run ./cmd/broker config.jsom
 
 # The service will:
 # 1. Load configuration from config.json
-# 2. Listen on the configured address (default: 0.0.0.0:8080)
-# 3. Create a broker instance for backend communication
-# 4. Load and spawn configured processes
-# 5. Serve RESTful API endpoints
+# 2. Boot all subproesses including access
+# 3. Serve RESTful API endpoints
 ```
 
 **Configuration:**
 
 The access service is configured via `config.json`:
-
-```json
-{
-  "server": {
-    "address": "0.0.0.0:8080"
-  },
-  "broker": {
-    "processes": [
-      {
-        "id": "cve-remote",
-        "command": "go",
-        "args": ["run", "./cmd/cve-remote"],
-        "rpc": true,
-        "restart": true,
-        "max_restarts": -1
-      }
-    ]
-  }
-}
-```
 
 **Available RESTful Endpoints:**
 
@@ -326,9 +299,9 @@ External Clients → Access (REST API)
 
 All external requests are handled by the Access service, which:
 1. Receives HTTP requests on RESTful endpoints
-2. Translates them to broker operations or RPC messages
-3. Forwards to the appropriate backend service
-4. Returns responses as JSON
+2. Translates them to RPC messages transferrd via broker
+3. broker forwads messages to the appropriate backend service
+4. Returns responses from backend services as JSON
 
 **Security:**
 
@@ -337,16 +310,6 @@ The Access service provides a controlled interface to the system:
 - All backend services are isolated and only accessible via the broker
 - Process management endpoints allow controlled spawning and termination
 - RPC forwarding ensures messages are properly routed through the broker
-
-**Development & Testing:**
-
-Run tests for the access service:
-
-```bash
-go test ./cmd/access -v
-```
-
-The Access service is designed to be the only public-facing component of the v2e system, with all other services running as isolated backend processes managed by the broker.
 
 ### Broker Manual RPC Commands (Testing/Development)
 
@@ -427,81 +390,11 @@ The broker will monitor process exits and restart them automatically according t
 
 This service can be spawned by a broker to provide remote access to process management via RPC.
 
-### Broker Stats (RPC Service)
-
-The Broker Stats service provides RPC interfaces for accessing message statistics from a broker instance:
-
-```bash
-# Run the service (it reads RPC requests from stdin and writes responses to stdout)
-go run ./cmd/broker-stats
-
-# Example: Get total message count
-echo '{"type":"request","id":"RPCGetMessageCount","payload":{}}' | go run ./cmd/broker-stats
-
-# Example: Get detailed message statistics
-echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/broker-stats
-```
-
-**Available RPC Interfaces:**
-- `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
-- `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
-
-**Response Format for RPCGetMessageCount:**
-```json
-{
-  "total_count": 42
-}
-```
-
-**Response Format for RPCGetMessageStats:**
-```json
-{
-  "total_sent": 21,
-  "total_received": 21,
-  "request_count": 10,
-  "response_count": 10,
-  "event_count": 1,
-  "error_count": 1,
-  "first_message_time": "2026-01-10T15:00:00Z",
-  "last_message_time": "2026-01-10T15:30:00Z"
-}
-```
-
-This service can be spawned by a broker to provide remote access to process management and message statistics via RPC.
-
-### Worker
-
-The worker is an example subprocess that demonstrates the `pkg/proc/subprocess` framework:
-
-```bash
-# Run the worker (it reads messages from stdin and writes to stdout)
-go run ./cmd/worker
-
-# Example: Send a ping message
-echo '{"type":"request","id":"ping"}' | go run ./cmd/worker
-
-# Example: Send an echo request
-echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}' | go run ./cmd/worker
-```
-
-The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
-
 ### CVE Remote (RPC Service)
 
 **Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
 
-The CVE Remote service provides RPC interfaces for fetching CVE data from the NVD API:
-
-```bash
-# For testing/development only - run standalone with manual RPC commands
-go run ./cmd/cve-remote
-
-# Example: Get total CVE count from NVD
-echo '{"type":"request","id":"RPCGetCVECnt","payload":{}}' | go run ./cmd/cve-remote
-
-# Example: Fetch a specific CVE by ID
-echo '{"type":"request","id":"RPCGetCVEByID","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-remote
-```
+The CVE Remote service provides RPC interfaces for fetching CVE data from the NVD API.
 
 **Available RPC Interfaces:**
 - `RPCGetCVECnt` - Returns the total count of CVEs in the NVD database
@@ -510,24 +403,29 @@ echo '{"type":"request","id":"RPCGetCVEByID","payload":{"cve_id":"CVE-2021-44228
 **Environment Variables:**
 - `NVD_API_KEY` - Optional NVD API key for higher rate limits
 
-**Security Note:** This service only accepts input via stdin (RPC messages). When deployed via broker, it is isolated and can only communicate through the broker's message routing.
+**Accessing the Service:**
+
+RPC services should be accessed via the Access service's RESTful API, not directly via stdin/stdout:
+
+```bash
+# Get CVE count from NVD
+curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVECnt \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Fetch a specific CVE by ID
+curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVEByID \
+  -H "Content-Type: application/json" \
+  -d '{"cve_id":"CVE-2021-44228"}'
+```
+
+**Security Note:** This service only accepts RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API.
 
 ### CVE Local (RPC Service)
 
 **Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
 
-The CVE Local service provides RPC interfaces for storing and retrieving CVE data from a local SQLite database:
-
-```bash
-# For testing/development only - run standalone with manual RPC commands
-go run ./cmd/cve-local
-
-# Example: Check if a CVE is stored locally
-echo '{"type":"request","id":"RPCIsCVEStoredByID","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-local
-
-# Example: Save a CVE to local database
-echo '{"type":"request","id":"RPCSaveCVEByID","payload":{"cve":{"id":"CVE-2021-44228",...}}}' | go run ./cmd/cve-local
-```
+The CVE Local service provides RPC interfaces for storing and retrieving CVE data from a local SQLite database.
 
 **Available RPC Interfaces:**
 - `RPCIsCVEStoredByID` - Checks if a CVE exists in the local database
@@ -536,57 +434,47 @@ echo '{"type":"request","id":"RPCSaveCVEByID","payload":{"cve":{"id":"CVE-2021-4
 **Environment Variables:**
 - `CVE_DB_PATH` - Path to the SQLite database file (default: `cve.db`)
 
-**Security Note:** This service only accepts input via stdin (RPC messages). When deployed via broker, it is isolated and can only communicate through the broker's message routing.
+**Accessing the Service:**
+
+RPC services should be accessed via the Access service's RESTful API, not directly via stdin/stdout:
+
+```bash
+# Example: Access cve-local service via RESTful API
+curl -X POST http://localhost:8080/restful/rpc/cve-local/RPCIsCVEStoredByID \
+  -H "Content-Type: application/json" \
+  -d '{"cve_id":"CVE-2021-44228"}'
+```
+
+**Security Note:** This service only accepts RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API.
 
 ### CVE Meta Service
 
 **Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
 
-The CVE Meta service is a backend RPC service that orchestrates CVE fetching and storage operations. It runs continuously and accepts RPC commands to perform batch jobs.
+**Note:** This service is currently a non-functional stub pending redesign. It will be updated to use broker-spawned services via RPC instead of managing its own subprocesses.
 
-```bash
-# For testing/development only - run standalone with manual RPC commands
-go run ./cmd/cve-meta
+The CVE Meta service is a backend RPC service that will orchestrate CVE fetching and storage operations.
 
-# Example: Fetch and store a single CVE
-echo '{"type":"request","id":"RPCFetchAndStoreCVE","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-meta
-
-# Example: Fetch and store multiple CVEs in batch
-echo '{"type":"request","id":"RPCBatchFetchCVEs","payload":{"cve_ids":["CVE-2021-44228","CVE-2024-1234"]}}' | go run ./cmd/cve-meta
-
-# Example: Get total CVE count from NVD
-echo '{"type":"request","id":"RPCGetRemoteCVECount","payload":{}}' | go run ./cmd/cve-meta
-```
-
-**Available RPC Interfaces:**
-- `RPCFetchAndStoreCVE` - Fetches a CVE from NVD (if not already stored locally) and saves it to the database
-- `RPCBatchFetchCVEs` - Fetches and stores multiple CVEs in batch mode
-- `RPCGetRemoteCVECount` - Returns the total count of CVEs in the NVD database
+**Planned RPC Interfaces:**
+- `RPCFetchAndStoreCVE` - Will fetch a CVE from NVD (if not already stored locally) and save it to the database
+- `RPCBatchFetchCVEs` - Will fetch and store multiple CVEs in batch mode
+- `RPCGetRemoteCVECount` - Will return the total count of CVEs in the NVD database
 
 **Environment Variables:**
 - `CVE_DB_PATH` - Path to the SQLite database file (default: `cve.db`)
 
-The service performs the following workflow:
-1. Spawns `cve-local` and `cve-remote` services as subprocesses
-2. Accepts RPC commands via stdin
-3. For `RPCFetchAndStoreCVE`:
-   - Checks if the CVE is already stored locally via `cve-local`
-   - If not stored, fetches it from NVD via `cve-remote`
-   - Saves the fetched CVE to the local database via `cve-local`
-4. For `RPCBatchFetchCVEs`:
-   - Processes multiple CVE IDs
-   - Returns success/failure status for each CVE
-5. For `RPCGetRemoteCVECount`:
-   - Forwards the request to `cve-remote` and returns the total count
+**Accessing the Service:**
 
-This demonstrates the broker-mediated RPC communication pattern where:
-- The meta service acts as an orchestrator/backend service
-- All communication happens via RPC messages routed through the broker
-- The service runs continuously accepting commands via stdin only
-- Batch jobs can be executed efficiently
-- Services are isolated and cannot accept external input
+Once redesigned, RPC services will be accessed via the Access service's RESTful API:
 
-**Security Note:** The cve-meta service spawns its own broker internally to manage cve-local and cve-remote subprocesses. This demonstrates how services can act as orchestrators by creating their own broker instance while still maintaining process isolation and RPC-only communication within their subprocess tree.
+```bash
+# Example: Future access pattern via RESTful API
+curl -X POST http://localhost:8080/restful/rpc/cve-meta/RPCFetchAndStoreCVE \
+  -H "Content-Type: application/json" \
+  -d '{"cve_id":"CVE-2021-44228"}'
+```
+
+**Security Note:** This service will only accept RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API.
 
 ## Development
 

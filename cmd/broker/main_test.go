@@ -11,7 +11,7 @@ import (
 
 func TestRPCSpawn(t *testing.T) {
 	// Create broker
-	broker := proc.NewBroker()
+	broker := NewBroker()
 	defer broker.Shutdown()
 
 	// Create handler
@@ -68,7 +68,7 @@ func TestRPCSpawn(t *testing.T) {
 
 func TestRPCGetProcess(t *testing.T) {
 	// Create broker and spawn a process
-	broker := proc.NewBroker()
+	broker := NewBroker()
 	defer broker.Shutdown()
 
 	_, err := broker.Spawn("test-process", "sleep", "1")
@@ -119,7 +119,7 @@ func TestRPCGetProcess(t *testing.T) {
 
 func TestRPCListProcesses(t *testing.T) {
 	// Create broker and spawn processes
-	broker := proc.NewBroker()
+	broker := NewBroker()
 	defer broker.Shutdown()
 
 	broker.Spawn("proc-1", "echo", "test1")
@@ -165,7 +165,7 @@ func TestRPCListProcesses(t *testing.T) {
 
 func TestRPCKill(t *testing.T) {
 	// Create broker and spawn a long-running process
-	broker := proc.NewBroker()
+	broker := NewBroker()
 	defer broker.Shutdown()
 
 	_, err := broker.Spawn("test-kill", "sleep", "10")
@@ -216,7 +216,7 @@ func TestRPCKill(t *testing.T) {
 
 func TestRPCGetMessageCount(t *testing.T) {
 	// Create broker and send some messages
-	broker := proc.NewBroker()
+	broker := NewBroker()
 	defer broker.Shutdown()
 
 	// Send a few messages
@@ -263,7 +263,7 @@ func TestRPCGetMessageCount(t *testing.T) {
 
 func TestRPCGetMessageStats(t *testing.T) {
 	// Create broker and send different types of messages
-	broker := proc.NewBroker()
+	broker := NewBroker()
 	defer broker.Shutdown()
 
 	// Send different types of messages

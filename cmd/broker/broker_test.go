@@ -1,4 +1,4 @@
-package proc
+package main
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
 // threadSafeBuffer wraps bytes.Buffer with a mutex for thread-safe access
@@ -363,7 +364,7 @@ func TestBroker_SendReceiveMessage(t *testing.T) {
 	broker := NewBroker()
 	defer broker.Shutdown()
 
-	msg, err := NewRequestMessage("req-1", map[string]string{"test": "data"})
+	msg, err := proc.NewRequestMessage("req-1", map[string]string{"test": "data"})
 	if err != nil {
 		t.Fatalf("NewRequestMessage failed: %v", err)
 	}
@@ -430,7 +431,7 @@ func TestBroker_ProcessExitEvent(t *testing.T) {
 		t.Fatalf("ReceiveMessage failed: %v", err)
 	}
 
-	if msg.Type != MessageTypeEvent {
+	if msg.Type != proc.MessageTypeEvent {
 		t.Errorf("Expected MessageTypeEvent, got %s", msg.Type)
 	}
 
@@ -490,7 +491,7 @@ func TestBroker_Shutdown_MessageChannel(t *testing.T) {
 	}
 
 	// Try to send a message after shutdown
-	msg, _ := NewRequestMessage("req-1", nil)
+	msg, _ := proc.NewRequestMessage("req-1", nil)
 	err = broker.SendMessage(msg)
 	if err == nil {
 		t.Error("Expected error when sending message after shutdown")
@@ -579,7 +580,7 @@ func TestBroker_GetMessageCount(t *testing.T) {
 	}
 
 	// Send a message
-	msg, _ := NewRequestMessage("req-1", nil)
+	msg, _ := proc.NewRequestMessage("req-1", nil)
 	err := broker.SendMessage(msg)
 	if err != nil {
 		t.Fatalf("SendMessage failed: %v", err)
@@ -626,10 +627,10 @@ func TestBroker_GetMessageStats(t *testing.T) {
 	}
 
 	// Send different types of messages
-	reqMsg, _ := NewRequestMessage("req-1", nil)
-	respMsg, _ := NewResponseMessage("resp-1", nil)
-	eventMsg, _ := NewEventMessage("event-1", nil)
-	errorMsg := NewErrorMessage("err-1", fmt.Errorf("test error"))
+	reqMsg, _ := proc.NewRequestMessage("req-1", nil)
+	respMsg, _ := proc.NewResponseMessage("resp-1", nil)
+	eventMsg, _ := proc.NewEventMessage("event-1", nil)
+	errorMsg := proc.NewErrorMessage("err-1", fmt.Errorf("test error"))
 
 	broker.SendMessage(reqMsg)
 	broker.SendMessage(respMsg)
@@ -698,7 +699,7 @@ func TestBroker_MessageStats_Timestamps(t *testing.T) {
 	defer broker.Shutdown()
 
 	// Send first message
-	msg1, _ := NewRequestMessage("req-1", nil)
+	msg1, _ := proc.NewRequestMessage("req-1", nil)
 	broker.SendMessage(msg1)
 
 	stats := broker.GetMessageStats()
@@ -714,7 +715,7 @@ func TestBroker_MessageStats_Timestamps(t *testing.T) {
 
 	// Wait a bit and send another message
 	time.Sleep(10 * time.Millisecond)
-	msg2, _ := NewRequestMessage("req-2", nil)
+	msg2, _ := proc.NewRequestMessage("req-2", nil)
 	broker.SendMessage(msg2)
 
 	stats = broker.GetMessageStats()
@@ -745,7 +746,7 @@ func TestBroker_MessageStats_ConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < messagesPerGoroutine; j++ {
-				msg, _ := NewRequestMessage(fmt.Sprintf("req-%d-%d", id, j), nil)
+				msg, _ := proc.NewRequestMessage(fmt.Sprintf("req-%d-%d", id, j), nil)
 				broker.SendMessage(msg)
 			}
 		}(i)
@@ -801,79 +802,79 @@ func TestBroker_ProcessExitEvent_UpdatesStats(t *testing.T) {
 
 // TestBroker_RegisterEndpoint tests endpoint registration
 func TestBroker_RegisterEndpoint(t *testing.T) {
-broker := NewBroker()
-defer broker.Shutdown()
+	broker := NewBroker()
+	defer broker.Shutdown()
 
-// Register endpoints for a process
-broker.RegisterEndpoint("test-proc", "RPCGetData")
-broker.RegisterEndpoint("test-proc", "RPCSetData")
-broker.RegisterEndpoint("test-proc", "RPCGetData") // Duplicate should not be added
+	// Register endpoints for a process
+	broker.RegisterEndpoint("test-proc", "RPCGetData")
+	broker.RegisterEndpoint("test-proc", "RPCSetData")
+	broker.RegisterEndpoint("test-proc", "RPCGetData") // Duplicate should not be added
 
-// Get endpoints
-endpoints := broker.GetEndpoints("test-proc")
+	// Get endpoints
+	endpoints := broker.GetEndpoints("test-proc")
 
-// Verify
-if len(endpoints) != 2 {
-t.Errorf("Expected 2 endpoints, got %d", len(endpoints))
-}
+	// Verify
+	if len(endpoints) != 2 {
+		t.Errorf("Expected 2 endpoints, got %d", len(endpoints))
+	}
 }
 
 // TestBroker_GetAllEndpoints tests getting all endpoints
 func TestBroker_GetAllEndpoints(t *testing.T) {
-broker := NewBroker()
-defer broker.Shutdown()
+	broker := NewBroker()
+	defer broker.Shutdown()
 
-// Register endpoints for multiple processes
-broker.RegisterEndpoint("proc1", "RPCMethod1")
-broker.RegisterEndpoint("proc1", "RPCMethod2")
-broker.RegisterEndpoint("proc2", "RPCMethod3")
+	// Register endpoints for multiple processes
+	broker.RegisterEndpoint("proc1", "RPCMethod1")
+	broker.RegisterEndpoint("proc1", "RPCMethod2")
+	broker.RegisterEndpoint("proc2", "RPCMethod3")
 
-// Get all endpoints
-allEndpoints := broker.GetAllEndpoints()
+	// Get all endpoints
+	allEndpoints := broker.GetAllEndpoints()
 
-// Verify
-if len(allEndpoints) != 2 {
-t.Errorf("Expected 2 processes, got %d", len(allEndpoints))
-}
+	// Verify
+	if len(allEndpoints) != 2 {
+		t.Errorf("Expected 2 processes, got %d", len(allEndpoints))
+	}
 
-if len(allEndpoints["proc1"]) != 2 {
-t.Errorf("Expected 2 endpoints for proc1, got %d", len(allEndpoints["proc1"]))
-}
+	if len(allEndpoints["proc1"]) != 2 {
+		t.Errorf("Expected 2 endpoints for proc1, got %d", len(allEndpoints["proc1"]))
+	}
 
-if len(allEndpoints["proc2"]) != 1 {
-t.Errorf("Expected 1 endpoint for proc2, got %d", len(allEndpoints["proc2"]))
-}
+	if len(allEndpoints["proc2"]) != 1 {
+		t.Errorf("Expected 1 endpoint for proc2, got %d", len(allEndpoints["proc2"]))
+	}
 }
 
 // TestBroker_SpawnWithRestart tests spawning a process with auto-restart
 func TestBroker_SpawnWithRestart(t *testing.T) {
-broker := NewBroker()
-defer broker.Shutdown()
+	broker := NewBroker()
+	defer broker.Shutdown()
 
-// Spawn a process with restart
-info, err := broker.SpawnWithRestart("test-echo", "echo", 3, "hello")
-if err != nil {
-t.Fatalf("Failed to spawn process: %v", err)
-}
+	// Spawn a process with restart
+	info, err := broker.SpawnWithRestart("test-echo", "echo", 3, "hello")
+	if err != nil {
+		t.Fatalf("Failed to spawn process: %v", err)
+	}
 
-// Verify
-if info.ID != "test-echo" {
-t.Errorf("Expected ID 'test-echo', got '%s'", info.ID)
-}
+	// Verify
+	if info.ID != "test-echo" {
+		t.Errorf("Expected ID 'test-echo', got '%s'", info.ID)
+	}
 
-if info.Status != ProcessStatusRunning {
-t.Errorf("Expected status 'running', got '%s'", info.Status)
-}
+	if info.Status != ProcessStatusRunning {
+		t.Errorf("Expected status 'running', got '%s'", info.Status)
+	}
 
-// Wait for process to exit
-time.Sleep(500 * time.Millisecond)
+	// Wait for process to exit
+	time.Sleep(500 * time.Millisecond)
 
-// Verify process still exists (should have restarted)
-proc, err := broker.GetProcess("test-echo")
-if err != nil {
-// Process might have exited and not restarted yet, which is ok for echo
-t.Logf("Process may have exited: %v", err)
-} else {
-t.Logf("Process status: %s", proc.Status)
-}
+	// Verify process still exists (should have restarted)
+	proc, err := broker.GetProcess("test-echo")
+	if err != nil {
+		// Process might have exited and not restarted yet, which is ok for echo
+		t.Logf("Process may have exited: %v", err)
+	} else {
+		t.Logf("Process status: %s", proc.Status)
+	}
 }
