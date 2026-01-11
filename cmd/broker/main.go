@@ -1,48 +1,41 @@
 package main
 
 import (
-"fmt"
-"io"
-"os"
-"os/signal"
-"syscall"
+	"io"
+	"os"
+	"os/signal"
+	"syscall"
 
-"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 func main() {
-// Get process ID from environment or use default
-processID := os.Getenv("PROCESS_ID")
-if processID == "" {
-processID = "broker"
-}
+	// Get config file from argv[1] or use default
+	configFile := "config.json"
+	if len(os.Args) > 1 {
+		configFile = os.Args[1]
+	}
 
-// Get config file from argv[1] or use default
-configFile := "config.json"
-if len(os.Args) > 1 {
-configFile = os.Args[1]
-}
+	// Load configuration
+	config, err := common.LoadConfig(configFile)
+	if err != nil {
+		common.Error("Error loading config: %v", err)
+		os.Exit(1)
+	}
 
-// Load configuration
-config, err := common.LoadConfig(configFile)
-if err != nil {
-fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-os.Exit(1)
-}
-
-// Set up logger with dual output (stdout + file) if log file is configured
-var logOutput io.Writer
-if config.Broker.LogFile != "" {
-logFile, err := os.OpenFile(config.Broker.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-if err != nil {
-fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
-os.Exit(1)
-}
-defer logFile.Close()
-logOutput = io.MultiWriter(os.Stdout, logFile)
-} else {
-logOutput = os.Stdout
-}
+	// Set up logger with dual output (stdout + file) if log file is configured
+	var logOutput io.Writer
+	if config.Broker.LogFile != "" {
+		logFile, err := os.OpenFile(config.Broker.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			common.Error("Error opening log file: %v", err)
+			os.Exit(1)
+		}
+		defer logFile.Close()
+		logOutput = io.MultiWriter(os.Stdout, logFile)
+	} else {
+		logOutput = os.Stdout
+	}
 
 // Set default logger output
 common.SetOutput(logOutput)
