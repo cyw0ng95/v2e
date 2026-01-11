@@ -57,6 +57,25 @@ class AccessClient:
         response.raise_for_status()
         return response.json()
     
+    def rpc_call(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Make a generic RPC call to the broker via the access service.
+        
+        Args:
+            method: RPC method name (e.g., "RPCGetMessageStats")
+            params: Optional parameters for the RPC call
+            
+        Returns:
+            Response in format: {"retcode": int, "message": str, "payload": any}
+        """
+        url = f"{self.base_url}{self.restful_prefix}/rpc"
+        request_body = {
+            "method": method,
+            "params": params or {}
+        }
+        response = requests.post(url, json=request_body)
+        response.raise_for_status()
+        return response.json()
+    
     def get_message_stats(self) -> Dict[str, Any]:
         """Get message statistics from the broker.
         
@@ -66,10 +85,8 @@ class AccessClient:
         Returns:
             Message statistics including counts by type and timestamps
         """
-        url = f"{self.base_url}{self.restful_prefix}/stats/messages"
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
+        result = self.rpc_call("RPCGetMessageStats")
+        return result
     
     def get_message_count(self) -> Dict[str, Any]:
         """Get total message count from the broker.
@@ -80,10 +97,8 @@ class AccessClient:
         Returns:
             Total message count (sent + received)
         """
-        url = f"{self.base_url}{self.restful_prefix}/stats/message-count"
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
+        result = self.rpc_call("RPCGetMessageCount")
+        return result
     
     def wait_for_ready(self, timeout: int = 10) -> bool:
         """Wait for the access service to be ready.

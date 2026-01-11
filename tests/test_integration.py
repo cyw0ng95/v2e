@@ -89,94 +89,119 @@ class TestBrokerDeployment:
 
 @pytest.mark.integration
 class TestBrokerMessageStats:
-    """Integration tests for broker message statistics via REST API."""
+    """Integration tests for broker message statistics via generic RPC endpoint."""
     
-    def test_get_message_stats_endpoint_exists(self, access_service):
-        """Test that the message stats endpoint exists and returns expected structure.
+    def test_rpc_get_message_stats(self, access_service):
+        """Test RPCGetMessageStats via generic RPC endpoint.
         
         This verifies:
-        - GET /restful/stats/messages endpoint is accessible
-        - Response contains expected fields for message statistics
-        - Endpoint is ready for RPC forwarding implementation
+        - POST /restful/rpc endpoint accepts RPCGetMessageStats method
+        - Response uses standardized format: {retcode, message, payload}
+        - Payload contains expected message statistics fields
         
         Note: Currently returns placeholder data. Will return actual broker stats
         when RPC forwarding is implemented (issue #74).
         """
         access = access_service
         
-        # Call message stats endpoint
+        # Call message stats via generic RPC endpoint
         response = access.get_message_stats()
         
-        # Verify response has expected structure
-        assert "total_sent" in response
-        assert "total_received" in response
-        assert "request_count" in response
-        assert "response_count" in response
-        assert "event_count" in response
-        assert "error_count" in response
+        # Verify standardized response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert "payload" in response
         
-        # Note field indicates this is placeholder
-        assert "note" in response
+        # Verify success
+        assert response["retcode"] == 0
+        assert response["message"] == "success"
         
-    def test_get_message_count_endpoint_exists(self, access_service):
-        """Test that the message count endpoint exists and returns expected structure.
+        # Verify payload has expected structure
+        payload = response["payload"]
+        assert "total_sent" in payload
+        assert "total_received" in payload
+        assert "request_count" in payload
+        assert "response_count" in payload
+        assert "event_count" in payload
+        assert "error_count" in payload
+        
+    def test_rpc_get_message_count(self, access_service):
+        """Test RPCGetMessageCount via generic RPC endpoint.
         
         This verifies:
-        - GET /restful/stats/message-count endpoint is accessible
-        - Response contains count field
-        - Endpoint is ready for RPC forwarding implementation
+        - POST /restful/rpc endpoint accepts RPCGetMessageCount method
+        - Response uses standardized format: {retcode, message, payload}
+        - Payload contains count field
         
         Note: Currently returns placeholder data. Will return actual broker count
         when RPC forwarding is implemented (issue #74).
         """
         access = access_service
         
-        # Call message count endpoint
+        # Call message count via generic RPC endpoint
         response = access.get_message_count()
         
-        # Verify response has expected structure
-        assert "count" in response
-        assert isinstance(response["count"], int)
+        # Verify standardized response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert "payload" in response
         
-        # Note field indicates this is placeholder
-        assert "note" in response
+        # Verify success
+        assert response["retcode"] == 0
+        assert response["message"] == "success"
+        
+        # Verify payload has expected structure
+        payload = response["payload"]
+        assert "count" in payload
+        assert isinstance(payload["count"], int)
     
-    def test_message_stats_endpoint_stability(self, access_service):
-        """Test message stats endpoint handles multiple requests.
+    def test_rpc_endpoint_stability(self, access_service):
+        """Test generic RPC endpoint handles multiple requests.
         
         This verifies:
-        - Endpoint remains stable across multiple calls
-        - No errors or crashes
+        - Generic RPC endpoint remains stable across multiple calls
+        - Different RPC methods can be called sequentially
         - Consistent response structure
         """
         access = access_service
         
-        # Make multiple calls
+        # Make multiple calls to different RPC methods
         for i in range(3):
-            response = access.get_message_stats()
-            assert "total_sent" in response
-            assert "total_received" in response
+            # Call GetMessageStats
+            response1 = access.get_message_stats()
+            assert response1["retcode"] == 0
+            assert "payload" in response1
+            
+            # Call GetMessageCount
+            response2 = access.get_message_count()
+            assert response2["retcode"] == 0
+            assert "payload" in response2
             
             if i < 2:
                 time.sleep(0.1)
     
-    def test_message_count_endpoint_stability(self, access_service):
-        """Test message count endpoint handles multiple requests.
+    def test_rpc_unknown_method(self, access_service):
+        """Test generic RPC endpoint handles unknown methods correctly.
         
         This verifies:
-        - Endpoint remains stable across multiple calls
-        - No errors or crashes
-        - Consistent response structure
+        - Unknown RPC methods return appropriate error code
+        - Error response follows standardized format
+        - Error message is descriptive
         """
         access = access_service
         
-        # Make multiple calls
-        for i in range(3):
-            response = access.get_message_count()
-            assert "count" in response
-            
-            if i < 2:
-                time.sleep(0.1)
+        # Call unknown RPC method
+        response = access.rpc_call("RPCUnknownMethod")
+        
+        # Verify standardized response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert "payload" in response
+        
+        # Verify error
+        assert response["retcode"] == 404
+        assert "Unknown RPC method" in response["message"]
+        assert response["payload"] is None
 
 
 # TODO: Additional integration tests for CVE functionality will be added

@@ -53,35 +53,68 @@ c.JSON(http.StatusOK, gin.H{
 })
 })
 
-// Message statistics endpoints
-// TODO: These currently return mock data. When RPC forwarding is implemented
-// in the access service (issue #74), these should forward requests to the
-// broker's RPCGetMessageStats and RPCGetMessageCount handlers.
+// Generic RPC forwarding endpoint
+// POST /restful/rpc
+// Request body: {"method": "RPCMethodName", "params": {...}}
+// Response: {"retcode": 0, "message": "success", "payload": {...}}
+restful.POST("/rpc", func(c *gin.Context) {
+// Parse request body
+var request struct {
+Method string                 `json:"method" binding:"required"`
+Params map[string]interface{} `json:"params"`
+}
 
-// Get message statistics from broker
-restful.GET("/stats/messages", func(c *gin.Context) {
-// TODO: Forward RPC request to broker's RPCGetMessageStats handler
-// For now, return placeholder response for integration testing
-c.JSON(http.StatusOK, gin.H{
-"total_sent":       0,
-"total_received":   0,
-"request_count":    0,
-"response_count":   0,
-"event_count":      0,
-"error_count":      0,
+if err := c.ShouldBindJSON(&request); err != nil {
+c.JSON(http.StatusBadRequest, gin.H{
+"retcode": 400,
+"message": fmt.Sprintf("Invalid request: %v", err),
+"payload": nil,
+})
+return
+}
+
+// TODO: Forward RPC request to broker
+// When RPC forwarding is implemented (issue #74), this will:
+// 1. Create RPC message with request.Method and request.Params
+// 2. Send to broker via stdin
+// 3. Wait for response from broker via stdout
+// 4. Return response in standardized format
+
+// For now, handle known RPC methods with placeholder data
+var retcode int
+var message string
+var payload interface{}
+
+switch request.Method {
+case "RPCGetMessageStats":
+retcode = 0
+message = "success"
+payload = gin.H{
+"total_sent":         0,
+"total_received":     0,
+"request_count":      0,
+"response_count":     0,
+"event_count":        0,
+"error_count":        0,
 "first_message_time": nil,
 "last_message_time":  nil,
-"note": "This endpoint will be fully functional when RPC forwarding is implemented (issue #74)",
-})
-})
-
-// Get message count from broker
-restful.GET("/stats/message-count", func(c *gin.Context) {
-// TODO: Forward RPC request to broker's RPCGetMessageCount handler
-// For now, return placeholder response for integration testing
-c.JSON(http.StatusOK, gin.H{
+}
+case "RPCGetMessageCount":
+retcode = 0
+message = "success"
+payload = gin.H{
 "count": 0,
-"note": "This endpoint will be fully functional when RPC forwarding is implemented (issue #74)",
+}
+default:
+retcode = 404
+message = fmt.Sprintf("Unknown RPC method: %s", request.Method)
+payload = nil
+}
+
+c.JSON(http.StatusOK, gin.H{
+"retcode": retcode,
+"message": message,
+"payload": payload,
 })
 })
 
