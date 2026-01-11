@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
-	"github.com/bytedance/sonic"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/broker"
 	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/proc"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -47,15 +47,15 @@ func main() {
 	common.SetLevel(common.InfoLevel)
 
 	// Create broker instance
-	broker := proc.NewBroker()
-	defer broker.Shutdown()
+	brokerInstance := broker.NewBroker()
+	defer brokerInstance.Shutdown()
 
 	// Set up broker logger with dual output
 	brokerLogger := common.NewLogger(logOutput, "[BROKER] ", common.InfoLevel)
-	broker.SetLogger(brokerLogger)
+	brokerInstance.SetLogger(brokerLogger)
 
 	// Load processes from configuration
-	if err := broker.LoadProcessesFromConfig(config); err != nil {
+	if err := brokerInstance.LoadProcessesFromConfig(config); err != nil {
 		common.Error("Error loading processes from config: %v", err)
 	}
 
@@ -63,16 +63,16 @@ func main() {
 	sp := subprocess.New(processID)
 
 	// Register RPC handlers
-	sp.RegisterHandler("RPCSpawn", createSpawnHandler(broker))
-	sp.RegisterHandler("RPCSpawnRPC", createSpawnRPCHandler(broker))
-	sp.RegisterHandler("RPCGetProcess", createGetProcessHandler(broker))
-	sp.RegisterHandler("RPCListProcesses", createListProcessesHandler(broker))
-	sp.RegisterHandler("RPCKill", createKillHandler(broker))
-	sp.RegisterHandler("RPCGetMessageCount", createGetMessageCountHandler(broker))
-	sp.RegisterHandler("RPCGetMessageStats", createGetMessageStatsHandler(broker))
-	sp.RegisterHandler("RPCRegisterEndpoint", createRegisterEndpointHandler(broker))
-	sp.RegisterHandler("RPCGetEndpoints", createGetEndpointsHandler(broker))
-	sp.RegisterHandler("RPCGetAllEndpoints", createGetAllEndpointsHandler(broker))
+	sp.RegisterHandler("RPCSpawn", createSpawnHandler(brokerInstance))
+	sp.RegisterHandler("RPCSpawnRPC", createSpawnRPCHandler(brokerInstance))
+	sp.RegisterHandler("RPCGetProcess", createGetProcessHandler(brokerInstance))
+	sp.RegisterHandler("RPCListProcesses", createListProcessesHandler(brokerInstance))
+	sp.RegisterHandler("RPCKill", createKillHandler(brokerInstance))
+	sp.RegisterHandler("RPCGetMessageCount", createGetMessageCountHandler(brokerInstance))
+	sp.RegisterHandler("RPCGetMessageStats", createGetMessageStatsHandler(brokerInstance))
+	sp.RegisterHandler("RPCRegisterEndpoint", createRegisterEndpointHandler(brokerInstance))
+	sp.RegisterHandler("RPCGetEndpoints", createGetEndpointsHandler(brokerInstance))
+	sp.RegisterHandler("RPCGetAllEndpoints", createGetAllEndpointsHandler(brokerInstance))
 
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -101,7 +101,7 @@ func main() {
 }
 
 // createSpawnHandler creates a handler for RPCSpawn
-func createSpawnHandler(broker *proc.Broker) subprocess.Handler {
+func createSpawnHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -121,7 +121,7 @@ func createSpawnHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Spawn the process
-		info, err := broker.Spawn(req.ID, req.Command, req.Args...)
+		info, err := b.Spawn(req.ID, req.Command, req.Args...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to spawn process: %w", err)
 		}
@@ -152,7 +152,7 @@ func createSpawnHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createSpawnRPCHandler creates a handler for RPCSpawnRPC
-func createSpawnRPCHandler(broker *proc.Broker) subprocess.Handler {
+func createSpawnRPCHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -172,7 +172,7 @@ func createSpawnRPCHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Spawn the RPC process
-		info, err := broker.SpawnRPC(req.ID, req.Command, req.Args...)
+		info, err := b.SpawnRPC(req.ID, req.Command, req.Args...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to spawn RPC process: %w", err)
 		}
@@ -203,7 +203,7 @@ func createSpawnRPCHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetProcessHandler creates a handler for RPCGetProcess
-func createGetProcessHandler(broker *proc.Broker) subprocess.Handler {
+func createGetProcessHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -218,7 +218,7 @@ func createGetProcessHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Get process info
-		info, err := broker.GetProcess(req.ID)
+		info, err := b.GetProcess(req.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get process: %w", err)
 		}
@@ -250,10 +250,10 @@ func createGetProcessHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createListProcessesHandler creates a handler for RPCListProcesses
-func createListProcessesHandler(broker *proc.Broker) subprocess.Handler {
+func createListProcessesHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get all processes
-		processes := broker.ListProcesses()
+		processes := b.ListProcesses()
 
 		// Convert to response format
 		result := make([]map[string]interface{}, 0, len(processes))
@@ -288,7 +288,7 @@ func createListProcessesHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createKillHandler creates a handler for RPCKill
-func createKillHandler(broker *proc.Broker) subprocess.Handler {
+func createKillHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -303,7 +303,7 @@ func createKillHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Kill the process
-		err := broker.Kill(req.ID)
+		err := b.Kill(req.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to kill process: %w", err)
 		}
@@ -332,10 +332,10 @@ func createKillHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetMessageCountHandler creates a handler for RPCGetMessageCount
-func createGetMessageCountHandler(broker *proc.Broker) subprocess.Handler {
+func createGetMessageCountHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get message count from broker
-		count := broker.GetMessageCount()
+		count := b.GetMessageCount()
 
 		// Create response
 		result := map[string]interface{}{
@@ -360,10 +360,10 @@ func createGetMessageCountHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetMessageStatsHandler creates a handler for RPCGetMessageStats
-func createGetMessageStatsHandler(broker *proc.Broker) subprocess.Handler {
+func createGetMessageStatsHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get message statistics from broker
-		stats := broker.GetMessageStats()
+		stats := b.GetMessageStats()
 
 		// Create response with all statistics
 		result := map[string]interface{}{
@@ -395,7 +395,7 @@ func createGetMessageStatsHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createRegisterEndpointHandler creates a handler for RPCRegisterEndpoint
-func createRegisterEndpointHandler(broker *proc.Broker) subprocess.Handler {
+func createRegisterEndpointHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -414,7 +414,7 @@ func createRegisterEndpointHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Register the endpoint
-		broker.RegisterEndpoint(req.ProcessID, req.Endpoint)
+		b.RegisterEndpoint(req.ProcessID, req.Endpoint)
 
 		// Create response
 		result := map[string]interface{}{
@@ -441,7 +441,7 @@ func createRegisterEndpointHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetEndpointsHandler creates a handler for RPCGetEndpoints
-func createGetEndpointsHandler(broker *proc.Broker) subprocess.Handler {
+func createGetEndpointsHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -456,7 +456,7 @@ func createGetEndpointsHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Get endpoints for the process
-		endpoints := broker.GetEndpoints(req.ProcessID)
+		endpoints := b.GetEndpoints(req.ProcessID)
 
 		// Create response
 		result := map[string]interface{}{
@@ -483,10 +483,10 @@ func createGetEndpointsHandler(broker *proc.Broker) subprocess.Handler {
 }
 
 // createGetAllEndpointsHandler creates a handler for RPCGetAllEndpoints
-func createGetAllEndpointsHandler(broker *proc.Broker) subprocess.Handler {
+func createGetAllEndpointsHandler(b *broker.Broker) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Get all endpoints
-		allEndpoints := broker.GetAllEndpoints()
+		allEndpoints := b.GetAllEndpoints()
 
 		// Create response
 		result := map[string]interface{}{

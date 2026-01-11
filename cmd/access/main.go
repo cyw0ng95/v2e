@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/broker"
 	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/proc"
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,11 +43,11 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 
 	// Create broker instance for backend communication
-	broker := proc.NewBroker()
-	defer broker.Shutdown()
+	brokerInstance := broker.NewBroker()
+	defer brokerInstance.Shutdown()
 
 	// Load processes from configuration
-	if err := broker.LoadProcessesFromConfig(config); err != nil {
+	if err := brokerInstance.LoadProcessesFromConfig(config); err != nil {
 		common.Error("Error loading processes from config: %v", err)
 	}
 
@@ -66,7 +66,7 @@ func main() {
 
 		// List all processes
 		restful.GET("/processes", func(c *gin.Context) {
-			processes := broker.ListProcesses()
+			processes := brokerInstance.ListProcesses()
 			result := make([]map[string]interface{}, 0, len(processes))
 			for _, p := range processes {
 				result = append(result, map[string]interface{}{
@@ -86,7 +86,7 @@ func main() {
 		// Get process details
 		restful.GET("/processes/:id", func(c *gin.Context) {
 			id := c.Param("id")
-			info, err := broker.GetProcess(id)
+			info, err := brokerInstance.GetProcess(id)
 			if err != nil {
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": fmt.Sprintf("Process not found: %s", id),
@@ -117,12 +117,12 @@ func main() {
 				return
 			}
 
-			var info *proc.ProcessInfo
+			var info *broker.ProcessInfo
 			var spawnErr error
 			if req.RPC {
-				info, spawnErr = broker.SpawnRPC(req.ID, req.Command, req.Args...)
+				info, spawnErr = brokerInstance.SpawnRPC(req.ID, req.Command, req.Args...)
 			} else {
-				info, spawnErr = broker.Spawn(req.ID, req.Command, req.Args...)
+				info, spawnErr = brokerInstance.Spawn(req.ID, req.Command, req.Args...)
 			}
 
 			if spawnErr != nil {
@@ -143,7 +143,7 @@ func main() {
 		// Kill a process
 		restful.DELETE("/processes/:id", func(c *gin.Context) {
 			id := c.Param("id")
-			if err := broker.Kill(id); err != nil {
+			if err := brokerInstance.Kill(id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Failed to kill process: %v", err),
 				})
@@ -157,7 +157,7 @@ func main() {
 
 		// Get broker message statistics
 		restful.GET("/stats", func(c *gin.Context) {
-			stats := broker.GetMessageStats()
+			stats := brokerInstance.GetMessageStats()
 			c.JSON(http.StatusOK, gin.H{
 				"total_sent":         stats.TotalSent,
 				"total_received":     stats.TotalReceived,
@@ -185,7 +185,7 @@ func main() {
 			}
 
 			// Create RPC request message
-			msg, err := proc.NewRequestMessage(endpoint, payload)
+			msg, err := broker.NewRequestMessage(endpoint, payload)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Failed to create RPC message: %v", err),
@@ -194,7 +194,7 @@ func main() {
 			}
 
 			// Send message to the process
-			if err := broker.SendToProcess(processID, msg); err != nil {
+			if err := brokerInstance.SendToProcess(processID, msg); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Failed to send RPC message: %v", err),
 				})
@@ -207,7 +207,7 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), DefaultRPCTimeout)
 			defer cancel()
 
-			respMsg, err := broker.ReceiveMessage(ctx)
+			respMsg, err := brokerInstance.ReceiveMessage(ctx)
 			if err != nil {
 				c.JSON(http.StatusGatewayTimeout, gin.H{
 					"error": fmt.Sprintf("Timeout waiting for response: %v", err),
@@ -216,7 +216,7 @@ func main() {
 			}
 
 			// Handle response or error
-			if respMsg.Type == proc.MessageTypeError {
+			if respMsg.Type == broker.MessageTypeError {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": respMsg.Error,
 				})
