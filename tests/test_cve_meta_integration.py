@@ -37,11 +37,11 @@ class TestCVEMetaIntegration:
         # Create a temporary database
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
-            env = os.environ.copy()
-            env['CVE_DB_PATH'] = db_path
             
             # Start cve-meta service (it will spawn cve-local and cve-remote)
-            with RPCProcess([service_binaries["cve-meta"]], process_id="test-cve-meta") as meta:
+            with RPCProcess([service_binaries["cve-meta"]], 
+                          process_id="test-cve-meta",
+                          env={'CVE_DB_PATH': db_path}) as meta:
                 # Give extra time for subprocess spawning
                 time.sleep(2)
                 
@@ -63,11 +63,11 @@ class TestCVEMetaIntegration:
         # Create a temporary database
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
-            env = os.environ.copy()
-            env['CVE_DB_PATH'] = db_path
             
             # Start cve-meta service
-            with RPCProcess([service_binaries["cve-meta"]], process_id="test-cve-meta") as meta:
+            with RPCProcess([service_binaries["cve-meta"]], 
+                          process_id="test-cve-meta",
+                          env={'CVE_DB_PATH': db_path}) as meta:
                 # Give extra time for subprocess spawning
                 time.sleep(2)
                 
@@ -92,11 +92,11 @@ class TestCVEMetaIntegration:
         # Create a temporary database
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
-            env = os.environ.copy()
-            env['CVE_DB_PATH'] = db_path
             
             # Start cve-meta service
-            with RPCProcess([service_binaries["cve-meta"]], process_id="test-cve-meta") as meta:
+            with RPCProcess([service_binaries["cve-meta"]], 
+                          process_id="test-cve-meta",
+                          env={'CVE_DB_PATH': db_path}) as meta:
                 # Give extra time for subprocess spawning
                 time.sleep(2)
                 
@@ -126,11 +126,11 @@ class TestCVEMetaIntegration:
         # Create a temporary database
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
-            env = os.environ.copy()
-            env['CVE_DB_PATH'] = db_path
             
             # Start cve-meta service
-            with RPCProcess([service_binaries["cve-meta"]], process_id="test-cve-meta") as meta:
+            with RPCProcess([service_binaries["cve-meta"]], 
+                          process_id="test-cve-meta",
+                          env={'CVE_DB_PATH': db_path}) as meta:
                 # Give extra time for subprocess spawning
                 time.sleep(2)
                 

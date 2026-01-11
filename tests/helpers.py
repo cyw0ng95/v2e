@@ -10,15 +10,17 @@ from typing import Dict, List, Optional, Any
 class RPCProcess:
     """Wrapper for managing RPC processes during integration tests."""
     
-    def __init__(self, command: List[str], process_id: str = None):
+    def __init__(self, command: List[str], process_id: str = None, env: Dict[str, str] = None):
         """Initialize RPC process wrapper.
         
         Args:
             command: Command and arguments to execute
             process_id: Optional process ID to set via PROCESS_ID env var
+            env: Optional environment variables to set for the process
         """
         self.command = command
         self.process_id = process_id
+        self.env = env or {}
         self.process = None
         self._startup_time = 0.5  # Time to wait for process startup
         self._debug = False  # Enable debug output
@@ -28,6 +30,8 @@ class RPCProcess:
         env = os.environ.copy()
         if self.process_id:
             env['PROCESS_ID'] = self.process_id
+        # Merge in any custom environment variables
+        env.update(self.env)
         
         self.process = subprocess.Popen(
             self.command,
