@@ -668,11 +668,272 @@ Key dependencies:
 
 ### Testing
 
-Run tests:
+Run unit tests:
 
 ```bash
 go test ./...
 ```
+
+Run unit tests with coverage:
+
+```bash
+go test -cover ./...
+```
+
+### Integration Testing
+
+The project includes a pytest-based integration test framework for testing RPC services and multi-service cooperation.
+
+#### Prerequisites
+
+- Python 3.12 or later
+- pytest
+
+#### Installation
+
+Install test dependencies:
+
+```bash
+pip3 install -r tests/requirements.txt
+```
+
+#### Running Integration Tests
+
+The integration tests use a shared broker instance that spawns and manages all services. This approach mirrors real-world usage where broker coordinates multiple RPC services.
+
+Run fast integration tests (recommended):
+
+```bash
+# Skip slow tests that make external API calls
+pytest tests/ -m "not slow"
+```
+
+Run all integration tests:
+
+```bash
+pytest tests/
+```
+
+Run specific test files:
+
+```bash
+# Test broker RPC service (fast)
+pytest tests/test_broker_integration.py
+
+# Test cve-meta service with multiple cooperating services
+pytest tests/test_cve_meta_integration.py
+
+# Run benchmark tests to measure RPC performance
+pytest tests/test_benchmarks.py --benchmark-only
+```
+
+Run with verbose output:
+
+```bash
+pytest tests/ -v
+```
+
+Run tests with specific markers:
+
+```bash
+# Run only integration tests
+pytest tests/ -m integration
+
+# Run only RPC tests
+pytest tests/ -m rpc
+
+# Skip slow tests (recommended for CI/CD)
+pytest tests/ -m "not slow"
+
+# Run only slow tests with extended timeout (requires NVD API access)
+pytest tests/ -m slow --timeout=300
+
+# Run benchmark tests (fast, optimized for CI)
+pytest tests/ -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup-iterations=0
+
+# Run all benchmark tests (including slow ones)
+pytest tests/ -m benchmark --benchmark-only
+```
+
+# Run only RPC tests
+pytest tests/ -m rpc
+
+# Skip slow tests (recommended for CI/CD)
+pytest tests/ -m "not slow"
+
+# Run only slow tests with extended timeout (requires NVD API access)
+pytest tests/ -m slow --timeout=300
+```
+
+**Note on Slow Tests:**
+Tests marked with `@pytest.mark.slow` make calls to the external NVD API and may:
+- Take significantly longer to complete (2-5 minutes)
+- Fail due to rate limiting (HTTP 429 errors)
+- Require network connectivity
+
+These tests are designed to use minimal API calls (1-2 CVEs) but may still encounter issues due to NVD API availability. For CI/CD pipelines, it's recommended to run only the fast tests using `-m "not slow"`.
+
+#### Test Architecture
+
+The integration tests follow a broker-centric architecture that mirrors real-world usage:
+
+1. **Shared Broker Fixture** (`broker_with_services`): A module-scoped fixture that:
+   - Builds all required binaries once per test session
+   - Starts a broker instance
+   - Uses the broker to spawn all required RPC services (worker, cve-remote, cve-local)
+   - Verifies services are running before tests begin
+   - Automatically cleans up after tests complete
+
+2. **Service Interaction**: Tests interact with spawned services through the broker using RPC messages, ensuring:
+   - Services are managed via broker (spawn, kill, list)
+   - Message routing through broker is tested
+   - Real-world multi-service cooperation is validated
+
+3. **Performance Benchmarks** (Local development only):
+   - `test_benchmarks.py` contains benchmarks for all RPC endpoints
+   - Uses pytest-benchmark to measure operations per second
+   - Available for local testing and performance regression tracking
+   - Not included in CI due to environment variability
+
+Example benchmark output (local testing):
+```
+Name (time in us)                     Min       Max      Mean   StdDev    Median     IQR  Outliers  OPS (Kops/s)
+test_benchmark_list_processes     56.1350  490.6160  102.3540  17.8387  100.0690  8.7930   315;394        9.7700
+```
+
+#### Test Structure
+
+The integration tests are located in the `tests/` directory:
+
+- `tests/__init__.py` - Package initialization
+- `tests/conftest.py` - Shared fixtures (broker_with_services, test_binaries)
+- `tests/helpers.py` - Helper utilities for RPC testing
+- `tests/test_broker_integration.py` - Integration tests for broker service (5 tests)
+- `tests/test_cve_meta_integration.py` - Integration tests for cve-meta service (4 tests)
+- `tests/test_benchmarks.py` - Performance benchmarks for RPC endpoints
+- `tests/requirements.txt` - Python dependencies for testing
+- `pytest.ini` - Pytest configuration
+
+#### Writing Integration Tests
+
+The test framework provides utilities and shared fixtures for testing RPC services:
+
+```python
+# Use the shared broker fixture with all services running
+def test_my_feature(broker_with_services):
+    broker = broker_with_services
+    
+    # Services are already running, interact with them via broker
+    response = broker.send_request("RPCListProcesses", {})
+    assert response["type"] == "response"
+
+# Or build and manage processes manually
+from tests.helpers import RPCProcess, build_go_binary
+
+# Build a Go binary for testing
+build_go_binary("./cmd/broker", "/tmp/broker")
+
+# Start an RPC process and send requests
+with RPCProcess(["/tmp/broker"], process_id="test-broker") as broker:
+    # Send RPC request
+    response = broker.send_request("RPCListProcesses", {})
+    
+    # Verify response
+    assert response["type"] == "response"
+    assert "payload" in response
+```
+
+Key features:
+- **Automatic process management**: Processes are started and stopped automatically
+- **RPC communication**: Built-in support for sending/receiving RPC messages
+- **Binary building**: Helper function to build Go binaries for testing
+- **Timeout handling**: Configurable timeouts for RPC requests
+- **Context managers**: Clean resource management with Python context managers
+
+#### Test Coverage
+
+The integration tests cover:
+
+1. **Broker Service** (`test_broker_integration.py` - 5 tests):
+   - Spawning processes
+   - Listing processes
+   - Getting process information
+   - Spawning RPC processes
+   - Killing processes
+
+2. **CVE Meta Service** (`test_cve_meta_integration.py` - 4 tests):
+   - Multi-service cooperation (cve-meta, cve-local, cve-remote)
+   - Getting remote CVE count
+   - Batch fetching CVEs
+   - Service orchestration and message routing
+
+3. **Performance Benchmarks** (`test_benchmarks.py` - local testing only):
+   - RPCSpawn performance
+   - RPCListProcesses performance
+   - RPCGetProcess performance
+   - RPCSpawnRPC performance
+   - Available for local development and performance tracking
+
+These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication.
+
+## Continuous Integration
+
+The project uses GitHub Actions for automated testing:
+
+### CI Pipeline Stages
+
+1. **Unit Tests** (Always runs first)
+   - Runs Go unit tests with race detection
+   - Generates code coverage reports
+   - Fast feedback on basic functionality
+
+2. **Integration Tests** (Runs after unit tests pass)
+   - Tests multi-service RPC communication
+   - Uses broker-managed service architecture
+   - Optimized for speed with reduced startup times
+   - Typical duration: ~50-60 seconds
+
+### Benchmark Tests (Local Testing Only)
+
+Performance benchmarks are available for local testing but not included in CI due to environment variability:
+
+```bash
+# Run benchmark tests locally
+pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup-iterations=0
+```
+
+Benchmark tests measure RPC endpoint performance and can help track regressions during local development.
+
+### Slow Tests (Local Testing Only)
+
+Network-dependent tests that make external NVD API calls are available for local testing:
+
+```bash
+# Run slow tests locally (requires NVD API access)
+pytest tests/ -v -m slow --timeout=300
+```
+
+These tests are not part of CI to avoid rate limiting and environment issues.
+
+### Running CI Locally
+
+To run the same tests that CI runs:
+
+```bash
+# Unit tests
+go test -v -race -coverprofile=coverage.out ./...
+
+# Integration tests (fast)
+pip install -r tests/requirements.txt
+pytest tests/ -v -m "not slow and not benchmark"
+```
+
+### Viewing CI Results
+
+- **Coverage reports**: Available as artifacts after each run
+- **Test logs**: Full output available in GitHub Actions logs
+
+The simplified CI pipeline provides fast feedback to developers with unit and integration tests only.
 
 ## License
 
