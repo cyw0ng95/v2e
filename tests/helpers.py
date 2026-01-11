@@ -81,10 +81,10 @@ class AccessClient:
 #
 # - list_processes() -> Dict[str, Any]
 # - get_process(process_id: str) -> Dict[str, Any]
-# - spawn_process(process_id: str, command: str, ...) -> Dict[str, Any]
+# - spawn_process(process_id: str, command: str, args: List[str] = None, rpc: bool = False) -> Dict[str, Any]
 # - kill_process(process_id: str) -> Dict[str, Any]
 # - get_stats() -> Dict[str, Any]
-# - rpc_call(process_id: str, endpoint: str, payload: Dict) -> Dict[str, Any]
+# - rpc_call(process_id: str, endpoint: str, payload: Dict[str, Any] = None) -> Dict[str, Any]
 #
 # These will enable testing the complete broker-first architecture where:
 # - External requests go to access REST API

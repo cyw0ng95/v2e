@@ -87,10 +87,11 @@ class TestBrokerDeployment:
         assert elapsed_time < 1.0, f"Health check took too long: {elapsed_time:.2f}s"
 
 
-# Note: Additional integration tests for CVE functionality will be added
-# once RPC forwarding is implemented in the access service. Currently,
-# the access service only provides a health check endpoint. Future tests
-# will include:
+# TODO: Additional integration tests for CVE functionality will be added
+# once RPC forwarding is implemented in the access service (tracked in issue #74).
+# Currently, the access service only provides a health check endpoint.
+# 
+# Future tests will include:
 #
 # - POST /restful/rpc/{process_id}/{endpoint} - Forward RPC calls to backend
 # - CVE search and retrieval workflows via REST API
