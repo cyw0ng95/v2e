@@ -64,8 +64,8 @@ class TestBrokerBenchmarks:
         def spawn_rpc():
             counter[0] += 1
             response = broker_with_services.send_request("RPCSpawnRPC", {
-                "id": f"bench-worker-{counter[0]}",
-                "command": test_binaries["worker"],
+                "id": f"bench-cve-meta-{counter[0]}",
+                "command": test_binaries["cve-meta"],
                 "args": []
             })
             assert response["type"] == "response"

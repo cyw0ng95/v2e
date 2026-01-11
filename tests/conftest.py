@@ -12,7 +12,7 @@ def test_binaries():
     """Build all test binaries once for the entire test session."""
     with tempfile.TemporaryDirectory() as tmpdir:
         binaries = {}
-        services = ["broker", "cve-meta", "cve-local", "cve-remote", "worker"]
+        services = ["broker", "cve-meta", "cve-local", "cve-remote"]
         
         print("\nBuilding test binaries...")
         for service in services:
@@ -40,13 +40,6 @@ def broker_with_services(test_binaries):
             # Give broker time to start
             time.sleep(0.5)
             
-            # Spawn worker as an example subprocess
-            broker.send_request("RPCSpawnRPC", {
-                "id": "test-worker",
-                "command": test_binaries["worker"],
-                "args": []
-            })
-            
             # Spawn cve-remote service
             broker.send_request("RPCSpawnRPC", {
                 "id": "cve-remote",
@@ -70,7 +63,6 @@ def broker_with_services(test_binaries):
             processes = response["payload"]["processes"]
             running_ids = [p["id"] for p in processes]
             
-            assert "test-worker" in running_ids, "Worker not running"
             assert "cve-remote" in running_ids, "cve-remote not running"
             assert "cve-local" in running_ids, "cve-local not running"
             

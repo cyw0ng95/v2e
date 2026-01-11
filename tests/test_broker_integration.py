@@ -55,32 +55,32 @@ class TestBrokerIntegration:
         
         # Should have at least the services we spawned in the fixture
         process_ids = [p["id"] for p in payload["processes"]]
-        assert "cve-remote" in process_ids or "test-worker" in process_ids
+        assert "cve-remote" in process_ids or "cve-local" in process_ids
     
     def test_broker_get_process(self, broker_with_services):
         """Test getting process info via broker RPC."""
         broker = broker_with_services
         # Use an existing service spawned by the fixture
-        # Get process info for test-worker
+        # Get process info for cve-remote
         response = broker.send_request("RPCGetProcess", {
-            "id": "test-worker"
+            "id": "cve-remote"
         })
         
         # Verify response
         assert response["type"] == "response"
         assert response["id"] == "RPCGetProcess"
         payload = response["payload"]
-        assert payload["id"] == "test-worker"
+        assert payload["id"] == "cve-remote"
         assert "pid" in payload
         assert payload["pid"] > 0
     
     def test_broker_spawn_rpc_process(self, broker_with_services, test_binaries):
         """Test spawning an RPC process via broker."""
         broker = broker_with_services
-        # Spawn a new RPC process
+        # Spawn a new RPC process (cve-meta as an example)
         response = broker.send_request("RPCSpawnRPC", {
-            "id": "test-worker-2",
-            "command": test_binaries["worker"],
+            "id": "test-cve-meta",
+            "command": test_binaries["cve-meta"],
             "args": []
         })
         
@@ -88,7 +88,7 @@ class TestBrokerIntegration:
         assert response["type"] == "response"
         assert response["id"] == "RPCSpawnRPC"
         payload = response["payload"]
-        assert payload["id"] == "test-worker-2"
+        assert payload["id"] == "test-cve-meta"
         assert "pid" in payload
         assert payload["pid"] > 0
     
