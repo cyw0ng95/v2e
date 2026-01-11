@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/bytedance/sonic"
 	"strings"
 	"testing"
 	"time"
@@ -60,7 +61,7 @@ func TestSendMessage(t *testing.T) {
 	var parsed Message
 	// Remove trailing newline
 	result = strings.TrimSpace(result)
-	if err := json.Unmarshal([]byte(result), &parsed); err != nil {
+	if err := sonic.Unmarshal([]byte(result), &parsed); err != nil {
 		t.Fatalf("Failed to parse output as JSON: %v", err)
 	}
 
@@ -85,7 +86,7 @@ func TestSendResponse(t *testing.T) {
 	// Parse the output
 	result := strings.TrimSpace(output.String())
 	var msg Message
-	if err := json.Unmarshal([]byte(result), &msg); err != nil {
+	if err := sonic.Unmarshal([]byte(result), &msg); err != nil {
 		t.Fatalf("Failed to parse output: %v", err)
 	}
 
@@ -115,7 +116,7 @@ func TestSendEvent(t *testing.T) {
 
 	result := strings.TrimSpace(output.String())
 	var msg Message
-	if err := json.Unmarshal([]byte(result), &msg); err != nil {
+	if err := sonic.Unmarshal([]byte(result), &msg); err != nil {
 		t.Fatalf("Failed to parse output: %v", err)
 	}
 
@@ -136,7 +137,7 @@ func TestHandleMessage(t *testing.T) {
 		return &Message{
 			Type:    MessageTypeResponse,
 			ID:      msg.ID,
-			Payload: json.RawMessage(`{"result": "success"}`),
+			Payload: sonic.RawMessage(`{"result": "success"}`),
 		}, nil
 	})
 
@@ -208,7 +209,7 @@ func TestRunWithMessages(t *testing.T) {
 
 func TestUnmarshalPayload(t *testing.T) {
 	payload := map[string]string{"key": "value"}
-	data, _ := json.Marshal(payload)
+	data, _ := sonic.Marshal(payload)
 	
 	msg := &Message{
 		Type:    MessageTypeRequest,

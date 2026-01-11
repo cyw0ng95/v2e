@@ -1,7 +1,7 @@
 package local
 
 import (
-	"encoding/json"
+	"github.com/bytedance/sonic"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve"
@@ -44,7 +44,7 @@ func NewDB(dbPath string) (*DB, error) {
 // SaveCVE saves a CVE item to the database
 func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	// Marshal the full CVE data to JSON
-	data, err := json.Marshal(cveItem)
+	data, err := sonic.Marshal(cveItem)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (d *DB) GetCVE(cveID string) (*cve.CVEItem, error) {
 	}
 
 	var cveItem cve.CVEItem
-	if err := json.Unmarshal([]byte(record.Data), &cveItem); err != nil {
+	if err := sonic.Unmarshal([]byte(record.Data), &cveItem); err != nil {
 		return nil, err
 	}
 
@@ -110,7 +110,7 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 	cves := make([]cve.CVEItem, 0, len(records))
 	for _, record := range records {
 		var cveItem cve.CVEItem
-		if err := json.Unmarshal([]byte(record.Data), &cveItem); err != nil {
+		if err := sonic.Unmarshal([]byte(record.Data), &cveItem); err != nil {
 			return nil, err
 		}
 		cves = append(cves, cveItem)

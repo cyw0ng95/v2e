@@ -3,9 +3,10 @@ package common
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"sync"
+
+	"github.com/rs/zerolog"
 )
 
 // LogLevel represents the severity level of a log message
@@ -38,13 +39,29 @@ func (l LogLevel) String() string {
 	}
 }
 
+// toZerologLevel converts our LogLevel to zerolog.Level
+func (l LogLevel) toZerologLevel() zerolog.Level {
+	switch l {
+	case DebugLevel:
+		return zerolog.DebugLevel
+	case InfoLevel:
+		return zerolog.InfoLevel
+	case WarnLevel:
+		return zerolog.WarnLevel
+	case ErrorLevel:
+		return zerolog.ErrorLevel
+	default:
+		return zerolog.InfoLevel
+	}
+}
+
 // Logger represents a logger instance
 type Logger struct {
-	mu       sync.Mutex
-	level    LogLevel
-	logger   *log.Logger
-	output   io.Writer
-	prefix   string
+	mu     sync.Mutex
+	level  LogLevel
+	logger zerolog.Logger
+	output io.Writer
+	prefix string
 }
 
 // defaultLogger is the default logger instance
@@ -58,9 +75,15 @@ func init() {
 
 // NewLogger creates a new Logger instance
 func NewLogger(out io.Writer, prefix string, level LogLevel) *Logger {
+	zlog := zerolog.New(out).With().Timestamp().Logger()
+	if prefix != "" {
+		zlog = zlog.With().Str("prefix", prefix).Logger()
+	}
+	zerolog.SetGlobalLevel(level.toZerologLevel())
+	
 	return &Logger{
 		level:  level,
-		logger: log.New(out, prefix, log.LstdFlags),
+		logger: zlog,
 		output: out,
 		prefix: prefix,
 	}
@@ -77,9 +100,15 @@ func NewLoggerWithFile(filename, prefix string, level LogLevel) (*Logger, error)
 	// Create a multi-writer that writes to both stdout and file
 	multiWriter := io.MultiWriter(os.Stdout, file)
 
+	zlog := zerolog.New(multiWriter).With().Timestamp().Logger()
+	if prefix != "" {
+		zlog = zlog.With().Str("prefix", prefix).Logger()
+	}
+	zerolog.SetGlobalLevel(level.toZerologLevel())
+
 	return &Logger{
 		level:  level,
-		logger: log.New(multiWriter, prefix, log.LstdFlags),
+		logger: zlog,
 		output: multiWriter,
 		prefix: prefix,
 	}, nil
@@ -90,6 +119,7 @@ func (l *Logger) SetLevel(level LogLevel) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.level = level
+	zerolog.SetGlobalLevel(level.toZerologLevel())
 }
 
 // GetLevel returns the current log level
@@ -104,46 +134,51 @@ func (l *Logger) SetOutput(w io.Writer) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.output = w
-	l.logger.SetOutput(w)
-}
-
-// log is the internal logging method
-func (l *Logger) log(level LogLevel, format string, v ...interface{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if level < l.level {
-		return
+	l.logger = zerolog.New(w).With().Timestamp().Logger()
+	if l.prefix != "" {
+		l.logger = l.logger.With().Str("prefix", l.prefix).Logger()
 	}
-
-	msg := fmt.Sprintf(format, v...)
-	l.logger.Printf("[%s] %s", level.String(), msg)
 }
 
 // Debug logs a debug message
 func (l *Logger) Debug(format string, v ...interface{}) {
-	l.log(DebugLevel, format, v...)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.level <= DebugLevel {
+		l.logger.Debug().Msgf(format, v...)
+	}
 }
 
 // Info logs an informational message
 func (l *Logger) Info(format string, v ...interface{}) {
-	l.log(InfoLevel, format, v...)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.level <= InfoLevel {
+		l.logger.Info().Msgf(format, v...)
+	}
 }
 
 // Warn logs a warning message
 func (l *Logger) Warn(format string, v ...interface{}) {
-	l.log(WarnLevel, format, v...)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.level <= WarnLevel {
+		l.logger.Warn().Msgf(format, v...)
+	}
 }
 
 // Error logs an error message
 func (l *Logger) Error(format string, v ...interface{}) {
-	l.log(ErrorLevel, format, v...)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.logger.Error().Msgf(format, v...)
 }
 
 // Fatal logs an error message and exits the program
 func (l *Logger) Fatal(format string, v ...interface{}) {
-	l.log(ErrorLevel, format, v...)
-	os.Exit(1)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.logger.Fatal().Msgf(format, v...)
 }
 
 // Default logger functions

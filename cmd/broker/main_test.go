@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/bytedance/sonic"
 	"testing"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
@@ -18,7 +18,7 @@ func TestRPCSpawn(t *testing.T) {
 	handler := createSpawnHandler(broker)
 
 	// Create request message
-	payload, _ := json.Marshal(map[string]interface{}{
+	payload, _ := sonic.Marshal(map[string]interface{}{
 		"id":      "test-echo",
 		"command": "echo",
 		"args":    []string{"hello", "world"},
@@ -44,7 +44,7 @@ func TestRPCSpawn(t *testing.T) {
 	}
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(resp.Payload, &result); err != nil {
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -80,7 +80,7 @@ func TestRPCGetProcess(t *testing.T) {
 	handler := createGetProcessHandler(broker)
 
 	// Create request message
-	payload, _ := json.Marshal(map[string]string{
+	payload, _ := sonic.Marshal(map[string]string{
 		"id": "test-process",
 	})
 
@@ -104,7 +104,7 @@ func TestRPCGetProcess(t *testing.T) {
 	}
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(resp.Payload, &result); err != nil {
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -148,7 +148,7 @@ func TestRPCListProcesses(t *testing.T) {
 	}
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(resp.Payload, &result); err != nil {
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -177,7 +177,7 @@ func TestRPCKill(t *testing.T) {
 	handler := createKillHandler(broker)
 
 	// Create request message
-	payload, _ := json.Marshal(map[string]string{
+	payload, _ := sonic.Marshal(map[string]string{
 		"id": "test-kill",
 	})
 
@@ -201,7 +201,7 @@ func TestRPCKill(t *testing.T) {
 	}
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(resp.Payload, &result); err != nil {
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -247,7 +247,7 @@ func TestRPCGetMessageCount(t *testing.T) {
 
 	// Parse response
 	var result map[string]interface{}
-	if err := json.Unmarshal(respMsg.Payload, &result); err != nil {
+	if err := sonic.Unmarshal(respMsg.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -296,7 +296,7 @@ func TestRPCGetMessageStats(t *testing.T) {
 
 	// Parse response
 	var result map[string]interface{}
-	if err := json.Unmarshal(resp.Payload, &result); err != nil {
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 

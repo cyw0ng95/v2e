@@ -7,6 +7,7 @@
   },
   "broker": {
     "log_file": "broker.log",
+    "logs_dir": "./logs",
     "processes": [
       {
         "id": "cve-remote",
