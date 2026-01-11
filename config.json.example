@@ -4,5 +4,39 @@
   },
   "client": {
     "url": "http://localhost:8080"
+  },
+  "broker": {
+    "log_file": "broker.log",
+    "processes": [
+      {
+        "id": "cve-remote",
+        "command": "go",
+        "args": ["run", "./cmd/cve-remote"],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-local",
+        "command": "go",
+        "args": ["run", "./cmd/cve-local"],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      }
+    ],
+    "authentication": {
+      "enabled": false,
+      "tokens": {
+        "admin-token": {
+          "endpoints": ["*"],
+          "processes": ["*"]
+        },
+        "readonly-token": {
+          "endpoints": ["RPCGetProcess", "RPCListProcesses", "RPCGetEndpoints"],
+          "processes": ["*"]
+        }
+      }
+    }
   }
 }

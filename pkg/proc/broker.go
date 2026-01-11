@@ -476,7 +476,6 @@ func (b *Broker) reapProcess(proc *Process) {
 	err := proc.cmd.Wait()
 
 	proc.mu.Lock()
-	defer proc.mu.Unlock()
 
 	proc.info.EndTime = time.Now()
 	proc.info.Status = ProcessStatusExited
@@ -512,6 +511,7 @@ func (b *Broker) reapProcess(proc *Process) {
 		// Check if we've exceeded max restarts
 		if proc.restartConfig.MaxRestarts >= 0 && proc.restartConfig.RestartCount >= proc.restartConfig.MaxRestarts {
 			b.logger.Warn("Process %s exceeded max restarts (%d), not restarting", proc.info.ID, proc.restartConfig.MaxRestarts)
+			proc.mu.Unlock()
 			return
 		}
 
@@ -562,6 +562,8 @@ func (b *Broker) reapProcess(proc *Process) {
 		}
 		return
 	}
+
+	proc.mu.Unlock()
 }
 
 // Kill terminates a process by ID
