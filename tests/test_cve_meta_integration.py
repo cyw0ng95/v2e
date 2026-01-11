@@ -28,7 +28,6 @@ def service_binaries():
 
 @pytest.mark.integration
 @pytest.mark.rpc
-@pytest.mark.slow
 class TestCVEMetaIntegration:
     """Integration tests for cve-meta service with multiple cooperating services."""
     
