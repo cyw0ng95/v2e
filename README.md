@@ -189,6 +189,8 @@ The `config.json` file defines which services to start:
 }
 ```
 
+**Note:** This is a simplified example showing only the broker configuration. The complete `config.json` file (see `config.json.example`) also includes `server`, `client`, and `authentication` sections for additional features.
+
 **Configuration Options:**
 - `log_file` - Path to log file (logs to both stdout and file)
 - `processes` - Array of services to automatically spawn
