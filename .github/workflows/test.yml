@@ -32,7 +32,7 @@ jobs:
       
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@44
+        uses: actions/upload-artifact@v4
         with:
           name: unit-test-coverage
           path: .build/coverage.html
@@ -85,7 +85,7 @@ jobs:
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       
       - name: Download package artifact
-        uses: actions/download-artifact@44
+        uses: actions/download-artifact@v4
         with:
           name: v2e-package-${{ steps.git-sha.outputs.sha_short }}
           path: .build/package/
