@@ -8,7 +8,7 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 
 This project contains multiple commands:
 
-- `cmd/access` - RESTful API service using Gin framework
+- `cmd/access` - RESTful API gateway service (the central entry point for external requests)
 - `cmd/broker` - RPC service for managing subprocesses and process lifecycle
 - `cmd/broker-stats` - RPC service for accessing broker message statistics
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
@@ -205,30 +205,148 @@ The `config.json` file defines which services to start:
 
 ### Access (RESTful API Service)
 
-The Access service provides a RESTful API server using the Gin framework:
+The Access service is the central entry point for external requests to the v2e system. It provides a RESTful API server using the Gin framework and acts as a gateway to the broker and all backend services.
+
+**Key Features:**
+- Single interface for all external system interactions
+- RESTful API schema under `/restful/` prefix
+- Process management through HTTP endpoints
+- RPC forwarding to backend services
+- Configurable listen address (default: `0.0.0.0:8080`)
+
+**Running the Service:**
 
 ```bash
-# Run with default settings (port 8080)
+# Run with configuration from config.json
 go run ./cmd/access
 
-# Run on a custom port
-go run ./cmd/access -port 3000
-
-# Run in debug mode
-go run ./cmd/access -debug
-
-# Combine options
-go run ./cmd/access -port 3000 -debug
+# The service will:
+# 1. Load configuration from config.json
+# 2. Listen on the configured address (default: 0.0.0.0:8080)
+# 3. Create a broker instance for backend communication
+# 4. Load and spawn configured processes
+# 5. Serve RESTful API endpoints
 ```
 
-**Available Endpoints:**
-- `GET /health` - Health check endpoint that returns the server status
+**Configuration:**
 
-**Command Line Options:**
-- `-port` - Port to listen on (default: 8080)
-- `-debug` - Enable debug mode (default: false)
+The access service is configured via `config.json`:
 
-The Access service demonstrates the use of the Gin framework for building RESTful APIs. It can be extended with additional endpoints as needed.
+```json
+{
+  "server": {
+    "address": "0.0.0.0:8080"
+  },
+  "broker": {
+    "processes": [
+      {
+        "id": "cve-remote",
+        "command": "go",
+        "args": ["run", "./cmd/cve-remote"],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      }
+    ]
+  }
+}
+```
+
+**Available RESTful Endpoints:**
+
+*Health & Status:*
+- `GET /restful/health` - Health check endpoint
+  ```bash
+  curl http://localhost:8080/restful/health
+  # Response: {"status":"ok"}
+  ```
+
+- `GET /restful/stats` - Get broker message statistics
+  ```bash
+  curl http://localhost:8080/restful/stats
+  # Response: {"total_sent":10,"total_received":5,...}
+  ```
+
+*Process Management:*
+- `GET /restful/processes` - List all managed processes
+  ```bash
+  curl http://localhost:8080/restful/processes
+  # Response: {"processes":[...],"count":2}
+  ```
+
+- `GET /restful/processes/:id` - Get details of a specific process
+  ```bash
+  curl http://localhost:8080/restful/processes/cve-remote
+  # Response: {"id":"cve-remote","pid":12345,"command":"go","status":"running"}
+  ```
+
+- `POST /restful/processes` - Spawn a new process
+  ```bash
+  curl -X POST http://localhost:8080/restful/processes \
+    -H "Content-Type: application/json" \
+    -d '{"id":"my-service","command":"echo","args":["hello"],"rpc":false}'
+  # Response: {"id":"my-service","pid":12346,"command":"echo","status":"running"}
+  ```
+
+- `DELETE /restful/processes/:id` - Kill a process
+  ```bash
+  curl -X DELETE http://localhost:8080/restful/processes/my-service
+  # Response: {"success":true,"id":"my-service"}
+  ```
+
+*RPC Forwarding:*
+- `POST /restful/rpc/:process_id/:endpoint` - Forward RPC request to a backend process
+  ```bash
+  # Example: Get CVE count from cve-remote service
+  curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVECnt \
+    -H "Content-Type: application/json" \
+    -d '{}'
+  # Response: {"total_count":250000}
+  
+  # Example: Fetch CVE by ID
+  curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVEByID \
+    -H "Content-Type: application/json" \
+    -d '{"cve_id":"CVE-2021-44228"}'
+  # Response: CVE data object
+  ```
+
+**Architecture:**
+
+The Access service acts as a unified gateway:
+
+```
+External Clients → Access (REST API)
+                    ↓
+                  Broker
+                    ↓
+        ┌──────────┼──────────┐
+        ↓          ↓          ↓
+    cve-local  cve-remote  cve-meta
+```
+
+All external requests are handled by the Access service, which:
+1. Receives HTTP requests on RESTful endpoints
+2. Translates them to broker operations or RPC messages
+3. Forwards to the appropriate backend service
+4. Returns responses as JSON
+
+**Security:**
+
+The Access service provides a controlled interface to the system:
+- Single point of entry for external requests
+- All backend services are isolated and only accessible via the broker
+- Process management endpoints allow controlled spawning and termination
+- RPC forwarding ensures messages are properly routed through the broker
+
+**Development & Testing:**
+
+Run tests for the access service:
+
+```bash
+go test ./cmd/access -v
+```
+
+The Access service is designed to be the only public-facing component of the v2e system, with all other services running as isolated backend processes managed by the broker.
 
 ### Broker Manual RPC Commands (Testing/Development)
 
