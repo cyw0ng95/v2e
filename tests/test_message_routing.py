@@ -9,6 +9,8 @@ These tests verify the broker's ability to route messages between services:
 import pytest
 import time
 import os
+import json
+
 from tests.helpers import RPCProcess, build_go_binary
 
 
@@ -75,7 +77,7 @@ class TestMessageRouting:
         assert "payload" in response
         
         # Parse the payload
-        import json
+        
         payload = json.loads(response["payload"]) if isinstance(response["payload"], str) else response["payload"]
         
         # Should have total_results from NVD API
@@ -98,7 +100,7 @@ class TestMessageRouting:
         assert "payload" in response
         
         # Parse the payload
-        import json
+        
         payload = json.loads(response["payload"]) if isinstance(response["payload"], str) else response["payload"]
         
         # Should have stored field
@@ -184,7 +186,7 @@ class TestMessageRouting:
         })
         
         assert check_response["type"] == "response"
-        import json
+        
         check_payload = json.loads(check_response["payload"]) if isinstance(check_response["payload"], str) else check_response["payload"]
         
         # Step 2: If not stored, we could fetch from remote (skipped to avoid NVD API call)
