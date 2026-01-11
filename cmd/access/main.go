@@ -15,6 +15,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	// DefaultRPCTimeout is the default timeout for RPC requests
+	DefaultRPCTimeout = 30 * time.Second
+	// DefaultShutdownTimeout is the default timeout for graceful shutdown
+	DefaultShutdownTimeout = 10 * time.Second
+)
+
 func main() {
 	// Load configuration
 	config, err := common.LoadConfig("config.json")
@@ -195,7 +202,9 @@ func main() {
 			}
 
 			// Wait for response with timeout
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			// Note: This is a simplified implementation. In production, you would want
+			// to use a request-response correlation mechanism to match responses to requests
+			ctx, cancel := context.WithTimeout(context.Background(), DefaultRPCTimeout)
 			defer cancel()
 
 			respMsg, err := broker.ReceiveMessage(ctx)
@@ -250,7 +259,7 @@ func main() {
 	common.Info("Shutting down access server...")
 
 	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {

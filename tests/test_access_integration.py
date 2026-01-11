@@ -1,4 +1,9 @@
-"""Integration tests for the access service."""
+"""Integration tests for the access service.
+
+The access service is an HTTP server, not an RPC service.
+We use RPCProcess to manage the process lifecycle but communicate
+with it via HTTP requests, not RPC messages.
+"""
 
 import pytest
 import requests
@@ -15,7 +20,12 @@ def access_binary():
 
 @pytest.fixture
 def access_server(access_binary):
-    """Start the access server for testing."""
+    """Start the access server for testing.
+    
+    Note: We use RPCProcess for process management convenience,
+    but the access service is an HTTP server that we interact with
+    via HTTP requests, not RPC messages.
+    """
     with RPCProcess([access_binary], process_id="access-test") as server:
         # Wait for server to be ready
         time.sleep(2)
