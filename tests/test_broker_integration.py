@@ -1,7 +1,6 @@
 """Integration tests for the broker RPC service."""
 
 import pytest
-import subprocess
 import os
 import tempfile
 from tests.helpers import RPCProcess, build_go_binary

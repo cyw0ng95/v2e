@@ -115,7 +115,8 @@ class RPCProcess:
                 else:
                     time.sleep(0.1)
             except Exception as e:
-                print(f"Error reading response: {e}")
+                if self._debug:
+                    print(f"Error reading response: {e}")
                 time.sleep(0.1)
         
         raise TimeoutError(f"No response received within {timeout} seconds")

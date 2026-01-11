@@ -714,6 +714,13 @@ pip3 install -r tests/requirements.txt
 
 #### Running Integration Tests
 
+Run fast integration tests (recommended):
+
+```bash
+# Skip slow tests that make external API calls
+pytest tests/ -m "not slow"
+```
+
 Run all integration tests:
 
 ```bash
@@ -723,7 +730,7 @@ pytest tests/
 Run specific test files:
 
 ```bash
-# Test broker RPC service
+# Test broker RPC service (fast)
 pytest tests/test_broker_integration.py
 
 # Test cve-meta service with multiple cooperating services
@@ -745,9 +752,20 @@ pytest tests/ -m integration
 # Run only RPC tests
 pytest tests/ -m rpc
 
-# Skip slow tests
+# Skip slow tests (recommended for CI/CD)
 pytest tests/ -m "not slow"
+
+# Run only slow tests with extended timeout (requires NVD API access)
+pytest tests/ -m slow --timeout=300
 ```
+
+**Note on Slow Tests:**
+Tests marked with `@pytest.mark.slow` make calls to the external NVD API and may:
+- Take significantly longer to complete (2-5 minutes)
+- Fail due to rate limiting (HTTP 429 errors)
+- Require network connectivity
+
+These tests are designed to use minimal API calls (1-2 CVEs) but may still encounter issues due to NVD API availability. For CI/CD pipelines, it's recommended to run only the fast tests using `-m "not slow"`.
 
 #### Test Structure
 

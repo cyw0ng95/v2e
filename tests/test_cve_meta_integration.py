@@ -57,9 +57,13 @@ class TestCVEMetaIntegration:
                 assert "total_results" in payload
                 assert payload["total_results"] > 0
     
-    @pytest.mark.skip(reason="Slow test - NVD API may rate limit or timeout")
+    @pytest.mark.slow
     def test_cve_meta_fetch_and_store(self, service_binaries):
-        """Test fetching and storing a CVE via cve-meta service."""
+        """Test fetching and storing a CVE via cve-meta service.
+        
+        Note: Uses a single well-known CVE to minimize API calls and avoid rate limits.
+        This test may take longer due to NVD API response times.
+        """
         # Create a temporary database
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
@@ -71,7 +75,8 @@ class TestCVEMetaIntegration:
                 # Give extra time for subprocess spawning
                 time.sleep(2)
                 
-                # Fetch and store a well-known CVE (Log4Shell)
+                # Fetch and store a single well-known CVE (Log4Shell)
+                # This is a stable CVE that should always be available
                 response = meta.send_request("RPCFetchAndStoreCVE", {
                     "cve_id": "CVE-2021-44228"
                 }, timeout=90)
@@ -88,7 +93,10 @@ class TestCVEMetaIntegration:
                     assert payload["saved"] is True
     
     def test_cve_meta_batch_fetch(self, service_binaries):
-        """Test batch fetching CVEs via cve-meta service."""
+        """Test batch fetching CVEs via cve-meta service.
+        
+        Note: Uses only 2 CVEs to minimize API calls and avoid rate limits.
+        """
         # Create a temporary database
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
@@ -100,7 +108,7 @@ class TestCVEMetaIntegration:
                 # Give extra time for subprocess spawning
                 time.sleep(2)
                 
-                # Batch fetch multiple CVEs
+                # Batch fetch only 2 well-known CVEs to avoid rate limits
                 cve_ids = ["CVE-2021-44228", "CVE-2021-45046"]
                 response = meta.send_request("RPCBatchFetchCVEs", {
                     "cve_ids": cve_ids
@@ -120,9 +128,13 @@ class TestCVEMetaIntegration:
                     assert result["cve_id"] in cve_ids
                     assert "success" in result
     
-    @pytest.mark.skip(reason="Slow test - NVD API may rate limit or timeout")
+    @pytest.mark.slow
     def test_cve_meta_already_stored_check(self, service_binaries):
-        """Test that cve-meta correctly identifies already stored CVEs."""
+        """Test that cve-meta correctly identifies already stored CVEs.
+        
+        Note: Uses a single CVE to minimize API calls and avoid rate limits.
+        This test may take longer due to NVD API response times.
+        """
         # Create a temporary database
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
@@ -134,7 +146,7 @@ class TestCVEMetaIntegration:
                 # Give extra time for subprocess spawning
                 time.sleep(2)
                 
-                # Fetch a CVE for the first time
+                # Fetch a single CVE for the first time
                 response1 = meta.send_request("RPCFetchAndStoreCVE", {
                     "cve_id": "CVE-2021-44228"
                 }, timeout=90)
