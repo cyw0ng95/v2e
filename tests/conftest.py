@@ -76,61 +76,92 @@ def package_binaries():
 
 @pytest.fixture(scope="module")
 def access_service(package_binaries, setup_logs_directory):
-    """Start the access service for testing.
+    """Start the broker with full configuration to test access service.
     
-    The access service acts as the central gateway for all integration tests.
-    All tests should interact with backend services through the access REST API.
+    This fixture follows the broker-first architecture:
+    1. Broker starts with config.json
+    2. Broker spawns all subprocess services including access
+    3. Tests interact with access REST API
+    4. Access service is the external gateway for the system
     """
     # Project root directory
     project_root = os.path.dirname(os.path.dirname(__file__))
     
-    # Backup existing config.json if it exists
-    config_path = os.path.join(project_root, "config.json")
-    backup_path = config_path + ".backup"
-    has_backup = False
-    
-    if os.path.exists(config_path):
-        shutil.copy2(config_path, backup_path)
-        has_backup = True
+    # Create a temporary config file for testing
+    config_fd, config_path = tempfile.mkstemp(suffix='.json', prefix='broker_test_config_')
     
     try:
-        # Create a temporary config file
+        # Create broker configuration with all services
         config_content = {
             "server": {
                 "address": "0.0.0.0:8080"
             },
             "broker": {
                 "logs_dir": setup_logs_directory,
-                "processes": []  # Start with no processes, tests will spawn as needed
+                "processes": [
+                    {
+                        "id": "access",
+                        "command": package_binaries["access"],
+                        "args": [],
+                        "rpc": False,
+                        "restart": True,
+                        "max_restarts": -1
+                    },
+                    {
+                        "id": "cve-remote",
+                        "command": package_binaries["cve-remote"],
+                        "args": [],
+                        "rpc": True,
+                        "restart": True,
+                        "max_restarts": -1
+                    },
+                    {
+                        "id": "cve-local",
+                        "command": package_binaries["cve-local"],
+                        "args": [],
+                        "rpc": True,
+                        "restart": True,
+                        "max_restarts": -1
+                    },
+                    {
+                        "id": "cve-meta",
+                        "command": package_binaries["cve-meta"],
+                        "args": [],
+                        "rpc": True,
+                        "restart": True,
+                        "max_restarts": -1
+                    }
+                ]
+            },
+            "logging": {
+                "level": "info",
+                "dir": setup_logs_directory
             }
         }
         
-        with open(config_path, 'w') as f:
+        with os.fdopen(config_fd, 'w') as f:
             import json
             json.dump(config_content, f, indent=2)
         
         # Get test name for log file naming
         test_module = os.environ.get('PYTEST_CURRENT_TEST', 'unknown').split(':')[0].replace('/', '_')
-        log_file = os.path.join(setup_logs_directory, f"{test_module}_access.log")
+        log_file = os.path.join(setup_logs_directory, f"{test_module}_broker.log")
         
-        # Start access service
-        env = os.environ.copy()
-        
-        # Start access service with the config
+        # Start broker with the config
         with open(log_file, 'w') as log:
-            log.write(f"=== Access Service Log ===\n")
+            log.write(f"=== Broker Log ===\n")
             log.write(f"Started at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             log.write(f"Config: {config_path}\n")
             log.write("=" * 60 + "\n\n")
         
+        # Start broker process
         process = subprocess.Popen(
-            [package_binaries["access"]],
+            [package_binaries["broker"], config_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            cwd=project_root,
-            env=env
+            cwd=project_root
         )
         
         # Log output in background
@@ -144,14 +175,23 @@ def access_service(package_binaries, setup_logs_directory):
         log_thread = threading.Thread(target=log_output, daemon=True)
         log_thread.start()
         
-        # Wait for service to be ready
+        # Wait for broker and services to start
+        # The broker needs time to spawn all subprocesses
+        time.sleep(3)
+        
+        # Check if broker is still running
+        if process.poll() is not None:
+            pytest.fail(f"Broker failed to start. Check logs at {log_file}")
+        
+        # Wait for access service to be ready
         client = AccessClient()
-        if not client.wait_for_ready(timeout=10):
+        if not client.wait_for_ready(timeout=15):
             process.terminate()
             process.wait()
-            pytest.fail("Access service failed to start within 10 seconds")
+            pytest.fail(f"Access service failed to start within 15 seconds. Check logs at {log_file}")
         
-        print(f"\n  ✓ Access service started on http://localhost:8080")
+        print(f"\n  ✓ Broker started with full configuration")
+        print(f"  ✓ Access service available on http://localhost:8080")
         print(f"  ✓ Logs saved to: {log_file}")
         
         yield client
@@ -169,8 +209,6 @@ def access_service(package_binaries, setup_logs_directory):
             log.write(f"Process stopped at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     finally:
-        # Restore original config.json
-        if has_backup:
-            shutil.move(backup_path, config_path)
-        elif os.path.exists(config_path):
-            os.remove(config_path)
+        # Remove temporary config file
+        if os.path.exists(config_path):
+            os.unlink(config_path)
