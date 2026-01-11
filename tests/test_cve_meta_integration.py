@@ -9,6 +9,7 @@ basic service management through the REST API, then use direct RPC calls
 to test the actual CVE functionality.
 """
 
+import json
 import pytest
 import time
 import tempfile
@@ -172,7 +173,6 @@ class TestCVEFunctionsViaRPC:
             
             # Verify response
             assert "payload" in response
-            import json
             result = json.loads(response["payload"]) if isinstance(response["payload"], str) else response["payload"]
             assert "total_results" in result
             assert result["total_results"] > 0
@@ -208,7 +208,6 @@ class TestCVEFunctionsViaRPC:
             
             # Verify response
             assert "payload" in response
-            import json
             result = json.loads(response["payload"]) if isinstance(response["payload"], str) else response["payload"]
             assert "vulnerabilities" in result
             assert len(result["vulnerabilities"]) > 0
@@ -250,7 +249,6 @@ class TestCVEFunctionsViaRPC:
                 
                 # Verify save response
                 assert "payload" in save_response
-                import json
                 save_result = json.loads(save_response["payload"]) if isinstance(save_response["payload"], str) else save_response["payload"]
                 assert save_result["success"] is True
                 assert save_result["cve_id"] == "CVE-2021-TEST"
@@ -315,7 +313,6 @@ class TestCVEFunctionsViaRPC:
                         "cve_id": "CVE-2021-44228"
                     }, timeout=60)
                     
-                    import json
                     remote_result = json.loads(remote_response["payload"]) if isinstance(remote_response["payload"], str) else remote_response["payload"]
                     assert "vulnerabilities" in remote_result
                     assert len(remote_result["vulnerabilities"]) > 0
