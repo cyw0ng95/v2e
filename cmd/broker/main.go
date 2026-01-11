@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/bytedance/sonic"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/bytedance/sonic"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"

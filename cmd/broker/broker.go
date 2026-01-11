@@ -468,7 +468,9 @@ func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 	return nil
 }
 
-// reapProcess waits for a process to complete and updates its status
+// reapProcess waits for a process to complete and updates its status.
+// If auto-restart is enabled, it will attempt to restart the process according to
+// the configured restart policy (max restarts, delay, etc.).
 func (b *Broker) reapProcess(p *Process) {
 	defer b.wg.Done()
 	defer close(p.done)
@@ -477,7 +479,9 @@ func (b *Broker) reapProcess(p *Process) {
 	err := p.cmd.Wait()
 
 	// Lock is acquired here and explicitly unlocked later (not deferred)
-	// because the restart logic requires early unlock to avoid deadlock
+	// because the restart logic requires early unlock to avoid deadlock.
+	// The restart logic calls broker methods (SpawnRPCWithRestart, SpawnWithRestart)
+	// that need to acquire broker locks, which would deadlock if we held this process lock.
 	p.mu.Lock()
 
 	p.info.EndTime = time.Now()
