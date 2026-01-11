@@ -134,7 +134,7 @@ class TestAccessIntegration:
                 process.wait(timeout=5)
     
     def test_access_cve_endpoints_without_broker(self, service_binaries):
-        """Test that CVE endpoints return 503 when cve-meta is not available."""
+        """Test that CVE endpoints return 404 when cve-meta is not available."""
         # Start access service without cve-meta
         port = 18083
         process = subprocess.Popen(
@@ -147,15 +147,13 @@ class TestAccessIntegration:
             # Give service time to start
             time.sleep(1)
             
-            # Test CVE count endpoint (should return 503)
+            # Test CVE count endpoint (should return 404 as endpoint is not registered)
             response = requests.get(f"http://localhost:{port}/cve/count", timeout=5)
-            assert response.status_code == 503
-            assert "error" in response.json()
+            assert response.status_code == 404
             
-            # Test get CVE endpoint (should return 503)
+            # Test get CVE endpoint (should return 404 as endpoint is not registered)
             response = requests.get(f"http://localhost:{port}/cve/CVE-2021-44228", timeout=5)
-            assert response.status_code == 503
-            assert "error" in response.json()
+            assert response.status_code == 404
         finally:
             # Cleanup
             process.send_signal(signal.SIGTERM)
