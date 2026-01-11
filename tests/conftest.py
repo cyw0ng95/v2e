@@ -5,11 +5,15 @@ import os
 import tempfile
 import time
 import shutil
-from tests.helpers import RPCProcess, build_go_binary
+import subprocess
+from tests.helpers import AccessClient
 
 
 # Global logs directory for all tests
 LOGS_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+
+# Path to pre-built binaries from build.sh -p
+PACKAGE_DIR = os.path.join(os.path.dirname(__file__), "..", ".build", "package")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -38,83 +42,135 @@ def setup_logs_directory():
 
 
 @pytest.fixture(scope="session")
-def test_binaries():
-    """Build all test binaries once for the entire test session."""
-    # Use a fixed directory instead of temporary to avoid cleanup issues
-    tmpdir = "/tmp/pytest-v2e-binaries"
+def package_binaries():
+    """Get paths to pre-built binaries from build.sh -p.
     
-    # Clean up old binaries if they exist
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir)
-    os.makedirs(tmpdir)
+    This fixture expects binaries to be pre-built in .build/package/
+    by running build.sh -p before running tests.
+    """
+    # Check if package directory exists
+    if not os.path.exists(PACKAGE_DIR):
+        pytest.fail(
+            f"Package directory {PACKAGE_DIR} not found. "
+            "Please run './build.sh -p' to build binaries before running integration tests."
+        )
     
+    # Check for required binaries
+    required_binaries = ["access", "broker", "cve-local", "cve-remote", "cve-meta"]
     binaries = {}
-    services = ["broker", "cve-meta", "cve-local", "cve-remote"]
     
-    print("\nBuilding test binaries...")
-    for service in services:
-        binary_path = os.path.join(tmpdir, service)
-        build_go_binary(f"./cmd/{service}", binary_path)
-        binaries[service] = binary_path
-        print(f"  ✓ Built {service}")
+    for binary_name in required_binaries:
+        binary_path = os.path.join(PACKAGE_DIR, binary_name)
+        if not os.path.exists(binary_path):
+            pytest.fail(
+                f"Binary {binary_name} not found at {binary_path}. "
+                "Please run './build.sh -p' to build all binaries."
+            )
+        # Make sure binary is executable
+        os.chmod(binary_path, 0o755)
+        binaries[binary_name] = binary_path
     
-    yield binaries
-    
-    # Cleanup after all tests complete
-    if os.path.exists(tmpdir):
-        shutil.rmtree(tmpdir)
+    print(f"\n✓ Using pre-built binaries from: {PACKAGE_DIR}")
+    return binaries
 
 
 @pytest.fixture(scope="module")
-def broker_with_services(test_binaries, setup_logs_directory):
-    """Start broker and spawn all test services via broker RPC.
+def access_service(package_binaries, setup_logs_directory):
+    """Start the access service for testing.
     
-    This fixture provides a broker instance with all services already running.
-    Tests can then interact with these services through the broker.
+    The access service acts as the central gateway for all integration tests.
+    All tests should interact with backend services through the access REST API.
     """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test.db")
+    # Project root directory
+    project_root = os.path.dirname(os.path.dirname(__file__))
+    
+    # Backup existing config.json if it exists
+    config_path = os.path.join(project_root, "config.json")
+    backup_path = config_path + ".backup"
+    has_backup = False
+    
+    if os.path.exists(config_path):
+        shutil.copy2(config_path, backup_path)
+        has_backup = True
+    
+    try:
+        # Create a temporary config file
+        config_content = {
+            "server": {
+                "address": "0.0.0.0:8080"
+            },
+            "broker": {
+                "logs_dir": setup_logs_directory,
+                "processes": []  # Start with no processes, tests will spawn as needed
+            }
+        }
+        
+        with open(config_path, 'w') as f:
+            import json
+            json.dump(config_content, f, indent=2)
         
         # Get test name for log file naming
         test_module = os.environ.get('PYTEST_CURRENT_TEST', 'unknown').split(':')[0].replace('/', '_')
-        log_file = os.path.join(setup_logs_directory, f"{test_module}_broker.log")
+        log_file = os.path.join(setup_logs_directory, f"{test_module}_access.log")
         
-        # Start broker with logging enabled
-        with RPCProcess([test_binaries["broker"]], 
-                       process_id="integration-broker",
-                       log_file=log_file) as broker:
-            # Give broker minimal time to start
-            time.sleep(0.2)
-            
-            # Spawn cve-remote service
-            broker.send_request("RPCSpawnRPC", {
-                "id": "cve-remote",
-                "command": test_binaries["cve-remote"],
-                "args": []
-            })
-            
-            # Spawn cve-local service with database path
-            os.environ["CVE_DB_PATH"] = db_path
-            broker.send_request("RPCSpawnRPC", {
-                "id": "cve-local",
-                "command": test_binaries["cve-local"],
-                "args": []
-            })
-            
-            # Give services minimal time to initialize
-            time.sleep(0.3)
-            
-            # Verify services are running
-            response = broker.send_request("RPCListProcesses", {})
-            processes = response["payload"]["processes"]
-            running_ids = [p["id"] for p in processes]
-            
-            assert "cve-remote" in running_ids, "cve-remote not running"
-            assert "cve-local" in running_ids, "cve-local not running"
-            
-            print(f"\n  ✓ Broker started with {len(processes)} services")
-            print(f"  ✓ Logs saved to: {log_file}")
-            
-            yield broker
-            
-            # Cleanup will happen automatically when context manager exits
+        # Start access service
+        env = os.environ.copy()
+        
+        # Start access service with the config
+        with open(log_file, 'w') as log:
+            log.write(f"=== Access Service Log ===\n")
+            log.write(f"Started at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            log.write(f"Config: {config_path}\n")
+            log.write("=" * 60 + "\n\n")
+        
+        process = subprocess.Popen(
+            [package_binaries["access"]],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            cwd=project_root,
+            env=env
+        )
+        
+        # Log output in background
+        import threading
+        def log_output():
+            with open(log_file, 'a') as log:
+                for line in process.stdout:
+                    log.write(line)
+                    log.flush()
+        
+        log_thread = threading.Thread(target=log_output, daemon=True)
+        log_thread.start()
+        
+        # Wait for service to be ready
+        client = AccessClient()
+        if not client.wait_for_ready(timeout=10):
+            process.terminate()
+            process.wait()
+            pytest.fail("Access service failed to start within 10 seconds")
+        
+        print(f"\n  ✓ Access service started on http://localhost:8080")
+        print(f"  ✓ Logs saved to: {log_file}")
+        
+        yield client
+        
+        # Cleanup
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        
+        with open(log_file, 'a') as log:
+            log.write(f"\n{'=' * 60}\n")
+            log.write(f"Process stopped at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    finally:
+        # Restore original config.json
+        if has_backup:
+            shutil.move(backup_path, config_path)
+        elif os.path.exists(config_path):
+            os.remove(config_path)

@@ -55,7 +55,7 @@ jobs:
           go-version: '1.24.11'
       
       - name: Build and package via build.sh
-        run: ./build.sh -p
+        run: ./build.sh -p -v
       
       - name: Get short commit SHA
         id: git-sha
