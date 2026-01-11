@@ -25,22 +25,19 @@ jobs:
         with:
           go-version: '1.24.11'
       
-      - name: Run Go unit tests
-        run: go test -v -race -coverprofile=coverage.out ./...
-      
-      - name: Generate coverage report
-        run: go tool cover -html=coverage.out -o coverage.html
+      - name: Run unit tests via build.sh
+        run: ./build.sh -t
       
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-coverage
-          path: coverage.html
+          path: .build/coverage.html
           if-no-files-found: ignore
 
-  integration-tests:
-    name: Integration Tests
+  build-and-package:
+    name: Build & Package
     runs-on: ubuntu-latest
     needs: unit-tests
     
@@ -53,6 +50,43 @@ jobs:
         with:
           go-version: '1.24.11'
       
+      - name: Build and package via build.sh
+        run: ./build.sh -p
+      
+      - name: Get short commit SHA
+        id: git-sha
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2e-package-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/package/
+          if-no-files-found: error
+          retention-days: 30
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-and-package
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      
+      - name: Get short commit SHA
+        id: git-sha
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: v2e-package-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/package/
+      
+      - name: Make binaries executable
+        run: chmod +x .build/package/*
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -63,9 +97,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r tests/requirements.txt
       
-      - name: Run integration tests (fast)
-        run: |
-          pytest tests/ -v -m "not slow and not benchmark" --tb=short
+      - name: Run integration tests via build.sh
+        run: ./build.sh -i
       
       - name: Upload integration test results
         if: always()
