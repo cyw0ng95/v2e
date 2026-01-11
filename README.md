@@ -13,7 +13,6 @@ This project contains multiple commands:
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
 - `cmd/cve-meta` - Backend RPC service that orchestrates CVE fetching and storage operations
-- `cmd/cve-meta-client` - Demo client for interacting with the cve-meta service
 
 And packages:
 
@@ -41,7 +40,6 @@ go build ./cmd/worker
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
 go build ./cmd/cve-meta
-go build ./cmd/cve-meta-client
 ```
 
 Or build a specific command:
@@ -54,7 +52,6 @@ go build -o bin/worker ./cmd/worker
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
 go build -o bin/cve-meta ./cmd/cve-meta
-go build -o bin/cve-meta-client ./cmd/cve-meta-client
 ```
 
 ## Running
@@ -282,27 +279,6 @@ This demonstrates the broker-mediated RPC communication pattern where:
 - All communication happens via RPC messages
 - The service runs continuously accepting commands
 - Batch jobs can be executed efficiently
-
-### CVE Meta Client
-
-A demo client for interacting with the CVE Meta service:
-
-```bash
-# Fetch a single CVE
-go run ./cmd/cve-meta-client -cve-id CVE-2021-44228
-
-# Specify a different database path
-go run ./cmd/cve-meta-client -db /path/to/cve.db -cve-id CVE-2024-1234
-
-# Run in batch mode to fetch multiple CVEs
-go run ./cmd/cve-meta-client -batch
-```
-
-The client demonstrates:
-- How to spawn the cve-meta service as a subprocess
-- How to send RPC requests to the service
-- How to receive and process RPC responses
-- Single and batch mode operations
 
 ## Development
 
