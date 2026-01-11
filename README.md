@@ -748,7 +748,10 @@ pytest tests/ -m "not slow"
 # Run only slow tests with extended timeout (requires NVD API access)
 pytest tests/ -m slow --timeout=300
 
-# Run benchmark tests
+# Run benchmark tests (fast, optimized for CI)
+pytest tests/ -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0
+
+# Run all benchmark tests (including slow ones)
 pytest tests/ -m benchmark --benchmark-only
 ```
 
@@ -893,6 +896,8 @@ The project uses GitHub Actions for automated testing with separate stages for d
 3. **Benchmark Tests** (Runs in parallel with integration tests)
    - Measures RPC endpoint performance
    - Generates JSON benchmark results
+   - Optimized for fast CI execution (5 rounds, 1s max)
+   - Excludes slow network-dependent benchmarks
    - Tracks performance regressions
    - Shows ops/sec metrics for all endpoints
 
@@ -914,8 +919,8 @@ go test -v -race -coverprofile=coverage.out ./...
 pip install -r tests/requirements.txt
 pytest tests/ -v -m "not slow and not benchmark"
 
-# Benchmark tests
-pytest tests/ -v -m benchmark --benchmark-only
+# Benchmark tests (optimized like CI)
+pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0
 
 # Slow tests (optional)
 pytest tests/ -v -m slow --timeout=300
