@@ -789,13 +789,13 @@ The integration tests follow a broker-centric architecture that mirrors real-wor
    - Message routing through broker is tested
    - Real-world multi-service cooperation is validated
 
-3. **Performance Benchmarks**: Benchmark tests measure RPC endpoint performance:
+3. **Performance Benchmarks** (Local development only):
    - `test_benchmarks.py` contains benchmarks for all RPC endpoints
    - Uses pytest-benchmark to measure operations per second
-   - Provides statistics (min, max, mean, median, IQR, outliers)
-   - Helps track performance regressions
+   - Available for local testing and performance regression tracking
+   - Not included in CI due to environment variability
 
-Example benchmark output:
+Example benchmark output (local testing):
 ```
 Name (time in us)                     Min       Max      Mean   StdDev    Median     IQR  Outliers  OPS (Kops/s)
 test_benchmark_list_processes     56.1350  490.6160  102.3540  17.8387  100.0690  8.7930   315;394        9.7700
@@ -867,14 +867,14 @@ The integration tests cover:
    - Batch fetching CVEs
    - Service orchestration and message routing
 
-3. **Performance Benchmarks** (`test_benchmarks.py`):
+3. **Performance Benchmarks** (`test_benchmarks.py` - local testing only):
    - RPCSpawn performance
    - RPCListProcesses performance
    - RPCGetProcess performance
    - RPCSpawnRPC performance
-   - Provides ops/sec metrics for all RPC endpoints
+   - Available for local development and performance tracking
 
-These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication. The benchmark suite ensures RPC operations meet performance requirements and helps identify performance regressions.
+These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication.
 
 ## Continuous Integration
 
@@ -893,19 +893,22 @@ The project uses GitHub Actions for automated testing with separate stages for d
    - Runs fast tests only (skips network-dependent tests)
    - Typical duration: ~70 seconds
 
-3. **Benchmark Tests** (Runs in parallel with integration tests)
-   - Measures RPC endpoint performance
-   - Generates JSON benchmark results
-   - Optimized for fast CI execution (5 rounds, 1s max)
-   - Excludes slow network-dependent benchmarks
-   - Tracks performance regressions
-   - Shows ops/sec metrics for all endpoints
-
-4. **Slow Integration Tests** (Optional, pull requests only)
+3. **Slow Integration Tests** (Optional, pull requests only)
    - Runs tests that make external NVD API calls
    - Only executes on pull requests (merge request level)
    - Continues on error (won't fail build if API is rate-limited)
    - Helps verify end-to-end functionality before merging
+
+### Benchmark Tests (Local Testing Only)
+
+Performance benchmarks are available for local testing but not included in CI due to environment variability:
+
+```bash
+# Run benchmark tests locally
+pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup-iterations=0
+```
+
+Benchmark tests measure RPC endpoint performance and can help track regressions during local development.
 
 ### Running CI Locally
 
@@ -919,17 +922,14 @@ go test -v -race -coverprofile=coverage.out ./...
 pip install -r tests/requirements.txt
 pytest tests/ -v -m "not slow and not benchmark"
 
-# Benchmark tests (optimized like CI)
-pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-min-rounds=5 --benchmark-max-time=1.0 --benchmark-warmup-iterations=0
-
-# Slow tests (optional)
+# Slow tests (optional, on pull requests only)
 pytest tests/ -v -m slow --timeout=300
 ```
 
 ### Viewing CI Results
 
 - **Coverage reports**: Available as artifacts after each run
-- **Benchmark results**: JSON file with detailed performance metrics
+- **Test logs**: Full output available in GitHub Actions logs
 - **Test logs**: Full output available in GitHub Actions logs
 
 The CI pipeline ensures code quality and prevents performance regressions while providing fast feedback to developers.
