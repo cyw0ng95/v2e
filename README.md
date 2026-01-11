@@ -2,13 +2,20 @@
 
 [![CI Tests](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml/badge.svg)](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml)
 
-A Go-based project demonstrating a multi-command structure with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
+A Go-based microservices system for CVE (Common Vulnerabilities and Exposures) data management with a RESTful API gateway and RPC-based backend services.
+
+## Architecture Overview
+
+The system follows a microservices architecture with:
+- **Access Service**: RESTful API gateway (the primary external interface)
+- **Backend RPC Services**: Process broker, CVE fetching, and local storage services
+- **Message-driven Communication**: JSON-RPC over stdin/stdout for inter-service communication
 
 ## Project Structure
 
 This project contains multiple commands:
 
-- `cmd/access` - RESTful API service using Gin framework
+- `cmd/access` - **RESTful API gateway service** - Primary external interface using Gin framework
 - `cmd/broker` - RPC service for managing subprocesses and process lifecycle
 - `cmd/broker-stats` - RPC service for accessing broker message statistics
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
@@ -57,10 +64,16 @@ go build -o bin/cve-meta ./cmd/cve-meta
 
 ### Access (RESTful API Service)
 
-The Access service provides a RESTful API server using the Gin framework:
+The Access service serves as the **primary interface** between external clients and the v2e system. It provides a RESTful API server using the Gin framework and manages backend RPC services internally.
+
+**Architecture:**
+- Listens on `0.0.0.0:8080` by default (configurable via `-port` flag)
+- Automatically spawns and manages the `cve-meta` backend service
+- Translates REST requests to RPC messages for backend services
+- All endpoints are prefixed with `/restful/` for RESTful operations
 
 ```bash
-# Run with default settings (port 8080)
+# Run with default settings (port 8080, listens on all interfaces)
 go run ./cmd/access
 
 # Run on a custom port
@@ -74,13 +87,56 @@ go run ./cmd/access -port 3000 -debug
 ```
 
 **Available Endpoints:**
+
+*Health & Status:*
 - `GET /health` - Health check endpoint that returns the server status
+
+*CVE Operations (via `/restful/cve/`):*
+- `GET /restful/cve/count` - Get total CVE count from NVD API
+- `GET /restful/cve/:id` - Fetch and store a specific CVE by ID (e.g., CVE-2021-44228)
+- `POST /restful/cve/batch` - Batch fetch multiple CVEs
+  - Request body: `{"cve_ids": ["CVE-2021-44228", "CVE-2024-1234"]}`
+  - Returns status for each CVE (fetched, already stored, errors)
+
+*Process Monitoring (via `/restful/processes/`):*
+- `GET /restful/processes` - List all managed backend processes
+- `GET /restful/processes/:id` - Get details of a specific process by ID
+
+**Example Usage:**
+
+```bash
+# Start the access service
+go run ./cmd/access
+
+# Health check
+curl http://localhost:8080/health
+
+# Get CVE count
+curl http://localhost:8080/restful/cve/count
+
+# Fetch a specific CVE
+curl http://localhost:8080/restful/cve/CVE-2021-44228
+
+# Batch fetch multiple CVEs
+curl -X POST http://localhost:8080/restful/cve/batch \
+  -H "Content-Type: application/json" \
+  -d '{"cve_ids": ["CVE-2021-44228", "CVE-2024-1234"]}'
+
+# List backend processes
+curl http://localhost:8080/restful/processes
+
+# Get specific process info
+curl http://localhost:8080/restful/processes/cve-meta
+```
 
 **Command Line Options:**
 - `-port` - Port to listen on (default: 8080)
 - `-debug` - Enable debug mode (default: false)
 
-The Access service demonstrates the use of the Gin framework for building RESTful APIs. It can be extended with additional endpoints as needed.
+**Environment Variables:**
+- `CVE_DB_PATH` - Path to the SQLite database file (default: `cve.db`)
+
+The Access service acts as the **unified gateway** to the v2e system, handling all external requests and coordinating with backend RPC services (cve-meta, cve-local, cve-remote) automatically.
 
 ### Broker (RPC Service)
 
@@ -862,6 +918,7 @@ The integration tests are located in the `tests/` directory:
 - `tests/__init__.py` - Package initialization
 - `tests/conftest.py` - Shared fixtures (broker_with_services, test_binaries)
 - `tests/helpers.py` - Helper utilities for RPC testing
+- `tests/test_access_integration.py` - Integration tests for access RESTful API service (9 tests)
 - `tests/test_broker_integration.py` - Integration tests for broker service (5 tests)
 - `tests/test_cve_meta_integration.py` - Integration tests for cve-meta service (4 tests)
 - `tests/test_benchmarks.py` - Performance benchmarks for RPC endpoints
@@ -921,14 +978,21 @@ The integration tests cover:
    - Batch fetching CVEs
    - Service orchestration and message routing
 
-3. **Performance Benchmarks** (`test_benchmarks.py` - local testing only):
+3. **Access RESTful API Service** (`test_access_integration.py` - 9 tests):
+   - Health check endpoint
+   - RESTful CVE operations (count, get, batch)
+   - Process monitoring endpoints
+   - Error handling and validation
+   - End-to-end REST to RPC translation
+
+4. **Performance Benchmarks** (`test_benchmarks.py` - local testing only):
    - RPCSpawn performance
    - RPCListProcesses performance
    - RPCGetProcess performance
    - RPCSpawnRPC performance
    - Available for local development and performance tracking
 
-These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication.
+These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication and RESTful APIs.
 
 ## Continuous Integration
 
