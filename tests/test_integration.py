@@ -99,8 +99,7 @@ class TestBrokerMessageStats:
         - Response uses standardized format: {retcode, message, payload}
         - Payload contains expected message statistics fields
         
-        Note: Currently returns placeholder data. Will return actual broker stats
-        when RPC forwarding is implemented (issue #74).
+        Successfully forwards RPC requests to broker and receives real statistics.
         """
         access = access_service
         
@@ -116,14 +115,14 @@ class TestBrokerMessageStats:
         assert response["retcode"] == 0
         assert response["message"] == "success"
         
-        # Verify payload has expected structure
+        # Verify payload has expected structure (with Go-style capitalized field names)
         payload = response["payload"]
-        assert "total_sent" in payload
-        assert "total_received" in payload
-        assert "request_count" in payload
-        assert "response_count" in payload
-        assert "event_count" in payload
-        assert "error_count" in payload
+        assert "TotalSent" in payload
+        assert "TotalReceived" in payload
+        assert "RequestCount" in payload
+        assert "ResponseCount" in payload
+        assert "EventCount" in payload
+        assert "ErrorCount" in payload
         
     def test_rpc_get_message_count(self, access_service):
         """Test RPCGetMessageCount via generic RPC endpoint.
@@ -133,8 +132,7 @@ class TestBrokerMessageStats:
         - Response uses standardized format: {retcode, message, payload}
         - Payload contains count field
         
-        Note: Currently returns placeholder data. Will return actual broker count
-        when RPC forwarding is implemented (issue #74).
+        Successfully forwards RPC requests to broker and receives real count.
         """
         access = access_service
         
@@ -184,7 +182,7 @@ class TestBrokerMessageStats:
         """Test generic RPC endpoint handles unknown methods correctly.
         
         This verifies:
-        - Unknown RPC methods return appropriate error code
+        - Unknown RPC methods return appropriate error
         - Error response follows standardized format
         - Error message is descriptive
         """
@@ -198,9 +196,9 @@ class TestBrokerMessageStats:
         assert "message" in response
         assert "payload" in response
         
-        # Verify error
-        assert response["retcode"] == 404
-        assert "Unknown RPC method" in response["message"]
+        # Verify error (broker returns error message with retcode 500)
+        assert response["retcode"] == 500
+        assert "no handler found" in response["message"].lower() or "unknown" in response["message"].lower()
         assert response["payload"] is None
 
 

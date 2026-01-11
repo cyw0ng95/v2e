@@ -61,7 +61,7 @@ func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	// Check if record exists
 	var existing CVERecord
 	result := d.db.Where("cve_id = ?", cveItem.ID).First(&existing)
-	
+
 	if result.Error == nil {
 		// Record exists, update it
 		record.ID = existing.ID
@@ -71,7 +71,7 @@ func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 		// Record doesn't exist, create it
 		return d.db.Create(&record).Error
 	}
-	
+
 	return result.Error
 }
 

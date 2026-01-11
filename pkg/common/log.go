@@ -104,7 +104,7 @@ func init() {
 // NewLogger creates a new Logger instance
 func NewLogger(out io.Writer, prefix string, level LogLevel) *Logger {
 	zerolog.SetGlobalLevel(level.toZerologLevel())
-	
+
 	return &Logger{
 		level:     level,
 		output:    out,

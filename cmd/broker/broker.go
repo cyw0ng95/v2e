@@ -951,8 +951,14 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 		msg.Source = sourceProcess
 	}
 
-	// If message has a target, route it to that process
+	// If message has a target, route it to that process or broker
 	if msg.Target != "" {
+		// Special case: if target is "broker", process it locally
+		if msg.Target == "broker" {
+			b.logger.Debug("Routing message to broker for local processing: type=%s id=%s from=%s", msg.Type, msg.ID, msg.Source)
+			return b.ProcessMessage(msg)
+		}
+
 		b.logger.Debug("Routing message from %s to %s: type=%s id=%s", msg.Source, msg.Target, msg.Type, msg.ID)
 		return b.SendToProcess(msg.Target, msg)
 	}

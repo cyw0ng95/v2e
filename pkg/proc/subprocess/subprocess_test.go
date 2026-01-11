@@ -165,13 +165,13 @@ func TestHandleMessage(t *testing.T) {
 
 func TestRunWithMessages(t *testing.T) {
 	sp := New("test")
-	
+
 	// Create input with test messages
 	input := `{"type":"request","id":"req-1"}
 {"type":"event","id":"evt-1"}
 `
 	sp.SetInput(strings.NewReader(input))
-	
+
 	output := &bytes.Buffer{}
 	sp.SetOutput(output)
 
@@ -210,7 +210,7 @@ func TestRunWithMessages(t *testing.T) {
 func TestUnmarshalPayload(t *testing.T) {
 	payload := map[string]string{"key": "value"}
 	data, _ := sonic.Marshal(payload)
-	
+
 	msg := &Message{
 		Type:    MessageTypeRequest,
 		ID:      "test",

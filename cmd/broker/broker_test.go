@@ -880,34 +880,34 @@ func TestBroker_SpawnWithRestart(t *testing.T) {
 }
 
 func TestHandleRPCGetMessageStats(t *testing.T) {
-broker := NewBroker()
-defer broker.Shutdown()
+	broker := NewBroker()
+	defer broker.Shutdown()
 
-// Send some messages to generate stats
-reqMsg, _ := proc.NewRequestMessage("test-req", nil)
-broker.SendMessage(reqMsg)
+	// Send some messages to generate stats
+	reqMsg, _ := proc.NewRequestMessage("test-req", nil)
+	broker.SendMessage(reqMsg)
 
-// Create RPC request for GetMessageStats
-rpcReq, err := proc.NewRequestMessage("RPCGetMessageStats", nil)
-if err != nil {
-t.Fatalf("Failed to create RPC request: %v", err)
-}
-rpcReq.Source = "test-caller"
+	// Create RPC request for GetMessageStats
+	rpcReq, err := proc.NewRequestMessage("RPCGetMessageStats", nil)
+	if err != nil {
+		t.Fatalf("Failed to create RPC request: %v", err)
+	}
+	rpcReq.Source = "test-caller"
 
-// Handle the RPC request
-respMsg, err := broker.HandleRPCGetMessageStats(rpcReq)
-if err != nil {
-t.Fatalf("HandleRPCGetMessageStats failed: %v", err)
-}
+	// Handle the RPC request
+	respMsg, err := broker.HandleRPCGetMessageStats(rpcReq)
+	if err != nil {
+		t.Fatalf("HandleRPCGetMessageStats failed: %v", err)
+	}
 
-// Verify response
-if respMsg.Type != proc.MessageTypeResponse {
-t.Errorf("Expected response type, got %s", respMsg.Type)
-}
+	// Verify response
+	if respMsg.Type != proc.MessageTypeResponse {
+		t.Errorf("Expected response type, got %s", respMsg.Type)
+	}
 
-if respMsg.Source != "broker" {
-t.Errorf("Expected source 'broker', got %s", respMsg.Source)
-}
+	if respMsg.Source != "broker" {
+		t.Errorf("Expected source 'broker', got %s", respMsg.Source)
+	}
 
 	if respMsg.Target != "test-caller" {
 		t.Errorf("Expected target 'test-caller', got %s", respMsg.Target)
@@ -926,34 +926,34 @@ t.Errorf("Expected source 'broker', got %s", respMsg.Source)
 }
 
 func TestHandleRPCGetMessageCount(t *testing.T) {
-broker := NewBroker()
-defer broker.Shutdown()
+	broker := NewBroker()
+	defer broker.Shutdown()
 
-// Send some messages to generate count
-reqMsg, _ := proc.NewRequestMessage("test-req", nil)
-broker.SendMessage(reqMsg)
+	// Send some messages to generate count
+	reqMsg, _ := proc.NewRequestMessage("test-req", nil)
+	broker.SendMessage(reqMsg)
 
-// Create RPC request for GetMessageCount
-rpcReq, err := proc.NewRequestMessage("RPCGetMessageCount", nil)
-if err != nil {
-t.Fatalf("Failed to create RPC request: %v", err)
-}
-rpcReq.Source = "test-caller"
+	// Create RPC request for GetMessageCount
+	rpcReq, err := proc.NewRequestMessage("RPCGetMessageCount", nil)
+	if err != nil {
+		t.Fatalf("Failed to create RPC request: %v", err)
+	}
+	rpcReq.Source = "test-caller"
 
-// Handle the RPC request
-respMsg, err := broker.HandleRPCGetMessageCount(rpcReq)
-if err != nil {
-t.Fatalf("HandleRPCGetMessageCount failed: %v", err)
-}
+	// Handle the RPC request
+	respMsg, err := broker.HandleRPCGetMessageCount(rpcReq)
+	if err != nil {
+		t.Fatalf("HandleRPCGetMessageCount failed: %v", err)
+	}
 
-// Verify response
-if respMsg.Type != proc.MessageTypeResponse {
-t.Errorf("Expected response type, got %s", respMsg.Type)
-}
+	// Verify response
+	if respMsg.Type != proc.MessageTypeResponse {
+		t.Errorf("Expected response type, got %s", respMsg.Type)
+	}
 
-if respMsg.Source != "broker" {
-t.Errorf("Expected source 'broker', got %s", respMsg.Source)
-}
+	if respMsg.Source != "broker" {
+		t.Errorf("Expected source 'broker', got %s", respMsg.Source)
+	}
 
 	if respMsg.Target != "test-caller" {
 		t.Errorf("Expected target 'test-caller', got %s", respMsg.Target)
@@ -973,13 +973,13 @@ t.Errorf("Expected source 'broker', got %s", respMsg.Source)
 
 	// Count should be at least 1
 	countFloat, ok := count.(float64)
-if !ok {
-t.Fatalf("Expected count to be float64, got %T", count)
-}
+	if !ok {
+		t.Fatalf("Expected count to be float64, got %T", count)
+	}
 
-if countFloat < 1 {
-t.Errorf("Expected count >= 1, got %f", countFloat)
-}
+	if countFloat < 1 {
+		t.Errorf("Expected count >= 1, got %f", countFloat)
+	}
 }
 
 func TestProcessMessage_RPCGetMessageStats(t *testing.T) {

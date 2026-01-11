@@ -1,7 +1,7 @@
 package main
 
 import (
-"testing"
+	"testing"
 )
 
 // TODO: Tests disabled - access service is currently a stub
@@ -10,6 +10,6 @@ import (
 // See: https://github.com/cyw0ng95/v2e/pull/74
 
 func TestHealthEndpoint(t *testing.T) {
-// Basic test placeholder
-t.Skip("Access service is currently a stub pending redesign")
+	// Basic test placeholder
+	t.Skip("Access service is currently a stub pending redesign")
 }

@@ -2,8 +2,8 @@ package proc
 
 import (
 	"encoding/json"
-	"github.com/bytedance/sonic"
 	"errors"
+	"github.com/bytedance/sonic"
 	"testing"
 )
 
