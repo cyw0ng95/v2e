@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"github.com/bytedance/sonic"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"

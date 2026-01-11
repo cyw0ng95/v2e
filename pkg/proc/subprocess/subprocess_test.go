@@ -137,7 +137,7 @@ func TestHandleMessage(t *testing.T) {
 		return &Message{
 			Type:    MessageTypeResponse,
 			ID:      msg.ID,
-			Payload: sonic.RawMessage(`{"result": "success"}`),
+			Payload: json.RawMessage(`{"result": "success"}`),
 		}, nil
 	})
 

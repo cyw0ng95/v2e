@@ -187,7 +187,7 @@ func TestMessage_UnmarshalPayload_NoPayload(t *testing.T) {
 
 func TestMessage_Marshal(t *testing.T) {
 	msg := NewMessage(MessageTypeRequest, "test-id")
-	msg.Payload = sonic.RawMessage(`{"test":"value"}`)
+	msg.Payload = json.RawMessage(`{"test":"value"}`)
 
 	data, err := msg.Marshal()
 	if err != nil {
