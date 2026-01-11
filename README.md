@@ -167,11 +167,14 @@ go build -o bin/cve-meta ./cmd/cve-meta
 The recommended way to deploy and run services is through the broker with a configuration file:
 
 ```bash
+# Build all binaries first
+./build.sh -p
+
 # Run broker with config file (automatically starts configured services)
-go run ./cmd/broker
+./broker config.json
 
 # The broker will:
-# 1. Load config.json from the current directory
+# 1. Load config.json as specified
 # 2. Spawn all configured subprocess services
 # 3. Route RPC messages between services
 # 4. Monitor and restart services as needed
@@ -181,37 +184,58 @@ The `config.json` file defines which services to start:
 
 ```json
 {
+  "server": {
+    "address": "0.0.0.0:8080"
+  },
   "broker": {
-    "log_file": "broker.log",
+    "logs_dir": "./logs",
     "processes": [
       {
+        "id": "access",
+        "command": "./access",
+        "args": [],
+        "rpc": false,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
         "id": "cve-remote",
-        "command": "go",
-        "args": ["run", "./cmd/cve-remote"],
+        "command": "./cve-remote",
+        "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
       {
         "id": "cve-local",
-        "command": "go",
-        "args": ["run", "./cmd/cve-local"],
+        "command": "./cve-local",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-meta",
+        "command": "./cve-meta",
+        "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       }
     ]
+  },
+  "logging": {
+    "level": "info",
+    "dir": "./logs"
   }
 }
 ```
 
-**Note:** This is a simplified example showing only the broker configuration. The complete `config.json` file (see `config.json.example`) also includes `server`, `client`, and `authentication` sections for additional features.
-
 **Configuration Options:**
-- `log_file` - Path to log file (logs to both stdout and file)
+- `logs_dir` - Directory for log files
 - `processes` - Array of services to automatically spawn
   - `id` - Unique identifier for the service
-  - `command` - Command to execute
+  - `command` - Path to binary executable
   - `args` - Command arguments
   - `rpc` - Enable RPC communication (stdin/stdout pipes)
   - `restart` - Automatically restart on exit
@@ -330,122 +354,6 @@ The Access service provides a controlled interface to the system:
 - All communication routes through broker's secure message passing
 
 **Note:** Full RPC forwarding implementation is future work. Currently, only health check endpoint is implemented.
-
-### Broker Manual RPC Commands (Testing/Development)
-
-For testing and development, you can send RPC commands directly to the broker via stdin:
-
-```bash
-# Run the service (it reads RPC requests from stdin and writes responses to stdout)
-go run ./cmd/broker
-
-# Example: Spawn a process
-echo '{"type":"request","id":"RPCSpawn","payload":{"id":"my-echo","command":"echo","args":["hello","world"]}}' | go run ./cmd/broker
-
-# Example: List all processes
-echo '{"type":"request","id":"RPCListProcesses","payload":{}}' | go run ./cmd/broker
-
-# Example: Get process info
-echo '{"type":"request","id":"RPCGetProcess","payload":{"id":"my-echo"}}' | go run ./cmd/broker
-
-# Example: Kill a process
-echo '{"type":"request","id":"RPCKill","payload":{"id":"my-echo"}}' | go run ./cmd/broker
-
-# Example: Get total message count
-echo '{"type":"request","id":"RPCGetMessageCount","payload":{}}' | go run ./cmd/broker
-
-# Example: Get detailed message statistics
-echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/broker
-```
-
-**Note:** These manual commands are useful for testing but are not the recommended deployment method. In production, use the config-based deployment described above.
-
-**Available RPC Interfaces:**
-
-*Process Management:*
-- `RPCSpawn` - Spawns a new subprocess with the specified command and arguments
-- `RPCSpawnRPC` - Spawns a new RPC-enabled subprocess (with stdin/stdout pipes)
-- `RPCGetProcess` - Gets information about a specific process by ID
-- `RPCListProcesses` - Lists all managed processes
-- `RPCKill` - Terminates a process by ID
-
-*RPC Endpoint Management:*
-- `RPCRegisterEndpoint` - Registers an RPC endpoint for a process
-- `RPCGetEndpoints` - Gets all registered RPC endpoints for a specific process
-- `RPCGetAllEndpoints` - Gets all registered RPC endpoints for all processes
-
-*Message Statistics:*
-- `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
-- `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
-
-*Cross-Service RPC Invocation:*
-- `RPCInvoke` - Invokes an RPC method on a target subprocess and waits for the response
-
-**Cross-Service RPC Calls:**
-
-The broker supports routing RPC messages between subprocess services using the `RPCInvoke` interface. This enables services to call each other through the broker's message routing infrastructure:
-
-```bash
-# Example: Call cve-remote's RPCGetCVECnt from broker
-echo '{"type":"request","id":"RPCInvoke","payload":{"target":"cve-remote","method":"RPCGetCVECnt","payload":{},"timeout":30}}' | go run ./cmd/broker
-
-# Example: Call cve-local's RPCIsCVEStoredByID
-echo '{"type":"request","id":"RPCInvoke","payload":{"target":"cve-local","method":"RPCIsCVEStoredByID","payload":{"cve_id":"CVE-2021-44228"},"timeout":10}}' | go run ./cmd/broker
-```
-
-**RPCInvoke Request Format:**
-```json
-{
-  "target": "target-process-id",
-  "method": "RPCMethodName",
-  "payload": {
-    "param1": "value1",
-    "param2": "value2"
-  },
-  "timeout": 30
-}
-```
-
-**Message Routing Fields:**
-
-The broker uses the following fields for message routing:
-- `source` - Process ID of the message sender (automatically set by the broker)
-- `target` - Process ID of the message recipient (used to route messages between services)
-- `correlation_id` - Used to match responses to requests (automatically managed by the broker)
-
-Messages with a `target` field are automatically routed to that subprocess. Messages without a `target` are handled locally by the broker.
-
-**Auto-Restart Feature:**
-
-Processes can be configured to automatically restart on exit (either in config.json or via RPC):
-
-```bash
-# Spawn a process with auto-restart (max 3 restarts)
-echo '{"type":"request","id":"RPCSpawn","payload":{"id":"my-worker","command":"./worker","args":[],"restart":true,"max_restarts":3}}' | go run ./cmd/broker
-```
-
-The broker will monitor process exits and restart them automatically according to the configuration.
-
-**Request Format for RPCSpawn:**
-```json
-{
-  "id": "unique-process-id",
-  "command": "echo",
-  "args": ["hello", "world"]
-}
-```
-
-**Response Format for RPCSpawn:**
-```json
-{
-  "id": "unique-process-id",
-  "pid": 12345,
-  "command": "echo",
-  "status": "running"
-}
-```
-
-This service can be spawned by a broker to provide remote access to process management via RPC.
 
 ### CVE Remote (RPC Service)
 

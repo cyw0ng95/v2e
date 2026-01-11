@@ -3,7 +3,41 @@
     "address": "0.0.0.0:8080"
   },
   "broker": {
-    "logs_dir": "./logs"
+    "logs_dir": "./logs",
+    "processes": [
+      {
+        "id": "access",
+        "command": "./access",
+        "args": [],
+        "rpc": false,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-remote",
+        "command": "./cve-remote",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-local",
+        "command": "./cve-local",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-meta",
+        "command": "./cve-meta",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      }
+    ]
   },
   "logging": {
     "level": "info",
