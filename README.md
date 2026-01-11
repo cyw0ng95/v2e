@@ -873,6 +873,62 @@ The integration tests cover:
 
 These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication. The benchmark suite ensures RPC operations meet performance requirements and helps identify performance regressions.
 
+## Continuous Integration
+
+The project uses GitHub Actions for automated testing with separate stages for different test types:
+
+### CI Pipeline Stages
+
+1. **Unit Tests** (Always runs first)
+   - Runs Go unit tests with race detection
+   - Generates code coverage reports
+   - Fast feedback on basic functionality
+
+2. **Integration Tests** (Runs after unit tests pass)
+   - Tests multi-service RPC communication
+   - Uses broker-managed service architecture
+   - Runs fast tests only (skips network-dependent tests)
+   - Typical duration: ~70 seconds
+
+3. **Benchmark Tests** (Runs in parallel with integration tests)
+   - Measures RPC endpoint performance
+   - Generates JSON benchmark results
+   - Tracks performance regressions
+   - Shows ops/sec metrics for all endpoints
+
+4. **Slow Integration Tests** (Optional, main/develop only)
+   - Runs tests that make external NVD API calls
+   - Only executes on main and develop branches
+   - Continues on error (won't fail build if API is rate-limited)
+   - Helps verify end-to-end functionality
+
+### Running CI Locally
+
+To run the same tests that CI runs:
+
+```bash
+# Unit tests
+go test -v -race -coverprofile=coverage.out ./...
+
+# Integration tests (fast)
+pip install -r tests/requirements.txt
+pytest tests/ -v -m "not slow and not benchmark"
+
+# Benchmark tests
+pytest tests/ -v -m benchmark --benchmark-only
+
+# Slow tests (optional)
+pytest tests/ -v -m slow --timeout=300
+```
+
+### Viewing CI Results
+
+- **Coverage reports**: Available as artifacts after each run
+- **Benchmark results**: JSON file with detailed performance metrics
+- **Test logs**: Full output available in GitHub Actions logs
+
+The CI pipeline ensures code quality and prevents performance regressions while providing fast feedback to developers.
+
 ## License
 
 MIT
