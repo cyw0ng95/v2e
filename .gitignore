@@ -11,6 +11,12 @@
 # Built binaries
 /server
 /client
+/broker
+/broker-stats
+/worker
+/cve-local
+/cve-remote
+/cve-meta
 /bin/
 
 # Test binary, built with `go test -c`
@@ -37,6 +43,40 @@ go.work.sum
 # Config files (may contain sensitive data)
 config.json
 
+# Database files
+cve.db
+
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# pytest
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
