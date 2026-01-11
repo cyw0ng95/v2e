@@ -475,6 +475,8 @@ func (b *Broker) reapProcess(proc *Process) {
 	// Wait for the process to complete
 	err := proc.cmd.Wait()
 
+	// Lock is acquired here and explicitly unlocked later (not deferred)
+	// because the restart logic requires early unlock to avoid deadlock
 	proc.mu.Lock()
 
 	proc.info.EndTime = time.Now()
@@ -517,7 +519,7 @@ func (b *Broker) reapProcess(proc *Process) {
 
 		// Increment restart count
 		proc.restartConfig.RestartCount++
-		
+
 		processID := proc.info.ID
 		command := proc.restartConfig.Command
 		args := proc.restartConfig.Args

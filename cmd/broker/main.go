@@ -396,117 +396,117 @@ func createGetMessageStatsHandler(broker *proc.Broker) subprocess.Handler {
 
 // createRegisterEndpointHandler creates a handler for RPCRegisterEndpoint
 func createRegisterEndpointHandler(broker *proc.Broker) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-// Parse the request payload
-var req struct {
-ProcessID string `json:"process_id"`
-Endpoint  string `json:"endpoint"`
-}
-if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-return nil, fmt.Errorf("failed to parse request: %w", err)
-}
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Parse the request payload
+		var req struct {
+			ProcessID string `json:"process_id"`
+			Endpoint  string `json:"endpoint"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			return nil, fmt.Errorf("failed to parse request: %w", err)
+		}
 
-if req.ProcessID == "" {
-return nil, fmt.Errorf("process_id is required")
-}
-if req.Endpoint == "" {
-return nil, fmt.Errorf("endpoint is required")
-}
+		if req.ProcessID == "" {
+			return nil, fmt.Errorf("process_id is required")
+		}
+		if req.Endpoint == "" {
+			return nil, fmt.Errorf("endpoint is required")
+		}
 
-// Register the endpoint
-broker.RegisterEndpoint(req.ProcessID, req.Endpoint)
+		// Register the endpoint
+		broker.RegisterEndpoint(req.ProcessID, req.Endpoint)
 
-// Create response
-result := map[string]interface{}{
-"success":    true,
-"process_id": req.ProcessID,
-"endpoint":   req.Endpoint,
-}
+		// Create response
+		result := map[string]interface{}{
+			"success":    true,
+			"process_id": req.ProcessID,
+			"endpoint":   req.Endpoint,
+		}
 
-// Create response message
-respMsg := &subprocess.Message{
-Type: subprocess.MessageTypeResponse,
-ID:   msg.ID,
-}
+		// Create response message
+		respMsg := &subprocess.Message{
+			Type: subprocess.MessageTypeResponse,
+			ID:   msg.ID,
+		}
 
-// Marshal the result
-jsonData, err := json.Marshal(result)
-if err != nil {
-return nil, fmt.Errorf("failed to marshal result: %w", err)
-}
-respMsg.Payload = jsonData
+		// Marshal the result
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal result: %w", err)
+		}
+		respMsg.Payload = jsonData
 
-return respMsg, nil
-}
+		return respMsg, nil
+	}
 }
 
 // createGetEndpointsHandler creates a handler for RPCGetEndpoints
 func createGetEndpointsHandler(broker *proc.Broker) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-// Parse the request payload
-var req struct {
-ProcessID string `json:"process_id"`
-}
-if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-return nil, fmt.Errorf("failed to parse request: %w", err)
-}
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Parse the request payload
+		var req struct {
+			ProcessID string `json:"process_id"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			return nil, fmt.Errorf("failed to parse request: %w", err)
+		}
 
-if req.ProcessID == "" {
-return nil, fmt.Errorf("process_id is required")
-}
+		if req.ProcessID == "" {
+			return nil, fmt.Errorf("process_id is required")
+		}
 
-// Get endpoints for the process
-endpoints := broker.GetEndpoints(req.ProcessID)
+		// Get endpoints for the process
+		endpoints := broker.GetEndpoints(req.ProcessID)
 
-// Create response
-result := map[string]interface{}{
-"process_id": req.ProcessID,
-"endpoints":  endpoints,
-"count":      len(endpoints),
-}
+		// Create response
+		result := map[string]interface{}{
+			"process_id": req.ProcessID,
+			"endpoints":  endpoints,
+			"count":      len(endpoints),
+		}
 
-// Create response message
-respMsg := &subprocess.Message{
-Type: subprocess.MessageTypeResponse,
-ID:   msg.ID,
-}
+		// Create response message
+		respMsg := &subprocess.Message{
+			Type: subprocess.MessageTypeResponse,
+			ID:   msg.ID,
+		}
 
-// Marshal the result
-jsonData, err := json.Marshal(result)
-if err != nil {
-return nil, fmt.Errorf("failed to marshal result: %w", err)
-}
-respMsg.Payload = jsonData
+		// Marshal the result
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal result: %w", err)
+		}
+		respMsg.Payload = jsonData
 
-return respMsg, nil
-}
+		return respMsg, nil
+	}
 }
 
 // createGetAllEndpointsHandler creates a handler for RPCGetAllEndpoints
 func createGetAllEndpointsHandler(broker *proc.Broker) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-// Get all endpoints
-allEndpoints := broker.GetAllEndpoints()
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Get all endpoints
+		allEndpoints := broker.GetAllEndpoints()
 
-// Create response
-result := map[string]interface{}{
-"endpoints": allEndpoints,
-"count":     len(allEndpoints),
-}
+		// Create response
+		result := map[string]interface{}{
+			"endpoints": allEndpoints,
+			"count":     len(allEndpoints),
+		}
 
-// Create response message
-respMsg := &subprocess.Message{
-Type: subprocess.MessageTypeResponse,
-ID:   msg.ID,
-}
+		// Create response message
+		respMsg := &subprocess.Message{
+			Type: subprocess.MessageTypeResponse,
+			ID:   msg.ID,
+		}
 
-// Marshal the result
-jsonData, err := json.Marshal(result)
-if err != nil {
-return nil, fmt.Errorf("failed to marshal result: %w", err)
-}
-respMsg.Payload = jsonData
+		// Marshal the result
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal result: %w", err)
+		}
+		respMsg.Payload = jsonData
 
-return respMsg, nil
-}
+		return respMsg, nil
+	}
 }
