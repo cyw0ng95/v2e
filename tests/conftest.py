@@ -4,14 +4,43 @@ import pytest
 import os
 import tempfile
 import time
+import shutil
 from tests.helpers import RPCProcess, build_go_binary
+
+
+# Global logs directory for all tests
+LOGS_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_logs_directory():
+    """Create logs directory for integration tests at the start of the session."""
+    # Create logs directory if it doesn't exist
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    
+    # Clean up old log files from previous runs
+    for filename in os.listdir(LOGS_DIR):
+        filepath = os.path.join(LOGS_DIR, filename)
+        try:
+            if os.path.isfile(filepath) or os.path.islink(filepath):
+                os.unlink(filepath)
+            elif os.path.isdir(filepath):
+                shutil.rmtree(filepath)
+        except Exception as e:
+            print(f'Failed to delete {filepath}. Reason: {e}')
+    
+    print(f"\n✓ Logs directory created at: {LOGS_DIR}")
+    
+    yield LOGS_DIR
+    
+    # Keep logs after tests for debugging
+    print(f"\n✓ Test logs saved to: {LOGS_DIR}")
 
 
 @pytest.fixture(scope="session")
 def test_binaries():
     """Build all test binaries once for the entire test session."""
     # Use a fixed directory instead of temporary to avoid cleanup issues
-    import shutil
     tmpdir = "/tmp/pytest-v2e-binaries"
     
     # Clean up old binaries if they exist
@@ -37,7 +66,7 @@ def test_binaries():
 
 
 @pytest.fixture(scope="module")
-def broker_with_services(test_binaries):
+def broker_with_services(test_binaries, setup_logs_directory):
     """Start broker and spawn all test services via broker RPC.
     
     This fixture provides a broker instance with all services already running.
@@ -46,9 +75,14 @@ def broker_with_services(test_binaries):
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = os.path.join(tmpdir, "test.db")
         
-        # Start broker
+        # Get test name for log file naming
+        test_module = os.environ.get('PYTEST_CURRENT_TEST', 'unknown').split(':')[0].replace('/', '_')
+        log_file = os.path.join(setup_logs_directory, f"{test_module}_broker.log")
+        
+        # Start broker with logging enabled
         with RPCProcess([test_binaries["broker"]], 
-                       process_id="integration-broker") as broker:
+                       process_id="integration-broker",
+                       log_file=log_file) as broker:
             # Give broker minimal time to start
             time.sleep(0.2)
             
@@ -79,6 +113,7 @@ def broker_with_services(test_binaries):
             assert "cve-local" in running_ids, "cve-local not running"
             
             print(f"\n  ✓ Broker started with {len(processes)} services")
+            print(f"  ✓ Logs saved to: {log_file}")
             
             yield broker
             

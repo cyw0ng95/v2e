@@ -3,6 +3,8 @@ package proc
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/bytedance/sonic"
 )
 
 // MessageType represents the type of message being sent
@@ -43,7 +45,7 @@ func NewMessage(msgType MessageType, id string) *Message {
 func NewRequestMessage(id string, payload interface{}) (*Message, error) {
 	msg := NewMessage(MessageTypeRequest, id)
 	if payload != nil {
-		data, err := json.Marshal(payload)
+		data, err := sonic.Marshal(payload)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -56,7 +58,7 @@ func NewRequestMessage(id string, payload interface{}) (*Message, error) {
 func NewResponseMessage(id string, payload interface{}) (*Message, error) {
 	msg := NewMessage(MessageTypeResponse, id)
 	if payload != nil {
-		data, err := json.Marshal(payload)
+		data, err := sonic.Marshal(payload)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -69,7 +71,7 @@ func NewResponseMessage(id string, payload interface{}) (*Message, error) {
 func NewEventMessage(id string, payload interface{}) (*Message, error) {
 	msg := NewMessage(MessageTypeEvent, id)
 	if payload != nil {
-		data, err := json.Marshal(payload)
+		data, err := sonic.Marshal(payload)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -92,18 +94,18 @@ func (m *Message) UnmarshalPayload(v interface{}) error {
 	if m.Payload == nil {
 		return fmt.Errorf("no payload to unmarshal")
 	}
-	return json.Unmarshal(m.Payload, v)
+	return sonic.Unmarshal(m.Payload, v)
 }
 
 // Marshal serializes the message to JSON
 func (m *Message) Marshal() ([]byte, error) {
-	return json.Marshal(m)
+	return sonic.Marshal(m)
 }
 
 // Unmarshal deserializes a message from JSON
 func Unmarshal(data []byte) (*Message, error) {
 	var msg Message
-	if err := json.Unmarshal(data, &msg); err != nil {
+	if err := sonic.Unmarshal(data, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 	return &msg, nil

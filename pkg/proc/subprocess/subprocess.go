@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"sync"
+
+	"github.com/bytedance/sonic"
 )
 
 // MessageType represents the type of message being sent
@@ -127,7 +129,7 @@ func (s *Subprocess) Run() error {
 
 		// Parse the message
 		var msg Message
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
+		if err := sonic.Unmarshal([]byte(line), &msg); err != nil {
 			// Send error response
 			errMsg := &Message{
 				Type:  MessageTypeError,
@@ -201,7 +203,7 @@ func (s *Subprocess) SendMessage(msg *Message) error {
 
 // sendMessage is the internal method to send a message
 func (s *Subprocess) sendMessage(msg *Message) error {
-	data, err := json.Marshal(msg)
+	data, err := sonic.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
@@ -222,7 +224,7 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
-		data, err := json.Marshal(payload)
+		data, err := sonic.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -241,7 +243,7 @@ func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 func (s *Subprocess) SendEvent(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
-		data, err := json.Marshal(payload)
+		data, err := sonic.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -278,5 +280,5 @@ func UnmarshalPayload(msg *Message, v interface{}) error {
 	if msg.Payload == nil {
 		return fmt.Errorf("no payload to unmarshal")
 	}
-	return json.Unmarshal(msg.Payload, v)
+	return sonic.Unmarshal(msg.Payload, v)
 }

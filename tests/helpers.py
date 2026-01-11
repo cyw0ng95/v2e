@@ -10,20 +10,31 @@ from typing import Dict, List, Optional, Any
 class RPCProcess:
     """Wrapper for managing RPC processes during integration tests."""
     
-    def __init__(self, command: List[str], process_id: str = None, env: Dict[str, str] = None):
+    def __init__(self, command: List[str], process_id: str = None, env: Dict[str, str] = None, log_file: str = None):
         """Initialize RPC process wrapper.
         
         Args:
             command: Command and arguments to execute
             process_id: Optional process ID to set via PROCESS_ID env var
             env: Optional environment variables to set for the process
+            log_file: Optional file path to log all RPC requests and responses
         """
         self.command = command
         self.process_id = process_id
         self.env = env or {}
+        self.log_file = log_file
         self.process = None
         self._startup_time = 0.5  # Time to wait for process startup
-        self._debug = False  # Enable debug output
+        self._debug = os.environ.get('PYTEST_VERBOSE', 'false').lower() == 'true'
+        
+        # Create log file if specified
+        if self.log_file:
+            os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
+            with open(self.log_file, 'w') as f:
+                f.write(f"=== RPC Process Log: {process_id or 'unknown'} ===\n")
+                f.write(f"Command: {' '.join(command)}\n")
+                f.write(f"Started at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write("=" * 60 + "\n\n")
     
     def start(self) -> None:
         """Start the RPC process."""
@@ -66,6 +77,17 @@ class RPCProcess:
             "payload": payload
         }
         
+        # Log the request
+        if self.log_file:
+            with open(self.log_file, 'a') as f:
+                f.write(f"\n>>> REQUEST [{time.strftime('%H:%M:%S')}]\n")
+                f.write(json.dumps(message, indent=2))
+                f.write("\n")
+        
+        if self._debug:
+            print(f"\n>>> REQUEST: {request_id}")
+            print(json.dumps(message, indent=2))
+        
         # Send request
         request_json = json.dumps(message) + '\n'
         self.process.stdin.write(request_json)
@@ -73,6 +95,18 @@ class RPCProcess:
         
         # Read response (with timeout)
         response = self._read_response(timeout=timeout)
+        
+        # Log the response
+        if self.log_file:
+            with open(self.log_file, 'a') as f:
+                f.write(f"\n<<< RESPONSE [{time.strftime('%H:%M:%S')}]\n")
+                f.write(json.dumps(response, indent=2))
+                f.write("\n")
+        
+        if self._debug:
+            print(f"\n<<< RESPONSE: {request_id}")
+            print(json.dumps(response, indent=2))
+        
         return response
     
     def _read_response(self, timeout: int = 30) -> Dict[str, Any]:
@@ -124,6 +158,11 @@ class RPCProcess:
     def stop(self) -> None:
         """Stop the RPC process."""
         if self.process:
+            if self.log_file:
+                with open(self.log_file, 'a') as f:
+                    f.write(f"\n{'=' * 60}\n")
+                    f.write(f"Process stopped at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            
             self.process.stdin.close()
             self.process.terminate()
             try:

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/bytedance/sonic"
 	"fmt"
 	"io"
 	"os"
@@ -141,7 +141,7 @@ func createSpawnHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -192,7 +192,7 @@ func createSpawnRPCHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -239,7 +239,7 @@ func createGetProcessHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -274,7 +274,7 @@ func createListProcessesHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(map[string]interface{}{
+		jsonData, err := sonic.Marshal(map[string]interface{}{
 			"processes": result,
 			"count":     len(result),
 		})
@@ -321,7 +321,7 @@ func createKillHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -349,7 +349,7 @@ func createGetMessageCountHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -384,7 +384,7 @@ func createGetMessageStatsHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -430,7 +430,7 @@ func createRegisterEndpointHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -472,7 +472,7 @@ func createGetEndpointsHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
@@ -501,7 +501,7 @@ func createGetAllEndpointsHandler(broker *proc.Broker) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := json.Marshal(result)
+		jsonData, err := sonic.Marshal(result)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}

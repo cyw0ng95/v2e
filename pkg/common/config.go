@@ -1,9 +1,10 @@
 package common
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/bytedance/sonic"
 )
 
 const (
@@ -39,6 +40,8 @@ type BrokerConfig struct {
 	Processes []ProcessConfig `json:"processes,omitempty"`
 	// LogFile is the path to the log file
 	LogFile string `json:"log_file,omitempty"`
+	// LogsDir is the directory where logs are stored
+	LogsDir string `json:"logs_dir,omitempty"`
 	// Authentication settings for RPC endpoints
 	Authentication AuthenticationConfig `json:"authentication,omitempty"`
 }
@@ -97,7 +100,7 @@ func LoadConfig(filename string) (*Config, error) {
 
 	// Parse JSON
 	var config Config
-	if err := json.Unmarshal(data, &config); err != nil {
+	if err := sonic.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file %s: %w", filename, err)
 	}
 
@@ -110,7 +113,7 @@ func SaveConfig(config *Config, filename string) error {
 		filename = DefaultConfigFile
 	}
 
-	data, err := json.MarshalIndent(config, "", "  ")
+	data, err := sonic.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}

@@ -9,6 +9,7 @@ set -e
 BUILD_DIR=".build"
 PACKAGE_DIR=".build/package"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERBOSE=false
 
 # Help function
 show_help() {
@@ -19,6 +20,7 @@ Options:
     -t          Run unit tests and return result for GitHub CI
     -i          Run integration tests (requires Python and pytest)
     -p          Build and package binaries with assets
+    -v          Enable verbose output
     -h          Show this help message
 
 Examples:
@@ -26,26 +28,35 @@ Examples:
     $0 -t       # Run unit tests for CI
     $0 -i       # Run integration tests for CI
     $0 -p       # Build and package binaries
+    $0 -t -v    # Run unit tests with verbose output
 EOF
 }
 
 # Create build directory if it doesn't exist
 setup_build_dir() {
     mkdir -p "$BUILD_DIR"
-    echo "Build directory: $BUILD_DIR"
+    if [ "$VERBOSE" = true ]; then
+        echo "Build directory: $BUILD_DIR"
+    fi
 }
 
 # Build the project
 build_project() {
-    echo "Building v2e project..."
+    if [ "$VERBOSE" = true ]; then
+        echo "Building v2e project..."
+    fi
     setup_build_dir
     
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
-        echo "Running go build..."
+        if [ "$VERBOSE" = true ]; then
+            echo "Running go build..."
+        fi
         go build -o "$BUILD_DIR/v2e" ./...
-        echo "Build completed successfully"
-        echo "Binary saved to: $BUILD_DIR/v2e"
+        if [ "$VERBOSE" = true ]; then
+            echo "Build completed successfully"
+            echo "Binary saved to: $BUILD_DIR/v2e"
+        fi
     else
         echo "No go.mod found. Skipping build."
     fi
@@ -58,16 +69,23 @@ run_tests() {
     
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
-        echo "Running go test..."
-        
-        # Run tests with coverage
-        go test -v -race -coverprofile="$BUILD_DIR/coverage.out" ./...
+        if [ "$VERBOSE" = true ]; then
+            echo "Running go test with verbose output..."
+            # Run tests with coverage and verbose output
+            go test -v -race -coverprofile="$BUILD_DIR/coverage.out" ./...
+        else
+            echo "Running go test..."
+            # Run tests with coverage
+            go test -race -coverprofile="$BUILD_DIR/coverage.out" ./...
+        fi
         TEST_EXIT_CODE=$?
         
         # Generate coverage report
         if [ -f "$BUILD_DIR/coverage.out" ]; then
             go tool cover -html="$BUILD_DIR/coverage.out" -o "$BUILD_DIR/coverage.html"
-            echo "Coverage report saved to: $BUILD_DIR/coverage.html"
+            if [ "$VERBOSE" = true ]; then
+                echo "Coverage report saved to: $BUILD_DIR/coverage.html"
+            fi
         fi
         
         # Return test exit code for CI
@@ -91,10 +109,15 @@ run_integration_tests() {
     
     # Check if pytest.ini exists
     if [ -f "pytest.ini" ]; then
-        echo "Running pytest integration tests..."
-        
-        # Run integration tests (skip slow and benchmark tests for CI)
-        pytest tests/ -v -m "not slow and not benchmark" --tb=short
+        if [ "$VERBOSE" = true ]; then
+            echo "Running pytest integration tests with verbose output..."
+            # Run integration tests with verbose output (skip slow and benchmark tests for CI)
+            pytest tests/ -vv -m "not slow and not benchmark" --tb=long
+        else
+            echo "Running pytest integration tests..."
+            # Run integration tests (skip slow and benchmark tests for CI)
+            pytest tests/ -v -m "not slow and not benchmark" --tb=short
+        fi
         TEST_EXIT_CODE=$?
         
         # Return test exit code for CI
@@ -114,25 +137,33 @@ run_integration_tests() {
 
 # Build and package binaries with assets
 build_and_package() {
-    echo "Building and packaging v2e project..."
+    if [ "$VERBOSE" = true ]; then
+        echo "Building and packaging v2e project..."
+    fi
     setup_build_dir
     mkdir -p "$PACKAGE_DIR"
     
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
-        echo "Building all binaries..."
+        if [ "$VERBOSE" = true ]; then
+            echo "Building all binaries..."
+        fi
         
         # Build each command
         for cmd_dir in cmd/*; do
             if [ -d "$cmd_dir" ]; then
                 cmd_name=$(basename "$cmd_dir")
-                echo "Building $cmd_name..."
+                if [ "$VERBOSE" = true ]; then
+                    echo "Building $cmd_name..."
+                fi
                 go build -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir"
             fi
         done
         
         # Copy related assets
-        echo "Copying assets to package..."
+        if [ "$VERBOSE" = true ]; then
+            echo "Copying assets to package..."
+        fi
         if [ -f "config.json.example" ]; then
             cp config.json.example "$PACKAGE_DIR/"
         fi
@@ -141,8 +172,10 @@ build_and_package() {
         fi
         
         echo "Package created successfully in: $PACKAGE_DIR"
-        echo "Contents:"
-        ls -lh "$PACKAGE_DIR"
+        if [ "$VERBOSE" = true ]; then
+            echo "Contents:"
+            ls -lh "$PACKAGE_DIR"
+        fi
     else
         echo "No go.mod found. Skipping build."
     fi
@@ -157,7 +190,7 @@ main() {
     RUN_INTEGRATION_TESTS=false
     BUILD_PACKAGE=false
     
-    while getopts "tiph" opt; do
+    while getopts "tiphv" opt; do
         case $opt in
             t)
                 RUN_TESTS=true
@@ -167,6 +200,9 @@ main() {
                 ;;
             p)
                 BUILD_PACKAGE=true
+                ;;
+            v)
+                VERBOSE=true
                 ;;
             h)
                 show_help

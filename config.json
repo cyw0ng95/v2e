@@ -1,10 +1,6 @@
 {
-  "server": {
-    "host": "localhost",
-    "port": 8080
-  },
-  "database": {
-    "path": "./data/v2e.db"
+  "broker": {
+    "logs_dir": "./logs"
   },
   "logging": {
     "level": "info"

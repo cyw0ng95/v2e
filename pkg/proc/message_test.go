@@ -2,6 +2,7 @@ package proc
 
 import (
 	"encoding/json"
+	"github.com/bytedance/sonic"
 	"errors"
 	"testing"
 )
@@ -199,7 +200,7 @@ func TestMessage_Marshal(t *testing.T) {
 
 	// Verify it contains the expected fields
 	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
+	if err := sonic.Unmarshal(data, &result); err != nil {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
 

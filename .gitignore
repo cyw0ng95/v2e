@@ -80,3 +80,6 @@ MANIFEST
 .coverage.*
 htmlcov/
 .hypothesis/
+
+# Integration test logs
+logs/
