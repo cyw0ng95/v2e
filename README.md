@@ -2,6 +2,21 @@
 
 A Go-based project demonstrating a multi-command structure with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
 
+## Architecture Principles
+
+**Important: Broker-First Architecture**
+
+The broker (`cmd/broker`) is a standalone process that boots and manages all subprocesses in the system. All other services (including `access`, `cve-remote`, `cve-local`, `cve-meta`, etc.) are subprocesses managed by the broker.
+
+**Key Rules:**
+- The broker is the only entry point for process management
+- Subprocesses must NOT embed broker logic or create their own broker instances
+- The `access` service is a subprocess like any other - it provides a REST API but does not manage processes itself
+- All process spawning, lifecycle management, and inter-process communication goes through the broker
+- Subprocesses communicate with each other only through broker-mediated RPC messages
+
+This architecture ensures clean separation of concerns and prevents circular dependencies.
+
 ## Project Structure
 
 This project contains multiple commands:
