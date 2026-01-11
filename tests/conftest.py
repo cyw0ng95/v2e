@@ -49,8 +49,8 @@ def broker_with_services(test_binaries):
         # Start broker
         with RPCProcess([test_binaries["broker"]], 
                        process_id="integration-broker") as broker:
-            # Give broker time to start
-            time.sleep(0.5)
+            # Give broker minimal time to start
+            time.sleep(0.2)
             
             # Spawn cve-remote service
             broker.send_request("RPCSpawnRPC", {
@@ -67,8 +67,8 @@ def broker_with_services(test_binaries):
                 "args": []
             })
             
-            # Give services time to initialize
-            time.sleep(1)
+            # Give services minimal time to initialize
+            time.sleep(0.3)
             
             # Verify services are running
             response = broker.send_request("RPCListProcesses", {})

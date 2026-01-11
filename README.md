@@ -878,7 +878,7 @@ These integration tests complement the Go unit tests by verifying that multiple 
 
 ## Continuous Integration
 
-The project uses GitHub Actions for automated testing with separate stages for different test types:
+The project uses GitHub Actions for automated testing:
 
 ### CI Pipeline Stages
 
@@ -890,14 +890,8 @@ The project uses GitHub Actions for automated testing with separate stages for d
 2. **Integration Tests** (Runs after unit tests pass)
    - Tests multi-service RPC communication
    - Uses broker-managed service architecture
-   - Runs fast tests only (skips network-dependent tests)
-   - Typical duration: ~70 seconds
-
-3. **Slow Integration Tests** (Optional, pull requests only)
-   - Runs tests that make external NVD API calls
-   - Only executes on pull requests (merge request level)
-   - Continues on error (won't fail build if API is rate-limited)
-   - Helps verify end-to-end functionality before merging
+   - Optimized for speed with reduced startup times
+   - Typical duration: ~50-60 seconds
 
 ### Benchmark Tests (Local Testing Only)
 
@@ -910,6 +904,17 @@ pytest tests/ -v -m "benchmark and not slow" --benchmark-only --benchmark-min-ro
 
 Benchmark tests measure RPC endpoint performance and can help track regressions during local development.
 
+### Slow Tests (Local Testing Only)
+
+Network-dependent tests that make external NVD API calls are available for local testing:
+
+```bash
+# Run slow tests locally (requires NVD API access)
+pytest tests/ -v -m slow --timeout=300
+```
+
+These tests are not part of CI to avoid rate limiting and environment issues.
+
 ### Running CI Locally
 
 To run the same tests that CI runs:
@@ -921,18 +926,14 @@ go test -v -race -coverprofile=coverage.out ./...
 # Integration tests (fast)
 pip install -r tests/requirements.txt
 pytest tests/ -v -m "not slow and not benchmark"
-
-# Slow tests (optional, on pull requests only)
-pytest tests/ -v -m slow --timeout=300
 ```
 
 ### Viewing CI Results
 
 - **Coverage reports**: Available as artifacts after each run
 - **Test logs**: Full output available in GitHub Actions logs
-- **Test logs**: Full output available in GitHub Actions logs
 
-The CI pipeline ensures code quality and prevents performance regressions while providing fast feedback to developers.
+The simplified CI pipeline provides fast feedback to developers with unit and integration tests only.
 
 ## License
 
