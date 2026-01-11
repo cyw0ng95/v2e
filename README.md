@@ -683,11 +683,128 @@ Key dependencies:
 
 ### Testing
 
-Run tests:
+Run unit tests:
 
 ```bash
 go test ./...
 ```
+
+Run unit tests with coverage:
+
+```bash
+go test -cover ./...
+```
+
+### Integration Testing
+
+The project includes a pytest-based integration test framework for testing RPC services and multi-service cooperation.
+
+#### Prerequisites
+
+- Python 3.12 or later
+- pytest
+
+#### Installation
+
+Install test dependencies:
+
+```bash
+pip3 install -r tests/requirements.txt
+```
+
+#### Running Integration Tests
+
+Run all integration tests:
+
+```bash
+pytest tests/
+```
+
+Run specific test files:
+
+```bash
+# Test broker RPC service
+pytest tests/test_broker_integration.py
+
+# Test cve-meta service with multiple cooperating services
+pytest tests/test_cve_meta_integration.py
+```
+
+Run with verbose output:
+
+```bash
+pytest tests/ -v
+```
+
+Run tests with specific markers:
+
+```bash
+# Run only integration tests
+pytest tests/ -m integration
+
+# Run only RPC tests
+pytest tests/ -m rpc
+
+# Skip slow tests
+pytest tests/ -m "not slow"
+```
+
+#### Test Structure
+
+The integration tests are located in the `tests/` directory:
+
+- `tests/__init__.py` - Package initialization
+- `tests/helpers.py` - Helper utilities for RPC testing
+- `tests/test_broker_integration.py` - Integration tests for broker service
+- `tests/test_cve_meta_integration.py` - Integration tests for cve-meta service
+- `tests/requirements.txt` - Python dependencies for testing
+- `pytest.ini` - Pytest configuration
+
+#### Writing Integration Tests
+
+The test framework provides utilities for testing RPC services:
+
+```python
+from tests.helpers import RPCProcess, build_go_binary
+
+# Build a Go binary for testing
+build_go_binary("./cmd/broker", "/tmp/broker")
+
+# Start an RPC process and send requests
+with RPCProcess(["/tmp/broker"], process_id="test-broker") as broker:
+    # Send RPC request
+    response = broker.send_request("RPCListProcesses", {})
+    
+    # Verify response
+    assert response["type"] == "response"
+    assert "payload" in response
+```
+
+Key features:
+- **Automatic process management**: Processes are started and stopped automatically
+- **RPC communication**: Built-in support for sending/receiving RPC messages
+- **Binary building**: Helper function to build Go binaries for testing
+- **Timeout handling**: Configurable timeouts for RPC requests
+- **Context managers**: Clean resource management with Python context managers
+
+#### Test Coverage
+
+The integration tests cover:
+
+1. **Broker Service** (`test_broker_integration.py`):
+   - Spawning processes
+   - Listing processes
+   - Getting process information
+   - Spawning RPC processes
+   - Killing processes
+
+2. **CVE Meta Service** (`test_cve_meta_integration.py`):
+   - Multi-service cooperation (cve-meta, cve-local, cve-remote)
+   - Getting remote CVE count
+   - Batch fetching CVEs
+   - Service orchestration and message routing
+
+These integration tests complement the Go unit tests by verifying that multiple services can work together correctly through RPC communication.
 
 ## License
 
