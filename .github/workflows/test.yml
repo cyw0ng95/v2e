@@ -123,8 +123,8 @@ jobs:
     name: Slow Integration Tests (Network)
     runs-on: ubuntu-latest
     needs: [unit-tests, integration-tests]
-    # Only run on main/develop branches to avoid rate limiting on PRs
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    # Only run on pull requests (merge request level) to avoid rate limiting
+    if: github.event_name == 'pull_request'
     
     steps:
       - name: Checkout code

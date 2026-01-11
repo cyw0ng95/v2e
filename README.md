@@ -901,11 +901,11 @@ The project uses GitHub Actions for automated testing with separate stages for d
    - Tracks performance regressions
    - Shows ops/sec metrics for all endpoints
 
-4. **Slow Integration Tests** (Optional, main/develop only)
+4. **Slow Integration Tests** (Optional, pull requests only)
    - Runs tests that make external NVD API calls
-   - Only executes on main and develop branches
+   - Only executes on pull requests (merge request level)
    - Continues on error (won't fail build if API is rate-limited)
-   - Helps verify end-to-end functionality
+   - Helps verify end-to-end functionality before merging
 
 ### Running CI Locally
 

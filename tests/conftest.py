@@ -10,18 +10,30 @@ from tests.helpers import RPCProcess, build_go_binary
 @pytest.fixture(scope="session")
 def test_binaries():
     """Build all test binaries once for the entire test session."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        binaries = {}
-        services = ["broker", "cve-meta", "cve-local", "cve-remote"]
-        
-        print("\nBuilding test binaries...")
-        for service in services:
-            binary_path = os.path.join(tmpdir, service)
-            build_go_binary(f"./cmd/{service}", binary_path)
-            binaries[service] = binary_path
-            print(f"  ✓ Built {service}")
-        
-        yield binaries
+    # Use a fixed directory instead of temporary to avoid cleanup issues
+    import shutil
+    tmpdir = "/tmp/pytest-v2e-binaries"
+    
+    # Clean up old binaries if they exist
+    if os.path.exists(tmpdir):
+        shutil.rmtree(tmpdir)
+    os.makedirs(tmpdir)
+    
+    binaries = {}
+    services = ["broker", "cve-meta", "cve-local", "cve-remote"]
+    
+    print("\nBuilding test binaries...")
+    for service in services:
+        binary_path = os.path.join(tmpdir, service)
+        build_go_binary(f"./cmd/{service}", binary_path)
+        binaries[service] = binary_path
+        print(f"  ✓ Built {service}")
+    
+    yield binaries
+    
+    # Cleanup after all tests complete
+    if os.path.exists(tmpdir):
+        shutil.rmtree(tmpdir)
 
 
 @pytest.fixture(scope="module")
