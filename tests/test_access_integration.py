@@ -8,6 +8,7 @@ with it via HTTP requests, not RPC messages.
 import pytest
 import requests
 import time
+import uuid
 from tests.helpers import RPCProcess, build_go_binary
 
 
@@ -32,6 +33,11 @@ def access_server(access_binary):
         yield server
 
 
+def unique_id(prefix="test"):
+    """Generate a unique ID for processes to avoid conflicts."""
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
 def test_health_endpoint(access_server):
     """Test the health check endpoint."""
     response = requests.get("http://localhost:8080/restful/health")
@@ -52,9 +58,12 @@ def test_list_processes_empty(access_server):
 
 def test_spawn_and_get_process(access_server):
     """Test spawning a process and retrieving its details."""
+    # Generate unique ID for this test run
+    process_id = unique_id("echo-integration")
+    
     # Spawn a process
     spawn_data = {
-        "id": "test-echo-integration",
+        "id": process_id,
         "command": "echo",
         "args": ["hello", "integration", "test"]
     }
@@ -62,9 +71,13 @@ def test_spawn_and_get_process(access_server):
         "http://localhost:8080/restful/processes",
         json=spawn_data
     )
+    # Debug: Print the response if it's not 201
+    if response.status_code != 201:
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
     assert response.status_code == 201
     data = response.json()
-    assert data["id"] == "test-echo-integration"
+    assert data["id"] == process_id
     assert data["command"] == "echo"
     assert data["status"] == "running"
     assert "pid" in data
@@ -74,11 +87,11 @@ def test_spawn_and_get_process(access_server):
     
     # Get process details
     response = requests.get(
-        "http://localhost:8080/restful/processes/test-echo-integration"
+        f"http://localhost:8080/restful/processes/{process_id}"
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == "test-echo-integration"
+    assert data["id"] == process_id
     assert data["command"] == "echo"
     # Process should have exited by now
     assert data["status"] == "exited"
@@ -110,7 +123,7 @@ def test_stats_endpoint(access_server):
 def test_spawn_multiple_processes(access_server):
     """Test spawning multiple processes."""
     processes_to_spawn = [
-        {"id": f"test-process-{i}", "command": "echo", "args": [f"test-{i}"]}
+        {"id": unique_id(f"process-{i}"), "command": "echo", "args": [f"test-{i}"]}
         for i in range(3)
     ]
     
