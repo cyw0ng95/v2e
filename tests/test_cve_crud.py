@@ -750,7 +750,8 @@ class TestCVEBusinessFlows:
             if is_rate_limited(response):
                 pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
             
-            assert response["retcode"] == 0
+            assert response["retcode"] == 0, f"Failed to create {cve_id}: {response}"
+            print(f"      ✓ Created {cve_id}")
             time.sleep(1)  # Rate limiting for NVD API
         
         print(f"    ✓ All CVEs created")
@@ -763,10 +764,15 @@ class TestCVEBusinessFlows:
             params={"offset": 0, "limit": 100},
             verbose=False
         )
-        assert list_response["retcode"] == 0
+        assert list_response["retcode"] == 0, f"Failed to list CVEs: {list_response}"
         
         payload = list_response["payload"]
         cve_ids_in_list = [cve["id"] for cve in payload["cves"]]
+        
+        print(f"  → List response:")
+        print(f"    - Total CVEs in database: {payload['total']}")
+        print(f"    - CVEs returned: {len(cve_ids_in_list)}")
+        print(f"    - CVE IDs: {cve_ids_in_list}")
         
         print(f"  → Verifying all CVEs are in the list...")
         for cve_id in test_cves:
