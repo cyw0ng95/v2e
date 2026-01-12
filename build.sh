@@ -20,6 +20,7 @@ Options:
     -t          Run unit tests and return result for GitHub CI
     -i          Run integration tests (requires Python and pytest)
     -m          Run performance benchmarks and generate report
+    -M          Run RPC performance benchmarks via integration tests (integrated metrics)
     -p          Build and package binaries with assets
     -v          Enable verbose output
     -h          Show this help message
@@ -29,6 +30,7 @@ Examples:
     $0 -t       # Run unit tests for CI
     $0 -i       # Run integration tests for CI
     $0 -m       # Run performance benchmarks
+    $0 -M       # Run RPC performance benchmarks
     $0 -p       # Build and package binaries
     $0 -t -v    # Run unit tests with verbose output
 EOF
@@ -227,6 +229,104 @@ run_benchmarks() {
     fi
 }
 
+# Run RPC performance benchmarks via integration tests
+run_rpc_benchmarks() {
+    echo "Running RPC performance benchmarks via integration tests..."
+    setup_build_dir
+    
+    # Check if pytest.ini exists
+    if [ -f "pytest.ini" ]; then
+        BENCHMARK_REPORT="$BUILD_DIR/rpc-benchmark-report.txt"
+        BENCHMARK_LOG="$BUILD_DIR/rpc-benchmark.log"
+        
+        # First, ensure binaries are built
+        echo "Building binaries for benchmark tests..."
+        build_and_package > /dev/null 2>&1 || {
+            echo "Failed to build binaries. Please run './build.sh -p' first."
+            return 1
+        }
+        
+        if [ "$VERBOSE" = true ]; then
+            echo "Running RPC benchmarks with verbose output..."
+            # Run benchmark tests with verbose output
+            pytest tests/ -v -s -m benchmark --tb=long 2>&1 | tee "$BENCHMARK_LOG"
+        else
+            echo "Running RPC benchmarks..."
+            # Run benchmark tests
+            pytest tests/ -v -m benchmark --tb=short > "$BENCHMARK_LOG" 2>&1
+        fi
+        BENCH_EXIT_CODE=$?
+        
+        # Generate human-readable report
+        if [ -f "$BENCHMARK_LOG" ]; then
+            echo "Generating RPC benchmark report..."
+            {
+                echo "======================================================================"
+                echo "           v2e RPC Performance Benchmark Report"
+                echo "======================================================================"
+                echo ""
+                echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+                echo "Host: $(uname -n)"
+                echo "OS: $(uname -s) $(uname -r)"
+                echo "Arch: $(uname -m)"
+                echo ""
+                echo "======================================================================"
+                echo "                    Benchmark Configuration"
+                echo "======================================================================"
+                echo ""
+                echo "Test Type:        Integration-style RPC benchmarks"
+                echo "Iterations:       100 per endpoint"
+                echo "Warmup:           None (as per requirements)"
+                echo "Architecture:     Broker-first (broker + subprocesses)"
+                echo ""
+                echo "======================================================================"
+                echo "                       Benchmark Results"
+                echo "======================================================================"
+                echo ""
+                cat "$BENCHMARK_LOG"
+                echo ""
+                echo "======================================================================"
+                echo "                           Notes"
+                echo "======================================================================"
+                echo ""
+                echo "These benchmarks measure RPC endpoint performance through the"
+                echo "broker-first architecture:"
+                echo "  1. One broker + subprocesses instance for all tests"
+                echo "  2. 100 iterations per RPC endpoint (no warmup)"
+                echo "  3. Metrics: min, max, mean, median, P95, P99 latency"
+                echo ""
+                echo "All RPC calls flow through:"
+                echo "  External Request → Access REST API → Broker → Backend Services"
+                echo ""
+                echo "======================================================================"
+                echo "Report saved to: $BENCHMARK_REPORT"
+                echo "Raw log saved to: $BENCHMARK_LOG"
+                echo "======================================================================"
+            } > "$BENCHMARK_REPORT"
+            
+            if [ "$VERBOSE" = true ]; then
+                echo ""
+                cat "$BENCHMARK_REPORT"
+            else
+                echo "RPC benchmark report generated: $BENCHMARK_REPORT"
+            fi
+        fi
+        
+        # Return benchmark exit code for CI
+        if [ $BENCH_EXIT_CODE -eq 0 ]; then
+            echo "All RPC benchmarks completed successfully!"
+            return 0
+        else
+            echo "RPC benchmarks failed!"
+            return $BENCH_EXIT_CODE
+        fi
+    else
+        echo "No pytest.ini found. No RPC benchmarks to run."
+        echo "RPC benchmarks passed (no benchmarks found)"
+        return 0
+    fi
+}
+
 # Build and package binaries with assets
 build_and_package() {
     if [ "$VERBOSE" = true ]; then
@@ -278,9 +378,10 @@ main() {
     RUN_TESTS=false
     RUN_INTEGRATION_TESTS=false
     RUN_BENCHMARKS=false
+    RUN_RPC_BENCHMARKS=false
     BUILD_PACKAGE=false
     
-    while getopts "timphv" opt; do
+    while getopts "timMphv" opt; do
         case $opt in
             t)
                 RUN_TESTS=true
@@ -290,6 +391,9 @@ main() {
                 ;;
             m)
                 RUN_BENCHMARKS=true
+                ;;
+            M)
+                RUN_RPC_BENCHMARKS=true
                 ;;
             p)
                 BUILD_PACKAGE=true
@@ -318,6 +422,9 @@ main() {
         exit $?
     elif [ "$RUN_BENCHMARKS" = true ]; then
         run_benchmarks
+        exit $?
+    elif [ "$RUN_RPC_BENCHMARKS" = true ]; then
+        run_rpc_benchmarks
         exit $?
     elif [ "$BUILD_PACKAGE" = true ]; then
         build_and_package
