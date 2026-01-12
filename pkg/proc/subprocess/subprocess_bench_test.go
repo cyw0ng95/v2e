@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/bytedance/sonic"
@@ -30,7 +31,7 @@ func BenchmarkRegisterHandler(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		handlerName := "TestHandler" + string(rune('A'+i%26))
+		handlerName := fmt.Sprintf("TestHandler_%d", i)
 		sp.RegisterHandler(handlerName, handler)
 	}
 }
@@ -125,7 +126,7 @@ func BenchmarkHandlerRegistration(b *testing.B) {
 
 	// Register multiple handlers
 	for i := 0; i < 100; i++ {
-		handlerName := "Handler" + string(rune('0'+i%10))
+		handlerName := fmt.Sprintf("Handler_%d", i)
 		sp.RegisterHandler(handlerName, func(ctx context.Context, msg *Message) (*Message, error) {
 			return &Message{
 				Type: MessageTypeResponse,
@@ -137,7 +138,7 @@ func BenchmarkHandlerRegistration(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		handlerName := "NewHandler" + string(rune('A'+i%26))
+		handlerName := fmt.Sprintf("NewHandler_%d", 100+i)
 		sp.RegisterHandler(handlerName, func(ctx context.Context, msg *Message) (*Message, error) {
 			return &Message{
 				Type: MessageTypeResponse,

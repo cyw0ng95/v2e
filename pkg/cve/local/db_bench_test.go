@@ -1,6 +1,7 @@
 package local
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -81,7 +82,7 @@ func BenchmarkSaveCVE(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		// Use different IDs to avoid uniqueness constraint
-		cveItem.ID = "CVE-2021-" + string(rune('0'+i%10)) + string(rune('0'+(i/10)%10)) + string(rune('0'+(i/100)%10)) + string(rune('0'+(i/1000)%10)) + string(rune('0'+(i/10000)%10))
+		cveItem.ID = fmt.Sprintf("CVE-2021-%05d", i)
 		b.StartTimer()
 
 		if err := db.SaveCVE(cveItem); err != nil {
@@ -130,7 +131,7 @@ func BenchmarkListCVEs(b *testing.B) {
 
 	// Pre-populate database with 100 CVEs
 	for i := 0; i < 100; i++ {
-		cveID := "CVE-2021-" + string(rune('0'+i/10000%10)) + string(rune('0'+i/1000%10)) + string(rune('0'+i/100%10)) + string(rune('0'+i/10%10)) + string(rune('0'+i%10))
+		cveID := fmt.Sprintf("CVE-2021-%05d", i)
 		cveItem := createTestCVEItem(cveID)
 		if err := db.SaveCVE(cveItem); err != nil {
 			b.Fatal(err)
@@ -163,7 +164,7 @@ func BenchmarkDeleteCVE(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		// Create CVE to delete
-		cveID := "CVE-2021-" + string(rune('0'+i/10000%10)) + string(rune('0'+i/1000%10)) + string(rune('0'+i/100%10)) + string(rune('0'+i/10%10)) + string(rune('0'+i%10))
+		cveID := fmt.Sprintf("CVE-2021-%05d", i)
 		cveItem := createTestCVEItem(cveID)
 		if err := db.SaveCVE(cveItem); err != nil {
 			b.Fatal(err)
@@ -254,7 +255,7 @@ func BenchmarkCount(b *testing.B) {
 
 	// Pre-populate database with 100 CVEs
 	for i := 0; i < 100; i++ {
-		cveID := "CVE-2021-" + string(rune('0'+i/10000%10)) + string(rune('0'+i/1000%10)) + string(rune('0'+i/100%10)) + string(rune('0'+i/10%10)) + string(rune('0'+i%10))
+		cveID := fmt.Sprintf("CVE-2021-%05d", i)
 		cveItem := createTestCVEItem(cveID)
 		if err := db.SaveCVE(cveItem); err != nil {
 			b.Fatal(err)

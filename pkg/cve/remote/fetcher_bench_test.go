@@ -2,6 +2,7 @@ package remote
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -78,7 +79,7 @@ func BenchmarkFetchCVEs(b *testing.B) {
 				CVE cve.CVEItem `json:"cve"`
 			}{
 				CVE: cve.CVEItem{
-					ID:           "CVE-2021-0000" + string(rune('0'+i)),
+					ID:           fmt.Sprintf("CVE-2021-%04d", i),
 					VulnStatus:   "Analyzed",
 					Published:    cve.NewNVDTime(time.Now()),
 					LastModified: cve.NewNVDTime(time.Now()),
@@ -225,7 +226,7 @@ func BenchmarkFetchCVEsLargeResponse(b *testing.B) {
 				CVE cve.CVEItem `json:"cve"`
 			}{
 				CVE: cve.CVEItem{
-					ID:           "CVE-2021-0000" + string(rune('0'+i%10)),
+					ID:           fmt.Sprintf("CVE-2021-%04d", i),
 					VulnStatus:   "Analyzed",
 					Published:    cve.NewNVDTime(time.Now()),
 					LastModified: cve.NewNVDTime(time.Now()),
