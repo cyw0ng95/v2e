@@ -1,12 +1,16 @@
 package remote
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/go-resty/resty/v2"
 )
+
+// ErrRateLimited is returned when the NVD API returns a 429 status
+var ErrRateLimited = errors.New("NVD API rate limit exceeded")
 
 // Fetcher handles fetching CVE data from the NVD API
 type Fetcher struct {
@@ -48,6 +52,10 @@ func (f *Fetcher) FetchCVEByID(cveID string) (*cve.CVEResponse, error) {
 	}
 
 	if resp.IsError() {
+		// Check for rate limiting
+		if resp.StatusCode() == 429 {
+			return nil, ErrRateLimited
+		}
 		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
 	}
 
@@ -85,6 +93,10 @@ func (f *Fetcher) FetchCVEs(startIndex, resultsPerPage int) (*cve.CVEResponse, e
 	}
 
 	if resp.IsError() {
+		// Check for rate limiting
+		if resp.StatusCode() == 429 {
+			return nil, ErrRateLimited
+		}
 		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
 	}
 
