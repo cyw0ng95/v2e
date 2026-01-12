@@ -22,6 +22,14 @@ const (
 	MaxMessageSize = 10 * 1024 * 1024 // 10MB
 )
 
+// bufferPool is a sync.Pool for scanner buffers to reduce allocations
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		buf := make([]byte, MaxMessageSize)
+		return &buf
+	},
+}
+
 // MessageType represents the type of message being sent
 type MessageType string
 
@@ -162,10 +170,12 @@ func (s *Subprocess) Run() error {
 
 	// Start processing messages
 	scanner := bufio.NewScanner(s.input)
-	// Increase buffer size to handle large messages (e.g., CVE data from NVD API)
-	// Use the shared MaxMessageSize constant from proc package
-	buf := make([]byte, MaxMessageSize)
+	// Get buffer from pool for better performance
+	bufPtr := bufferPool.Get().(*[]byte)
+	defer bufferPool.Put(bufPtr)
+	buf := *bufPtr
 	scanner.Buffer(buf, MaxMessageSize)
+	
 	for scanner.Scan() {
 		select {
 		case <-s.ctx.Done():

@@ -3,6 +3,7 @@ package remote
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve"
@@ -23,6 +24,14 @@ type Fetcher struct {
 func NewFetcher(apiKey string) *Fetcher {
 	client := resty.New()
 	client.SetTimeout(30 * time.Second)
+	
+	// Enable HTTP/2 and connection pooling for better performance
+	client.SetTransport(&http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+		DisableCompression:  false, // Enable compression
+	})
 
 	return &Fetcher{
 		client:  client,

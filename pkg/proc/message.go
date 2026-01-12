@@ -3,6 +3,7 @@ package proc
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/bytedance/sonic"
 )
@@ -43,20 +44,52 @@ type Message struct {
 	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
-// NewMessage creates a new message with the given type and ID
-func NewMessage(msgType MessageType, id string) *Message {
-	return &Message{
-		Type: msgType,
-		ID:   id,
+// messagePool is a sync.Pool for Message objects to reduce allocations
+var messagePool = sync.Pool{
+	New: func() interface{} {
+		return &Message{}
+	},
+}
+
+// GetMessage retrieves a Message from the pool
+func GetMessage() *Message {
+	msg := messagePool.Get().(*Message)
+	// Reset all fields to zero values
+	msg.Type = ""
+	msg.ID = ""
+	msg.Payload = nil
+	msg.Error = ""
+	msg.Source = ""
+	msg.Target = ""
+	msg.CorrelationID = ""
+	return msg
+}
+
+// PutMessage returns a Message to the pool for reuse
+func PutMessage(msg *Message) {
+	if msg != nil {
+		messagePool.Put(msg)
 	}
+}
+
+// NewMessage creates a new message with the given type and ID
+// For better performance, consider using GetMessage() and PutMessage() for frequently created messages
+func NewMessage(msgType MessageType, id string) *Message {
+	msg := GetMessage()
+	msg.Type = msgType
+	msg.ID = id
+	return msg
 }
 
 // NewRequestMessage creates a new request message
 func NewRequestMessage(id string, payload interface{}) (*Message, error) {
-	msg := NewMessage(MessageTypeRequest, id)
+	msg := GetMessage()
+	msg.Type = MessageTypeRequest
+	msg.ID = id
 	if payload != nil {
 		data, err := sonic.Marshal(payload)
 		if err != nil {
+			PutMessage(msg) // Return to pool on error
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
 		msg.Payload = data
@@ -66,10 +99,13 @@ func NewRequestMessage(id string, payload interface{}) (*Message, error) {
 
 // NewResponseMessage creates a new response message
 func NewResponseMessage(id string, payload interface{}) (*Message, error) {
-	msg := NewMessage(MessageTypeResponse, id)
+	msg := GetMessage()
+	msg.Type = MessageTypeResponse
+	msg.ID = id
 	if payload != nil {
 		data, err := sonic.Marshal(payload)
 		if err != nil {
+			PutMessage(msg) // Return to pool on error
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
 		msg.Payload = data
@@ -79,10 +115,13 @@ func NewResponseMessage(id string, payload interface{}) (*Message, error) {
 
 // NewEventMessage creates a new event message
 func NewEventMessage(id string, payload interface{}) (*Message, error) {
-	msg := NewMessage(MessageTypeEvent, id)
+	msg := GetMessage()
+	msg.Type = MessageTypeEvent
+	msg.ID = id
 	if payload != nil {
 		data, err := sonic.Marshal(payload)
 		if err != nil {
+			PutMessage(msg) // Return to pool on error
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
 		msg.Payload = data
@@ -92,7 +131,9 @@ func NewEventMessage(id string, payload interface{}) (*Message, error) {
 
 // NewErrorMessage creates a new error message
 func NewErrorMessage(id string, err error) *Message {
-	msg := NewMessage(MessageTypeError, id)
+	msg := GetMessage()
+	msg.Type = MessageTypeError
+	msg.ID = id
 	if err != nil {
 		msg.Error = err.Error()
 	}

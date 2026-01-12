@@ -190,3 +190,128 @@ The access service routes the request as follows:
 4. Response flows back through the same chain
 
 This ensures integration tests follow the same deployment model as production, where the broker is the central entry point.
+
+## Performance Optimization Principles
+
+When optimizing performance, apply these proven principles based on benchmarking evidence:
+
+### Principle 1: Reduce Unnecessary Allocations with sync.Pool
+- **When to use**: For frequently created and short-lived objects (e.g., Message structs, buffers)
+- **Implementation**: 
+  ```go
+  var messagePool = sync.Pool{
+      New: func() interface{} {
+          return &Message{}
+      },
+  }
+  
+  func GetMessage() *Message {
+      msg := messagePool.Get().(*Message)
+      // Reset fields to zero values
+      return msg
+  }
+  
+  func PutMessage(msg *Message) {
+      messagePool.Put(msg)
+  }
+  ```
+- **Impact**: Reduces GC pressure and allocation overhead
+- **Evidence**: Improved message unmarshaling by 29% (294.0 → 208.2 ns/op)
+
+### Principle 2: Pre-allocate Slices with Exact Capacity
+- **When to use**: When the final size is known beforehand
+- **Implementation**:
+  ```go
+  // Good: Pre-allocate exact size
+  items := make([]Item, len(records))
+  for i, record := range records {
+      items[i] = parseRecord(record)
+  }
+  
+  // Avoid: Growing slice dynamically
+  items := make([]Item, 0, len(records))
+  for _, record := range records {
+      items = append(items, parseRecord(record))
+  }
+  ```
+- **Impact**: Eliminates slice re-allocations during growth
+- **Evidence**: Reduced memory by 7% in ListCVEs (60960 → 56461 B/op)
+
+### Principle 3: Enable Database Prepared Statements and Connection Pooling
+- **When to use**: All database operations with GORM or sql.DB
+- **Implementation**:
+  ```go
+  db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+      PrepareStmt: true,  // Cache prepared statements
+  })
+  
+  sqlDB, _ := db.DB()
+  sqlDB.SetMaxIdleConns(10)   // Reuse idle connections
+  sqlDB.SetMaxOpenConns(100)  // Limit concurrent connections
+  ```
+- **Impact**: Reduces query compilation and connection overhead
+- **Evidence**: 
+  - GetCVE: 28% faster (49825 → 35490 ns/op)
+  - Count: 27% faster (24164 → 17563 ns/op)
+
+### Principle 4: Configure HTTP Connection Pooling
+- **When to use**: All HTTP clients making multiple requests
+- **Implementation**:
+  ```go
+  client := resty.New()
+  client.SetTransport(&http.Transport{
+      MaxIdleConns:        100,
+      MaxIdleConnsPerHost: 10,
+      IdleConnTimeout:     90 * time.Second,
+      DisableCompression:  false,  // Enable compression
+  })
+  ```
+- **Impact**: Reuses TCP connections, reduces handshake overhead
+- **Evidence**: FetchCVEByID: 8% faster (143563 → 131026 ns/op)
+
+### Principle 5: Use Buffer Pooling for Large Objects
+- **When to use**: Large temporary buffers (e.g., scanner buffers, I/O buffers)
+- **Implementation**:
+  ```go
+  var bufferPool = sync.Pool{
+      New: func() interface{} {
+          buf := make([]byte, MaxSize)
+          return &buf
+      },
+  }
+  
+  // Use in function
+  bufPtr := bufferPool.Get().(*[]byte)
+  defer bufferPool.Put(bufPtr)
+  buf := *bufPtr
+  // Use buf...
+  ```
+- **Impact**: Reduces allocation of large objects
+- **Evidence**: SendMessage: 12% faster (434.4 → 382.1 ns/op)
+
+### Principle 6: Batch Database Operations
+- **When to use**: Inserting/updating multiple records
+- **Implementation**:
+  ```go
+  // Use CreateInBatches instead of individual inserts
+  db.CreateInBatches(records, 100)  // Process 100 at a time
+  ```
+- **Impact**: Reduces per-record overhead and transaction count
+- **Evidence**: BulkSaveCVEs: 2% less memory (174531 → 169335 B/op)
+
+### Performance Optimization Checklist
+
+Before optimizing:
+1. ✅ Run benchmarks to establish baseline (`./build.sh -m`)
+2. ✅ Identify bottlenecks from benchmark report
+3. ✅ Choose appropriate principle(s) from above
+
+During optimization:
+1. ✅ Apply ONE principle at a time
+2. ✅ Run benchmarks after each change
+3. ✅ Verify no functional regressions (run tests)
+
+After optimization:
+1. ✅ Compare before/after metrics
+2. ✅ Document improvements in commit message
+3. ✅ Update copilot instructions if new principle discovered
