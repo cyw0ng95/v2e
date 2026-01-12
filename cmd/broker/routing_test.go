@@ -94,9 +94,6 @@ func TestInvokeRPC(t *testing.T) {
 
 	t.Run("Invalid target process", func(t *testing.T) {
 		// Try to invoke RPC on non-existent process
-		ctx := make(chan struct{})
-		defer close(ctx)
-
 		_, err := broker.InvokeRPC("source", "nonexistent", "RPCTest", map[string]string{}, 100*time.Millisecond)
 		if err == nil {
 			t.Error("Expected error when invoking RPC on non-existent process")
