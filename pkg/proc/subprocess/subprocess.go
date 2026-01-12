@@ -16,6 +16,12 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
+const (
+	// MaxMessageSize is the maximum size of a message that can be sent between processes
+	// This is set to 10MB to accommodate large CVE data from NVD API
+	MaxMessageSize = 10 * 1024 * 1024 // 10MB
+)
+
 // MessageType represents the type of message being sent
 type MessageType string
 
@@ -126,10 +132,9 @@ func (s *Subprocess) Run() error {
 	// Start processing messages
 	scanner := bufio.NewScanner(s.input)
 	// Increase buffer size to handle large messages (e.g., CVE data from NVD API)
-	// Default is 64KB, we set it to 10MB to accommodate large responses
-	const maxTokenSize = 10 * 1024 * 1024 // 10MB
-	buf := make([]byte, maxTokenSize)
-	scanner.Buffer(buf, maxTokenSize)
+	// Use the shared MaxMessageSize constant from proc package
+	buf := make([]byte, MaxMessageSize)
+	scanner.Buffer(buf, MaxMessageSize)
 	for scanner.Scan() {
 		select {
 		case <-s.ctx.Done():
