@@ -61,13 +61,13 @@ func TestInvalidMessageTypes(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		messageType string
+		messageType MessageType
 	}{
-		{"empty type", ""},
-		{"unknown type", "unknown"},
-		{"numeric type", "123"},
-		{"special chars", "req@ест!"},
-		{"very long type", strings.Repeat("a", 1000)},
+		{"empty type", MessageType("")},
+		{"unknown type", MessageType("unknown")},
+		{"numeric type", MessageType("123")},
+		{"special chars", MessageType("req@ест!")},
+		{"very long type", MessageType(strings.Repeat("a", 1000))},
 	}
 
 	for _, tc := range testCases {
@@ -77,10 +77,8 @@ func TestInvalidMessageTypes(t *testing.T) {
 				ID:   "test-1",
 			}
 
-			// Register a wildcard handler that should not be called for invalid types
-			handlerCalled := false
-			sp.RegisterHandler(tc.messageType, func(ctx context.Context, msg *Message) (*Message, error) {
-				handlerCalled = true
+			// Register a handler for this type
+			sp.RegisterHandler(string(tc.messageType), func(ctx context.Context, msg *Message) (*Message, error) {
 				return nil, nil
 			})
 
@@ -89,7 +87,7 @@ func TestInvalidMessageTypes(t *testing.T) {
 			sp.handleMessage(msg)
 			sp.wg.Wait()
 
-			// For unknown types, we don't expect handler to be called unless registered
+			// Message should be handled
 			t.Logf("Message with type '%s' handled", tc.messageType)
 		})
 	}

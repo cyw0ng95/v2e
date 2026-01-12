@@ -270,7 +270,7 @@ func TestRaceOnHandlerMap(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			msg := &Message{
-				Type: fmt.Sprintf("handler-%d", id%10),
+				Type: MessageType(fmt.Sprintf("handler-%d", id%10)),
 				ID:   fmt.Sprintf("msg-%d", id),
 			}
 			sp.wg.Add(1)
