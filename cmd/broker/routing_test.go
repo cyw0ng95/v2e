@@ -31,8 +31,8 @@ func TestRouteMessage_WithTarget(t *testing.T) {
 	broker := NewBroker()
 	defer broker.Shutdown()
 
-	// Spawn a simple RPC process (just use the echo command for testing)
-	info, err := broker.SpawnRPC("test-process", "cat")
+	// Spawn a simple RPC process (use sleep to keep it alive for testing)
+	info, err := broker.SpawnRPC("test-process", "sleep", "60")
 	if err != nil {
 		t.Fatalf("Failed to spawn test process: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestInvokeRPC(t *testing.T) {
 
 	t.Run("Timeout behavior", func(t *testing.T) {
 		// Spawn a simple process that won't respond to RPC
-		info, err := broker.SpawnRPC("test-rpc", "cat")
+		info, err := broker.SpawnRPC("test-rpc", "sleep", "60")
 		if err != nil {
 			t.Fatalf("Failed to spawn test process: %v", err)
 		}
@@ -237,9 +237,9 @@ func TestLoadProcessesFromConfig(t *testing.T) {
 			Broker: common.BrokerConfig{
 				Processes: []common.ProcessConfig{
 					{
-						ID:      "test-rpc-cat",
-						Command: "cat",
-						Args:    []string{},
+						ID:      "test-rpc-sleep",
+						Command: "sleep",
+						Args:    []string{"60"},
 						RPC:     true,
 						Restart: false,
 					},
@@ -253,10 +253,10 @@ func TestLoadProcessesFromConfig(t *testing.T) {
 
 		// Verify process was spawned
 		time.Sleep(100 * time.Millisecond)
-		info, err := broker.GetProcess("test-rpc-cat")
+		info, err := broker.GetProcess("test-rpc-sleep")
 		if err == nil && info != nil {
 			// Process was spawned, clean up
-			broker.Kill("test-rpc-cat")
+			broker.Kill("test-rpc-sleep")
 		}
 	})
 }
