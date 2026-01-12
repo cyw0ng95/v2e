@@ -111,7 +111,7 @@ func New(id string) *Subprocess {
 		handlers: make(map[string]Handler),
 		ctx:      ctx,
 		cancel:   cancel,
-		outChan:  make(chan []byte, 100), // Buffered channel for message batching
+		outChan:  make(chan []byte, 256), // Optimized buffer size (Principle 12)
 	}
 
 	// Check if custom FDs are specified via environment variables
@@ -297,9 +297,10 @@ func (s *Subprocess) handleMessage(msg *Message) {
 func (s *Subprocess) messageWriter() {
 	defer s.wg.Done()
 	
-	// Batch buffer to collect multiple messages
-	batch := make([][]byte, 0, 10)
-	ticker := time.NewTicker(10 * time.Millisecond) // Flush every 10ms even if batch not full
+	// Optimized batch buffer size (Principle 12)
+	// Larger batch reduces syscalls but increases latency
+	batch := make([][]byte, 0, 20)
+	ticker := time.NewTicker(5 * time.Millisecond) // Faster flush for lower latency (Principle 12)
 	defer ticker.Stop()
 	
 	for {
@@ -320,8 +321,8 @@ func (s *Subprocess) messageWriter() {
 			}
 			batch = append(batch, data)
 			
-			// Flush immediately if batch is full
-			if len(batch) >= 10 {
+			// Adaptive batching: flush at 20 messages (Principle 12)
+			if len(batch) >= 20 {
 				s.flushBatch(batch)
 				batch = batch[:0] // Reset batch
 			}

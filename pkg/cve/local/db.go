@@ -54,6 +54,25 @@ func NewDB(dbPath string) (*DB, error) {
 	// Set connection pool parameters
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	
+	// Enable WAL mode for better concurrent access (Principle 10)
+	// WAL mode allows readers and writers to work simultaneously
+	if _, err := sqlDB.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		return nil, err
+	}
+	
+	// Optimize synchronous mode for better performance (Principle 10)
+	// NORMAL is faster than FULL while still being safe
+	if _, err := sqlDB.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		return nil, err
+	}
+	
+	// Increase cache size for better query performance (Principle 10)
+	// Default is 2000 pages, we set to 10000 (about 40MB with 4KB pages)
+	if _, err := sqlDB.Exec("PRAGMA cache_size=-40000"); err != nil {
+		return nil, err
+	}
 
 	return &DB{db: db}, nil
 }

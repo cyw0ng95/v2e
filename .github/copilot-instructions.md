@@ -389,3 +389,79 @@ After optimization:
 1. ✅ Compare before/after metrics
 2. ✅ Document improvements in commit message
 3. ✅ Update copilot instructions if new principle discovered
+
+### Principle 10: Database WAL Mode and Pragma Optimization
+- **When to use**: SQLite databases with concurrent read/write access
+- **Implementation**:
+  ```go
+  // Enable WAL mode for better concurrent access
+  db.Exec("PRAGMA journal_mode=WAL")
+  
+  // Optimize synchronous mode (NORMAL is faster than FULL)
+  db.Exec("PRAGMA synchronous=NORMAL")
+  
+  // Increase cache size for better query performance
+  // -40000 means 40MB cache (negative = KB units)
+  db.Exec("PRAGMA cache_size=-40000")
+  
+  // Set connection lifetime
+  sqlDB.SetConnMaxLifetime(time.Hour)
+  ```
+- **Impact**: Better concurrent access, faster queries, reduced I/O
+- **Evidence**: WAL allows readers and writers simultaneously; larger cache reduces disk I/O
+
+### Principle 11: Worker Pool Pattern for Parallel Processing
+- **When to use**: Processing multiple independent items (API calls, file operations)
+- **Implementation**:
+  ```go
+  func FetchConcurrent(items []string, workers int) ([]Result, []error) {
+      jobs := make(chan string, len(items))
+      results := make(chan Result, len(items))
+      errors := make(chan error, len(items))
+      
+      // Start worker pool
+      for w := 0; w < workers; w++ {
+          go func() {
+              for item := range jobs {
+                  result, err := processItem(item)
+                  if err != nil {
+                      errors <- err
+                  } else {
+                      results <- result
+                  }
+              }
+          }()
+      }
+      
+      // Send jobs
+      for _, item := range items {
+          jobs <- item
+      }
+      close(jobs)
+      
+      // Collect results
+      // ... collect from results and errors channels
+  }
+  ```
+- **Impact**: Parallel processing reduces total time for batch operations
+- **Evidence**: N items processed in ~N/workers time units (minus overhead)
+
+### Principle 12: Adaptive Buffer and Batch Sizing
+- **When to use**: Message batching, I/O buffering, channel sizing
+- **Implementation**:
+  ```go
+  // Before: Fixed small sizes
+  outChan := make(chan []byte, 100)
+  batch := make([][]byte, 0, 10)
+  ticker := time.NewTicker(10 * time.Millisecond)
+  
+  // After: Optimized sizes based on workload
+  outChan := make(chan []byte, 256)  // 2.5x larger for better throughput
+  batch := make([][]byte, 0, 20)     // 2x larger batch
+  ticker := time.NewTicker(5 * time.Millisecond)  // 2x faster flush for lower latency
+  ```
+- **Impact**: Better balance between throughput and latency
+- **Evidence**: Larger batches reduce syscalls; smaller intervals reduce latency
+- **Tuning**: Monitor metrics and adjust based on actual workload patterns
+
+### Performance Optimization Checklist
