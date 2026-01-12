@@ -65,13 +65,14 @@ func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 
 	// Check if record exists
 	var existing CVERecord
-	result := d.db.Where("cve_id = ?", cveItem.ID).First(&existing)
+	result := d.db.Unscoped().Where("cve_id = ?", cveItem.ID).First(&existing)
 
 	if result.Error == nil {
 		// Record exists, update it
 		record.ID = existing.ID
 		record.CreatedAt = existing.CreatedAt
-		return d.db.Save(&record).Error
+		record.DeletedAt = gorm.DeletedAt{} // Clear soft delete flag
+		return d.db.Unscoped().Save(&record).Error
 	} else if result.Error == gorm.ErrRecordNotFound {
 		// Record doesn't exist, create it
 		return d.db.Create(&record).Error
