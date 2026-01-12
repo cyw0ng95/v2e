@@ -209,11 +209,26 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	defer s.wg.Done()
 
 	// Find the appropriate handler
+	// For response and error messages, prioritize type-based lookup
+	// to ensure they go to the correct response handler
 	s.mu.RLock()
-	handler, exists := s.handlers[msg.ID]
-	if !exists {
-		// Try to find a handler for the message type
+	var handler Handler
+	var exists bool
+	
+	if msg.Type == MessageTypeResponse || msg.Type == MessageTypeError {
+		// For responses and errors, look up by type first
 		handler, exists = s.handlers[string(msg.Type)]
+		if !exists {
+			// Fallback to ID-based lookup
+			handler, exists = s.handlers[msg.ID]
+		}
+	} else {
+		// For other message types (requests, events), look up by ID first
+		handler, exists = s.handlers[msg.ID]
+		if !exists {
+			// Fallback to type-based lookup
+			handler, exists = s.handlers[string(msg.Type)]
+		}
 	}
 	s.mu.RUnlock()
 
