@@ -1012,8 +1012,9 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 				return fmt.Errorf("timeout sending response to pending request")
 			}
 		}
-		// If no pending request found, fall through to target-based routing
-		b.logger.Debug("No pending request found for correlation_id=%s, trying target-based routing", msg.CorrelationID)
+		// If no pending request found in broker, fall through to target-based routing
+		// This allows subprocess-to-subprocess RPC where the correlation is tracked by the calling subprocess
+		b.logger.Debug("No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
 	}
 
 	// If message has a target, route it to that process or broker
