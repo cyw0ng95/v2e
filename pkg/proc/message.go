@@ -6,7 +6,17 @@ import (
 	"sync"
 
 	"github.com/bytedance/sonic"
+	"github.com/bytedance/sonic/decoder"
 )
+
+// fastDecoder is a configured sonic decoder for zero-copy parsing
+var fastDecoder = decoder.NewDecoder("")
+
+func init() {
+	// Use fastest configuration for zero-copy parsing
+	fastDecoder.UseInt64()
+	fastDecoder.UseNumber()
+}
 
 // MessageType represents the type of message being sent
 type MessageType string
@@ -156,6 +166,13 @@ func (m *Message) Marshal() ([]byte, error) {
 	return sonic.Marshal(m)
 }
 
+// MarshalFast serializes the message to JSON using fastest configuration
+// This is faster but may have different behavior for edge cases
+func (m *Message) MarshalFast() ([]byte, error) {
+	api := sonic.ConfigFastest
+	return api.Marshal(m)
+}
+
 // Unmarshal deserializes a message from JSON
 func Unmarshal(data []byte) (*Message, error) {
 	var msg Message
@@ -163,4 +180,17 @@ func Unmarshal(data []byte) (*Message, error) {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 	return &msg, nil
+}
+
+// UnmarshalFast deserializes a message from JSON using zero-copy optimization
+// This is faster but requires the input data to remain valid during message lifetime
+func UnmarshalFast(data []byte) (*Message, error) {
+	msg := GetMessage()
+	// Use sonic.ConfigFastest for zero-copy parsing
+	api := sonic.ConfigFastest
+	if err := api.Unmarshal(data, msg); err != nil {
+		PutMessage(msg)
+		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
+	}
+	return msg, nil
 }

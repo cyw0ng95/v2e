@@ -299,6 +299,80 @@ When optimizing performance, apply these proven principles based on benchmarking
 - **Impact**: Reduces per-record overhead and transaction count
 - **Evidence**: BulkSaveCVEs: 2% less memory (174531 → 169335 B/op)
 
+### Principle 7: Use sonic.ConfigFastest for Zero-Copy Parsing
+- **When to use**: High-throughput message processing where data doesn't need long-term retention
+- **Implementation**:
+  ```go
+  // For marshaling
+  api := sonic.ConfigFastest
+  data, err := api.Marshal(msg)
+  
+  // For unmarshaling
+  api := sonic.ConfigFastest
+  err := api.Unmarshal(data, &msg)
+  ```
+- **Impact**: Faster JSON operations with reduced allocations
+- **Evidence**: 
+  - SendResponse: 28% faster (1264 → 903.1 ns/op)
+  - SendEvent: 14% faster (882.8 → 759.1 ns/op)
+
+### Principle 8: Lock-Free Message Batching with Channels
+- **When to use**: High-frequency message sending where batching reduces syscalls
+- **Implementation**:
+  ```go
+  // Buffered channel for batching
+  outChan := make(chan []byte, 100)
+  
+  // Writer goroutine batches messages
+  go func() {
+      batch := make([][]byte, 0, 10)
+      ticker := time.NewTicker(10 * time.Millisecond)
+      for {
+          select {
+          case data := <-outChan:
+              batch = append(batch, data)
+              if len(batch) >= 10 {
+                  flushBatch(batch)
+                  batch = batch[:0]
+              }
+          case <-ticker.C:
+              if len(batch) > 0 {
+                  flushBatch(batch)
+                  batch = batch[:0]
+              }
+          }
+      }
+  }()
+  
+  // Send without blocking on mutex
+  outChan <- data
+  ```
+- **Impact**: Reduces mutex contention and syscall overhead
+- **Evidence**: SendMessage: 19% faster (378.4 → 303.4 ns/op)
+
+### Principle 9: Separate Read and Write Mutexes
+- **When to use**: When read operations significantly outnumber writes
+- **Implementation**:
+  ```go
+  // Use RWMutex for handler map (read-heavy)
+  mu sync.RWMutex
+  
+  // Use separate Mutex for writes only
+  writeMu sync.Mutex
+  
+  // Read operation
+  mu.RLock()
+  handler := handlers[key]
+  mu.RUnlock()
+  
+  // Write operation
+  writeMu.Lock()
+  fmt.Fprintf(output, "%s\n", data)
+  writeMu.Unlock()
+  ```
+- **Impact**: Reduced lock contention for read-heavy workloads
+- **Evidence**: Improved concurrent message handling
+
 ### Performance Optimization Checklist
 
 Before optimizing:
