@@ -15,6 +15,22 @@ import pytest
 import time
 
 
+def is_rate_limited(response):
+    """Check if a response indicates NVD API rate limiting.
+    
+    Args:
+        response: Response dict from RPC call
+        
+    Returns:
+        True if the response indicates rate limiting, False otherwise
+    """
+    if response.get("retcode") == 500:
+        message = response.get("message", "")
+        if "NVD_RATE_LIMITED" in message or "429" in message:
+            return True
+    return False
+
+
 @pytest.mark.integration
 class TestCVECreateOperation:
     """Integration tests for RPCCreateCVE - Fetch from NVD and save locally."""
@@ -44,6 +60,10 @@ class TestCVECreateOperation:
         print(f"  → Response received:")
         print(f"    - retcode: {response.get('retcode')}")
         print(f"    - message: {response.get('message')}")
+        
+        # Check for rate limiting
+        if is_rate_limited(response):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
         
         # Verify response
         assert response["retcode"] == 0
@@ -151,6 +171,10 @@ class TestCVEReadOperation:
         print(f"    - retcode: {response.get('retcode')}")
         print(f"    - message: {response.get('message')}")
         
+        # Check for rate limiting
+        if is_rate_limited(response):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+        
         # Verify response
         assert response["retcode"] == 0
         assert response["message"] == "success"
@@ -175,12 +199,16 @@ class TestCVEReadOperation:
         
         # First, ensure CVE is in local cache
         print(f"  → Creating CVE to cache it...")
-        access.rpc_call(
+        create_response = access.rpc_call(
             method="RPCCreateCVE",
             target="cve-meta",
             params={"cve_id": cve_id},
             verbose=False
         )
+        
+        # Check for rate limiting during creation
+        if is_rate_limited(create_response):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
         
         # Get CVE (should return from cache)
         print(f"  → Fetching CVE from cache...")
@@ -248,12 +276,16 @@ class TestCVEUpdateOperation:
         
         # First, ensure CVE exists locally
         print(f"  → Creating CVE first...")
-        access.rpc_call(
+        create_response = access.rpc_call(
             method="RPCCreateCVE",
             target="cve-meta",
             params={"cve_id": cve_id},
             verbose=False
         )
+        
+        # Check for rate limiting during creation
+        if is_rate_limited(create_response):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
         
         # Update CVE (refetch from NVD)
         print(f"  → Updating CVE from NVD...")
@@ -266,6 +298,10 @@ class TestCVEUpdateOperation:
         print(f"  → Response received:")
         print(f"    - retcode: {response.get('retcode')}")
         print(f"    - message: {response.get('message')}")
+        
+        # Check for rate limiting
+        if is_rate_limited(response):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
         
         # Verify response
         assert response["retcode"] == 0
@@ -336,6 +372,10 @@ class TestCVEDeleteOperation:
             params={"cve_id": cve_id},
             verbose=False
         )
+        
+        # Check for rate limiting during creation
+        if is_rate_limited(create_response):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
         # May fail if CVE doesn't exist in NVD, which is okay for this test
         # We just want to test deletion
         
@@ -421,12 +461,17 @@ class TestCVEListOperation:
         print(f"  → Creating test CVEs...")
         test_cves = ["CVE-2021-44228", "CVE-2021-45046"]
         for cve_id in test_cves:
-            access.rpc_call(
+            create_response = access.rpc_call(
                 method="RPCCreateCVE",
                 target="cve-meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
+            
+            # Check for rate limiting
+            if is_rate_limited(create_response):
+                pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+            
             time.sleep(0.5)  # Rate limiting
         
         # List CVEs
@@ -570,6 +615,11 @@ class TestCVEBusinessFlows:
             params={"cve_id": cve_id},
             verbose=False
         )
+        
+        # Check for rate limiting
+        if is_rate_limited(create_response):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+        
         assert create_response["retcode"] == 0
         print(f"    ✓ Created successfully")
         
@@ -644,6 +694,11 @@ class TestCVEBusinessFlows:
         start_time1 = time.time()
         response1 = access.get_cve(cve_id)
         time1 = time.time() - start_time1
+        
+        # Check for rate limiting
+        if is_rate_limited(response1):
+            pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+        
         assert response1["retcode"] == 0
         print(f"    ✓ Fetched from NVD in {time1:.3f}s")
         
@@ -690,6 +745,11 @@ class TestCVEBusinessFlows:
                 params={"cve_id": cve_id},
                 verbose=False
             )
+            
+            # Check for rate limiting
+            if is_rate_limited(response):
+                pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+            
             assert response["retcode"] == 0
             time.sleep(1)  # Rate limiting for NVD API
         
