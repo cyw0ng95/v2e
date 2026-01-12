@@ -426,6 +426,9 @@ func (b *Broker) readProcessMessages(p *Process) {
 	defer b.wg.Done()
 
 	scanner := bufio.NewScanner(p.stdout)
+	// Increase buffer size to handle large messages (e.g., CVE data from NVD API)
+	buf := make([]byte, proc.MaxMessageSize)
+	scanner.Buffer(buf, proc.MaxMessageSize)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
