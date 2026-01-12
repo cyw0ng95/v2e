@@ -89,7 +89,8 @@ func NewRequestMessage(id string, payload interface{}) (*Message, error) {
 	if payload != nil {
 		data, err := sonic.Marshal(payload)
 		if err != nil {
-			PutMessage(msg) // Return to pool on error
+			// Return to pool on error - fields will be reset on next Get
+			PutMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
 		msg.Payload = data
@@ -105,7 +106,8 @@ func NewResponseMessage(id string, payload interface{}) (*Message, error) {
 	if payload != nil {
 		data, err := sonic.Marshal(payload)
 		if err != nil {
-			PutMessage(msg) // Return to pool on error
+			// Return to pool on error - fields will be reset on next Get
+			PutMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
 		msg.Payload = data
@@ -121,7 +123,8 @@ func NewEventMessage(id string, payload interface{}) (*Message, error) {
 	if payload != nil {
 		data, err := sonic.Marshal(payload)
 		if err != nil {
-			PutMessage(msg) // Return to pool on error
+			// Return to pool on error - fields will be reset on next Get
+			PutMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
 		msg.Payload = data

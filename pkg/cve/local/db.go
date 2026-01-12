@@ -99,17 +99,19 @@ func (d *DB) SaveCVEs(cves []cve.CVEItem) error {
 		return nil
 	}
 
-	// Pre-allocate records slice with known capacity
-	records := make([]CVERecord, 0, len(cves))
+	// Pre-allocate records slice with exact capacity
+	records := make([]CVERecord, len(cves))
 	
 	for i := range cves {
 		// Marshal the full CVE data to JSON
-		data, err := sonic.Marshal(&cves[i])
+		// Use value type instead of pointer to avoid unnecessary allocation
+		data, err := sonic.Marshal(cves[i])
 		if err != nil {
 			return err
 		}
 
-		record := CVERecord{
+		// Direct assignment instead of append since we pre-allocated
+		records[i] = CVERecord{
 			CVEID:        cves[i].ID,
 			SourceID:     cves[i].SourceID,
 			Published:    cves[i].Published.Time,
@@ -117,7 +119,6 @@ func (d *DB) SaveCVEs(cves []cve.CVEItem) error {
 			VulnStatus:   cves[i].VulnStatus,
 			Data:         string(data),
 		}
-		records = append(records, record)
 	}
 
 	// Use CreateInBatches for better performance
