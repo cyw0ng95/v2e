@@ -1,3 +1,6 @@
+// Package proc provides process management and inter-process communication primitives.
+// It includes a broker for managing subprocesses and a message-based RPC system
+// for communication between processes via stdin/stdout pipes.
 package proc
 
 import (

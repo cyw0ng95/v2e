@@ -1,3 +1,5 @@
+// Package common provides common utilities and configuration for the v2e project.
+// It includes logging facilities with support for multiple log levels and output destinations.
 package common
 
 import (

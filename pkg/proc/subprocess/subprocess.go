@@ -1,3 +1,6 @@
+// Package subprocess provides a framework for building message-driven subprocesses.
+// It enables creation of worker processes that communicate with a broker via stdin/stdout
+// using JSON-encoded messages, with built-in signal handling and graceful shutdown.
 package subprocess
 
 import (

@@ -1,3 +1,5 @@
+// Package cve provides data types and utilities for working with CVE (Common Vulnerabilities and Exposures) data.
+// It includes types compatible with the NVD (National Vulnerability Database) API v2.0.
 package cve
 
 import (
