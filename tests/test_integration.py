@@ -374,7 +374,7 @@ class TestCVEMetaService:
         """
         access = access_service
         
-        cve_ids = ["CVE-2021-44228", "CVE-2021-45046", "CVE-2022-12345"]
+        cve_ids = ["CVE-2021-44228", "CVE-2021-45046", "CVE-2022-22965"]
         
         print(f"\n  → Testing multiple RPCGetCVE requests")
         print(f"  → CVE IDs: {cve_ids}")
