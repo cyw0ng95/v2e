@@ -239,13 +239,18 @@ run_rpc_benchmarks() {
         BENCHMARK_REPORT="$BUILD_DIR/rpc-benchmark-report.txt"
         BENCHMARK_LOG="$BUILD_DIR/rpc-benchmark.log"
         
-        # First, ensure binaries are built
-        echo "Building binaries for benchmark tests..."
-        BUILD_LOG="$BUILD_DIR/benchmark-build.log"
-        build_and_package > "$BUILD_LOG" 2>&1 || {
-            echo "Failed to build binaries. Check $BUILD_LOG for details."
-            return 1
-        }
+        # Check if we should skip building (e.g., when using pre-built binaries from CI)
+        if [ "${SKIP_BUILD:-false}" != "true" ]; then
+            # First, ensure binaries are built
+            echo "Building binaries for benchmark tests..."
+            BUILD_LOG="$BUILD_DIR/benchmark-build.log"
+            build_and_package > "$BUILD_LOG" 2>&1 || {
+                echo "Failed to build binaries. Check $BUILD_LOG for details."
+                return 1
+            }
+        else
+            echo "Skipping build step (using pre-built binaries)..."
+        fi
         
         if [ "$VERBOSE" = true ]; then
             echo "Running RPC benchmarks with verbose output..."
