@@ -212,6 +212,42 @@ class TestCVEMetaService:
     - Responses follow the standardized format
     """
     
+    def test_service_availability(self, access_service):
+        """Test that all required services are available and running.
+        
+        This verifies:
+        - Broker has spawned all required subprocess services
+        - Services remain alive during testing
+        - Services can be reached via broker routing
+        """
+        access = access_service
+        
+        print(f"\n  → Checking service availability")
+        
+        # Check broker is responding
+        print(f"  → Testing broker availability...")
+        broker_response = access.rpc_call("RPCGetMessageStats")
+        assert broker_response["retcode"] == 0
+        print(f"    ✓ Broker is responding")
+        
+        # Check cve-meta service is responding
+        print(f"  → Testing cve-meta availability...")
+        meta_response = access.get_cve("CVE-TEST-AVAILABILITY")
+        # Should get response (either success or error, but not timeout)
+        assert "retcode" in meta_response
+        assert "message" in meta_response
+        print(f"    ✓ cve-meta is responding (retcode: {meta_response['retcode']})")
+        
+        # Verify services stay alive across multiple requests
+        print(f"  → Verifying services remain alive across requests...")
+        for i in range(3):
+            response = access.rpc_call("RPCGetMessageCount")
+            assert response["retcode"] == 0
+            time.sleep(0.1)
+        print(f"    ✓ Services remain alive and responsive")
+        
+        print(f"  ✓ All services are available and healthy")
+    
     def test_rpc_get_cve_with_valid_id(self, access_service):
         """Test RPCGetCVE with a valid CVE ID via RESTful API.
         
@@ -222,9 +258,23 @@ class TestCVEMetaService:
         - Payload contains CVE data
         """
         access = access_service
+        cve_id = "CVE-2021-44228"
+        
+        # Log request details
+        print(f"\n  → Testing RPCGetCVE for {cve_id}")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-meta")
+        print(f"  → Method: RPCGetCVE")
+        print(f"  → Params: {{'cve_id': '{cve_id}'}}")
         
         # Call RPCGetCVE via RESTful API with target=cve-meta
-        response = access.get_cve("CVE-2021-44228")
+        response = access.get_cve(cve_id)
+        
+        # Log response details
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        print(f"    - payload keys: {list(response.get('payload', {}).keys())}")
         
         # Verify standardized response structure
         assert "retcode" in response
@@ -241,8 +291,9 @@ class TestCVEMetaService:
         assert "id" in payload or "ID" in payload
         
         # Check that the CVE ID matches what we requested
-        cve_id = payload.get("id") or payload.get("ID")
-        assert cve_id == "CVE-2021-44228"
+        returned_id = payload.get("id") or payload.get("ID")
+        assert returned_id == cve_id
+        print(f"  ✓ Test passed: CVE ID {returned_id} matches request")
     
     def test_rpc_get_cve_missing_cve_id(self, access_service):
         """Test RPCGetCVE with missing cve_id parameter.
@@ -253,14 +304,27 @@ class TestCVEMetaService:
         """
         access = access_service
         
+        # Log request details
+        print(f"\n  → Testing RPCGetCVE with missing cve_id")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-meta")
+        print(f"  → Method: RPCGetCVE")
+        print(f"  → Params: {{}}")
+        
         # Call RPCGetCVE without cve_id parameter
         response = access.rpc_call("RPCGetCVE", params={}, target="cve-meta")
+        
+        # Log response details
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
         
         # Verify error response
         assert "retcode" in response
         assert "message" in response
         assert response["retcode"] == 500  # Error
         assert "cve_id" in response["message"].lower() or "required" in response["message"].lower()
+        print(f"  ✓ Test passed: Proper error response for missing parameter")
     
     def test_rpc_get_cve_empty_cve_id(self, access_service):
         """Test RPCGetCVE with empty cve_id parameter.
@@ -271,14 +335,27 @@ class TestCVEMetaService:
         """
         access = access_service
         
+        # Log request details
+        print(f"\n  → Testing RPCGetCVE with empty cve_id")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-meta")
+        print(f"  → Method: RPCGetCVE")
+        print(f"  → Params: {{'cve_id': ''}}")
+        
         # Call RPCGetCVE with empty cve_id
         response = access.get_cve("")
+        
+        # Log response details
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
         
         # Verify error response
         assert "retcode" in response
         assert "message" in response
         assert response["retcode"] == 500  # Error
         assert "cve_id" in response["message"].lower() or "required" in response["message"].lower()
+        print(f"  ✓ Test passed: Proper error response for empty parameter")
     
     def test_rpc_get_cve_multiple_requests(self, access_service):
         """Test multiple RPCGetCVE requests via RESTful API.
@@ -292,8 +369,16 @@ class TestCVEMetaService:
         
         cve_ids = ["CVE-2021-44228", "CVE-2021-45046", "CVE-2022-12345"]
         
-        for cve_id in cve_ids:
+        print(f"\n  → Testing multiple RPCGetCVE requests")
+        print(f"  → CVE IDs: {cve_ids}")
+        
+        for i, cve_id in enumerate(cve_ids, 1):
+            print(f"  → Request {i}/{len(cve_ids)}: {cve_id}")
             response = access.get_cve(cve_id)
+            
+            # Log response summary
+            print(f"    - retcode: {response.get('retcode')}")
+            print(f"    - message: {response.get('message')}")
             
             # Verify standardized response structure
             assert response["retcode"] == 0
@@ -304,9 +389,160 @@ class TestCVEMetaService:
             payload = response["payload"]
             returned_id = payload.get("id") or payload.get("ID")
             assert returned_id == cve_id
+            print(f"    ✓ CVE ID matches: {returned_id}")
             
             # Small delay between requests
             time.sleep(0.1)
+        
+        print(f"  ✓ Test passed: All {len(cve_ids)} requests successful")
+
+
+@pytest.mark.integration
+class TestCVELocalService:
+    """Integration tests for cve-local service via RESTful API.
+    
+    These tests verify cve-local RPC interfaces work correctly through the broker.
+    """
+    
+    def test_rpc_is_cve_stored_by_id(self, access_service):
+        """Test RPCIsCVEStoredByID via RESTful API.
+        
+        This verifies:
+        - cve-local service can check CVE existence
+        - Response format is correct
+        """
+        access = access_service
+        cve_id = "CVE-2021-44228"
+        
+        print(f"\n  → Testing RPCIsCVEStoredByID for {cve_id}")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-local")
+        print(f"  → Method: RPCIsCVEStoredByID")
+        
+        response = access.rpc_call(
+            method="RPCIsCVEStoredByID",
+            target="cve-local",
+            params={"cve_id": cve_id}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Verify response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 0
+        
+        # Verify payload contains stored status
+        payload = response["payload"]
+        assert "stored" in payload
+        assert "cve_id" in payload
+        assert payload["cve_id"] == cve_id
+        
+        print(f"  ✓ Test passed: CVE {cve_id} stored status = {payload['stored']}")
+
+
+@pytest.mark.integration
+@pytest.mark.slow
+class TestCVERemoteService:
+    """Integration tests for cve-remote service via RESTful API.
+    
+    These tests make actual calls to the NVD API and are marked as slow.
+    They verify cve-remote RPC interfaces work correctly through the broker.
+    """
+    
+    def test_rpc_get_cve_cnt(self, access_service):
+        """Test RPCGetCVECnt via RESTful API.
+        
+        This verifies:
+        - cve-remote service can fetch CVE count from NVD API
+        - Response format is correct
+        
+        Note: This test makes an actual NVD API call and may be rate-limited.
+        """
+        access = access_service
+        
+        print(f"\n  → Testing RPCGetCVECnt (NVD API call)")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-remote")
+        print(f"  → Method: RPCGetCVECnt")
+        print(f"  → Warning: Makes actual NVD API request")
+        
+        response = access.rpc_call(
+            method="RPCGetCVECnt",
+            target="cve-remote",
+            params={}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Verify response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 0
+        
+        # Verify payload contains total_results
+        payload = response["payload"]
+        assert "total_results" in payload
+        assert isinstance(payload["total_results"], int)
+        assert payload["total_results"] > 0
+        
+        print(f"  ✓ Test passed: Total CVEs in NVD = {payload['total_results']}")
+    
+    def test_rpc_get_cve_by_id(self, access_service):
+        """Test RPCGetCVEByID via RESTful API.
+        
+        This verifies:
+        - cve-remote service can fetch specific CVE from NVD API
+        - Response format is correct
+        - CVE data structure is valid
+        
+        Note: This test makes an actual NVD API call and may be rate-limited.
+        """
+        access = access_service
+        cve_id = "CVE-2021-44228"  # Log4Shell vulnerability
+        
+        print(f"\n  → Testing RPCGetCVEByID for {cve_id} (NVD API call)")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-remote")
+        print(f"  → Method: RPCGetCVEByID")
+        print(f"  → Warning: Makes actual NVD API request")
+        
+        response = access.rpc_call(
+            method="RPCGetCVEByID",
+            target="cve-remote",
+            params={"cve_id": cve_id}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Verify response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 0
+        
+        # Verify payload contains vulnerabilities
+        payload = response["payload"]
+        assert "vulnerabilities" in payload
+        assert len(payload["vulnerabilities"]) > 0
+        
+        # Verify CVE structure
+        vuln = payload["vulnerabilities"][0]
+        assert "cve" in vuln
+        cve_data = vuln["cve"]
+        assert "id" in cve_data
+        assert cve_data["id"] == cve_id
+        
+        print(f"  ✓ Test passed: Successfully fetched CVE {cve_id} from NVD")
+        print(f"    - CVE ID: {cve_data['id']}")
+        if "descriptions" in cve_data:
+            desc = cve_data["descriptions"][0]["value"][:100] if cve_data["descriptions"] else "N/A"
+            print(f"    - Description: {desc}...")
 
 
 # TODO: Additional integration tests for CVE functionality will be added
