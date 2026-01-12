@@ -1,8 +1,0 @@
-{
-  "server": {
-    "address": ":8080"
-  },
-  "client": {
-    "url": "http://localhost:8080"
-  }
-}

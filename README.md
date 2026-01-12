@@ -1,5 +1,7 @@
 # v2e
 
+[![CI Tests](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml/badge.svg)](https://github.com/cyw0ng95/v2e/actions/workflows/test.yml)
+
 A Go-based project demonstrating a multi-command structure with CVE (Common Vulnerabilities and Exposures) data fetching capabilities.
 
 ## Architecture Principles
@@ -21,9 +23,8 @@ This architecture ensures clean separation of concerns and prevents circular dep
 
 This project contains multiple commands:
 
-- `cmd/access` - RESTful API service using Gin framework
+- `cmd/access` - RESTful API gateway service (the central entry point for external requests)
 - `cmd/broker` - RPC service for managing subprocesses and process lifecycle
-- `cmd/broker-stats` - RPC service for accessing broker message statistics
 - `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
 - `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
 - `cmd/cve-meta` - Backend RPC service that orchestrates CVE fetching and storage operations
@@ -38,6 +39,116 @@ And packages:
 - `pkg/cve/remote` - Remote CVE fetching from NVD API
 - `pkg/cve/local` - Local CVE storage with SQLite database
 
+## Architecture and Security
+
+### Deployment Model
+
+This project follows a **broker-first architecture** with strict subprocess isolation:
+
+1. **Broker is the entry point**: Users run `broker` with `config.json` as the first argument
+2. **Broker spawns all subprocesses**: Includes access (REST API), cve-remote, cve-local, cve-meta
+3. **External users access via REST**: HTTP requests to access service (http://localhost:8080/restful/*)
+4. **Access forwards to broker**: Converts REST → RPC messages sent to broker (future implementation)
+5. **Broker routes to services**: Routes RPC messages to appropriate backend subprocess
+6. **No direct subprocess access**: External users cannot directly communicate with backend services
+
+**Deployment Flow:**
+
+```
+User runs:    broker config.json
+              ↓
+Broker spawns: access, cve-remote, cve-local, cve-meta
+              ↓
+External user → REST API (access) → Broker → Backend Services
+                                       ↓
+                         Message Routing (RPCInvoke)
+                                       ↓
+              cve-remote ←→ Broker ←→ cve-local
+                             ↓
+                          cve-meta
+```
+
+This architecture provides:
+- **Process isolation**: Services cannot directly access each other
+- **Message routing**: Broker controls all inter-process communication via RPCInvoke
+- **Request-response correlation**: Broker tracks requests and matches responses using correlation IDs
+- **Security**: Single point of control for spawning and managing processes
+- **Monitoring**: Centralized message statistics and process management
+- **No direct RPC**: External users cannot bypass access service to reach backends
+- **Cross-service calls**: Services can invoke each other through the broker's message routing
+
+### Security Principles
+
+#### RPC-Only Communication (for Subprocess Services)
+
+All inter-process communication between subprocess services MUST use RPC messages in JSON format:
+
+```json
+{
+  "type": "request|response|event|error",
+  "id": "unique-message-id",
+  "payload": { ... }
+}
+```
+
+Messages are exchanged via stdin/stdout pipes between subprocess services. Subprocess services never use:
+- Network sockets for inter-process communication
+- Files or shared memory for commands
+- Direct subprocess-to-subprocess communication
+
+#### Broker-Mediated Message Routing
+
+The broker acts as a secure message router:
+
+```
+User/Config → Broker → [Subprocess A]
+                    ↓
+                    → [Subprocess B]
+                    ↓
+                    → [Subprocess C]
+```
+
+All messages flow through the broker, which:
+- Routes messages to the correct subprocess
+- Tracks message statistics
+- Manages subprocess lifecycle
+- Prevents unauthorized inter-process communication
+
+#### Subprocess Isolation
+
+Each subprocess service:
+
+- **ONLY** reads from stdin (messages from broker)
+- **ONLY** writes to stdout (messages to broker)
+- **DOES NOT** accept:
+  - Command-line arguments (except those passed by broker)
+  - Direct network connections for control
+  - File-based input for commands
+  - User input from terminal
+
+This ensures that all service control flows through the broker, preventing:
+- Unauthorized access to services
+- Bypassing of broker security controls
+- Untracked communication between services
+
+### Example: Secure Service Implementation
+
+All services in `cmd/` follow this pattern:
+
+```go
+// Service only accepts PROCESS_ID from environment
+processID := os.Getenv("PROCESS_ID")
+
+// Create subprocess instance (reads from stdin, writes to stdout)
+sp := subprocess.New(processID)
+
+// Register RPC handlers for all functionality
+sp.RegisterHandler("RPCMyFunction", handler)
+
+// Run subprocess (blocks on stdin, no other input accepted)
+sp.Run()
+```
+
 ## Prerequisites
 
 - Go 1.24 or later
@@ -49,7 +160,6 @@ To build all commands:
 ```bash
 go build ./cmd/access
 go build ./cmd/broker
-go build ./cmd/broker-stats
 go build ./cmd/cve-remote
 go build ./cmd/cve-local
 go build ./cmd/cve-meta
@@ -60,7 +170,6 @@ Or build a specific command:
 ```bash
 go build -o bin/access ./cmd/access
 go build -o bin/broker ./cmd/broker
-go build -o bin/broker-stats ./cmd/broker-stats
 go build -o bin/cve-remote ./cmd/cve-remote
 go build -o bin/cve-local ./cmd/cve-local
 go build -o bin/cve-meta ./cmd/cve-meta
@@ -68,170 +177,204 @@ go build -o bin/cve-meta ./cmd/cve-meta
 
 ## Running
 
+### Deployment with Broker (Recommended)
+
+The recommended way to deploy and run services is through the broker with a configuration file:
+
+```bash
+# Build all binaries first
+./build.sh -p
+
+# Run broker with config file (automatically starts configured services)
+./broker config.json
+
+# The broker will:
+# 1. Load config.json as specified
+# 2. Spawn all configured subprocess services
+# 3. Route RPC messages between services
+# 4. Monitor and restart services as needed
+```
+
+The `config.json` file defines which services to start:
+
+```json
+{
+  "server": {
+    "address": "0.0.0.0:8080"
+  },
+  "broker": {
+    "logs_dir": "./logs",
+    "processes": [
+      {
+        "id": "access",
+        "command": "./access",
+        "args": [],
+        "rpc": false,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-remote",
+        "command": "./cve-remote",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-local",
+        "command": "./cve-local",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "cve-meta",
+        "command": "./cve-meta",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      }
+    ]
+  },
+  "logging": {
+    "level": "info",
+    "dir": "./logs"
+  }
+}
+```
+
+**Configuration Options:**
+- `logs_dir` - Directory for log files
+- `processes` - Array of services to automatically spawn
+  - `id` - Unique identifier for the service
+  - `command` - Path to binary executable
+  - `args` - Command arguments
+  - `rpc` - Enable RPC communication (stdin/stdout pipes)
+  - `restart` - Automatically restart on exit
+  - `max_restarts` - Maximum restart attempts (-1 for unlimited)
+
+**Security Note:** Services listed in the config are spawned by the broker and can only communicate via RPC messages routed through the broker. This ensures process isolation and prevents unauthorized access.
+
 ### Access (RESTful API Service)
 
-The Access service provides a RESTful API server using the Gin framework:
+The Access service is the external entry point for the v2e system. It provides a RESTful API server that external users interact with. The access service is spawned by the broker as a subprocess and communicates with the broker via RPC to fulfill requests.
+
+**Deployment Model:**
+
+In the correct v2e architecture:
+
+1. **Broker is the entry point**: Run broker with `config.json` as the first argument
+2. **Broker spawns all subprocesses**: Including access, cve-remote, cve-local, cve-meta
+3. **Access provides REST API**: External interface for the system
+4. **Access forwards to broker**: Converts REST requests to RPC messages sent to broker
+5. **Broker routes messages**: Routes RPC requests to appropriate backend services
+
+**Key Features:**
+- Single REST interface for external system interactions
+- RESTful API schema under `/restful/` prefix
+- Runs as a subprocess spawned by the broker
+- Configurable listen address (default: `0.0.0.0:8080`)
+
+**Running the System:**
 
 ```bash
-# Run with default settings (port 8080)
-go run ./cmd/access
+# Run broker with configuration
+go run ./cmd/broker config.json
 
-# Run on a custom port
-go run ./cmd/access -port 3000
-
-# Run in debug mode
-go run ./cmd/access -debug
-
-# Combine options
-go run ./cmd/access -port 3000 -debug
+# The broker will:
+# 1. Load configuration from config.json
+# 2. Spawn all configured subprocesses including access
+# 3. Access service starts REST API server
+# 4. Backend CVE services are spawned and ready
 ```
 
-**Available Endpoints:**
-- `GET /health` - Health check endpoint that returns the server status
+**Configuration:**
 
-**Command Line Options:**
-- `-port` - Port to listen on (default: 8080)
-- `-debug` - Enable debug mode (default: false)
+The access service is configured in `config.json`:
 
-The Access service demonstrates the use of the Gin framework for building RESTful APIs. It can be extended with additional endpoints as needed.
-
-**Important Note on Architecture:**
-The Access service is a subprocess managed by the broker. It should NOT have endpoints for managing processes (like spawning, listing, or killing processes). All process management must go through the broker. If you need to expose process management via REST API, create a separate service that communicates with the broker via RPC, rather than embedding broker functionality in the access service.
-
-### Broker (RPC Service)
-
-The Broker service provides RPC interfaces for managing subprocesses and accessing message statistics:
-
-```bash
-# Run the service (it reads RPC requests from stdin and writes responses to stdout)
-go run ./cmd/broker
-
-# Example: Spawn a process
-echo '{"type":"request","id":"RPCSpawn","payload":{"id":"my-echo","command":"echo","args":["hello","world"]}}' | go run ./cmd/broker
-
-# Example: List all processes
-echo '{"type":"request","id":"RPCListProcesses","payload":{}}' | go run ./cmd/broker
-
-# Example: Get process info
-echo '{"type":"request","id":"RPCGetProcess","payload":{"id":"my-echo"}}' | go run ./cmd/broker
-
-# Example: Kill a process
-echo '{"type":"request","id":"RPCKill","payload":{"id":"my-echo"}}' | go run ./cmd/broker
-
-# Example: Get total message count
-echo '{"type":"request","id":"RPCGetMessageCount","payload":{}}' | go run ./cmd/broker
-
-# Example: Get detailed message statistics
-echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/broker
-```
-
-**Available RPC Interfaces:**
-
-*Process Management:*
-- `RPCSpawn` - Spawns a new subprocess with the specified command and arguments
-- `RPCSpawnRPC` - Spawns a new RPC-enabled subprocess (with stdin/stdout pipes)
-- `RPCGetProcess` - Gets information about a specific process by ID
-- `RPCListProcesses` - Lists all managed processes
-- `RPCKill` - Terminates a process by ID
-
-*Message Statistics:*
-- `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
-- `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
-
-**Request Format for RPCSpawn:**
 ```json
 {
-  "id": "unique-process-id",
-  "command": "echo",
-  "args": ["hello", "world"]
+  "server": {
+    "address": "0.0.0.0:8080"
+  },
+  "broker": {
+    "logs_dir": "logs",
+    "processes": [
+      {
+        "id": "access",
+        "command": "go",
+        "args": ["run", "./cmd/access"],
+        "rpc": false,
+        "restart": true
+      },
+      {
+        "id": "cve-remote",
+        "command": "go",
+        "args": ["run", "./cmd/cve-remote"],
+        "rpc": true,
+        "restart": true
+      }
+    ]
+  }
 }
 ```
 
-**Response Format for RPCSpawn:**
-```json
-{
-  "id": "unique-process-id",
-  "pid": 12345,
-  "command": "echo",
-  "status": "running"
-}
+**Available RESTful Endpoints:**
+
+*Currently Implemented:*
+- `GET /restful/health` - Health check endpoint
+  ```bash
+  curl http://localhost:8080/restful/health
+  # Response: {"status":"ok"}
+  ```
+
+*Future Implementation (requires RPC forwarding):*
+
+The following endpoints require implementing RPC message correlation and forwarding between access service and broker:
+
+- `GET /restful/stats` - Get broker message statistics (via RPC to broker)
+- `GET /restful/processes` - List all managed processes (via RPC to broker)
+- `GET /restful/processes/:id` - Get process details (via RPC to broker)
+- `POST /restful/rpc/:process_id/:endpoint` - Forward RPC to backend services
+
+**Architecture:**
+
+The Access service acts as a REST-to-RPC gateway:
+
+```
+External Clients → Access (REST API) → Broker (RPC Router)
+                                         ↓
+                             ┌──────────┼──────────┐
+                             ↓          ↓          ↓
+                         cve-local  cve-remote  cve-meta
 ```
 
-This service can be spawned by a broker to provide remote access to process management via RPC.
+All external requests are handled by the Access service, which:
+1. Receives HTTP requests on RESTful endpoints
+2. Translates them to RPC messages (future implementation)
+3. Sends RPC messages to broker via subprocess communication
+4. Broker forwards messages to the appropriate backend service
+5. Returns responses from backend services as JSON (via broker)
 
-### Broker Stats (RPC Service)
+**Security:**
 
-The Broker Stats service provides RPC interfaces for accessing message statistics from a broker instance:
+The Access service provides a controlled interface to the system:
+- Single point of entry for external requests
+- All backend services are isolated and only accessible via broker
+- Access service is spawned by broker (not standalone)
+- No direct RPC access to backend services from external clients
+- All communication routes through broker's secure message passing
 
-```bash
-# Run the service (it reads RPC requests from stdin and writes responses to stdout)
-go run ./cmd/broker-stats
-
-# Example: Get total message count
-echo '{"type":"request","id":"RPCGetMessageCount","payload":{}}' | go run ./cmd/broker-stats
-
-# Example: Get detailed message statistics
-echo '{"type":"request","id":"RPCGetMessageStats","payload":{}}' | go run ./cmd/broker-stats
-```
-
-**Available RPC Interfaces:**
-- `RPCGetMessageCount` - Returns the total count of messages processed (sent + received)
-- `RPCGetMessageStats` - Returns detailed statistics including counts by type and timestamps
-
-**Response Format for RPCGetMessageCount:**
-```json
-{
-  "total_count": 42
-}
-```
-
-**Response Format for RPCGetMessageStats:**
-```json
-{
-  "total_sent": 21,
-  "total_received": 21,
-  "request_count": 10,
-  "response_count": 10,
-  "event_count": 1,
-  "error_count": 1,
-  "first_message_time": "2026-01-10T15:00:00Z",
-  "last_message_time": "2026-01-10T15:30:00Z"
-}
-```
-
-This service can be spawned by a broker to provide remote access to process management and message statistics via RPC.
-
-### Worker
-
-The worker is an example subprocess that demonstrates the `pkg/proc/subprocess` framework:
-
-```bash
-# Run the worker (it reads messages from stdin and writes to stdout)
-go run ./cmd/worker
-
-# Example: Send a ping message
-echo '{"type":"request","id":"ping"}' | go run ./cmd/worker
-
-# Example: Send an echo request
-echo '{"type":"request","id":"req-1","payload":{"action":"echo","data":"hello"}}' | go run ./cmd/worker
-```
-
-The worker demonstrates how to build message-driven subprocesses that can be controlled by the broker.
+**Note:** Full RPC forwarding implementation is future work. Currently, only health check endpoint is implemented.
 
 ### CVE Remote (RPC Service)
 
-The CVE Remote service provides RPC interfaces for fetching CVE data from the NVD API:
+**Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
 
-```bash
-# Run the service (it reads RPC requests from stdin and writes responses to stdout)
-go run ./cmd/cve-remote
-
-# Example: Get total CVE count from NVD
-echo '{"type":"request","id":"RPCGetCVECnt","payload":{}}' | go run ./cmd/cve-remote
-
-# Example: Fetch a specific CVE by ID
-echo '{"type":"request","id":"RPCGetCVEByID","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-remote
-```
+The CVE Remote service provides RPC interfaces for fetching CVE data from the NVD API.
 
 **Available RPC Interfaces:**
 - `RPCGetCVECnt` - Returns the total count of CVEs in the NVD database
@@ -240,20 +383,29 @@ echo '{"type":"request","id":"RPCGetCVEByID","payload":{"cve_id":"CVE-2021-44228
 **Environment Variables:**
 - `NVD_API_KEY` - Optional NVD API key for higher rate limits
 
-### CVE Local (RPC Service)
+**Accessing the Service:**
 
-The CVE Local service provides RPC interfaces for storing and retrieving CVE data from a local SQLite database:
+RPC services should be accessed via the Access service's RESTful API, not directly via stdin/stdout:
 
 ```bash
-# Run the service (it reads RPC requests from stdin and writes responses to stdout)
-go run ./cmd/cve-local
+# Get CVE count from NVD
+curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVECnt \
+  -H "Content-Type: application/json" \
+  -d '{}'
 
-# Example: Check if a CVE is stored locally
-echo '{"type":"request","id":"RPCIsCVEStoredByID","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-local
-
-# Example: Save a CVE to local database
-echo '{"type":"request","id":"RPCSaveCVEByID","payload":{"cve":{"id":"CVE-2021-44228",...}}}' | go run ./cmd/cve-local
+# Fetch a specific CVE by ID
+curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVEByID \
+  -H "Content-Type: application/json" \
+  -d '{"cve_id":"CVE-2021-44228"}'
 ```
+
+**Security Note:** This service only accepts RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API.
+
+### CVE Local (RPC Service)
+
+**Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
+
+The CVE Local service provides RPC interfaces for storing and retrieving CVE data from a local SQLite database.
 
 **Available RPC Interfaces:**
 - `RPCIsCVEStoredByID` - Checks if a CVE exists in the local database
@@ -262,50 +414,78 @@ echo '{"type":"request","id":"RPCSaveCVEByID","payload":{"cve":{"id":"CVE-2021-4
 **Environment Variables:**
 - `CVE_DB_PATH` - Path to the SQLite database file (default: `cve.db`)
 
-### CVE Meta Service
+**Accessing the Service:**
 
-The CVE Meta service is a backend RPC service that orchestrates CVE fetching and storage operations. It runs continuously and accepts RPC commands to perform batch jobs.
+RPC services should be accessed via the Access service's RESTful API, not directly via stdin/stdout:
 
 ```bash
-# Run the service (it reads RPC requests from stdin and writes responses to stdout)
-go run ./cmd/cve-meta
-
-# Example: Fetch and store a single CVE
-echo '{"type":"request","id":"RPCFetchAndStoreCVE","payload":{"cve_id":"CVE-2021-44228"}}' | go run ./cmd/cve-meta
-
-# Example: Fetch and store multiple CVEs in batch
-echo '{"type":"request","id":"RPCBatchFetchCVEs","payload":{"cve_ids":["CVE-2021-44228","CVE-2024-1234"]}}' | go run ./cmd/cve-meta
-
-# Example: Get total CVE count from NVD
-echo '{"type":"request","id":"RPCGetRemoteCVECount","payload":{}}' | go run ./cmd/cve-meta
+# Example: Access cve-local service via RESTful API
+curl -X POST http://localhost:8080/restful/rpc/cve-local/RPCIsCVEStoredByID \
+  -H "Content-Type: application/json" \
+  -d '{"cve_id":"CVE-2021-44228"}'
 ```
 
-**Available RPC Interfaces:**
-- `RPCFetchAndStoreCVE` - Fetches a CVE from NVD (if not already stored locally) and saves it to the database
-- `RPCBatchFetchCVEs` - Fetches and stores multiple CVEs in batch mode
-- `RPCGetRemoteCVECount` - Returns the total count of CVEs in the NVD database
+**Security Note:** This service only accepts RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API.
+
+### CVE Meta Service
+
+**Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
+
+The CVE Meta service is a backend RPC service that orchestrates CVE fetching and storage operations. It acts as a coordinator between cve-local and cve-remote services.
+
+**Current RPC Interfaces:**
+- `RPCGetCVE` - Retrieves CVE data (currently returns stub data, will orchestrate cve-local and cve-remote in the future)
+
+**Planned RPC Interfaces:**
+- `RPCFetchAndStoreCVE` - Will fetch a CVE from NVD (if not already stored locally) and save it to the database
+- `RPCBatchFetchCVEs` - Will fetch and store multiple CVEs in batch mode
+- `RPCGetRemoteCVECount` - Will return the total count of CVEs in the NVD database
 
 **Environment Variables:**
 - `CVE_DB_PATH` - Path to the SQLite database file (default: `cve.db`)
 
-The service performs the following workflow:
-1. Spawns `cve-local` and `cve-remote` services as subprocesses
-2. Accepts RPC commands via stdin
-3. For `RPCFetchAndStoreCVE`:
-   - Checks if the CVE is already stored locally via `cve-local`
-   - If not stored, fetches it from NVD via `cve-remote`
-   - Saves the fetched CVE to the local database via `cve-local`
-4. For `RPCBatchFetchCVEs`:
-   - Processes multiple CVE IDs
-   - Returns success/failure status for each CVE
-5. For `RPCGetRemoteCVECount`:
-   - Forwards the request to `cve-remote` and returns the total count
+**Accessing the Service:**
 
-This demonstrates the broker-mediated RPC communication pattern where:
-- The meta service acts as an orchestrator/backend service
-- All communication happens via RPC messages
-- The service runs continuously accepting commands
-- Batch jobs can be executed efficiently
+The cve-meta service is accessed via the Access service's RESTful API with the `target` parameter:
+
+```bash
+# Get CVE data via cve-meta service
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCGetCVE",
+    "target": "cve-meta",
+    "params": {"cve_id": "CVE-2021-44228"}
+  }'
+
+# Response format:
+# {
+#   "retcode": 0,
+#   "message": "success",
+#   "payload": {
+#     "id": "CVE-2021-44228",
+#     "descriptions": [...]
+#   }
+# }
+```
+
+**Testing:**
+
+The cve-meta service has comprehensive integration tests that verify functionality using only the RESTful API. All tests follow the broker-first architecture:
+
+```bash
+# Run cve-meta integration tests
+pytest tests/test_integration.py::TestCVEMetaService -v
+```
+
+Test coverage includes:
+- Valid CVE ID requests
+- Missing required parameters
+- Empty parameter validation
+- Multiple sequential requests
+- Error handling and routing
+
+**Security Note:** This service only accepts RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API with the appropriate `target` parameter.
 
 ## Development
 
@@ -351,12 +531,28 @@ Key features:
 - **Handler-based routing**: Register handlers for different message types or IDs
 - **Graceful shutdown**: Built-in signal handling and cleanup
 - **Type-safe messaging**: Structured message types (Request, Response, Event, Error)
+- **Security by design**: Only accepts input via stdin, no other input channels
 
 The subprocess framework allows you to build worker processes that:
 1. Are controlled by the broker through message passing
 2. Can be spawned and monitored by the broker
 3. Have a clear lifecycle with proper initialization and shutdown
 4. Focus on business logic without worrying about process management
+5. **Are isolated from external input** - only communicate via RPC messages through the broker
+
+**Security Best Practices:**
+
+When building a new subprocess service:
+- ✅ **DO** use `subprocess.New()` and `sp.Run()` for all input handling
+- ✅ **DO** register all functionality as RPC handlers
+- ✅ **DO** read only from stdin (handled by the framework)
+- ✅ **DO** write only to stdout (via message sending methods)
+- ❌ **DO NOT** accept command-line flags for control operations
+- ❌ **DO NOT** open network sockets for receiving commands
+- ❌ **DO NOT** read from files or other external sources for commands
+- ❌ **DO NOT** implement alternative input mechanisms
+
+This ensures all subprocess control flows through the broker's secure message routing.
 
 ### CVE Remote Fetcher
 
@@ -690,6 +886,8 @@ Run unit tests:
 
 ```bash
 go test ./...
+# Or use build script
+./build.sh -t
 ```
 
 Run unit tests with coverage:
@@ -697,6 +895,49 @@ Run unit tests with coverage:
 ```bash
 go test -cover ./...
 ```
+
+### Performance Benchmarking
+
+The project includes comprehensive performance benchmarks for critical code paths.
+
+Run performance benchmarks:
+
+```bash
+./build.sh -m
+```
+
+This will:
+- Execute all benchmark tests across the codebase
+- Generate a human-readable report with timing and memory allocation data
+- Save results to `.build/benchmark-report.txt` and `.build/benchmark-raw.txt`
+- Highlight slowest operations and highest memory allocations
+
+The benchmark report includes:
+- System information (OS, architecture, CPU)
+- Detailed benchmark results for each function
+- Summary of slowest operations (top 10)
+- Summary of highest memory allocations (top 10)
+
+**Performance Optimization Workflow:**
+
+When optimizing performance:
+
+1. Run benchmarks to establish a baseline:
+   ```bash
+   ./build.sh -m
+   cp .build/benchmark-report.txt .build/benchmark-baseline.txt
+   ```
+
+2. Make your optimization changes
+
+3. Run benchmarks again to measure impact:
+   ```bash
+   ./build.sh -m
+   ```
+
+4. Compare results and document improvements in your commit
+
+Example benchmark results can be downloaded from GitHub Actions artifacts after each CI run.
 
 ### Integration Testing
 

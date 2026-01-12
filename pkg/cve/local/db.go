@@ -1,12 +1,13 @@
 package local
 
 import (
-	"encoding/json"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // DB represents the database connection
@@ -28,7 +29,13 @@ type CVERecord struct {
 // NewDB creates a new database connection
 // dbPath is the path to the SQLite database file (e.g., "cve.db")
 func NewDB(dbPath string) (*DB, error) {
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	// Disable GORM logging to prevent interference with RPC message parsing
+	// When running as a subprocess, stdout is used for RPC messages only
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+		// Enable prepared statement caching for better performance
+		PrepareStmt: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -38,13 +45,42 @@ func NewDB(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
+	// Configure connection pool for better performance
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	
+	// Set connection pool parameters
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	
+	// Enable WAL mode for better concurrent access (Principle 10)
+	// WAL mode allows readers and writers to work simultaneously
+	if _, err := sqlDB.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		return nil, err
+	}
+	
+	// Optimize synchronous mode for better performance (Principle 10)
+	// NORMAL is faster than FULL while still being safe
+	if _, err := sqlDB.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		return nil, err
+	}
+	
+	// Increase cache size for better query performance (Principle 10)
+	// Default is 2000 pages, we set to 10000 (about 40MB with 4KB pages)
+	if _, err := sqlDB.Exec("PRAGMA cache_size=-40000"); err != nil {
+		return nil, err
+	}
+
 	return &DB{db: db}, nil
 }
 
 // SaveCVE saves a CVE item to the database
 func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	// Marshal the full CVE data to JSON
-	data, err := json.Marshal(cveItem)
+	data, err := sonic.Marshal(cveItem)
 	if err != nil {
 		return err
 	}
@@ -60,29 +96,53 @@ func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 
 	// Check if record exists
 	var existing CVERecord
-	result := d.db.Where("cve_id = ?", cveItem.ID).First(&existing)
-	
+	result := d.db.Unscoped().Where("cve_id = ?", cveItem.ID).First(&existing)
+
 	if result.Error == nil {
 		// Record exists, update it
 		record.ID = existing.ID
 		record.CreatedAt = existing.CreatedAt
-		return d.db.Save(&record).Error
+		record.DeletedAt = gorm.DeletedAt{} // Clear soft delete flag
+		return d.db.Unscoped().Save(&record).Error
 	} else if result.Error == gorm.ErrRecordNotFound {
 		// Record doesn't exist, create it
 		return d.db.Create(&record).Error
 	}
-	
+
 	return result.Error
 }
 
-// SaveCVEs saves multiple CVE items to the database
+// SaveCVEs saves multiple CVE items to the database using batch insert for better performance
 func (d *DB) SaveCVEs(cves []cve.CVEItem) error {
-	for _, cveItem := range cves {
-		if err := d.SaveCVE(&cveItem); err != nil {
+	if len(cves) == 0 {
+		return nil
+	}
+
+	// Pre-allocate records slice with exact capacity
+	records := make([]CVERecord, len(cves))
+	
+	for i := range cves {
+		// Marshal the full CVE data to JSON
+		// Use value type instead of pointer to avoid unnecessary allocation
+		data, err := sonic.Marshal(cves[i])
+		if err != nil {
 			return err
 		}
+
+		// Direct assignment instead of append since we pre-allocated
+		records[i] = CVERecord{
+			CVEID:        cves[i].ID,
+			SourceID:     cves[i].SourceID,
+			Published:    cves[i].Published.Time,
+			LastModified: cves[i].LastModified.Time,
+			VulnStatus:   cves[i].VulnStatus,
+			Data:         string(data),
+		}
 	}
-	return nil
+
+	// Use CreateInBatches for better performance
+	// Process 100 records at a time to balance memory and performance
+	return d.db.CreateInBatches(records, 100).Error
 }
 
 // GetCVE retrieves a CVE by ID from the database
@@ -93,7 +153,7 @@ func (d *DB) GetCVE(cveID string) (*cve.CVEItem, error) {
 	}
 
 	var cveItem cve.CVEItem
-	if err := json.Unmarshal([]byte(record.Data), &cveItem); err != nil {
+	if err := sonic.Unmarshal([]byte(record.Data), &cveItem); err != nil {
 		return nil, err
 	}
 
@@ -107,13 +167,12 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 		return nil, err
 	}
 
-	cves := make([]cve.CVEItem, 0, len(records))
-	for _, record := range records {
-		var cveItem cve.CVEItem
-		if err := json.Unmarshal([]byte(record.Data), &cveItem); err != nil {
+	// Pre-allocate with exact capacity to avoid re-allocations
+	cves := make([]cve.CVEItem, len(records))
+	for i, record := range records {
+		if err := sonic.Unmarshal([]byte(record.Data), &cves[i]); err != nil {
 			return nil, err
 		}
-		cves = append(cves, cveItem)
 	}
 
 	return cves, nil
@@ -126,6 +185,18 @@ func (d *DB) Count() (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// DeleteCVE deletes a CVE from the database by ID
+func (d *DB) DeleteCVE(cveID string) error {
+	result := d.db.Where("cve_id = ?", cveID).Delete(&CVERecord{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // Close closes the database connection

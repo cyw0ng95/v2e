@@ -68,6 +68,9 @@ func TestLogger_Debug(t *testing.T) {
 	if !strings.Contains(output, "test debug message") {
 		t.Errorf("Expected output to contain 'test debug message', got: %s", output)
 	}
+	if !strings.Contains(output, "[main]") {
+		t.Errorf("Expected output to contain [main] entity, got: %s", output)
+	}
 }
 
 func TestLogger_Info(t *testing.T) {
@@ -232,10 +235,14 @@ func TestDefaultLogger_AllLevels(t *testing.T) {
 	output := buf.String()
 
 	expectedMessages := []string{
-		"[DEBUG] debug message",
-		"[INFO] info message",
-		"[WARN] warn message",
-		"[ERROR] error message",
+		"[DEBUG]",
+		"[INFO]",
+		"[WARN]",
+		"[ERROR]",
+		"debug message",
+		"info message",
+		"warn message",
+		"error message",
 	}
 
 	for _, expected := range expectedMessages {

@@ -1,161 +1,14 @@
-"""Helper utilities for RPC integration testing."""
+"""Helper utilities for integration testing.
 
-import json
-import subprocess
+These utilities support the broker-first architecture:
+- AccessClient for REST API interactions
+- Utility functions for waiting and checking conditions
+"""
+
 import time
-import os
-from typing import Dict, List, Optional, Any
-
-
-class RPCProcess:
-    """Wrapper for managing RPC processes during integration tests."""
-    
-    def __init__(self, command: List[str], process_id: str = None, env: Dict[str, str] = None):
-        """Initialize RPC process wrapper.
-        
-        Args:
-            command: Command and arguments to execute
-            process_id: Optional process ID to set via PROCESS_ID env var
-            env: Optional environment variables to set for the process
-        """
-        self.command = command
-        self.process_id = process_id
-        self.env = env or {}
-        self.process = None
-        self._startup_time = 0.5  # Time to wait for process startup
-        self._debug = False  # Enable debug output
-    
-    def start(self) -> None:
-        """Start the RPC process."""
-        env = os.environ.copy()
-        if self.process_id:
-            env['PROCESS_ID'] = self.process_id
-        # Merge in any custom environment variables
-        env.update(self.env)
-        
-        self.process = subprocess.Popen(
-            self.command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-            text=True,
-            bufsize=1
-        )
-        # Give the process time to start up
-        time.sleep(self._startup_time)
-    
-    def send_request(self, request_id: str, payload: Dict[str, Any], timeout: int = 60) -> Dict[str, Any]:
-        """Send an RPC request and wait for response.
-        
-        Args:
-            request_id: The RPC method/request ID
-            payload: The request payload
-            timeout: Timeout in seconds (default: 60)
-            
-        Returns:
-            The response payload as a dictionary
-        """
-        if not self.process:
-            raise RuntimeError("Process not started")
-        
-        # Create request message
-        message = {
-            "type": "request",
-            "id": request_id,
-            "payload": payload
-        }
-        
-        # Send request
-        request_json = json.dumps(message) + '\n'
-        self.process.stdin.write(request_json)
-        self.process.stdin.flush()
-        
-        # Read response (with timeout)
-        response = self._read_response(timeout=timeout)
-        return response
-    
-    def _read_response(self, timeout: int = 30) -> Dict[str, Any]:
-        """Read and parse a response from the process.
-        
-        Args:
-            timeout: Maximum time to wait for response in seconds
-            
-        Returns:
-            The parsed response message
-        """
-        start_time = time.time()
-        
-        while time.time() - start_time < timeout:
-            # Check if process is still running
-            if self.process.poll() is not None:
-                stderr_output = self.process.stderr.read()
-                raise RuntimeError(f"Process terminated unexpectedly: {stderr_output}")
-            
-            # Try to read a line
-            try:
-                line = self.process.stdout.readline()
-                if line:
-                    # Parse the JSON message
-                    try:
-                        message = json.loads(line.strip())
-                        if self._debug:
-                            print(f"DEBUG: Received message: {message}")
-                        # Return responses, skip events
-                        if message.get('type') == 'response':
-                            return message
-                        elif message.get('type') == 'error':
-                            raise RuntimeError(f"RPC error: {message}")
-                        # Skip event messages and continue reading
-                    except json.JSONDecodeError as e:
-                        # Log but continue - might be debug output
-                        if self._debug:
-                            print(f"Warning: Failed to parse JSON: {line.strip()}")
-                        continue
-                else:
-                    time.sleep(0.1)
-            except Exception as e:
-                if self._debug:
-                    print(f"Error reading response: {e}")
-                time.sleep(0.1)
-        
-        raise TimeoutError(f"No response received within {timeout} seconds")
-    
-    def stop(self) -> None:
-        """Stop the RPC process."""
-        if self.process:
-            self.process.stdin.close()
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait()
-    
-    def __enter__(self):
-        """Context manager entry."""
-        self.start()
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.stop()
-
-
-def build_go_binary(package_path: str, output_path: str) -> None:
-    """Build a Go binary for testing.
-    
-    Args:
-        package_path: Path to the Go package (e.g., "./cmd/broker")
-        output_path: Output path for the binary
-    """
-    result = subprocess.run(
-        ['go', 'build', '-o', output_path, package_path],
-        capture_output=True,
-        text=True
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to build {package_path}: {result.stderr}")
+import requests
+import json
+from typing import Dict, List, Any
 
 
 def wait_for_condition(condition_fn, timeout: int = 10, poll_interval: float = 0.1) -> bool:
@@ -175,3 +28,204 @@ def wait_for_condition(condition_fn, timeout: int = 10, poll_interval: float = 0
             return True
         time.sleep(poll_interval)
     return False
+
+
+class AccessClient:
+    """Client for interacting with the access REST API.
+    
+    This client provides methods to interact with the access service,
+    which is the only external interface to the v2e system following
+    the broker-first architecture.
+    """
+    
+    def __init__(self, base_url: str = "http://localhost:8080"):
+        """Initialize the access client.
+        
+        Args:
+            base_url: Base URL of the access service (default: http://localhost:8080)
+        """
+        self.base_url = base_url
+        self.restful_prefix = "/restful"
+    
+    def health(self) -> Dict[str, Any]:
+        """Check health of the access service.
+        
+        Returns:
+            Health status response
+        """
+        url = f"{self.base_url}{self.restful_prefix}/health"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def rpc_call(self, method: str, params: Dict[str, Any] = None, target: str = None, verbose: bool = True) -> Dict[str, Any]:
+        """Make a generic RPC call to the broker via the access service.
+        
+        Args:
+            method: RPC method name (e.g., "RPCGetMessageStats")
+            params: Optional parameters for the RPC call
+            target: Optional target process (defaults to "broker")
+            verbose: Whether to print request/response details (default: True)
+            
+        Returns:
+            Response in format: {"retcode": int, "message": str, "payload": any}
+        """
+        url = f"{self.base_url}{self.restful_prefix}/rpc"
+        request_body = {
+            "method": method,
+            "params": params or {}
+        }
+        if target:
+            request_body["target"] = target
+        
+        # Log the HTTP request
+        if verbose:
+            print(f"  [HTTP REQUEST]")
+            print(f"    POST {url}")
+            print(f"    Headers: {{'Content-Type': 'application/json'}}")
+            print(f"    Body:")
+            # Pretty print the request body
+            for line in json.dumps(request_body, indent=2).split('\n'):
+                print(f"      {line}")
+        
+        response = requests.post(url, json=request_body)
+        
+        # Log the HTTP response
+        if verbose:
+            print(f"  [HTTP RESPONSE]")
+            print(f"    Status: {response.status_code} {response.reason}")
+            print(f"    Body:")
+            # Pretty print the response body
+            try:
+                response_json = response.json()
+                for line in json.dumps(response_json, indent=2).split('\n'):
+                    print(f"      {line}")
+            except:
+                # If not JSON, show raw text (truncated)
+                body_text = response.text[:500] + ('...' if len(response.text) > 500 else '')
+                print(f"      {body_text}")
+        
+        response.raise_for_status()
+        return response.json()
+    
+    def get_message_stats(self) -> Dict[str, Any]:
+        """Get message statistics from the broker.
+        
+        Note: This currently returns placeholder data. Will be fully functional
+        when RPC forwarding is implemented in the access service (issue #74).
+        
+        Returns:
+            Message statistics including counts by type and timestamps
+        """
+        result = self.rpc_call("RPCGetMessageStats")
+        return result
+    
+    def get_message_count(self) -> Dict[str, Any]:
+        """Get total message count from the broker.
+        
+        Note: This currently returns placeholder data. Will be fully functional
+        when RPC forwarding is implemented in the access service (issue #74).
+        
+        Returns:
+            Total message count (sent + received)
+        """
+        result = self.rpc_call("RPCGetMessageCount")
+        return result
+    
+    def get_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Get CVE data via cve-meta service.
+        
+        This calls the cve-meta service which orchestrates cve-local and cve-remote.
+        
+        Args:
+            cve_id: The CVE ID to retrieve (e.g., "CVE-2021-44228")
+            
+        Returns:
+            CVE data in standardized response format
+        """
+        result = self.rpc_call("RPCGetCVE", params={"cve_id": cve_id}, target="cve-meta")
+        return result
+    
+    def create_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Create CVE by fetching from NVD and saving locally.
+        
+        Args:
+            cve_id: The CVE ID to fetch and create (e.g., "CVE-2021-44228")
+            
+        Returns:
+            Response with success flag and CVE data
+        """
+        result = self.rpc_call("RPCCreateCVE", params={"cve_id": cve_id}, target="cve-meta")
+        return result
+    
+    def update_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Update CVE by refetching from NVD.
+        
+        Args:
+            cve_id: The CVE ID to update (e.g., "CVE-2021-44228")
+            
+        Returns:
+            Response with success flag and updated CVE data
+        """
+        result = self.rpc_call("RPCUpdateCVE", params={"cve_id": cve_id}, target="cve-meta")
+        return result
+    
+    def delete_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Delete CVE from local storage.
+        
+        Args:
+            cve_id: The CVE ID to delete (e.g., "CVE-2021-44228")
+            
+        Returns:
+            Response with success flag
+        """
+        result = self.rpc_call("RPCDeleteCVE", params={"cve_id": cve_id}, target="cve-meta")
+        return result
+    
+    def list_cves(self, offset: int = 0, limit: int = 10) -> Dict[str, Any]:
+        """List CVEs from local storage with pagination.
+        
+        Args:
+            offset: Starting index for pagination (default: 0)
+            limit: Number of items to return (default: 10)
+            
+        Returns:
+            Response with CVE list, total count, and pagination info
+        """
+        result = self.rpc_call("RPCListCVEs", params={"offset": offset, "limit": limit}, target="cve-meta")
+        return result
+    
+    def wait_for_ready(self, timeout: int = 10) -> bool:
+        """Wait for the access service to be ready.
+        
+        Args:
+            timeout: Maximum time to wait in seconds
+            
+        Returns:
+            True if service is ready, False if timeout occurred
+        """
+        def check_health():
+            try:
+                self.health()
+                return True
+            except:
+                return False
+        
+        return wait_for_condition(check_health, timeout=timeout)
+
+
+# Future REST API methods will be added to AccessClient as the access
+# service implements RPC forwarding to backend services:
+#
+# - list_processes() -> Dict[str, Any]
+# - get_process(process_id: str) -> Dict[str, Any]
+# - spawn_process(process_id: str, command: str, args: List[str] = None, rpc: bool = False) -> Dict[str, Any]
+# - kill_process(process_id: str) -> Dict[str, Any]
+# - get_stats() -> Dict[str, Any]
+# - rpc_call(process_id: str, endpoint: str, payload: Dict[str, Any] = None) -> Dict[str, Any]
+#
+# These will enable testing the complete broker-first architecture where:
+# - External requests go to access REST API
+# - Access forwards to broker via RPC
+# - Broker routes to appropriate backend services
+# - Responses flow back through the chain

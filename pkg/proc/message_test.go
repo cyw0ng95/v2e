@@ -3,6 +3,7 @@ package proc
 import (
 	"encoding/json"
 	"errors"
+	"github.com/bytedance/sonic"
 	"testing"
 )
 
@@ -199,7 +200,7 @@ func TestMessage_Marshal(t *testing.T) {
 
 	// Verify it contains the expected fields
 	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
+	if err := sonic.Unmarshal(data, &result); err != nil {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
 
@@ -285,4 +286,77 @@ func TestMessage_MarshalUnmarshal_RoundTrip(t *testing.T) {
 	if result.Value != original.Value {
 		t.Errorf("Expected Value to be %d, got %d", original.Value, result.Value)
 	}
+}
+
+func TestMarshalFast(t *testing.T) {
+msg := &Message{
+Type: MessageTypeRequest,
+ID:   "test-id",
+}
+
+data, err := msg.MarshalFast()
+if err != nil {
+t.Fatalf("MarshalFast failed: %v", err)
+}
+
+if len(data) == 0 {
+t.Error("MarshalFast returned empty data")
+}
+
+// Verify it's valid JSON
+var parsed Message
+if err := sonic.Unmarshal(data, &parsed); err != nil {
+t.Fatalf("Failed to unmarshal fast-marshaled data: %v", err)
+}
+
+if parsed.Type != msg.Type {
+t.Errorf("Expected type %s, got %s", msg.Type, parsed.Type)
+}
+}
+
+func TestUnmarshalFast(t *testing.T) {
+original := &Message{
+Type: MessageTypeResponse,
+ID:   "resp-1",
+}
+
+data, err := sonic.Marshal(original)
+if err != nil {
+t.Fatalf("Failed to marshal: %v", err)
+}
+
+msg, err := UnmarshalFast(data)
+if err != nil {
+t.Fatalf("UnmarshalFast failed: %v", err)
+}
+
+if msg.Type != original.Type {
+t.Errorf("Expected type %s, got %s", original.Type, msg.Type)
+}
+if msg.ID != original.ID {
+t.Errorf("Expected ID %s, got %s", original.ID, msg.ID)
+}
+
+// Message should be returned to pool
+PutMessage(msg)
+}
+
+func TestPutMessage(t *testing.T) {
+msg := GetMessage()
+msg.Type = MessageTypeEvent
+msg.ID = "event-1"
+
+// PutMessage should reset fields
+PutMessage(msg)
+
+// Get another message from pool
+msg2 := GetMessage()
+
+// Fields should be reset
+if msg2.Type != "" {
+t.Errorf("Expected Type to be empty after PutMessage, got %s", msg2.Type)
+}
+if msg2.ID != "" {
+t.Errorf("Expected ID to be empty after PutMessage, got %s", msg2.ID)
+}
 }

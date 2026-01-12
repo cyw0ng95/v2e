@@ -84,3 +84,13 @@ MANIFEST
 .coverage.*
 htmlcov/
 .hypothesis/
+
+# Integration test logs
+logs/
+
+# Binaries (not source directories)
+/access
+/broker
+/cve-local
+/cve-remote
+/cve-meta

@@ -24,7 +24,7 @@ func (t *NVDTime) UnmarshalJSON(b []byte) error {
 		t.Time = time.Time{}
 		return nil
 	}
-	
+
 	// Try parsing with the NVD format first
 	parsed, err := time.Parse(nvdTimeFormat, s)
 	if err != nil {
@@ -53,12 +53,12 @@ func NewNVDTime(t time.Time) NVDTime {
 
 // CVEResponse represents the top-level response from the NVD API
 type CVEResponse struct {
-	ResultsPerPage  int       `json:"resultsPerPage"`
-	StartIndex      int       `json:"startIndex"`
-	TotalResults    int       `json:"totalResults"`
-	Format          string    `json:"format"`
-	Version         string    `json:"version"`
-	Timestamp       NVDTime   `json:"timestamp"`
+	ResultsPerPage  int     `json:"resultsPerPage"`
+	StartIndex      int     `json:"startIndex"`
+	TotalResults    int     `json:"totalResults"`
+	Format          string  `json:"format"`
+	Version         string  `json:"version"`
+	Timestamp       NVDTime `json:"timestamp"`
 	Vulnerabilities []struct {
 		CVE CVEItem `json:"cve"`
 	} `json:"vulnerabilities"`
