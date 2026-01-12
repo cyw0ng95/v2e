@@ -57,13 +57,14 @@ class AccessClient:
         response.raise_for_status()
         return response.json()
     
-    def rpc_call(self, method: str, params: Dict[str, Any] = None, target: str = None) -> Dict[str, Any]:
+    def rpc_call(self, method: str, params: Dict[str, Any] = None, target: str = None, verbose: bool = True) -> Dict[str, Any]:
         """Make a generic RPC call to the broker via the access service.
         
         Args:
             method: RPC method name (e.g., "RPCGetMessageStats")
             params: Optional parameters for the RPC call
             target: Optional target process (defaults to "broker")
+            verbose: Whether to print request/response details (default: True)
             
         Returns:
             Response in format: {"retcode": int, "message": str, "payload": any}
@@ -75,7 +76,22 @@ class AccessClient:
         }
         if target:
             request_body["target"] = target
+        
+        # Log the HTTP request
+        if verbose:
+            print(f"  [HTTP REQUEST]")
+            print(f"    POST {url}")
+            print(f"    Headers: {{'Content-Type': 'application/json'}}")
+            print(f"    Body: {request_body}")
+        
         response = requests.post(url, json=request_body)
+        
+        # Log the HTTP response
+        if verbose:
+            print(f"  [HTTP RESPONSE]")
+            print(f"    Status: {response.status_code} {response.reason}")
+            print(f"    Body: {response.text[:500]}{'...' if len(response.text) > 500 else ''}")
+        
         response.raise_for_status()
         return response.json()
     

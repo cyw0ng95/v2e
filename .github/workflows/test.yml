@@ -125,6 +125,15 @@ jobs:
       
       - name: Run integration tests via build.sh
         run: ./build.sh -i -v
+        env:
+          # Include slow tests that make NVD API calls
+          PYTEST_ARGS: "-v -s"
+      
+      - name: Run slow integration tests
+        run: |
+          # Run slow tests separately with extended timeout
+          pytest tests/ -v -s -m slow --timeout=300
+        continue-on-error: true  # Don't fail the build if NVD API is rate-limited
       
       - name: Upload integration test logs
         if: always()
