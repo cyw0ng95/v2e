@@ -248,6 +248,84 @@ class TestRPCBenchmarks:
         # List operation should be reasonably fast
         assert stats["mean_ms"] < 500, f"List operation too slow: {stats['mean_ms']:.2f}ms"
         assert stats["p95_ms"] < 1000, f"P95 latency too high: {stats['p95_ms']:.2f}ms"
+    
+    def test_benchmark_rpc_count_cves(self, access_service):
+        """Benchmark RPCCountCVEs endpoint.
+        
+        This measures the performance of counting CVEs in the database,
+        which is typically faster than listing as it only returns a count.
+        """
+        access = access_service
+        
+        print("\n  → Benchmarking RPCCountCVEs (100 iterations)...")
+        
+        def count_cves_call():
+            response = access.rpc_call(
+                "RPCCountCVEs",
+                params={},
+                target="cve-meta",
+                verbose=False
+            )
+            assert response["retcode"] == 0
+        
+        stats = measure_rpc_performance(count_cves_call, iterations=100, verbose=True)
+        print_benchmark_results("RPCCountCVEs", stats)
+        
+        # Count operation should be very fast
+        assert stats["mean_ms"] < 300, f"Count operation too slow: {stats['mean_ms']:.2f}ms"
+        assert stats["p95_ms"] < 600, f"P95 latency too high: {stats['p95_ms']:.2f}ms"
+    
+    def test_benchmark_rpc_is_cve_stored(self, access_service):
+        """Benchmark RPCIsCVEStoredByID endpoint.
+        
+        This measures the performance of checking if a CVE exists in local storage,
+        which should be a fast database lookup operation.
+        """
+        access = access_service
+        
+        print("\n  → Benchmarking RPCIsCVEStoredByID (100 iterations)...")
+        
+        def is_stored_call():
+            response = access.rpc_call(
+                "RPCIsCVEStoredByID",
+                params={"cve_id": "CVE-2021-44228"},
+                target="cve-local",
+                verbose=False
+            )
+            assert response["retcode"] == 0
+        
+        stats = measure_rpc_performance(is_stored_call, iterations=100, verbose=True)
+        print_benchmark_results("RPCIsCVEStoredByID", stats)
+        
+        # Existence check should be very fast
+        assert stats["mean_ms"] < 200, f"Existence check too slow: {stats['mean_ms']:.2f}ms"
+        assert stats["p95_ms"] < 400, f"P95 latency too high: {stats['p95_ms']:.2f}ms"
+    
+    def test_benchmark_rpc_large_list(self, access_service):
+        """Benchmark RPCListCVEs with larger page size.
+        
+        This measures the performance of listing more CVEs at once,
+        which tests how the system handles larger payload responses.
+        """
+        access = access_service
+        
+        print("\n  → Benchmarking RPCListCVEs with limit=50 (100 iterations)...")
+        
+        def large_list_call():
+            response = access.rpc_call(
+                "RPCListCVEs",
+                params={"offset": 0, "limit": 50},
+                target="cve-meta",
+                verbose=False
+            )
+            assert response["retcode"] == 0
+        
+        stats = measure_rpc_performance(large_list_call, iterations=100, verbose=True)
+        print_benchmark_results("RPCListCVEs (limit=50)", stats)
+        
+        # Larger list should still be reasonably fast
+        assert stats["mean_ms"] < 1000, f"Large list operation too slow: {stats['mean_ms']:.2f}ms"
+        assert stats["p95_ms"] < 2000, f"P95 latency too high: {stats['p95_ms']:.2f}ms"
 
 
 @pytest.mark.benchmark
@@ -281,7 +359,7 @@ class TestRPCBenchmarksSummary:
         benchmarks = []
         
         # Benchmark 1: Health endpoint
-        print("Running benchmark 1/5: Health endpoint...")
+        print("Running benchmark 1/9: Health endpoint...")
         stats = measure_rpc_performance(
             lambda: access.health(),
             iterations=100
@@ -289,7 +367,7 @@ class TestRPCBenchmarksSummary:
         benchmarks.append(("Health Endpoint", stats))
         
         # Benchmark 2: Message stats
-        print("Running benchmark 2/5: RPCGetMessageStats...")
+        print("Running benchmark 2/9: RPCGetMessageStats...")
         stats = measure_rpc_performance(
             lambda: access.rpc_call("RPCGetMessageStats", verbose=False),
             iterations=100
@@ -297,15 +375,41 @@ class TestRPCBenchmarksSummary:
         benchmarks.append(("RPCGetMessageStats", stats))
         
         # Benchmark 3: Message count
-        print("Running benchmark 3/5: RPCGetMessageCount...")
+        print("Running benchmark 3/9: RPCGetMessageCount...")
         stats = measure_rpc_performance(
             lambda: access.rpc_call("RPCGetMessageCount", verbose=False),
             iterations=100
         )
         benchmarks.append(("RPCGetMessageCount", stats))
         
-        # Benchmark 4: List CVEs
-        print("Running benchmark 4/5: RPCListCVEs...")
+        # Benchmark 4: Count CVEs
+        print("Running benchmark 4/9: RPCCountCVEs...")
+        stats = measure_rpc_performance(
+            lambda: access.rpc_call(
+                "RPCCountCVEs",
+                params={},
+                target="cve-meta",
+                verbose=False
+            ),
+            iterations=100
+        )
+        benchmarks.append(("RPCCountCVEs", stats))
+        
+        # Benchmark 5: Is CVE Stored
+        print("Running benchmark 5/9: RPCIsCVEStoredByID...")
+        stats = measure_rpc_performance(
+            lambda: access.rpc_call(
+                "RPCIsCVEStoredByID",
+                params={"cve_id": "CVE-2021-44228"},
+                target="cve-local",
+                verbose=False
+            ),
+            iterations=100
+        )
+        benchmarks.append(("RPCIsCVEStoredByID", stats))
+        
+        # Benchmark 6: List CVEs (small)
+        print("Running benchmark 6/9: RPCListCVEs (limit=10)...")
         stats = measure_rpc_performance(
             lambda: access.rpc_call(
                 "RPCListCVEs",
@@ -317,8 +421,21 @@ class TestRPCBenchmarksSummary:
         )
         benchmarks.append(("RPCListCVEs (limit=10)", stats))
         
-        # Benchmark 5: Get CVE (if available)
-        print("Running benchmark 5/5: RPCGetCVE...")
+        # Benchmark 7: List CVEs (large)
+        print("Running benchmark 7/9: RPCListCVEs (limit=50)...")
+        stats = measure_rpc_performance(
+            lambda: access.rpc_call(
+                "RPCListCVEs",
+                params={"offset": 0, "limit": 50},
+                target="cve-meta",
+                verbose=False
+            ),
+            iterations=100
+        )
+        benchmarks.append(("RPCListCVEs (limit=50)", stats))
+        
+        # Benchmark 8: Get CVE (if available)
+        print("Running benchmark 8/9: RPCGetCVE...")
         try:
             stats = measure_rpc_performance(
                 lambda: access.rpc_call(
@@ -332,6 +449,19 @@ class TestRPCBenchmarksSummary:
             benchmarks.append(("RPCGetCVE (CVE-2021-44228)", stats))
         except Exception as e:
             print(f"  Skipped: {e}")
+        
+        # Benchmark 9: Pagination test (offset > 0)
+        print("Running benchmark 9/9: RPCListCVEs with offset...")
+        stats = measure_rpc_performance(
+            lambda: access.rpc_call(
+                "RPCListCVEs",
+                params={"offset": 10, "limit": 10},
+                target="cve-meta",
+                verbose=False
+            ),
+            iterations=100
+        )
+        benchmarks.append(("RPCListCVEs (offset=10)", stats))
         
         # Print summary table
         print("\n")
