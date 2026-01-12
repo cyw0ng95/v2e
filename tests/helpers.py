@@ -146,6 +146,55 @@ class AccessClient:
         result = self.rpc_call("RPCGetCVE", params={"cve_id": cve_id}, target="cve-meta")
         return result
     
+    def create_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Create CVE by fetching from NVD and saving locally.
+        
+        Args:
+            cve_id: The CVE ID to fetch and create (e.g., "CVE-2021-44228")
+            
+        Returns:
+            Response with success flag and CVE data
+        """
+        result = self.rpc_call("RPCCreateCVE", params={"cve_id": cve_id}, target="cve-meta")
+        return result
+    
+    def update_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Update CVE by refetching from NVD.
+        
+        Args:
+            cve_id: The CVE ID to update (e.g., "CVE-2021-44228")
+            
+        Returns:
+            Response with success flag and updated CVE data
+        """
+        result = self.rpc_call("RPCUpdateCVE", params={"cve_id": cve_id}, target="cve-meta")
+        return result
+    
+    def delete_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Delete CVE from local storage.
+        
+        Args:
+            cve_id: The CVE ID to delete (e.g., "CVE-2021-44228")
+            
+        Returns:
+            Response with success flag
+        """
+        result = self.rpc_call("RPCDeleteCVE", params={"cve_id": cve_id}, target="cve-meta")
+        return result
+    
+    def list_cves(self, offset: int = 0, limit: int = 10) -> Dict[str, Any]:
+        """List CVEs from local storage with pagination.
+        
+        Args:
+            offset: Starting index for pagination (default: 0)
+            limit: Number of items to return (default: 10)
+            
+        Returns:
+            Response with CVE list, total count, and pagination info
+        """
+        result = self.rpc_call("RPCListCVEs", params={"offset": offset, "limit": limit}, target="cve-meta")
+        return result
+    
     def wait_for_ready(self, timeout: int = 10) -> bool:
         """Wait for the access service to be ready.
         

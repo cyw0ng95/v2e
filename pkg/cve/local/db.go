@@ -1,12 +1,13 @@
 package local
 
 import (
-	"github.com/bytedance/sonic"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // DB represents the database connection
@@ -28,7 +29,11 @@ type CVERecord struct {
 // NewDB creates a new database connection
 // dbPath is the path to the SQLite database file (e.g., "cve.db")
 func NewDB(dbPath string) (*DB, error) {
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	// Disable GORM logging to prevent interference with RPC message parsing
+	// When running as a subprocess, stdout is used for RPC messages only
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +131,18 @@ func (d *DB) Count() (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// DeleteCVE deletes a CVE from the database by ID
+func (d *DB) DeleteCVE(cveID string) error {
+	result := d.db.Where("cve_id = ?", cveID).Delete(&CVERecord{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // Close closes the database connection
