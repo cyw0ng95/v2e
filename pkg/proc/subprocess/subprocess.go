@@ -15,7 +15,6 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -102,28 +101,17 @@ type Subprocess struct {
 	
 	// disableBatching disables message batching (for tests)
 	disableBatching bool
-	
-	// outputFile cached file descriptor for writev optimization
-	outputFile *os.File
-	
-	// bufferPool for writev buffer reuse
-	bufferPool [][]byte
-	
-	// newline constant for reuse
-	newline []byte
 }
 
 // New creates a new Subprocess instance
 func New(id string) *Subprocess {
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &Subprocess{
-		ID:         id,
-		handlers:   make(map[string]Handler),
-		ctx:        ctx,
-		cancel:     cancel,
-		outChan:    make(chan []byte, 100), // Buffered channel for message batching
-		bufferPool: make([][]byte, 0, 20),  // Pre-allocate buffer pool
-		newline:    []byte{'\n'},           // Reusable newline
+		ID:       id,
+		handlers: make(map[string]Handler),
+		ctx:      ctx,
+		cancel:   cancel,
+		outChan:  make(chan []byte, 100), // Buffered channel for message batching
 	}
 
 	// Check if custom FDs are specified via environment variables
@@ -147,7 +135,6 @@ func New(id string) *Subprocess {
 			if inputFile != nil && outputFile != nil {
 				sp.input = inputFile
 				sp.output = outputFile
-				sp.outputFile = outputFile // Cache for writev
 				return sp
 			}
 		}
@@ -158,7 +145,6 @@ func New(id string) *Subprocess {
 	// Fallback to stdin/stdout if custom FDs are not specified or failed to open
 	sp.input = os.Stdin
 	sp.output = os.Stdout
-	sp.outputFile = os.Stdout // Cache for writev
 	return sp
 }
 
@@ -174,12 +160,6 @@ func (s *Subprocess) SetOutput(w io.Writer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.output = w
-	// Try to cache as file for writev optimization
-	if file, ok := w.(*os.File); ok {
-		s.outputFile = file
-	} else {
-		s.outputFile = nil
-	}
 	// Disable batching when output is set (typically for testing)
 	s.disableBatching = true
 }
@@ -356,7 +336,6 @@ func (s *Subprocess) messageWriter() {
 }
 
 // flushBatch writes all batched messages in a single operation
-// Uses writev() for zero-copy scatter-gather I/O when possible
 func (s *Subprocess) flushBatch(batch [][]byte) {
 	if len(batch) == 0 {
 		return
@@ -365,55 +344,13 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	
-	// Use cached outputFile for writev optimization
-	if s.outputFile != nil {
-		if err := s.flushBatchWritev(batch); err == nil {
-			return
-		}
-		// Fall through to regular write on error
-	}
-	
-	// Fallback: write messages directly as bytes to avoid string conversion
-	// Write data and newline separately to avoid modifying original slice
 	for _, data := range batch {
-		if _, err := s.output.Write(data); err != nil {
+		// Write each message as a single line
+		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+			// Log error but continue processing
 			fmt.Fprintf(os.Stderr, "Failed to write message: %v\n", err)
-			continue
-		}
-		if _, err := s.output.Write(s.newline); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to write newline: %v\n", err)
 		}
 	}
-}
-
-// flushBatchWritev uses writev() for scatter-gather I/O
-// This writes multiple buffers in a single syscall, reducing overhead
-func (s *Subprocess) flushBatchWritev(batch [][]byte) error {
-	// Reuse buffer pool to avoid allocations
-	buffers := s.bufferPool[:0]
-	
-	for _, data := range batch {
-		if len(data) == 0 {
-			continue
-		}
-		// Add message data and newline (reuse the same newline slice)
-		buffers = append(buffers, data, s.newline)
-	}
-	
-	if len(buffers) == 0 {
-		return nil
-	}
-	
-	// Write all buffers in a single syscall using writev()
-	// This is zero-copy scatter-gather I/O
-	_, err := unix.Writev(int(s.outputFile.Fd()), buffers)
-	
-	// Store back in pool if not too large
-	if cap(buffers) <= 40 {
-		s.bufferPool = buffers[:0]
-	}
-	
-	return err
 }
 
 // SendMessage sends a message to the broker via stdout
@@ -435,12 +372,8 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 	if s.disableBatching {
 		s.writeMu.Lock()
 		defer s.writeMu.Unlock()
-		// Write bytes directly to avoid string conversion
-		if _, err := s.output.Write(data); err != nil {
+		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
 			return fmt.Errorf("failed to write message: %w", err)
-		}
-		if _, err := s.output.Write([]byte{'\n'}); err != nil {
-			return fmt.Errorf("failed to write newline: %w", err)
 		}
 		return nil
 	}
