@@ -241,8 +241,9 @@ run_rpc_benchmarks() {
         
         # First, ensure binaries are built
         echo "Building binaries for benchmark tests..."
-        build_and_package > /dev/null 2>&1 || {
-            echo "Failed to build binaries. Please run './build.sh -p' first."
+        BUILD_LOG="$BUILD_DIR/benchmark-build.log"
+        build_and_package > "$BUILD_LOG" 2>&1 || {
+            echo "Failed to build binaries. Check $BUILD_LOG for details."
             return 1
         }
         

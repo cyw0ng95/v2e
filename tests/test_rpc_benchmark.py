@@ -67,6 +67,10 @@ def measure_rpc_performance(
     sorted_timings = sorted(timings)
     n = len(sorted_timings)
     
+    # Use statistics.quantiles for accurate percentile calculations
+    # quantiles(data, n=100) returns 99 cut points for percentiles
+    quantile_values = statistics.quantiles(sorted_timings, n=100)
+    
     return {
         "iterations": n,
         "failed": iterations - n,
@@ -74,8 +78,8 @@ def measure_rpc_performance(
         "max_ms": sorted_timings[-1],
         "mean_ms": statistics.mean(sorted_timings),
         "median_ms": statistics.median(sorted_timings),
-        "p95_ms": sorted_timings[int((n - 1) * 0.95)] if n > 0 else 0,
-        "p99_ms": sorted_timings[int((n - 1) * 0.99)] if n > 0 else 0,
+        "p95_ms": quantile_values[94] if n >= 100 else sorted_timings[int(n * 0.95)],  # P95 is at index 94
+        "p99_ms": quantile_values[98] if n >= 100 else sorted_timings[int(n * 0.99)],  # P99 is at index 98
         "total_time_s": sum(sorted_timings) / 1000
     }
 
@@ -338,7 +342,9 @@ class TestRPCBenchmarksSummary:
         print("-" * 80)
         
         for name, stats in benchmarks:
-            print(f"{name:<35} {stats['mean_ms']:>12.2f}ms {stats['median_ms']:>12.2f}ms {stats['p95_ms']:>12.2f}ms {stats['p99_ms']:>12.2f}ms")
+            # Truncate endpoint name if longer than 35 characters
+            display_name = name[:35] if len(name) <= 35 else name[:32] + "..."
+            print(f"{display_name:<35} {stats['mean_ms']:>12.2f}ms {stats['median_ms']:>12.2f}ms {stats['p95_ms']:>12.2f}ms {stats['p99_ms']:>12.2f}ms")
         
         print("=" * 80)
         
