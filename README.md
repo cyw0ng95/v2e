@@ -1134,6 +1134,22 @@ pytest tests/ -v -m "not slow and not benchmark"
 
 The simplified CI pipeline provides fast feedback to developers with unit and integration tests only.
 
+## Performance
+
+The v2e broker system has been optimized for low-latency message passing. See [PERFORMANCE.md](PERFORMANCE.md) for detailed analysis and benchmarks.
+
+**Key Performance Metrics:**
+- **Message round-trip latency**: ~2 microseconds (small messages)
+- **Memory allocations**: 17 per one-way message, 34 per RPC round-trip
+- **Throughput**: >500,000 messages/second (concurrent)
+
+**Optimizations Applied:**
+- Direct byte writes (no string conversions)
+- Efficient scanner usage (scanner.Bytes() vs scanner.Text())
+- Minimal memory allocations in hot paths
+
+For more details on message copy operations and optimization opportunities, see [PERFORMANCE.md](PERFORMANCE.md).
+
 ## License
 
 MIT
