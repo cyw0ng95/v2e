@@ -173,14 +173,15 @@ func (s *Subprocess) Run() error {
 		default:
 		}
 
-		line := scanner.Text()
-		if line == "" {
+		// Use Bytes() instead of Text() to avoid string conversion
+		lineBytes := scanner.Bytes()
+		if len(lineBytes) == 0 {
 			continue
 		}
 
-		// Parse the message
+		// Parse the message directly from bytes
 		var msg Message
-		if err := sonic.Unmarshal([]byte(line), &msg); err != nil {
+		if err := sonic.Unmarshal(lineBytes, &msg); err != nil {
 			// Send error response
 			errMsg := &Message{
 				Type:  MessageTypeError,
@@ -263,9 +264,12 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Write the message as a single line
-	if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+	// Write bytes directly with newline, avoiding string conversion
+	if _, err := s.output.Write(data); err != nil {
 		return fmt.Errorf("failed to write message: %w", err)
+	}
+	if _, err := s.output.Write([]byte{'\n'}); err != nil {
+		return fmt.Errorf("failed to write newline: %w", err)
 	}
 
 	return nil

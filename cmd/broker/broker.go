@@ -469,13 +469,14 @@ func (b *Broker) readProcessMessages(p *Process) {
 	buf := make([]byte, proc.MaxMessageSize)
 	scanner.Buffer(buf, proc.MaxMessageSize)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
+		// Use Bytes() instead of Text() to avoid string conversion
+		lineBytes := scanner.Bytes()
+		if len(lineBytes) == 0 {
 			continue
 		}
 
-		// Parse the message
-		msg, err := proc.Unmarshal([]byte(line))
+		// Parse the message directly from bytes
+		msg, err := proc.Unmarshal(lineBytes)
 		if err != nil {
 			b.logger.Warn("Failed to parse message from process %s: %v", p.info.ID, err)
 			continue
@@ -525,8 +526,12 @@ func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if _, err := fmt.Fprintf(stdin, "%s\n", string(data)); err != nil {
+	// Write bytes directly with newline, avoiding string conversion
+	if _, err := stdin.Write(data); err != nil {
 		return fmt.Errorf("failed to write message to process: %w", err)
+	}
+	if _, err := stdin.Write([]byte{'\n'}); err != nil {
+		return fmt.Errorf("failed to write newline to process: %w", err)
 	}
 
 	b.logger.Debug("Sent message to process %s: type=%s id=%s", processID, msg.Type, msg.ID)
