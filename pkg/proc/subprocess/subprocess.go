@@ -88,14 +88,42 @@ type Subprocess struct {
 // New creates a new Subprocess instance
 func New(id string) *Subprocess {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Subprocess{
+	sp := &Subprocess{
 		ID:       id,
 		handlers: make(map[string]Handler),
-		input:    os.Stdin,
-		output:   os.Stdout,
 		ctx:      ctx,
 		cancel:   cancel,
 	}
+
+	// Check if custom FDs are specified via environment variables
+	// If RPC_INPUT_FD and RPC_OUTPUT_FD are set, use them for RPC communication
+	// This allows the broker to pass custom file descriptors (fd 3, 4) instead of stdin/stdout (fd 0, 1)
+	inputFD := os.Getenv("RPC_INPUT_FD")
+	outputFD := os.Getenv("RPC_OUTPUT_FD")
+
+	if inputFD != "" && outputFD != "" {
+		// Use custom file descriptors for RPC communication
+		// The broker passes these via ExtraFiles, so they are already open
+		var inputFDNum, outputFDNum int
+		if _, err := fmt.Sscanf(inputFD, "%d", &inputFDNum); err == nil {
+			if _, err := fmt.Sscanf(outputFD, "%d", &outputFDNum); err == nil {
+				// Open the file descriptors that were inherited from parent
+				inputFile := os.NewFile(uintptr(inputFDNum), "rpc-input")
+				outputFile := os.NewFile(uintptr(outputFDNum), "rpc-output")
+				
+				if inputFile != nil && outputFile != nil {
+					sp.input = inputFile
+					sp.output = outputFile
+					return sp
+				}
+			}
+		}
+	}
+
+	// Fallback to stdin/stdout if custom FDs are not specified or failed to open
+	sp.input = os.Stdin
+	sp.output = os.Stdout
+	return sp
 }
 
 // SetInput sets the input stream for the subprocess
