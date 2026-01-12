@@ -202,6 +202,113 @@ class TestBrokerMessageStats:
         assert response["payload"] is None
 
 
+@pytest.mark.integration
+class TestCVEMetaService:
+    """Integration tests for cve-meta service via RESTful API.
+    
+    These tests verify:
+    - CVE meta service is accessible via REST API through broker routing
+    - All RPC methods work correctly using RESTful style
+    - Responses follow the standardized format
+    """
+    
+    def test_rpc_get_cve_with_valid_id(self, access_service):
+        """Test RPCGetCVE with a valid CVE ID via RESTful API.
+        
+        This verifies:
+        - POST /restful/rpc endpoint can route to cve-meta service
+        - cve-meta service processes RPCGetCVE requests
+        - Response uses standardized format: {retcode, message, payload}
+        - Payload contains CVE data
+        """
+        access = access_service
+        
+        # Call RPCGetCVE via RESTful API with target=cve-meta
+        response = access.get_cve("CVE-2021-44228")
+        
+        # Verify standardized response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert "payload" in response
+        
+        # Verify success
+        assert response["retcode"] == 0
+        assert response["message"] == "success"
+        
+        # Verify payload has CVE data structure
+        payload = response["payload"]
+        assert payload is not None
+        assert "id" in payload or "ID" in payload
+        
+        # Check that the CVE ID matches what we requested
+        cve_id = payload.get("id") or payload.get("ID")
+        assert cve_id == "CVE-2021-44228"
+    
+    def test_rpc_get_cve_missing_cve_id(self, access_service):
+        """Test RPCGetCVE with missing cve_id parameter.
+        
+        This verifies:
+        - cve-meta service validates required parameters
+        - Proper error response when cve_id is missing
+        """
+        access = access_service
+        
+        # Call RPCGetCVE without cve_id parameter
+        response = access.rpc_call("RPCGetCVE", params={}, target="cve-meta")
+        
+        # Verify error response
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 500  # Error
+        assert "cve_id" in response["message"].lower() or "required" in response["message"].lower()
+    
+    def test_rpc_get_cve_empty_cve_id(self, access_service):
+        """Test RPCGetCVE with empty cve_id parameter.
+        
+        This verifies:
+        - cve-meta service validates parameter values
+        - Proper error response when cve_id is empty
+        """
+        access = access_service
+        
+        # Call RPCGetCVE with empty cve_id
+        response = access.get_cve("")
+        
+        # Verify error response
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 500  # Error
+        assert "cve_id" in response["message"].lower() or "required" in response["message"].lower()
+    
+    def test_rpc_get_cve_multiple_requests(self, access_service):
+        """Test multiple RPCGetCVE requests via RESTful API.
+        
+        This verifies:
+        - cve-meta service handles multiple sequential requests
+        - No memory leaks or connection issues
+        - Consistent response format across requests
+        """
+        access = access_service
+        
+        cve_ids = ["CVE-2021-44228", "CVE-2021-45046", "CVE-2022-12345"]
+        
+        for cve_id in cve_ids:
+            response = access.get_cve(cve_id)
+            
+            # Verify standardized response structure
+            assert response["retcode"] == 0
+            assert response["message"] == "success"
+            assert "payload" in response
+            
+            # Verify CVE ID matches
+            payload = response["payload"]
+            returned_id = payload.get("id") or payload.get("ID")
+            assert returned_id == cve_id
+            
+            # Small delay between requests
+            time.sleep(0.1)
+
+
 # TODO: Additional integration tests for CVE functionality will be added
 # once RPC forwarding is implemented in the access service (tracked in issue #74).
 # Currently, the access service only provides a health check endpoint.

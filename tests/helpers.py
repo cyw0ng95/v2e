@@ -57,12 +57,13 @@ class AccessClient:
         response.raise_for_status()
         return response.json()
     
-    def rpc_call(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    def rpc_call(self, method: str, params: Dict[str, Any] = None, target: str = None) -> Dict[str, Any]:
         """Make a generic RPC call to the broker via the access service.
         
         Args:
             method: RPC method name (e.g., "RPCGetMessageStats")
             params: Optional parameters for the RPC call
+            target: Optional target process (defaults to "broker")
             
         Returns:
             Response in format: {"retcode": int, "message": str, "payload": any}
@@ -72,6 +73,8 @@ class AccessClient:
             "method": method,
             "params": params or {}
         }
+        if target:
+            request_body["target"] = target
         response = requests.post(url, json=request_body)
         response.raise_for_status()
         return response.json()
@@ -98,6 +101,20 @@ class AccessClient:
             Total message count (sent + received)
         """
         result = self.rpc_call("RPCGetMessageCount")
+        return result
+    
+    def get_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Get CVE data via cve-meta service.
+        
+        This calls the cve-meta service which orchestrates cve-local and cve-remote.
+        
+        Args:
+            cve_id: The CVE ID to retrieve (e.g., "CVE-2021-44228")
+            
+        Returns:
+            CVE data in standardized response format
+        """
+        result = self.rpc_call("RPCGetCVE", params={"cve_id": cve_id}, target="cve-meta")
         return result
     
     def wait_for_ready(self, timeout: int = 10) -> bool:
