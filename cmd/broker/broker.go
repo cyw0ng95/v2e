@@ -993,19 +993,8 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 		msg.Source = sourceProcess
 	}
 
-	// If message has a target, route it to that process or broker
-	if msg.Target != "" {
-		// Special case: if target is "broker", process it locally
-		if msg.Target == "broker" {
-			b.logger.Debug("Routing message to broker for local processing: type=%s id=%s from=%s", msg.Type, msg.ID, msg.Source)
-			return b.ProcessMessage(msg)
-		}
-
-		b.logger.Debug("Routing message from %s to %s: type=%s id=%s", msg.Source, msg.Target, msg.Type, msg.ID)
-		return b.SendToProcess(msg.Target, msg)
-	}
-
-	// If message is a response with correlation ID, route it back to the pending request
+	// If message is a response with correlation ID, route it back to the pending request FIRST
+	// This takes priority over Target-based routing to ensure responses go to the right waiting caller
 	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
 		b.pendingMu.Lock()
 		pending, exists := b.pendingRequests[msg.CorrelationID]
@@ -1023,8 +1012,20 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 				return fmt.Errorf("timeout sending response to pending request")
 			}
 		}
-		b.logger.Warn("Received response with unknown correlation ID: %s", msg.CorrelationID)
-		return fmt.Errorf("unknown correlation ID: %s", msg.CorrelationID)
+		// If no pending request found, fall through to target-based routing
+		b.logger.Debug("No pending request found for correlation_id=%s, trying target-based routing", msg.CorrelationID)
+	}
+
+	// If message has a target, route it to that process or broker
+	if msg.Target != "" {
+		// Special case: if target is "broker", process it locally
+		if msg.Target == "broker" {
+			b.logger.Debug("Routing message to broker for local processing: type=%s id=%s from=%s", msg.Type, msg.ID, msg.Source)
+			return b.ProcessMessage(msg)
+		}
+
+		b.logger.Debug("Routing message from %s to %s: type=%s id=%s", msg.Source, msg.Target, msg.Type, msg.ID)
+		return b.SendToProcess(msg.Target, msg)
 	}
 
 	// Otherwise, send to broker's message channel for local processing
