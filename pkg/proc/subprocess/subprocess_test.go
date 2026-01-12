@@ -345,13 +345,15 @@ func TestMessageBatching(t *testing.T) {
 	// Wait for batching ticker
 	time.Sleep(15 * time.Millisecond)
 	
-	// Messages should be written
+	// Stop the subprocess and wait for writer to finish
+	// This ensures all messages are flushed and no concurrent access to buffer
+	sp.Stop()
+	
+	// Now safe to read from output buffer
 	result := output.String()
 	lines := strings.Split(strings.TrimSpace(result), "\n")
 	
 	if len(lines) < 5 {
 		t.Errorf("Expected at least 5 messages, got %d", len(lines))
 	}
-	
-	sp.Stop()
 }
