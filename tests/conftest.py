@@ -154,8 +154,12 @@ def access_service(package_binaries, setup_logs_directory):
     
     yield client
     
-    # Cleanup
+    # Cleanup - Shutdown is initiated by terminating the broker
+    # This will cause all subprocesses to exit and attempt restart,
+    # but the broker context is canceled so restarts fail gracefully.
+    # This is expected behavior during test cleanup.
     print(f"\n  → Shutting down broker and services...")
+    print(f"  → Note: Services will exit as broker terminates (expected during cleanup)")
     process.terminate()
     try:
         process.wait(timeout=5)

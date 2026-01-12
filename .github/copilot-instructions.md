@@ -100,5 +100,31 @@ func main() {
 2. **No direct subprocess testing**: Do NOT start or test subprocesses directly without going through the broker
 3. **Use access service as gateway**: Integration tests should use the access REST API as the primary entry point
 4. **Broker spawns subprocesses**: Let the broker spawn and manage all subprocess services via configuration or REST API
+5. **RESTful testing only**: All RPC tests for backend services (like cve-meta) MUST use the RESTful API endpoint `/restful/rpc` with the `target` parameter
+
+#### Testing Backend Services via RESTful API
+
+When testing backend RPC services (cve-meta, cve-local, cve-remote), use the access service's generic RPC endpoint:
+
+```python
+# Example: Testing cve-meta service
+access = AccessClient()
+response = access.rpc_call(
+    method="RPCGetCVE",
+    target="cve-meta",  # Target the specific backend service
+    params={"cve_id": "CVE-2021-44228"}
+)
+
+# Verify standardized response format
+assert response["retcode"] == 0
+assert response["message"] == "success"
+assert response["payload"] is not None
+```
+
+The access service routes the request as follows:
+1. External test → REST API (`POST /restful/rpc`)
+2. Access service → Broker (via RPC with `target` field)
+3. Broker → Backend service (e.g., cve-meta)
+4. Response flows back through the same chain
 
 This ensures integration tests follow the same deployment model as production, where the broker is the central entry point.

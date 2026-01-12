@@ -7,6 +7,7 @@ These utilities support the broker-first architecture:
 
 import time
 import requests
+import json
 from typing import Dict, List, Any
 
 
@@ -57,12 +58,14 @@ class AccessClient:
         response.raise_for_status()
         return response.json()
     
-    def rpc_call(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    def rpc_call(self, method: str, params: Dict[str, Any] = None, target: str = None, verbose: bool = True) -> Dict[str, Any]:
         """Make a generic RPC call to the broker via the access service.
         
         Args:
             method: RPC method name (e.g., "RPCGetMessageStats")
             params: Optional parameters for the RPC call
+            target: Optional target process (defaults to "broker")
+            verbose: Whether to print request/response details (default: True)
             
         Returns:
             Response in format: {"retcode": int, "message": str, "payload": any}
@@ -72,7 +75,36 @@ class AccessClient:
             "method": method,
             "params": params or {}
         }
+        if target:
+            request_body["target"] = target
+        
+        # Log the HTTP request
+        if verbose:
+            print(f"  [HTTP REQUEST]")
+            print(f"    POST {url}")
+            print(f"    Headers: {{'Content-Type': 'application/json'}}")
+            print(f"    Body:")
+            # Pretty print the request body
+            for line in json.dumps(request_body, indent=2).split('\n'):
+                print(f"      {line}")
+        
         response = requests.post(url, json=request_body)
+        
+        # Log the HTTP response
+        if verbose:
+            print(f"  [HTTP RESPONSE]")
+            print(f"    Status: {response.status_code} {response.reason}")
+            print(f"    Body:")
+            # Pretty print the response body
+            try:
+                response_json = response.json()
+                for line in json.dumps(response_json, indent=2).split('\n'):
+                    print(f"      {line}")
+            except:
+                # If not JSON, show raw text (truncated)
+                body_text = response.text[:500] + ('...' if len(response.text) > 500 else '')
+                print(f"      {body_text}")
+        
         response.raise_for_status()
         return response.json()
     
@@ -98,6 +130,20 @@ class AccessClient:
             Total message count (sent + received)
         """
         result = self.rpc_call("RPCGetMessageCount")
+        return result
+    
+    def get_cve(self, cve_id: str) -> Dict[str, Any]:
+        """Get CVE data via cve-meta service.
+        
+        This calls the cve-meta service which orchestrates cve-local and cve-remote.
+        
+        Args:
+            cve_id: The CVE ID to retrieve (e.g., "CVE-2021-44228")
+            
+        Returns:
+            CVE data in standardized response format
+        """
+        result = self.rpc_call("RPCGetCVE", params={"cve_id": cve_id}, target="cve-meta")
         return result
     
     def wait_for_ready(self, timeout: int = 10) -> bool:

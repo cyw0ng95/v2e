@@ -76,6 +76,11 @@ func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*
 
 // InvokeRPC invokes an RPC method on the broker and waits for response
 func (c *RPCClient) InvokeRPC(ctx context.Context, method string, params interface{}) (*subprocess.Message, error) {
+	return c.InvokeRPCWithTarget(ctx, "broker", method, params)
+}
+
+// InvokeRPCWithTarget invokes an RPC method on a specific target process and waits for response
+func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error) {
 	// Generate correlation ID
 	c.mu.Lock()
 	c.correlationSeq++
@@ -112,7 +117,7 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, method string, params interfa
 		Type:          subprocess.MessageTypeRequest,
 		ID:            method,
 		Payload:       payload,
-		Target:        "broker",
+		Target:        target,
 		CorrelationID: correlationID,
 	}
 
@@ -191,13 +196,14 @@ func main() {
 
 		// Generic RPC forwarding endpoint
 		// POST /restful/rpc
-		// Request body: {"method": "RPCMethodName", "params": {...}}
+		// Request body: {"method": "RPCMethodName", "params": {...}, "target": "process-id"}
 		// Response: {"retcode": 0, "message": "success", "payload": {...}}
 		restful.POST("/rpc", func(c *gin.Context) {
 			// Parse request body
 			var request struct {
 				Method string                 `json:"method" binding:"required"`
 				Params map[string]interface{} `json:"params"`
+				Target string                 `json:"target"` // Optional target process (defaults to "broker")
 			}
 
 			if err := c.ShouldBindJSON(&request); err != nil {
@@ -209,11 +215,17 @@ func main() {
 				return
 			}
 
-			// Forward RPC request to broker
+			// Default target to broker if not specified
+			target := request.Target
+			if target == "" {
+				target = "broker"
+			}
+
+			// Forward RPC request to target process
 			ctx, cancel := context.WithTimeout(c.Request.Context(), DefaultRPCTimeout)
 			defer cancel()
 
-			response, err := rpcClient.InvokeRPC(ctx, request.Method, request.Params)
+			response, err := rpcClient.InvokeRPCWithTarget(ctx, target, request.Method, request.Params)
 			if err != nil {
 				c.JSON(http.StatusOK, gin.H{
 					"retcode": 500,
