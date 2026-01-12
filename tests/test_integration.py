@@ -226,7 +226,7 @@ class TestCVEMetaService:
         
         # Check broker is responding
         print(f"  → Testing broker availability...")
-        broker_response = access.rpc_call("RPCGetMessageStats")
+        broker_response = access.rpc_call("RPCGetMessageStats", verbose=False)
         assert broker_response["retcode"] == 0
         print(f"    ✓ Broker is responding")
         
@@ -238,15 +238,22 @@ class TestCVEMetaService:
         assert "message" in meta_response
         print(f"    ✓ cve-meta is responding (retcode: {meta_response['retcode']})")
         
+        # Check cve-local service is responding
+        print(f"  → Testing cve-local availability...")
+        local_response = access.rpc_call("RPCIsCVEStoredByID", params={"cve_id": "CVE-TEST"}, target="cve-local", verbose=False)
+        assert "retcode" in local_response
+        print(f"    ✓ cve-local is responding (retcode: {local_response['retcode']})")
+        
         # Verify services stay alive across multiple requests
         print(f"  → Verifying services remain alive across requests...")
-        for i in range(3):
-            response = access.rpc_call("RPCGetMessageCount")
+        for i in range(5):
+            print(f"    - Request {i+1}/5: Testing broker...")
+            response = access.rpc_call("RPCGetMessageCount", verbose=False)
             assert response["retcode"] == 0
-            time.sleep(0.1)
-        print(f"    ✓ Services remain alive and responsive")
+            time.sleep(0.2)
+        print(f"    ✓ Services remain alive and responsive after {5} sequential requests")
         
-        print(f"  ✓ All services are available and healthy")
+        print(f"  ✓ All services are available and healthy throughout test duration")
     
     def test_rpc_get_cve_with_valid_id(self, access_service):
         """Test RPCGetCVE with a valid CVE ID via RESTful API.

@@ -7,6 +7,7 @@ These utilities support the broker-first architecture:
 
 import time
 import requests
+import json
 from typing import Dict, List, Any
 
 
@@ -82,7 +83,10 @@ class AccessClient:
             print(f"  [HTTP REQUEST]")
             print(f"    POST {url}")
             print(f"    Headers: {{'Content-Type': 'application/json'}}")
-            print(f"    Body: {request_body}")
+            print(f"    Body:")
+            # Pretty print the request body
+            for line in json.dumps(request_body, indent=2).split('\n'):
+                print(f"      {line}")
         
         response = requests.post(url, json=request_body)
         
@@ -90,7 +94,16 @@ class AccessClient:
         if verbose:
             print(f"  [HTTP RESPONSE]")
             print(f"    Status: {response.status_code} {response.reason}")
-            print(f"    Body: {response.text[:500]}{'...' if len(response.text) > 500 else ''}")
+            print(f"    Body:")
+            # Pretty print the response body
+            try:
+                response_json = response.json()
+                for line in json.dumps(response_json, indent=2).split('\n'):
+                    print(f"      {line}")
+            except:
+                # If not JSON, show raw text (truncated)
+                body_text = response.text[:500] + ('...' if len(response.text) > 500 else '')
+                print(f"      {body_text}")
         
         response.raise_for_status()
         return response.json()
