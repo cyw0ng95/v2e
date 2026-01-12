@@ -422,6 +422,35 @@ When optimizing performance, apply these proven principles based on benchmarking
 - **Impact**: Avoids reflection and string formatting overhead
 - **Evidence**: Combined with Principle 10, reduces copy operations by 67%
 
+### Principle 13: Cache Type Assertions and Reuse Buffers
+- **When to use**: Type assertions or buffer allocations in hot paths
+- **Implementation**:
+  ```go
+  // Bad: Type assertion on every call
+  func flushBatch(batch [][]byte) {
+      if file, ok := s.output.(*os.File); ok {
+          // ...
+      }
+      buffers := make([][]byte, 0, len(batch)*2) // Allocates every time
+  }
+  
+  // Good: Cache file descriptor and reuse buffers
+  type Subprocess struct {
+      outputFile *os.File  // Cached at init
+      bufferPool [][]byte  // Reused across calls
+  }
+  
+  func (s *Subprocess) flushBatch(batch [][]byte) {
+      if s.outputFile != nil {  // No type assertion
+          buffers := s.bufferPool[:0]  // Reuse
+          // ... use buffers ...
+          s.bufferPool = buffers[:0]  // Store back
+      }
+  }
+  ```
+- **Impact**: Eliminates repeated type assertions and allocations
+- **Evidence**: Reduced allocation overhead in hot paths, improved cache locality
+
 ### Performance Optimization Checklist
 
 Before optimizing:

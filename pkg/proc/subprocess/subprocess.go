@@ -102,17 +102,28 @@ type Subprocess struct {
 	
 	// disableBatching disables message batching (for tests)
 	disableBatching bool
+	
+	// outputFile cached file descriptor for writev optimization
+	outputFile *os.File
+	
+	// bufferPool for writev buffer reuse
+	bufferPool [][]byte
+	
+	// newline constant for reuse
+	newline []byte
 }
 
 // New creates a new Subprocess instance
 func New(id string) *Subprocess {
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &Subprocess{
-		ID:       id,
-		handlers: make(map[string]Handler),
-		ctx:      ctx,
-		cancel:   cancel,
-		outChan:  make(chan []byte, 100), // Buffered channel for message batching
+		ID:         id,
+		handlers:   make(map[string]Handler),
+		ctx:        ctx,
+		cancel:     cancel,
+		outChan:    make(chan []byte, 100), // Buffered channel for message batching
+		bufferPool: make([][]byte, 0, 20),  // Pre-allocate buffer pool
+		newline:    []byte{'\n'},           // Reusable newline
 	}
 
 	// Check if custom FDs are specified via environment variables
@@ -136,6 +147,7 @@ func New(id string) *Subprocess {
 			if inputFile != nil && outputFile != nil {
 				sp.input = inputFile
 				sp.output = outputFile
+				sp.outputFile = outputFile // Cache for writev
 				return sp
 			}
 		}
@@ -146,6 +158,7 @@ func New(id string) *Subprocess {
 	// Fallback to stdin/stdout if custom FDs are not specified or failed to open
 	sp.input = os.Stdin
 	sp.output = os.Stdout
+	sp.outputFile = os.Stdout // Cache for writev
 	return sp
 }
 
@@ -161,6 +174,12 @@ func (s *Subprocess) SetOutput(w io.Writer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.output = w
+	// Try to cache as file for writev optimization
+	if file, ok := w.(*os.File); ok {
+		s.outputFile = file
+	} else {
+		s.outputFile = nil
+	}
 	// Disable batching when output is set (typically for testing)
 	s.disableBatching = true
 }
@@ -346,23 +365,22 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	
-	// Try to use writev() for file descriptor outputs (zero-copy scatter-gather I/O)
-	if file, ok := s.output.(*os.File); ok {
-		if err := s.flushBatchWritev(file, batch); err == nil {
+	// Use cached outputFile for writev optimization
+	if s.outputFile != nil {
+		if err := s.flushBatchWritev(batch); err == nil {
 			return
 		}
 		// Fall through to regular write on error
 	}
 	
 	// Fallback: write messages directly as bytes to avoid string conversion
-	// This eliminates one copy operation ([]byte -> string)
+	// Write data and newline separately to avoid modifying original slice
 	for _, data := range batch {
-		// Write the message bytes directly followed by newline
 		if _, err := s.output.Write(data); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to write message: %v\n", err)
 			continue
 		}
-		if _, err := s.output.Write([]byte{'\n'}); err != nil {
+		if _, err := s.output.Write(s.newline); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to write newline: %v\n", err)
 		}
 	}
@@ -370,18 +388,16 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 
 // flushBatchWritev uses writev() for scatter-gather I/O
 // This writes multiple buffers in a single syscall, reducing overhead
-func (s *Subprocess) flushBatchWritev(file *os.File, batch [][]byte) error {
-	// Build buffer array for writev
-	// Each message needs data + newline, so we need 2x entries
-	buffers := make([][]byte, 0, len(batch)*2)
-	newline := []byte{'\n'}
+func (s *Subprocess) flushBatchWritev(batch [][]byte) error {
+	// Reuse buffer pool to avoid allocations
+	buffers := s.bufferPool[:0]
 	
 	for _, data := range batch {
 		if len(data) == 0 {
 			continue
 		}
-		// Add message data and newline
-		buffers = append(buffers, data, newline)
+		// Add message data and newline (reuse the same newline slice)
+		buffers = append(buffers, data, s.newline)
 	}
 	
 	if len(buffers) == 0 {
@@ -390,7 +406,13 @@ func (s *Subprocess) flushBatchWritev(file *os.File, batch [][]byte) error {
 	
 	// Write all buffers in a single syscall using writev()
 	// This is zero-copy scatter-gather I/O
-	_, err := unix.Writev(int(file.Fd()), buffers)
+	_, err := unix.Writev(int(s.outputFile.Fd()), buffers)
+	
+	// Store back in pool if not too large
+	if cap(buffers) <= 40 {
+		s.bufferPool = buffers[:0]
+	}
+	
 	return err
 }
 
