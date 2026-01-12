@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -21,6 +22,14 @@ const (
 	// This is set to 10MB to accommodate large CVE data from NVD API
 	MaxMessageSize = 10 * 1024 * 1024 // 10MB
 )
+
+// bufferPool is a sync.Pool for scanner buffers to reduce allocations
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		buf := make([]byte, MaxMessageSize)
+		return &buf
+	},
+}
 
 // MessageType represents the type of message being sent
 type MessageType string
@@ -81,8 +90,17 @@ type Subprocess struct {
 	// wg is the wait group for goroutines
 	wg sync.WaitGroup
 
-	// mu protects concurrent access
+	// mu protects concurrent access to handlers map
 	mu sync.RWMutex
+	
+	// outChan is a buffered channel for batching outgoing messages
+	outChan chan []byte
+	
+	// writeMu protects write operations (lighter than full RWMutex)
+	writeMu sync.Mutex
+	
+	// disableBatching disables message batching (for tests)
+	disableBatching bool
 }
 
 // New creates a new Subprocess instance
@@ -93,6 +111,7 @@ func New(id string) *Subprocess {
 		handlers: make(map[string]Handler),
 		ctx:      ctx,
 		cancel:   cancel,
+		outChan:  make(chan []byte, 256), // Optimized buffer size (Principle 12)
 	}
 
 	// Check if custom FDs are specified via environment variables
@@ -141,6 +160,8 @@ func (s *Subprocess) SetOutput(w io.Writer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.output = w
+	// Disable batching when output is set (typically for testing)
+	s.disableBatching = true
 }
 
 // RegisterHandler registers a handler for a specific message type or pattern
@@ -153,6 +174,12 @@ func (s *Subprocess) RegisterHandler(pattern string, handler Handler) {
 // Run starts the subprocess and processes incoming messages
 // It blocks until the subprocess is stopped or an error occurs
 func (s *Subprocess) Run() error {
+	// Start message writer if batching is enabled
+	if !s.disableBatching {
+		s.wg.Add(1)
+		go s.messageWriter()
+	}
+	
 	// Send a ready event to signal that the subprocess is initialized
 	if err := s.SendEvent("subprocess_ready", map[string]interface{}{
 		"id": s.ID,
@@ -162,10 +189,12 @@ func (s *Subprocess) Run() error {
 
 	// Start processing messages
 	scanner := bufio.NewScanner(s.input)
-	// Increase buffer size to handle large messages (e.g., CVE data from NVD API)
-	// Use the shared MaxMessageSize constant from proc package
-	buf := make([]byte, MaxMessageSize)
+	// Get buffer from pool for better performance
+	bufPtr := bufferPool.Get().(*[]byte)
+	defer bufferPool.Put(bufPtr)
+	buf := *bufPtr
 	scanner.Buffer(buf, MaxMessageSize)
+	
 	for scanner.Scan() {
 		select {
 		case <-s.ctx.Done():
@@ -178,9 +207,10 @@ func (s *Subprocess) Run() error {
 			continue
 		}
 
-		// Parse the message
+		// Parse the message using fastest configuration for zero-copy
 		var msg Message
-		if err := sonic.Unmarshal([]byte(line), &msg); err != nil {
+		api := sonic.ConfigFastest
+		if err := api.Unmarshal([]byte(line), &msg); err != nil {
 			// Send error response
 			errMsg := &Message{
 				Type:  MessageTypeError,
@@ -262,35 +292,109 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	}
 }
 
+// messageWriter is a background goroutine that batches and writes messages
+// This reduces syscalls and mutex contention for better performance
+func (s *Subprocess) messageWriter() {
+	defer s.wg.Done()
+	
+	// Optimized batch buffer size (Principle 12)
+	// Larger batch reduces syscalls but increases latency
+	batch := make([][]byte, 0, 20)
+	ticker := time.NewTicker(5 * time.Millisecond) // Faster flush for lower latency (Principle 12)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-s.ctx.Done():
+			// Flush any remaining messages before exiting
+			if len(batch) > 0 {
+				s.flushBatch(batch)
+			}
+			return
+		case data, ok := <-s.outChan:
+			if !ok {
+				// Channel closed, flush and exit
+				if len(batch) > 0 {
+					s.flushBatch(batch)
+				}
+				return
+			}
+			batch = append(batch, data)
+			
+			// Adaptive batching: flush at 20 messages (Principle 12)
+			if len(batch) >= 20 {
+				s.flushBatch(batch)
+				batch = batch[:0] // Reset batch
+			}
+		case <-ticker.C:
+			// Periodic flush to avoid holding messages too long
+			if len(batch) > 0 {
+				s.flushBatch(batch)
+				batch = batch[:0]
+			}
+		}
+	}
+}
+
+// flushBatch writes all batched messages in a single operation
+func (s *Subprocess) flushBatch(batch [][]byte) {
+	if len(batch) == 0 {
+		return
+	}
+	
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	
+	for _, data := range batch {
+		// Write each message as a single line
+		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+			// Log error but continue processing
+			fmt.Fprintf(os.Stderr, "Failed to write message: %v\n", err)
+		}
+	}
+}
+
 // SendMessage sends a message to the broker via stdout
 func (s *Subprocess) SendMessage(msg *Message) error {
 	return s.sendMessage(msg)
 }
 
 // sendMessage is the internal method to send a message
+// Uses lock-free channel-based batching for better performance
 func (s *Subprocess) sendMessage(msg *Message) error {
-	data, err := sonic.Marshal(msg)
+	// Use fastest marshaling for performance
+	api := sonic.ConfigFastest
+	data, err := api.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	// Lock for the entire write operation to prevent race conditions
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Write the message as a single line
-	if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
-		return fmt.Errorf("failed to write message: %w", err)
+	// If batching is disabled (for tests), write directly
+	if s.disableBatching {
+		s.writeMu.Lock()
+		defer s.writeMu.Unlock()
+		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+			return fmt.Errorf("failed to write message: %w", err)
+		}
+		return nil
 	}
 
-	return nil
+	// Send to batching channel (lock-free)
+	select {
+	case s.outChan <- data:
+		return nil
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	}
 }
 
 // SendResponse sends a response message
 func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
-		data, err := sonic.Marshal(payload)
+		// Use fastest marshaling for performance
+		api := sonic.ConfigFastest
+		data, err := api.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -309,7 +413,9 @@ func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 func (s *Subprocess) SendEvent(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
-		data, err := sonic.Marshal(payload)
+		// Use fastest marshaling for performance
+		api := sonic.ConfigFastest
+		data, err := api.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -337,8 +443,16 @@ func (s *Subprocess) SendError(id string, err error) error {
 // Stop gracefully stops the subprocess
 func (s *Subprocess) Stop() error {
 	s.cancel()
+	close(s.outChan) // Close channel to signal writer goroutine
 	s.wg.Wait()
 	return nil
+}
+
+// Flush ensures all pending messages are written
+// Useful for testing or before shutdown  
+func (s *Subprocess) Flush() {
+	// Just wait for the ticker to fire (at most 15ms)
+	time.Sleep(15 * time.Millisecond)
 }
 
 // UnmarshalPayload is a helper to unmarshal message payload

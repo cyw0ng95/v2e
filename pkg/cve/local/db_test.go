@@ -499,3 +499,44 @@ func TestSaveCVE_WithFullData(t *testing.T) {
 		t.Errorf("Expected reference URL to be preserved, got %s", retrieved.References[0].URL)
 	}
 }
+func TestDeleteCVE(t *testing.T) {
+db, err := NewDB(":memory:")
+if err != nil {
+t.Fatalf("Failed to create DB: %v", err)
+}
+defer db.Close()
+
+// First, save a CVE
+testCVE := cve.CVEItem{
+ID: "CVE-2021-TEST",
+}
+
+if err := db.SaveCVEs([]cve.CVEItem{testCVE}); err != nil {
+t.Fatalf("Failed to save CVE: %v", err)
+}
+
+// Delete the CVE
+if err := db.DeleteCVE("CVE-2021-TEST"); err != nil {
+t.Errorf("DeleteCVE() error = %v", err)
+}
+
+// Verify it's deleted
+_, err = db.GetCVE("CVE-2021-TEST")
+if err == nil {
+t.Error("Expected error when getting deleted CVE")
+}
+}
+
+func TestDeleteCVE_NotFound(t *testing.T) {
+db, err := NewDB(":memory:")
+if err != nil {
+t.Fatalf("Failed to create DB: %v", err)
+}
+defer db.Close()
+
+// Try to delete non-existent CVE
+err = db.DeleteCVE("CVE-2021-NOTEXIST")
+if err == nil {
+t.Error("Expected error when deleting non-existent CVE")
+}
+}

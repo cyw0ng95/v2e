@@ -33,6 +33,8 @@ func NewDB(dbPath string) (*DB, error) {
 	// When running as a subprocess, stdout is used for RPC messages only
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
+		// Enable prepared statement caching for better performance
+		PrepareStmt: true,
 	})
 	if err != nil {
 		return nil, err
@@ -40,6 +42,35 @@ func NewDB(dbPath string) (*DB, error) {
 
 	// Auto-migrate the schema
 	if err := db.AutoMigrate(&CVERecord{}); err != nil {
+		return nil, err
+	}
+
+	// Configure connection pool for better performance
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	
+	// Set connection pool parameters
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	
+	// Enable WAL mode for better concurrent access (Principle 10)
+	// WAL mode allows readers and writers to work simultaneously
+	if _, err := sqlDB.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		return nil, err
+	}
+	
+	// Optimize synchronous mode for better performance (Principle 10)
+	// NORMAL is faster than FULL while still being safe
+	if _, err := sqlDB.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		return nil, err
+	}
+	
+	// Increase cache size for better query performance (Principle 10)
+	// Default is 2000 pages, we set to 10000 (about 40MB with 4KB pages)
+	if _, err := sqlDB.Exec("PRAGMA cache_size=-40000"); err != nil {
 		return nil, err
 	}
 
@@ -81,14 +112,37 @@ func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	return result.Error
 }
 
-// SaveCVEs saves multiple CVE items to the database
+// SaveCVEs saves multiple CVE items to the database using batch insert for better performance
 func (d *DB) SaveCVEs(cves []cve.CVEItem) error {
-	for _, cveItem := range cves {
-		if err := d.SaveCVE(&cveItem); err != nil {
+	if len(cves) == 0 {
+		return nil
+	}
+
+	// Pre-allocate records slice with exact capacity
+	records := make([]CVERecord, len(cves))
+	
+	for i := range cves {
+		// Marshal the full CVE data to JSON
+		// Use value type instead of pointer to avoid unnecessary allocation
+		data, err := sonic.Marshal(cves[i])
+		if err != nil {
 			return err
 		}
+
+		// Direct assignment instead of append since we pre-allocated
+		records[i] = CVERecord{
+			CVEID:        cves[i].ID,
+			SourceID:     cves[i].SourceID,
+			Published:    cves[i].Published.Time,
+			LastModified: cves[i].LastModified.Time,
+			VulnStatus:   cves[i].VulnStatus,
+			Data:         string(data),
+		}
 	}
-	return nil
+
+	// Use CreateInBatches for better performance
+	// Process 100 records at a time to balance memory and performance
+	return d.db.CreateInBatches(records, 100).Error
 }
 
 // GetCVE retrieves a CVE by ID from the database
@@ -113,13 +167,12 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 		return nil, err
 	}
 
-	cves := make([]cve.CVEItem, 0, len(records))
-	for _, record := range records {
-		var cveItem cve.CVEItem
-		if err := sonic.Unmarshal([]byte(record.Data), &cveItem); err != nil {
+	// Pre-allocate with exact capacity to avoid re-allocations
+	cves := make([]cve.CVEItem, len(records))
+	for i, record := range records {
+		if err := sonic.Unmarshal([]byte(record.Data), &cves[i]); err != nil {
 			return nil, err
 		}
-		cves = append(cves, cveItem)
 	}
 
 	return cves, nil

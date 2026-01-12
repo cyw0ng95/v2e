@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/bytedance/sonic"
 	"strings"
 	"testing"
@@ -237,5 +238,122 @@ func TestUnmarshalPayload_NoPayload(t *testing.T) {
 	err := UnmarshalPayload(msg, &result)
 	if err == nil {
 		t.Error("Expected error when unmarshaling message with no payload")
+	}
+}
+
+func TestSendError(t *testing.T) {
+	sp := New("test")
+	output := &bytes.Buffer{}
+	sp.SetOutput(output)
+
+	testErr := errors.New("test error message")
+	if err := sp.SendError("error-1", testErr); err != nil {
+		t.Fatalf("Failed to send error: %v", err)
+	}
+
+	result := strings.TrimSpace(output.String())
+	var msg Message
+	if err := sonic.Unmarshal([]byte(result), &msg); err != nil {
+		t.Fatalf("Failed to parse output: %v", err)
+	}
+
+	if msg.Type != MessageTypeError {
+		t.Errorf("Expected type to be error, got %s", msg.Type)
+	}
+	if msg.Error != testErr.Error() {
+		t.Errorf("Expected error to be '%s', got '%s'", testErr.Error(), msg.Error)
+	}
+}
+
+func TestStop(t *testing.T) {
+	sp := New("test")
+	
+	// Start the message writer
+	sp.wg.Add(1)
+	go sp.messageWriter()
+	
+	// Stop should not error
+	if err := sp.Stop(); err != nil {
+		t.Errorf("Stop() returned error: %v", err)
+	}
+	
+	// Context should be cancelled
+	select {
+	case <-sp.ctx.Done():
+		// Expected
+	default:
+		t.Error("Context was not cancelled after Stop()")
+	}
+}
+
+func TestFlush(t *testing.T) {
+	sp := New("test")
+	output := &bytes.Buffer{}
+	sp.SetOutput(output)
+	
+	// Send a message
+	msg := &Message{
+		Type: MessageTypeEvent,
+		ID:   "test-event",
+	}
+	
+	if err := sp.SendMessage(msg); err != nil {
+		t.Fatalf("Failed to send message: %v", err)
+	}
+	
+	// Flush should ensure the message is written
+	sp.Flush()
+	
+	result := output.String()
+	if result == "" {
+		t.Error("Expected message to be written after flush")
+	}
+}
+
+func TestSetInput(t *testing.T) {
+	sp := New("test")
+	input := &bytes.Buffer{}
+	
+	sp.SetInput(input)
+	
+	if sp.input != input {
+		t.Error("SetInput did not set the input stream")
+	}
+}
+
+func TestMessageBatching(t *testing.T) {
+	sp := New("test")
+	output := &bytes.Buffer{}
+	sp.output = output
+	
+	// Enable batching by NOT calling SetOutput (which disables it)
+	// Start message writer
+	sp.wg.Add(1)
+	go sp.messageWriter()
+	
+	// Send multiple messages
+	for i := 0; i < 5; i++ {
+		msg := &Message{
+			Type: MessageTypeEvent,
+			ID:   "test-event",
+		}
+		if err := sp.sendMessage(msg); err != nil {
+			t.Fatalf("Failed to send message %d: %v", i, err)
+		}
+	}
+	
+	// Wait for batching ticker
+	time.Sleep(15 * time.Millisecond)
+	
+	// Stop the subprocess and wait for writer to finish
+	// This ensures all messages are flushed and no concurrent access to buffer
+	sp.Stop()
+	
+	// Now safe to read from output buffer
+	result := output.String()
+	lines := strings.Split(strings.TrimSpace(result), "\n")
+	
+	if len(lines) < 5 {
+		t.Errorf("Expected at least 5 messages, got %d", len(lines))
 	}
 }

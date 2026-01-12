@@ -3,6 +3,7 @@ package remote
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve"
@@ -23,6 +24,14 @@ type Fetcher struct {
 func NewFetcher(apiKey string) *Fetcher {
 	client := resty.New()
 	client.SetTimeout(30 * time.Second)
+	
+	// Enable HTTP/2 and connection pooling for better performance
+	client.SetTransport(&http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+		DisableCompression:  false, // Enable compression
+	})
 
 	return &Fetcher{
 		client:  client,
@@ -106,4 +115,51 @@ func (f *Fetcher) FetchCVEs(startIndex, resultsPerPage int) (*cve.CVEResponse, e
 	}
 
 	return result, nil
+}
+
+// FetchCVEsConcurrent fetches multiple CVE IDs concurrently using a worker pool
+// Principle 11: Worker pool pattern for parallel processing
+func (f *Fetcher) FetchCVEsConcurrent(cveIDs []string, workers int) ([]*cve.CVEResponse, []error) {
+if workers <= 0 {
+workers = 5 // Default worker count
+}
+
+// Channels for job distribution and result collection
+jobs := make(chan string, len(cveIDs))
+results := make(chan *cve.CVEResponse, len(cveIDs))
+errors := make(chan error, len(cveIDs))
+
+// Start worker pool
+for w := 0; w < workers; w++ {
+go func() {
+for cveID := range jobs {
+resp, err := f.FetchCVEByID(cveID)
+if err != nil {
+errors <- err
+} else {
+results <- resp
+}
+}
+}()
+}
+
+// Send jobs
+for _, cveID := range cveIDs {
+jobs <- cveID
+}
+close(jobs)
+
+// Collect results
+var responses []*cve.CVEResponse
+var errs []error
+for i := 0; i < len(cveIDs); i++ {
+select {
+case resp := <-results:
+responses = append(responses, resp)
+case err := <-errors:
+errs = append(errs, err)
+}
+}
+
+return responses, errs
 }
