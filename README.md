@@ -871,6 +871,8 @@ Run unit tests:
 
 ```bash
 go test ./...
+# Or use build script
+./build.sh -t
 ```
 
 Run unit tests with coverage:
@@ -878,6 +880,49 @@ Run unit tests with coverage:
 ```bash
 go test -cover ./...
 ```
+
+### Performance Benchmarking
+
+The project includes comprehensive performance benchmarks for critical code paths.
+
+Run performance benchmarks:
+
+```bash
+./build.sh -m
+```
+
+This will:
+- Execute all benchmark tests across the codebase
+- Generate a human-readable report with timing and memory allocation data
+- Save results to `.build/benchmark-report.txt` and `.build/benchmark-raw.txt`
+- Highlight slowest operations and highest memory allocations
+
+The benchmark report includes:
+- System information (OS, architecture, CPU)
+- Detailed benchmark results for each function
+- Summary of slowest operations (top 10)
+- Summary of highest memory allocations (top 10)
+
+**Performance Optimization Workflow:**
+
+When optimizing performance:
+
+1. Run benchmarks to establish a baseline:
+   ```bash
+   ./build.sh -m
+   cp .build/benchmark-report.txt .build/benchmark-baseline.txt
+   ```
+
+2. Make your optimization changes
+
+3. Run benchmarks again to measure impact:
+   ```bash
+   ./build.sh -m
+   ```
+
+4. Compare results and document improvements in your commit
+
+Example benchmark results can be downloaded from GitHub Actions artifacts after each CI run.
 
 ### Integration Testing
 

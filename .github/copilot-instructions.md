@@ -90,7 +90,69 @@ func main() {
   - Security constraints (e.g., subprocesses only accepting stdin input)
 - Run `./build.sh -t` to execute unit tests
 - Run `./build.sh -i` to execute integration tests
+- Run `./build.sh -m` to execute performance benchmarks
 - Test case generation should be comprehensive and follow existing patterns in the codebase
+
+### Performance Benchmarks
+
+- Benchmark tests are written in Go using the standard `testing` package with `Benchmark*` functions
+- Benchmark files should be named `*_bench_test.go` to distinguish them from regular test files
+- Each performance-critical package should have comprehensive benchmarks covering:
+  - Common operations and use cases
+  - Edge cases that might affect performance
+  - Different payload sizes (small, medium, large)
+  - Concurrent operations where applicable
+- Use `b.ReportAllocs()` to report memory allocations
+- Use `b.ResetTimer()` to exclude setup time from measurements
+- Benchmarks are automatically run in CI/CD via GitHub Actions after unit tests pass
+
+#### Running Benchmarks
+
+To run benchmarks locally:
+```bash
+./build.sh -m          # Run all benchmarks and generate report
+./build.sh -m -v       # Run with verbose output
+```
+
+The benchmark report includes:
+- Date, host, and system information
+- Full benchmark results with timing and memory allocation data
+- Summary of slowest operations
+- Summary of highest memory allocations
+- Reports are saved to `.build/benchmark-report.txt` and `.build/benchmark-raw.txt`
+
+#### Performance Optimization Workflow
+
+**IMPORTANT**: When making performance optimizations:
+
+1. **Run benchmarks BEFORE changes**: Establish a baseline
+   ```bash
+   ./build.sh -m
+   cp .build/benchmark-report.txt .build/benchmark-baseline.txt
+   ```
+
+2. **Make your optimization changes**: Implement performance improvements
+
+3. **Run benchmarks AFTER changes**: Measure the impact
+   ```bash
+   ./build.sh -m
+   ```
+
+4. **Compare results**: Document the improvement
+   - Compare `.build/benchmark-baseline.txt` vs `.build/benchmark-report.txt`
+   - Include before/after metrics in commit messages or PR descriptions
+   - Highlight significant improvements (>10% speedup or memory reduction)
+
+5. **Example commit message**:
+   ```
+   perf: optimize message marshaling
+   
+   Reduced message marshaling time by 25% and memory allocations by 30%.
+   
+   Benchmark results:
+   - Before: BenchmarkMessageMarshal-2  500000  3000 ns/op  450 B/op
+   - After:  BenchmarkMessageMarshal-2  700000  2250 ns/op  315 B/op
+   ```
 
 ### Integration Test Constraints
 

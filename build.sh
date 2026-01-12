@@ -19,6 +19,7 @@ Usage: $0 [OPTIONS]
 Options:
     -t          Run unit tests and return result for GitHub CI
     -i          Run integration tests (requires Python and pytest)
+    -m          Run performance benchmarks and generate report
     -p          Build and package binaries with assets
     -v          Enable verbose output
     -h          Show this help message
@@ -27,6 +28,7 @@ Examples:
     $0          # Build the project
     $0 -t       # Run unit tests for CI
     $0 -i       # Run integration tests for CI
+    $0 -m       # Run performance benchmarks
     $0 -p       # Build and package binaries
     $0 -t -v    # Run unit tests with verbose output
 EOF
@@ -135,6 +137,96 @@ run_integration_tests() {
     fi
 }
 
+# Run performance benchmarks
+run_benchmarks() {
+    echo "Running performance benchmarks..."
+    setup_build_dir
+    
+    # Check if go.mod exists
+    if [ -f "go.mod" ]; then
+        BENCHMARK_OUTPUT="$BUILD_DIR/benchmark-raw.txt"
+        BENCHMARK_REPORT="$BUILD_DIR/benchmark-report.txt"
+        
+        if [ "$VERBOSE" = true ]; then
+            echo "Running go benchmarks with verbose output..."
+            # Run benchmarks with memory allocation stats
+            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
+        else
+            echo "Running go benchmarks..."
+            # Run benchmarks with memory allocation stats
+            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... > "$BENCHMARK_OUTPUT"
+        fi
+        BENCH_EXIT_CODE=$?
+        
+        # Generate human-readable report
+        if [ -f "$BENCHMARK_OUTPUT" ]; then
+            echo "Generating benchmark report..."
+            {
+                echo "======================================================================"
+                echo "                 v2e Performance Benchmark Report"
+                echo "======================================================================"
+                echo ""
+                echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+                echo "Host: $(uname -n)"
+                echo "OS: $(uname -s) $(uname -r)"
+                echo "Arch: $(uname -m)"
+                echo ""
+                echo "======================================================================"
+                echo "                        Benchmark Results"
+                echo "======================================================================"
+                echo ""
+                cat "$BENCHMARK_OUTPUT"
+                echo ""
+                echo "======================================================================"
+                echo "                          Summary"
+                echo "======================================================================"
+                echo ""
+                echo "Total benchmark functions run:"
+                grep -c "^Benchmark" "$BENCHMARK_OUTPUT" || echo "0"
+                echo ""
+                echo "Slowest operations (top 10):"
+                grep "^Benchmark" "$BENCHMARK_OUTPUT" | \
+                    awk '{print $3, $4, $1}' | \
+                    sort -rn | \
+                    head -10 | \
+                    awk '{printf "  %-50s %10s %s\n", $3, $1, $2}' || echo "  No data"
+                echo ""
+                echo "Highest memory allocations (top 10):"
+                grep "^Benchmark" "$BENCHMARK_OUTPUT" | \
+                    awk '{print $5, $6, $1}' | \
+                    sort -rn | \
+                    head -10 | \
+                    awk '{printf "  %-50s %10s %s\n", $3, $1, $2}' || echo "  No data"
+                echo ""
+                echo "======================================================================"
+                echo "Report saved to: $BENCHMARK_REPORT"
+                echo "Raw output saved to: $BENCHMARK_OUTPUT"
+                echo "======================================================================"
+            } > "$BENCHMARK_REPORT"
+            
+            if [ "$VERBOSE" = true ]; then
+                echo ""
+                cat "$BENCHMARK_REPORT"
+            else
+                echo "Benchmark report generated: $BENCHMARK_REPORT"
+            fi
+        fi
+        
+        # Return benchmark exit code for CI
+        if [ $BENCH_EXIT_CODE -eq 0 ]; then
+            echo "All benchmarks completed successfully!"
+            return 0
+        else
+            echo "Benchmarks failed!"
+            return $BENCH_EXIT_CODE
+        fi
+    else
+        echo "No go.mod found. No benchmarks to run."
+        echo "Benchmarks passed (no benchmarks found)"
+        return 0
+    fi
+}
+
 # Build and package binaries with assets
 build_and_package() {
     if [ "$VERBOSE" = true ]; then
@@ -185,15 +277,19 @@ main() {
     # Parse command line arguments
     RUN_TESTS=false
     RUN_INTEGRATION_TESTS=false
+    RUN_BENCHMARKS=false
     BUILD_PACKAGE=false
     
-    while getopts "tiphv" opt; do
+    while getopts "timphv" opt; do
         case $opt in
             t)
                 RUN_TESTS=true
                 ;;
             i)
                 RUN_INTEGRATION_TESTS=true
+                ;;
+            m)
+                RUN_BENCHMARKS=true
                 ;;
             p)
                 BUILD_PACKAGE=true
@@ -219,6 +315,9 @@ main() {
         exit $?
     elif [ "$RUN_INTEGRATION_TESTS" = true ]; then
         run_integration_tests
+        exit $?
+    elif [ "$RUN_BENCHMARKS" = true ]; then
+        run_benchmarks
         exit $?
     elif [ "$BUILD_PACKAGE" = true ]; then
         build_and_package
