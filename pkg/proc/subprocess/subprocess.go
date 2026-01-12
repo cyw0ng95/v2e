@@ -107,12 +107,12 @@ func New(id string) *Subprocess {
 		var inputFDNum, outputFDNum int
 		_, err1 := fmt.Sscanf(inputFDStr, "%d", &inputFDNum)
 		_, err2 := fmt.Sscanf(outputFDStr, "%d", &outputFDNum)
-		
+
 		if err1 == nil && err2 == nil && inputFDNum >= 0 && outputFDNum >= 0 {
 			// Open the file descriptors that were inherited from parent
 			inputFile := os.NewFile(uintptr(inputFDNum), "rpc-input")
 			outputFile := os.NewFile(uintptr(outputFDNum), "rpc-output")
-			
+
 			if inputFile != nil && outputFile != nil {
 				sp.input = inputFile
 				sp.output = outputFile
@@ -214,7 +214,7 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	s.mu.RLock()
 	var handler Handler
 	var exists bool
-	
+
 	if msg.Type == MessageTypeResponse || msg.Type == MessageTypeError {
 		// For responses and errors, look up by type first
 		handler, exists = s.handlers[string(msg.Type)]
@@ -278,8 +278,10 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Write the message as a single line
-	if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+	payload := make([]byte, len(data)+1)
+	copy(payload, data)
+	payload[len(data)] = '\n'
+	if _, err := s.output.Write(payload); err != nil {
 		return fmt.Errorf("failed to write message: %w", err)
 	}
 
