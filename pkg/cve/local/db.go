@@ -128,6 +128,18 @@ func (d *DB) Count() (int64, error) {
 	return count, nil
 }
 
+// DeleteCVE deletes a CVE from the database by ID
+func (d *DB) DeleteCVE(cveID string) error {
+	result := d.db.Where("cve_id = ?", cveID).Delete(&CVERecord{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 // Close closes the database connection
 func (d *DB) Close() error {
 	sqlDB, err := d.db.DB()
