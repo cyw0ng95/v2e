@@ -74,8 +74,8 @@ def measure_rpc_performance(
         "max_ms": sorted_timings[-1],
         "mean_ms": statistics.mean(sorted_timings),
         "median_ms": statistics.median(sorted_timings),
-        "p95_ms": sorted_timings[int(n * 0.95)] if n > 0 else 0,
-        "p99_ms": sorted_timings[int(n * 0.99)] if n > 0 else 0,
+        "p95_ms": sorted_timings[int((n - 1) * 0.95)] if n > 0 else 0,
+        "p99_ms": sorted_timings[int((n - 1) * 0.99)] if n > 0 else 0,
         "total_time_s": sum(sorted_timings) / 1000
     }
 
@@ -326,19 +326,19 @@ class TestRPCBenchmarksSummary:
                 iterations=100
             )
             benchmarks.append(("RPCGetCVE (CVE-2021-44228)", stats))
-        except:
-            print("  Skipped: CVE not found in local storage")
+        except Exception as e:
+            print(f"  Skipped: {e}")
         
         # Print summary table
         print("\n")
         print("=" * 80)
         print("                           SUMMARY TABLE")
         print("=" * 80)
-        print(f"{'Endpoint':<35} {'Mean':<12} {'Median':<12} {'P95':<12} {'P99':<12}")
+        print(f"{'Endpoint':<35} {'Mean':>12} {'Median':>12} {'P95':>12} {'P99':>12}")
         print("-" * 80)
         
         for name, stats in benchmarks:
-            print(f"{name:<35} {stats['mean_ms']:>10.2f}ms {stats['median_ms']:>10.2f}ms {stats['p95_ms']:>10.2f}ms {stats['p99_ms']:>10.2f}ms")
+            print(f"{name:<35} {stats['mean_ms']:>12.2f}ms {stats['median_ms']:>12.2f}ms {stats['p95_ms']:>12.2f}ms {stats['p99_ms']:>12.2f}ms")
         
         print("=" * 80)
         
