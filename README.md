@@ -416,9 +416,10 @@ curl -X POST http://localhost:8080/restful/rpc/cve-local/RPCIsCVEStoredByID \
 
 **Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
 
-**Note:** This service is currently a non-functional stub pending redesign. It will be updated to use broker-spawned services via RPC instead of managing its own subprocesses.
+The CVE Meta service is a backend RPC service that orchestrates CVE fetching and storage operations. It acts as a coordinator between cve-local and cve-remote services.
 
-The CVE Meta service is a backend RPC service that will orchestrate CVE fetching and storage operations.
+**Current RPC Interfaces:**
+- `RPCGetCVE` - Retrieves CVE data (currently returns stub data, will orchestrate cve-local and cve-remote in the future)
 
 **Planned RPC Interfaces:**
 - `RPCFetchAndStoreCVE` - Will fetch a CVE from NVD (if not already stored locally) and save it to the database
@@ -430,16 +431,46 @@ The CVE Meta service is a backend RPC service that will orchestrate CVE fetching
 
 **Accessing the Service:**
 
-Once redesigned, RPC services will be accessed via the Access service's RESTful API:
+The cve-meta service is accessed via the Access service's RESTful API with the `target` parameter:
 
 ```bash
-# Example: Future access pattern via RESTful API
-curl -X POST http://localhost:8080/restful/rpc/cve-meta/RPCFetchAndStoreCVE \
+# Get CVE data via cve-meta service
+curl -X POST http://localhost:8080/restful/rpc \
   -H "Content-Type: application/json" \
-  -d '{"cve_id":"CVE-2021-44228"}'
+  -d '{
+    "method": "RPCGetCVE",
+    "target": "cve-meta",
+    "params": {"cve_id": "CVE-2021-44228"}
+  }'
+
+# Response format:
+# {
+#   "retcode": 0,
+#   "message": "success",
+#   "payload": {
+#     "id": "CVE-2021-44228",
+#     "descriptions": [...]
+#   }
+# }
 ```
 
-**Security Note:** This service will only accept RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API.
+**Testing:**
+
+The cve-meta service has comprehensive integration tests that verify functionality using only the RESTful API. All tests follow the broker-first architecture:
+
+```bash
+# Run cve-meta integration tests
+pytest tests/test_integration.py::TestCVEMetaService -v
+```
+
+Test coverage includes:
+- Valid CVE ID requests
+- Missing required parameters
+- Empty parameter validation
+- Multiple sequential requests
+- Error handling and routing
+
+**Security Note:** This service only accepts RPC messages routed through the broker. Direct invocation is not supported - all requests must go through the Access service's RESTful API with the appropriate `target` parameter.
 
 ## Development
 
