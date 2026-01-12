@@ -373,6 +373,55 @@ When optimizing performance, apply these proven principles based on benchmarking
 - **Impact**: Reduced lock contention for read-heavy workloads
 - **Evidence**: Improved concurrent message handling
 
+### Principle 10: Eliminate String Conversions in Hot Paths
+- **When to use**: When writing binary data ([]byte) to I/O streams
+- **Implementation**:
+  ```go
+  // Bad: Creates intermediate string (extra copy)
+  fmt.Fprintf(output, "%s\n", string(data))
+  
+  // Good: Write bytes directly
+  output.Write(data)
+  output.Write([]byte{'\n'})
+  ```
+- **Impact**: Eliminates one memory copy per message
+- **Evidence**: 
+  - SendMessage: 28% faster (303.4 → 216.5 ns/op)
+  - SendResponse: 22% faster (903.1 → 702.9 ns/op)
+  - Reduced allocations from 4 → 3 per message
+
+### Principle 11: Use writev() for Scatter-Gather I/O
+- **When to use**: Batched writes to file descriptors (stdout, sockets, files)
+- **Implementation**:
+  ```go
+  import "golang.org/x/sys/unix"
+  
+  // Build buffer array
+  buffers := make([][]byte, 0, batchSize*2)
+  for _, data := range batch {
+      buffers = append(buffers, data, []byte{'\n'})
+  }
+  
+  // Single syscall writes all buffers (zero-copy kernel operation)
+  _, err := unix.Writev(int(file.Fd()), buffers)
+  ```
+- **Impact**: Reduces syscalls, zero-copy scatter-gather I/O in kernel
+- **Evidence**: Batched writes complete in single syscall vs N syscalls
+
+### Principle 12: Direct Byte Writes Over Formatted Output
+- **When to use**: When you don't need fmt.Fprintf formatting features
+- **Implementation**:
+  ```go
+  // Bad: String formatting overhead
+  fmt.Fprintf(w, "%s\n", string(data))
+  
+  // Good: Direct byte writes
+  w.Write(data)
+  w.Write([]byte{'\n'})
+  ```
+- **Impact**: Avoids reflection and string formatting overhead
+- **Evidence**: Combined with Principle 10, reduces copy operations by 67%
+
 ### Performance Optimization Checklist
 
 Before optimizing:

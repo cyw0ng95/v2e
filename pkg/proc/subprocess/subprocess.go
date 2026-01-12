@@ -15,6 +15,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -336,6 +337,7 @@ func (s *Subprocess) messageWriter() {
 }
 
 // flushBatch writes all batched messages in a single operation
+// Uses writev() for zero-copy scatter-gather I/O when possible
 func (s *Subprocess) flushBatch(batch [][]byte) {
 	if len(batch) == 0 {
 		return
@@ -344,13 +346,52 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	
+	// Try to use writev() for file descriptor outputs (zero-copy scatter-gather I/O)
+	if file, ok := s.output.(*os.File); ok {
+		if err := s.flushBatchWritev(file, batch); err == nil {
+			return
+		}
+		// Fall through to regular write on error
+	}
+	
+	// Fallback: write messages directly as bytes to avoid string conversion
+	// This eliminates one copy operation ([]byte -> string)
 	for _, data := range batch {
-		// Write each message as a single line
-		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
-			// Log error but continue processing
+		// Write the message bytes directly followed by newline
+		if _, err := s.output.Write(data); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to write message: %v\n", err)
+			continue
+		}
+		if _, err := s.output.Write([]byte{'\n'}); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to write newline: %v\n", err)
 		}
 	}
+}
+
+// flushBatchWritev uses writev() for scatter-gather I/O
+// This writes multiple buffers in a single syscall, reducing overhead
+func (s *Subprocess) flushBatchWritev(file *os.File, batch [][]byte) error {
+	// Build buffer array for writev
+	// Each message needs data + newline, so we need 2x entries
+	buffers := make([][]byte, 0, len(batch)*2)
+	newline := []byte{'\n'}
+	
+	for _, data := range batch {
+		if len(data) == 0 {
+			continue
+		}
+		// Add message data and newline
+		buffers = append(buffers, data, newline)
+	}
+	
+	if len(buffers) == 0 {
+		return nil
+	}
+	
+	// Write all buffers in a single syscall using writev()
+	// This is zero-copy scatter-gather I/O
+	_, err := unix.Writev(int(file.Fd()), buffers)
+	return err
 }
 
 // SendMessage sends a message to the broker via stdout
@@ -372,8 +413,12 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 	if s.disableBatching {
 		s.writeMu.Lock()
 		defer s.writeMu.Unlock()
-		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+		// Write bytes directly to avoid string conversion
+		if _, err := s.output.Write(data); err != nil {
 			return fmt.Errorf("failed to write message: %w", err)
+		}
+		if _, err := s.output.Write([]byte{'\n'}); err != nil {
+			return fmt.Errorf("failed to write newline: %w", err)
 		}
 		return nil
 	}
