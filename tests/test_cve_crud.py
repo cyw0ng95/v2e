@@ -894,8 +894,12 @@ class TestCVEBusinessFlows:
             if is_rate_limited(response):
                 pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
             
-            # May already exist, which is ok
-            print(f"      ✓ {cve_id} ready")
+            # Creation may succeed or fail if CVE already exists - either is acceptable
+            # The important part is that CVE is available for deletion test
+            if response["retcode"] == 0:
+                print(f"      ✓ {cve_id} created")
+            else:
+                print(f"      ✓ {cve_id} already exists")
             time.sleep(0.5)  # Rate limiting
         
         print(f"    ✓ All CVEs ready")
@@ -1063,8 +1067,11 @@ class TestCVEBusinessFlows:
         total_count = count_response["payload"]["count"]
         print(f"  → Current dataset size: {total_count} CVEs")
         
-        if total_count < 5:
-            pytest.skip("Not enough CVEs in database for pagination test")
+        # Need at least 5 CVEs to test multiple page sizes (2, 5, 10) with pagination
+        # This ensures we can fetch at least 2 pages with the smallest page size
+        MIN_CVES_FOR_PAGINATION_TEST = 5
+        if total_count < MIN_CVES_FOR_PAGINATION_TEST:
+            pytest.skip(f"Not enough CVEs in database for pagination test (need {MIN_CVES_FOR_PAGINATION_TEST}, have {total_count})")
         
         # Test pagination with different page sizes
         page_sizes = [2, 5, 10]
