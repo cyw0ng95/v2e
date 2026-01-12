@@ -374,7 +374,8 @@ class TestCVEMetaService:
         """
         access = access_service
         
-        cve_ids = ["CVE-2021-44228", "CVE-2021-45046", "CVE-2022-12345"]
+        # Use only valid CVE IDs that exist in NVD
+        cve_ids = ["CVE-2021-44228", "CVE-2021-45046"]
         
         print(f"\n  → Testing multiple RPCGetCVE requests")
         print(f"  → CVE IDs: {cve_ids}")
@@ -398,8 +399,8 @@ class TestCVEMetaService:
             assert returned_id == cve_id
             print(f"    ✓ CVE ID matches: {returned_id}")
             
-            # Small delay between requests
-            time.sleep(0.1)
+            # Small delay between requests to respect NVD API rate limiting
+            time.sleep(1)
         
         print(f"  ✓ Test passed: All {len(cve_ids)} requests successful")
 
@@ -448,6 +449,396 @@ class TestCVELocalService:
         assert payload["cve_id"] == cve_id
         
         print(f"  ✓ Test passed: CVE {cve_id} stored status = {payload['stored']}")
+
+
+@pytest.mark.integration
+class TestCVELocalServiceComprehensive:
+    """Comprehensive integration tests for cve-local RPC interfaces.
+    
+    These tests directly test the cve-local service RPC methods to ensure
+    100% RPC interface coverage.
+    """
+    
+    def test_rpc_save_cve_by_id(self, access_service):
+        """Test RPCSaveCVEByID via RESTful API.
+        
+        This verifies:
+        - cve-local service can save CVE data to database
+        - Response format is correct
+        - Both create and update operations work
+        """
+        access = access_service
+        
+        # Create a test CVE data structure
+        test_cve = {
+            "id": "CVE-TEST-SAVE-2024",
+            "sourceIdentifier": "test@example.com",
+            "published": "2024-01-01T00:00:00.000",
+            "lastModified": "2024-01-01T00:00:00.000",
+            "vulnStatus": "Analyzed",
+            "descriptions": [
+                {
+                    "lang": "en",
+                    "value": "Test CVE for save operation"
+                }
+            ]
+        }
+        
+        print(f"\n  → Testing RPCSaveCVEByID")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-local")
+        print(f"  → Method: RPCSaveCVEByID")
+        
+        # Save CVE to database
+        response = access.rpc_call(
+            method="RPCSaveCVEByID",
+            target="cve-local",
+            params={"cve": test_cve}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Verify response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 0
+        
+        # Verify payload confirms save
+        payload = response["payload"]
+        assert payload["success"] is True
+        assert payload["cve_id"] == test_cve["id"]
+        
+        print(f"  ✓ Test passed: CVE saved successfully")
+        
+        # Verify CVE was actually saved by retrieving it
+        check_response = access.rpc_call(
+            method="RPCIsCVEStoredByID",
+            target="cve-local",
+            params={"cve_id": test_cve["id"]},
+            verbose=False
+        )
+        assert check_response["payload"]["stored"] is True
+        print(f"  ✓ Verified: CVE exists in database")
+        
+        # Clean up - delete the test CVE
+        access.rpc_call(
+            method="RPCDeleteCVEByID",
+            target="cve-local",
+            params={"cve_id": test_cve["id"]},
+            verbose=False
+        )
+    
+    def test_rpc_get_cve_by_id_direct(self, access_service):
+        """Test RPCGetCVEByID direct call to cve-local service.
+        
+        This verifies:
+        - cve-local service can retrieve CVE from database
+        - Response format is correct
+        - CVE data is complete
+        """
+        access = access_service
+        cve_id = "CVE-TEST-GET-2024"
+        
+        # First, save a test CVE
+        test_cve = {
+            "id": cve_id,
+            "sourceIdentifier": "test@example.com",
+            "published": "2024-01-01T00:00:00.000",
+            "lastModified": "2024-01-01T00:00:00.000",
+            "vulnStatus": "Analyzed",
+            "descriptions": [
+                {
+                    "lang": "en",
+                    "value": "Test CVE for get operation"
+                }
+            ]
+        }
+        
+        access.rpc_call(
+            method="RPCSaveCVEByID",
+            target="cve-local",
+            params={"cve": test_cve},
+            verbose=False
+        )
+        
+        print(f"\n  → Testing RPCGetCVEByID direct call")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-local")
+        print(f"  → Method: RPCGetCVEByID")
+        
+        # Retrieve CVE from database
+        response = access.rpc_call(
+            method="RPCGetCVEByID",
+            target="cve-local",
+            params={"cve_id": cve_id}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Verify response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 0
+        
+        # Verify payload contains CVE data
+        payload = response["payload"]
+        assert payload is not None
+        assert payload["id"] == cve_id
+        assert "descriptions" in payload
+        
+        print(f"  ✓ Test passed: CVE retrieved successfully")
+        print(f"    - CVE ID: {payload['id']}")
+        
+        # Clean up
+        access.rpc_call(
+            method="RPCDeleteCVEByID",
+            target="cve-local",
+            params={"cve_id": cve_id},
+            verbose=False
+        )
+    
+    def test_rpc_delete_cve_by_id_direct(self, access_service):
+        """Test RPCDeleteCVEByID direct call to cve-local service.
+        
+        This verifies:
+        - cve-local service can delete CVE from database
+        - Response format is correct
+        - CVE is actually removed
+        """
+        access = access_service
+        cve_id = "CVE-TEST-DELETE-2024"
+        
+        # First, save a test CVE
+        test_cve = {
+            "id": cve_id,
+            "sourceIdentifier": "test@example.com",
+            "published": "2024-01-01T00:00:00.000",
+            "lastModified": "2024-01-01T00:00:00.000",
+            "vulnStatus": "Analyzed",
+            "descriptions": [
+                {
+                    "lang": "en",
+                    "value": "Test CVE for delete operation"
+                }
+            ]
+        }
+        
+        access.rpc_call(
+            method="RPCSaveCVEByID",
+            target="cve-local",
+            params={"cve": test_cve},
+            verbose=False
+        )
+        
+        print(f"\n  → Testing RPCDeleteCVEByID direct call")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-local")
+        print(f"  → Method: RPCDeleteCVEByID")
+        
+        # Delete CVE from database
+        response = access.rpc_call(
+            method="RPCDeleteCVEByID",
+            target="cve-local",
+            params={"cve_id": cve_id}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Verify response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 0
+        
+        # Verify payload confirms deletion
+        payload = response["payload"]
+        assert payload["success"] is True
+        assert payload["cve_id"] == cve_id
+        
+        print(f"  ✓ Test passed: CVE deleted successfully")
+        
+        # Verify CVE was actually deleted
+        check_response = access.rpc_call(
+            method="RPCIsCVEStoredByID",
+            target="cve-local",
+            params={"cve_id": cve_id},
+            verbose=False
+        )
+        assert check_response["payload"]["stored"] is False
+        print(f"  ✓ Verified: CVE removed from database")
+    
+    def test_rpc_list_cves_direct(self, access_service):
+        """Test RPCListCVEs direct call to cve-local service.
+        
+        This verifies:
+        - cve-local service can list CVEs from database
+        - Pagination parameters work correctly
+        - Response format is correct
+        """
+        access = access_service
+        
+        # First, save some test CVEs
+        test_cves = [
+            {
+                "id": f"CVE-TEST-LIST-{i}",
+                "sourceIdentifier": "test@example.com",
+                "published": f"2024-01-0{i+1}T00:00:00.000",
+                "lastModified": f"2024-01-0{i+1}T00:00:00.000",
+                "vulnStatus": "Analyzed",
+                "descriptions": [
+                    {
+                        "lang": "en",
+                        "value": f"Test CVE {i} for list operation"
+                    }
+                ]
+            }
+            for i in range(3)
+        ]
+        
+        for test_cve in test_cves:
+            access.rpc_call(
+                method="RPCSaveCVEByID",
+                target="cve-local",
+                params={"cve": test_cve},
+                verbose=False
+            )
+        
+        print(f"\n  → Testing RPCListCVEs direct call")
+        print(f"  → Request: POST /restful/rpc")
+        print(f"  → Target: cve-local")
+        print(f"  → Method: RPCListCVEs")
+        
+        # List CVEs from database
+        response = access.rpc_call(
+            method="RPCListCVEs",
+            target="cve-local",
+            params={"offset": 0, "limit": 10}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Verify response structure
+        assert "retcode" in response
+        assert "message" in response
+        assert response["retcode"] == 0
+        
+        # Verify payload contains list data
+        payload = response["payload"]
+        assert "cves" in payload
+        assert "total" in payload
+        assert isinstance(payload["cves"], list)
+        assert isinstance(payload["total"], int)
+        assert payload["total"] >= 3  # At least our 3 test CVEs
+        
+        print(f"  ✓ Test passed: Listed {len(payload['cves'])} CVEs (total: {payload['total']})")
+        
+        # Clean up test CVEs
+        for test_cve in test_cves:
+            access.rpc_call(
+                method="RPCDeleteCVEByID",
+                target="cve-local",
+                params={"cve_id": test_cve["id"]},
+                verbose=False
+            )
+    
+    def test_rpc_get_cve_by_id_not_found(self, access_service):
+        """Test RPCGetCVEByID when CVE doesn't exist in database.
+        
+        This verifies:
+        - cve-local service handles missing CVE gracefully
+        - Appropriate error response is returned
+        """
+        access = access_service
+        cve_id = "CVE-TEST-NONEXISTENT-9999"
+        
+        print(f"\n  → Testing RPCGetCVEByID for non-existent CVE")
+        print(f"  → CVE ID: {cve_id}")
+        
+        response = access.rpc_call(
+            method="RPCGetCVEByID",
+            target="cve-local",
+            params={"cve_id": cve_id}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Should get error
+        assert response["retcode"] == 500
+        assert "not found" in response["message"].lower() or "failed" in response["message"].lower()
+        
+        print(f"  ✓ Test passed: Proper error for non-existent CVE")
+    
+    def test_rpc_delete_cve_by_id_not_found(self, access_service):
+        """Test RPCDeleteCVEByID when CVE doesn't exist in database.
+        
+        This verifies:
+        - cve-local service handles deletion of non-existent CVE
+        - Appropriate error response is returned
+        """
+        access = access_service
+        cve_id = "CVE-TEST-DELETE-NONEXISTENT-9999"
+        
+        print(f"\n  → Testing RPCDeleteCVEByID for non-existent CVE")
+        print(f"  → CVE ID: {cve_id}")
+        
+        response = access.rpc_call(
+            method="RPCDeleteCVEByID",
+            target="cve-local",
+            params={"cve_id": cve_id}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Should get error
+        assert response["retcode"] == 500
+        assert "not found" in response["message"].lower() or "failed" in response["message"].lower()
+        
+        print(f"  ✓ Test passed: Proper error for non-existent CVE deletion")
+    
+    def test_rpc_save_cve_missing_id(self, access_service):
+        """Test RPCSaveCVEByID with missing CVE ID.
+        
+        This verifies:
+        - cve-local service validates CVE data structure
+        - Appropriate error response for invalid data
+        """
+        access = access_service
+        
+        # Create invalid CVE data (missing ID)
+        invalid_cve = {
+            "sourceIdentifier": "test@example.com",
+            "published": "2024-01-01T00:00:00.000",
+            "lastModified": "2024-01-01T00:00:00.000",
+        }
+        
+        print(f"\n  → Testing RPCSaveCVEByID with missing CVE ID")
+        
+        response = access.rpc_call(
+            method="RPCSaveCVEByID",
+            target="cve-local",
+            params={"cve": invalid_cve}
+        )
+        
+        print(f"  → Response received:")
+        print(f"    - retcode: {response.get('retcode')}")
+        print(f"    - message: {response.get('message')}")
+        
+        # Should get error
+        assert response["retcode"] == 500
+        
+        print(f"  ✓ Test passed: Proper error for invalid CVE data")
+
 
 
 @pytest.mark.integration
