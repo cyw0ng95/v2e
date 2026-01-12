@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"sync/atomic"
@@ -203,7 +204,7 @@ func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error)
 	return &infoCopy, nil
 }
 
-// SpawnRPC starts a new subprocess with RPC support (stdin/stdout pipes)
+// SpawnRPC starts a new subprocess with RPC support using custom file descriptors
 // It returns the process ID and an error if the process failed to start
 func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, error) {
 	b.mu.Lock()
@@ -218,19 +219,32 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
 
-	// Set up stdin and stdout pipes for RPC communication
-	stdin, err := cmd.StdinPipe()
+	// Create custom pipes for RPC communication (to avoid using stdio fds 0,1,2)
+	// These will be passed as fd 3 (read) and fd 4 (write) to the subprocess
+	readFromSubprocess, writeToParent, err := os.Pipe()
 	if err != nil {
 		cancel()
-		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
+		return nil, fmt.Errorf("failed to create output pipe: %w", err)
 	}
 
-	stdout, err := cmd.StdoutPipe()
+	readFromParent, writeToSubprocess, err := os.Pipe()
 	if err != nil {
 		cancel()
-		stdin.Close()
-		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+		readFromSubprocess.Close()
+		writeToParent.Close()
+		return nil, fmt.Errorf("failed to create input pipe: %w", err)
 	}
+
+	// Set up ExtraFiles: subprocess will receive these as fd 3 and fd 4
+	// fd 3 = input from parent (readFromParent)
+	// fd 4 = output to parent (writeToParent)
+	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
+
+	// Set environment variable to tell subprocess to use custom FDs
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
+	cmd.Env = append(cmd.Env, "RPC_INPUT_FD=3", "RPC_OUTPUT_FD=4", fmt.Sprintf("PROCESS_ID=%s", id))
 
 	// Create process info
 	info := &ProcessInfo{
@@ -246,29 +260,35 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
-		stdin:  stdin,
-		stdout: stdout,
+		stdin:  writeToSubprocess, // Parent writes to this
+		stdout: readFromSubprocess, // Parent reads from this
 	}
 
 	// Start the process
 	if err := cmd.Start(); err != nil {
 		cancel()
-		stdin.Close()
-		stdout.Close()
+		readFromSubprocess.Close()
+		writeToSubprocess.Close()
+		readFromParent.Close()
+		writeToParent.Close()
 		info.Status = ProcessStatusFailed
 		return info, fmt.Errorf("failed to start process: %w", err)
 	}
 
+	// Close the child's ends of the pipes in the parent
+	readFromParent.Close()
+	writeToParent.Close()
+
 	info.PID = cmd.Process.Pid
 	b.processes[id] = proc
 
-	b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s", id, info.PID, command)
+	b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s (using fd 3,4)", id, info.PID, command)
 
 	// Create a copy of the process info before starting the reaper goroutine
 	// to avoid data races when the caller accesses the returned info
 	infoCopy := *info
 
-	// Start goroutine to read messages from process stdout
+	// Start goroutine to read messages from process
 	b.wg.Add(1)
 	go b.readProcessMessages(proc)
 
@@ -339,7 +359,7 @@ func (b *Broker) SpawnWithRestart(id, command string, maxRestarts int, args ...s
 	return &infoCopy, nil
 }
 
-// SpawnRPCWithRestart starts a new RPC subprocess with auto-restart capability
+// SpawnRPCWithRestart starts a new RPC subprocess with auto-restart capability using custom file descriptors
 func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -353,19 +373,32 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
 
-	// Set up stdin and stdout pipes for RPC communication
-	stdin, err := cmd.StdinPipe()
+	// Create custom pipes for RPC communication (to avoid using stdio fds 0,1,2)
+	// These will be passed as fd 3 (read) and fd 4 (write) to the subprocess
+	readFromSubprocess, writeToParent, err := os.Pipe()
 	if err != nil {
 		cancel()
-		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
+		return nil, fmt.Errorf("failed to create output pipe: %w", err)
 	}
 
-	stdout, err := cmd.StdoutPipe()
+	readFromParent, writeToSubprocess, err := os.Pipe()
 	if err != nil {
 		cancel()
-		stdin.Close()
-		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+		readFromSubprocess.Close()
+		writeToParent.Close()
+		return nil, fmt.Errorf("failed to create input pipe: %w", err)
 	}
+
+	// Set up ExtraFiles: subprocess will receive these as fd 3 and fd 4
+	// fd 3 = input from parent (readFromParent)
+	// fd 4 = output to parent (writeToParent)
+	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
+
+	// Set environment variable to tell subprocess to use custom FDs
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
+	cmd.Env = append(cmd.Env, "RPC_INPUT_FD=3", "RPC_OUTPUT_FD=4", fmt.Sprintf("PROCESS_ID=%s", id))
 
 	// Create process info
 	info := &ProcessInfo{
@@ -381,8 +414,8 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
-		stdin:  stdin,
-		stdout: stdout,
+		stdin:  writeToSubprocess, // Parent writes to this
+		stdout: readFromSubprocess, // Parent reads from this
 		restartConfig: &RestartConfig{
 			Enabled:      true,
 			MaxRestarts:  maxRestarts,
@@ -396,16 +429,22 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	// Start the process
 	if err := cmd.Start(); err != nil {
 		cancel()
-		stdin.Close()
-		stdout.Close()
+		readFromSubprocess.Close()
+		writeToSubprocess.Close()
+		readFromParent.Close()
+		writeToParent.Close()
 		info.Status = ProcessStatusFailed
 		return info, fmt.Errorf("failed to start process: %w", err)
 	}
 
+	// Close the child's ends of the pipes in the parent
+	readFromParent.Close()
+	writeToParent.Close()
+
 	info.PID = cmd.Process.Pid
 	b.processes[id] = proc
 
-	b.logger.Info("Spawned RPC process with restart: id=%s pid=%d command=%s max_restarts=%d", id, info.PID, command, maxRestarts)
+	b.logger.Info("Spawned RPC process with restart: id=%s pid=%d command=%s max_restarts=%d (using fd 3,4)", id, info.PID, command, maxRestarts)
 
 	// Create a copy of the process info before starting goroutines
 	infoCopy := *info
@@ -954,19 +993,8 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 		msg.Source = sourceProcess
 	}
 
-	// If message has a target, route it to that process or broker
-	if msg.Target != "" {
-		// Special case: if target is "broker", process it locally
-		if msg.Target == "broker" {
-			b.logger.Debug("Routing message to broker for local processing: type=%s id=%s from=%s", msg.Type, msg.ID, msg.Source)
-			return b.ProcessMessage(msg)
-		}
-
-		b.logger.Debug("Routing message from %s to %s: type=%s id=%s", msg.Source, msg.Target, msg.Type, msg.ID)
-		return b.SendToProcess(msg.Target, msg)
-	}
-
-	// If message is a response with correlation ID, route it back to the pending request
+	// If message is a response with correlation ID, route it back to the pending request FIRST
+	// This takes priority over Target-based routing to ensure responses go to the right waiting caller
 	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
 		b.pendingMu.Lock()
 		pending, exists := b.pendingRequests[msg.CorrelationID]
@@ -984,8 +1012,21 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 				return fmt.Errorf("timeout sending response to pending request")
 			}
 		}
-		b.logger.Warn("Received response with unknown correlation ID: %s", msg.CorrelationID)
-		return fmt.Errorf("unknown correlation ID: %s", msg.CorrelationID)
+		// If no pending request found in broker, fall through to target-based routing
+		// This allows subprocess-to-subprocess RPC where the correlation is tracked by the calling subprocess
+		b.logger.Debug("No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
+	}
+
+	// If message has a target, route it to that process or broker
+	if msg.Target != "" {
+		// Special case: if target is "broker", process it locally
+		if msg.Target == "broker" {
+			b.logger.Debug("Routing message to broker for local processing: type=%s id=%s from=%s", msg.Type, msg.ID, msg.Source)
+			return b.ProcessMessage(msg)
+		}
+
+		b.logger.Debug("Routing message from %s to %s: type=%s id=%s", msg.Source, msg.Target, msg.Type, msg.ID)
+		return b.SendToProcess(msg.Target, msg)
 	}
 
 	// Otherwise, send to broker's message channel for local processing
