@@ -9,6 +9,7 @@ These tests verify system reliability and robustness when handling:
 
 import pytest
 import json
+import time
 
 
 @pytest.mark.integration
@@ -346,7 +347,7 @@ class TestEdgeCasesAndMalformed:
         print("\n  → Testing rapid sequential requests")
         
         num_requests = 50
-        start_time = __import__('time').time()
+        start_time = time.time()
         
         for i in range(num_requests):
             response = access.rpc_call(
@@ -356,7 +357,7 @@ class TestEdgeCasesAndMalformed:
             )
             assert response["retcode"] == 0
         
-        elapsed = __import__('time').time() - start_time
+        elapsed = time.time() - start_time
         rate = num_requests / elapsed
         
         print(f"  ✓ Test passed: Handled {num_requests} requests in {elapsed:.2f}s ({rate:.1f} req/s)")

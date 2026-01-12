@@ -133,7 +133,9 @@ class TestRaceConditions:
             thread = threading.Thread(target=create_cve)
             threads.append(thread)
             thread.start()
-            time.sleep(0.2)  # Small delay to increase race likelihood
+            # Small delay increases likelihood of concurrent execution hitting the database
+            # This is intentional to test race condition handling in the actual system
+            time.sleep(0.2)
         
         for thread in threads:
             thread.join()
@@ -250,7 +252,8 @@ class TestRaceConditions:
                 errors.append(("create", str(e)))
         
         def delete_cve():
-            time.sleep(0.1)  # Slight delay
+            # Slight delay to ensure create starts first, testing concurrent execution
+            time.sleep(0.1)
             try:
                 response = access.rpc_call(
                     method="RPCDeleteCVE",
@@ -320,7 +323,9 @@ class TestRaceConditions:
         
         def update_cve(thread_id):
             try:
-                time.sleep(thread_id * 0.5)  # Stagger updates
+                # Stagger updates to test concurrent database access
+                # This simulates real-world scenario where updates happen at different times
+                time.sleep(thread_id * 0.5)
                 response = access.rpc_call(
                     method="RPCUpdateCVE",
                     target="cve-meta",

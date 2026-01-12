@@ -82,7 +82,8 @@ func TestInvalidMessageTypes(t *testing.T) {
 				return nil, nil
 			})
 
-			// Handle the message
+			// Handle the message - accessing wg and handleMessage is necessary for testing
+			// message handling behavior without running the full subprocess loop
 			sp.wg.Add(1)
 			sp.handleMessage(msg)
 			sp.wg.Wait()

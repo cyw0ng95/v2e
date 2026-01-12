@@ -114,6 +114,8 @@ func TestConcurrentHandlerExecution(t *testing.T) {
 				Type: MessageTypeRequest,
 				ID:   fmt.Sprintf("req-%d", id),
 			}
+			// Note: Direct access to wg and handleMessage is necessary for testing
+			// concurrent handler execution without running the full subprocess
 			sp.wg.Add(1)
 			sp.handleMessage(msg)
 		}(i)
