@@ -78,7 +78,7 @@ class AccessClient:
         if target:
             request_body["target"] = target
         
-        # Log the HTTP request
+        # Log the HTTP request (only if verbose and response is not large)
         if verbose:
             print(f"  [HTTP REQUEST]")
             print(f"    POST {url}")
@@ -90,20 +90,41 @@ class AccessClient:
         
         response = requests.post(url, json=request_body)
         
-        # Log the HTTP response
+        # Log the HTTP response (only if verbose and not too large)
         if verbose:
             print(f"  [HTTP RESPONSE]")
             print(f"    Status: {response.status_code} {response.reason}")
-            print(f"    Body:")
-            # Pretty print the response body
-            try:
-                response_json = response.json()
-                for line in json.dumps(response_json, indent=2).split('\n'):
-                    print(f"      {line}")
-            except:
-                # If not JSON, show raw text (truncated)
-                body_text = response.text[:500] + ('...' if len(response.text) > 500 else '')
-                print(f"      {body_text}")
+            # For slow tests with large responses, only show summary
+            response_text = response.text
+            if len(response_text) > 5000:
+                # Large response - just show retcode and message
+                try:
+                    response_json = response.json()
+                    print(f"    Body (truncated - large response):")
+                    print(f"      retcode: {response_json.get('retcode')}")
+                    print(f"      message: {response_json.get('message')}")
+                    if 'payload' in response_json and response_json['payload']:
+                        # Show payload summary instead of full content
+                        payload = response_json['payload']
+                        if isinstance(payload, dict):
+                            print(f"      payload keys: {list(payload.keys())}")
+                        elif isinstance(payload, list):
+                            print(f"      payload: list with {len(payload)} items")
+                        else:
+                            print(f"      payload: {type(payload).__name__}")
+                except:
+                    print(f"      Response size: {len(response_text)} bytes (truncated)")
+            else:
+                # Small response - show full content
+                print(f"    Body:")
+                try:
+                    response_json = response.json()
+                    for line in json.dumps(response_json, indent=2).split('\n'):
+                        print(f"      {line}")
+                except:
+                    # If not JSON, show raw text (truncated)
+                    body_text = response_text[:500] + ('...' if len(response_text) > 500 else '')
+                    print(f"      {body_text}")
         
         response.raise_for_status()
         return response.json()
