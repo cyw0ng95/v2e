@@ -248,12 +248,12 @@ run_rpc_benchmarks() {
         
         if [ "$VERBOSE" = true ]; then
             echo "Running RPC benchmarks with verbose output..."
-            # Run benchmark tests with verbose output
+            # Run benchmark tests with verbose output and capture to log
             pytest tests/ -v -s -m benchmark --tb=long 2>&1 | tee "$BENCHMARK_LOG"
         else
             echo "Running RPC benchmarks..."
-            # Run benchmark tests
-            pytest tests/ -v -m benchmark --tb=short > "$BENCHMARK_LOG" 2>&1
+            # Run benchmark tests with verbose output (to capture performance metrics) but save to log only
+            pytest tests/ -v -s -m benchmark --tb=short > "$BENCHMARK_LOG" 2>&1
         fi
         BENCH_EXIT_CODE=$?
         
@@ -306,7 +306,7 @@ run_rpc_benchmarks() {
             
             if [ "$VERBOSE" = true ]; then
                 echo ""
-                cat "$BENCHMARK_REPORT"
+                echo "RPC benchmark report generated: $BENCHMARK_REPORT"
             else
                 echo "RPC benchmark report generated: $BENCHMARK_REPORT"
             fi
