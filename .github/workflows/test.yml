@@ -175,8 +175,8 @@ jobs:
       - name: Run integration tests via build.sh
         run: ./build.sh -i -v
         env:
-          # Include slow tests that make NVD API calls
-          PYTEST_ARGS: "-v -s"
+          # Exclude slow tests from this run (they run separately below)
+          PYTEST_ARGS: "-v -s -m 'not slow'"
       
       - name: Run slow integration tests
         run: |
