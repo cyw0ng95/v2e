@@ -389,6 +389,9 @@ main() {
     
     while getopts "timMphv" opt; do
         case $opt in
+            p)
+                BUILD_PACKAGE=true
+                ;;
             t)
                 RUN_TESTS=true
                 ;;

@@ -40,6 +40,10 @@ go.work.sum
 
 # Build directory
 .build/
+
+# Logs directory
+logs/
+
 # Config files (may contain sensitive data)
 config.json
 
