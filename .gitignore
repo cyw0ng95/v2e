@@ -94,3 +94,7 @@ logs/
 /cve-local
 /cve-remote
 /cve-meta
+
+# Profiling files
+*.prof
+*.test
