@@ -31,6 +31,13 @@ var bufferPool = sync.Pool{
 	},
 }
 
+// writerPool is a sync.Pool for bufio.Writer to reduce allocations (Principle 14)
+var writerPool = sync.Pool{
+	New: func() interface{} {
+		return bufio.NewWriterSize(nil, 4096) // 4KB buffer
+	},
+}
+
 // MessageType represents the type of message being sent
 type MessageType string
 
@@ -212,10 +219,11 @@ func (s *Subprocess) Run() error {
 		api := sonic.ConfigFastest
 		if err := api.Unmarshal([]byte(line), &msg); err != nil {
 			// Send error response
+			// Principle 15: Avoid fmt.Sprintf in hot paths - use direct string concat
 			errMsg := &Message{
 				Type:  MessageTypeError,
 				ID:    "parse-error",
-				Error: fmt.Sprintf("failed to parse message: %v", err),
+				Error: "failed to parse message: " + err.Error(),
 			}
 			_ = s.sendMessage(errMsg)
 			continue
@@ -264,10 +272,11 @@ func (s *Subprocess) handleMessage(msg *Message) {
 
 	if !exists {
 		// No handler found, send error
+		// Principle 15: Avoid fmt.Sprintf in hot paths
 		errMsg := &Message{
 			Type:  MessageTypeError,
 			ID:    msg.ID,
-			Error: fmt.Sprintf("no handler found for message: %s", msg.ID),
+			Error: "no handler found for message: " + msg.ID,
 		}
 		_ = s.sendMessage(errMsg)
 		return
@@ -337,6 +346,8 @@ func (s *Subprocess) messageWriter() {
 }
 
 // flushBatch writes all batched messages in a single operation
+// Principle 13: Use bufio.Writer for efficient batch writing
+// Principle 14: Pool bufio.Writers to reduce allocations
 func (s *Subprocess) flushBatch(batch [][]byte) {
 	if len(batch) == 0 {
 		return
@@ -345,12 +356,26 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	
+	// Get writer from pool and reset it
+	writer := writerPool.Get().(*bufio.Writer)
+	writer.Reset(s.output)
+	defer writerPool.Put(writer)
+	
 	for _, data := range batch {
-		// Write each message as a single line
-		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+		// Write data directly without fmt.Fprintf overhead
+		if _, err := writer.Write(data); err != nil {
 			// Log error but continue processing
 			fmt.Fprintf(os.Stderr, "Failed to write message: %v\n", err)
+			continue
 		}
+		// Write newline
+		if err := writer.WriteByte('\n'); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to write newline: %v\n", err)
+		}
+	}
+	// Flush to ensure all data is written
+	if err := writer.Flush(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to flush batch: %v\n", err)
 	}
 }
 
@@ -373,8 +398,19 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 	if s.disableBatching {
 		s.writeMu.Lock()
 		defer s.writeMu.Unlock()
-		if _, err := fmt.Fprintf(s.output, "%s\n", string(data)); err != nil {
+		// Use pooled bufio.Writer for efficient writes (Principle 13, 14)
+		writer := writerPool.Get().(*bufio.Writer)
+		writer.Reset(s.output)
+		defer writerPool.Put(writer)
+		
+		if _, err := writer.Write(data); err != nil {
 			return fmt.Errorf("failed to write message: %w", err)
+		}
+		if err := writer.WriteByte('\n'); err != nil {
+			return fmt.Errorf("failed to write newline: %w", err)
+		}
+		if err := writer.Flush(); err != nil {
+			return fmt.Errorf("failed to flush: %w", err)
 		}
 		return nil
 	}

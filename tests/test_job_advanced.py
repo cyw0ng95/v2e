@@ -12,6 +12,34 @@ import time
 import threading
 
 
+@pytest.fixture(scope="function", autouse=True)
+def cleanup_session(access_service):
+    """Clean up any existing session before and after each test."""
+    # Try to stop any existing session before the test
+    try:
+        access_service.rpc_call(
+            method="RPCStopSession",
+            target="cve-meta",
+            params={}
+        )
+    except Exception:
+        # Ignore errors if no session exists
+        pass
+    
+    yield
+    
+    # Clean up after the test
+    try:
+        access_service.rpc_call(
+            method="RPCStopSession",
+            target="cve-meta",
+            params={}
+        )
+    except Exception:
+        # Ignore errors if no session exists
+        pass
+
+
 @pytest.mark.integration
 class TestCRUDDuringJobExecution:
     """Test CRUD operations while job is running."""
