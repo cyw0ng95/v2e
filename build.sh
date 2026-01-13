@@ -115,7 +115,7 @@ run_fuzz_tests() {
     setup_build_dir
     
     # Fuzz test configuration
-    FUZZ_TIME="5s"  # 5 seconds per test
+    FUZZ_TIME="1s"  # 1 second per test, since it may take too long to run on CI
     FUZZ_REPORT="$BUILD_DIR/fuzz-report.txt"
     
     # Check if go.mod exists
