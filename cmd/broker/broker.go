@@ -484,6 +484,23 @@ func (b *Broker) readProcessMessages(p *Process) {
 		// Route the message based on its target
 		if err := b.RouteMessage(msg, p.info.ID); err != nil {
 			b.logger.Warn("Failed to route message from process %s: %v", p.info.ID, err)
+			
+			// If this was a request message, send an error response back to the source
+			if msg.Type == proc.MessageTypeRequest && msg.CorrelationID != "" {
+				errorMsg := &proc.Message{
+					Type:          proc.MessageTypeError,
+					ID:            msg.ID,
+					Error:         err.Error(),
+					Target:        msg.Source,
+					CorrelationID: msg.CorrelationID,
+				}
+				// Send error response back to source (best effort, don't block)
+				go func() {
+					if sendErr := b.SendToProcess(msg.Source, errorMsg); sendErr != nil {
+						b.logger.Debug("Failed to send error response back to %s: %v", msg.Source, sendErr)
+					}
+				}()
+			}
 		}
 	}
 

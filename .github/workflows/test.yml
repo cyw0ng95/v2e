@@ -46,6 +46,52 @@ jobs:
           path: .build/coverage.html
           if-no-files-found: ignore
 
+  fuzz-tests:
+    name: Fuzz Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.11'
+      
+      - name: Cache .build directory
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-fuzz-${{ hashFiles('**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-fuzz-
+      
+      - name: Run fuzz tests via build.sh
+        run: ./build.sh -f -v
+        timeout-minutes: 5
+      
+      - name: Upload fuzz test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-test-report
+          path: .build/fuzz-report.txt
+          if-no-files-found: ignore
+          retention-days: 30
+      
+      - name: Upload fuzz test raw log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-test-raw-log
+          path: .build/fuzz-raw.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   build-and-package:
     name: Build & Package
     runs-on: ubuntu-latest
