@@ -20,6 +20,7 @@ This architecture is fundamental to the system design. Violating it will cause c
 - Do **NOT** generate any documents other than `README.md`
 - All project documentation should be consolidated in the `README.md` file
 - Avoid creating additional markdown files, guides, or documentation files
+- **NEVER** create implementation summaries, change logs, or status documents (e.g., IMPLEMENTATION_SUMMARY.md, CHANGELOG.md, STATUS.md)
 - Keep the documentation simple and focused
 
 ## Project Guidelines
@@ -626,3 +627,215 @@ This separation ensures:
 - Fast feedback from unit tests
 - Fuzz tests run with appropriate timeouts
 - No unintentional fuzz test execution during normal unit testing
+
+## Frontend Website Guidelines (v0.3.0+)
+
+### Frontend Core Architecture
+
+The website is located in the `website/` directory and follows these principles:
+
+1. **Framework**: Next.js 15+ (App Router)
+   - Output Strategy: Static Site Generation (SSG)
+   - Requirement: `next.config.ts` MUST have `output: 'export'`
+   
+2. **Styling**: Tailwind CSS + shadcn/ui (Radix UI based)
+   - Use shadcn/ui components for consistency
+   - Follow the neutral color scheme
+   
+3. **Icons**: Lucide React
+   - Use Lucide icons throughout the UI
+   
+4. **Data Fetching**: TanStack Query (React Query) v5
+   - All data fetching MUST use React Query hooks
+   - Hooks are defined in `lib/hooks.ts`
+
+### RPC Adapter & Data Logic
+
+The frontend uses a "Service-Consumer" pattern to bridge UI and backend:
+
+1. **Client Factory**: `lib/rpc-client.ts`
+   - Handles HTTP requests via `POST /restful/rpc`
+   - Implements automatic case conversion
+   - Supports mock mode for development
+   
+2. **Type Mirroring**: `lib/types.ts`
+   - TypeScript interfaces MUST mirror Go structs
+   - Use camelCase for TypeScript (conversion is automatic)
+   - Keep types in sync with backend RPC specs
+   
+3. **Case Conversion**:
+   - Outgoing: camelCase → snake_case (for Go backend)
+   - Incoming: PascalCase/snake_case → camelCase (for TypeScript)
+   - Conversion is handled in `convertKeysToCamelCase()` and `convertKeysToSnakeCase()`
+   
+4. **Mock Mode**: `NEXT_PUBLIC_USE_MOCK_DATA=true`
+   - When true, RPC client returns simulated responses
+   - Realistic delays simulate network latency
+   - Allows frontend development without Go backend
+
+### UI/UX Specifications
+
+Use the following shadcn components for consistency:
+
+1. **Layout**:
+   - Container with responsive padding
+   - Cards for grouping related content
+   - Use spacing utilities consistently
+   
+2. **Forms**:
+   - Use react-hook-form + zod validation
+   - Integrate with shadcn/ui Form components
+   - Display validation errors inline
+   
+3. **Data Display**:
+   - Tables with client-side pagination
+   - Badge components for status indicators
+   - Skeleton loaders during loading states
+   
+4. **Feedback**:
+   - Use Sonner (toasts) for success/error notifications
+   - Toast messages should be concise and actionable
+   - Use appropriate toast variants (success, error, info)
+
+### Integration Requirements for Go
+
+1. **Path Compatibility**:
+   - All assets MUST use relative paths
+   - No absolute paths in href, src, or import statements
+   - Ensures assets load correctly when served from Go sub-route
+   
+2. **SPA Routing**:
+   - NO `next/headers` or `next/cache` features
+   - NO server-side features requiring Node.js runtime
+   - Static pages only - use client-side routing
+   
+3. **Build Output**:
+   - `npm run build` produces `out/` directory
+   - Contains only HTML/JS/CSS/assets
+   - Can be copied to `.build/package/` for Go access service
+   
+4. **Dynamic Routes**:
+   - Dynamic routes require `generateStaticParams()`
+   - Or avoid them and use client-side navigation only
+   - Keep it simple for static export
+
+### Development Workflow
+
+When working on the frontend:
+
+1. **Initial Setup**:
+   ```bash
+   cd website
+   npm install
+   cp .env.local.example .env.local
+   # Set NEXT_PUBLIC_USE_MOCK_DATA=true for mock mode
+   ```
+
+2. **Development**:
+   ```bash
+   npm run dev  # Start dev server with hot reload
+   ```
+
+3. **Type Generation**:
+   - When Go RPC APIs change, update `lib/types.ts`
+   - Ensure camelCase naming convention
+   - Keep types in sync with backend
+
+4. **Testing**:
+   ```bash
+   npm run build  # Test static export
+   npm run lint   # Check code style
+   ```
+
+5. **Integration**:
+   - Build produces `out/` directory
+   - Copy to Go service for static hosting
+   - Test with Go backend running
+
+### Frontend File Structure
+
+```
+website/
+├── app/                    # Next.js app directory
+│   ├── layout.tsx         # Root layout with providers
+│   └── page.tsx           # Main dashboard page
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components (auto-generated)
+│   ├── cve-table.tsx     # Custom: CVE data table
+│   └── session-control.tsx # Custom: Job session controls
+├── lib/                   # Library code
+│   ├── hooks.ts          # React Query hooks
+│   ├── providers.tsx     # React providers (QueryClient, etc.)
+│   ├── rpc-client.ts     # RPC client implementation
+│   ├── types.ts          # TypeScript types from Go structs
+│   └── utils.ts          # Utility functions (shadcn)
+├── public/               # Static assets
+├── .env.local.example    # Environment variables template
+├── next.config.ts        # Next.js config (output: 'export')
+├── package.json          # Dependencies
+└── README.md             # Frontend documentation
+```
+
+### Adding New Features
+
+When adding new frontend features:
+
+1. **New RPC Method**:
+   - Add TypeScript types to `lib/types.ts` (camelCase)
+   - Add method to `RPCClient` in `lib/rpc-client.ts`
+   - Add React Query hook to `lib/hooks.ts`
+   - Add mock data if needed
+
+2. **New UI Component**:
+   - Use shadcn/ui components when possible
+   - Place custom components in `components/`
+   - Use Lucide icons for consistency
+   - Follow existing patterns
+
+3. **New Page**:
+   - Add page in `app/` directory
+   - Use client components (`'use client'`)
+   - Avoid dynamic routes if possible
+   - Use React Query hooks for data
+
+### Common Patterns
+
+**Data Fetching:**
+```typescript
+// In a component
+const { data, isLoading, error } = useCVEList(offset, limit);
+```
+
+**Mutations:**
+```typescript
+const createCVE = useCreateCVE();
+
+const handleCreate = () => {
+  createCVE.mutate(cveId, {
+    onSuccess: () => toast.success("Created!"),
+    onError: (err) => toast.error(err.message),
+  });
+};
+```
+
+**Mock Mode:**
+```typescript
+// In .env.local
+NEXT_PUBLIC_USE_MOCK_DATA=true  // Use mock data
+NEXT_PUBLIC_USE_MOCK_DATA=false // Use real backend
+```
+
+### Troubleshooting
+
+**Build fails with dynamic route error:**
+- Remove dynamic routes or add `generateStaticParams()`
+- Use client-side navigation instead
+
+**Types mismatch:**
+- Check case conversion (Go uses snake_case, TS uses camelCase)
+- Verify RPC client conversion functions
+
+**Mock mode not working:**
+- Check `.env.local` has `NEXT_PUBLIC_USE_MOCK_DATA=true`
+- Restart dev server after changing env vars
+- Verify mock data in `lib/rpc-client.ts`
