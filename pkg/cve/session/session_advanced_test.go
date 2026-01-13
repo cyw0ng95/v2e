@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -269,7 +270,7 @@ func TestMultipleSessionLifecycles(t *testing.T) {
 
 	// Create and delete 10 sessions
 	for i := 0; i < 10; i++ {
-		sessionID := "session-" + string(rune('0'+i))
+		sessionID := fmt.Sprintf("session-%d", i)
 
 		// Create session
 		session, err := manager.CreateSession(sessionID, i*100, 100+i*10)
