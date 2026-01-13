@@ -118,8 +118,11 @@ func TestConcurrentStartAttempts(t *testing.T) {
 		Payload: emptyPayload,
 	}
 
-	mockRPC := &mockRPCInvoker{
+	// Use a mock that delays before returning to keep the job running
+	// long enough for all concurrent Start() calls to execute
+	mockRPC := &mockRPCInvokerWithDelay{
 		fetchResponse: emptyMsg,
+		delay:         200 * time.Millisecond,
 	}
 	controller := NewController(mockRPC, sessionManager, logger)
 
@@ -539,6 +542,28 @@ func (m *mockRPCInvokerWithBatches) InvokeRPC(ctx context.Context, target, metho
 		emptyResp := &cve.CVEResponse{Vulnerabilities: []struct{ CVE cve.CVEItem `json:"cve"` }{}}
 		emptyPayload, _ := sonic.Marshal(emptyResp)
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: emptyPayload}, nil
+	}
+	
+	if target == "cve-local" && method == "RPCSaveCVEByID" {
+		savePayload, _ := sonic.Marshal(map[string]interface{}{"success": true})
+		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: savePayload}, nil
+	}
+	
+	return nil, errors.New("unknown method")
+}
+
+// mockRPCInvokerWithDelay is a mock that delays before returning fetch responses
+// This is used to keep jobs running long enough for concurrency tests
+type mockRPCInvokerWithDelay struct {
+	fetchResponse *subprocess.Message
+	delay         time.Duration
+}
+
+func (m *mockRPCInvokerWithDelay) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
+	if target == "cve-remote" && method == "RPCFetchCVEs" {
+		// Delay to keep the job running
+		time.Sleep(m.delay)
+		return m.fetchResponse, nil
 	}
 	
 	if target == "cve-local" && method == "RPCSaveCVEByID" {
