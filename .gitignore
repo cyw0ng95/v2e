@@ -89,3 +89,13 @@ logs/
 # Python build artifacts (not website/lib)
 /lib/
 /lib64/
+# Binaries (not source directories)
+/access
+/broker
+/cve-local
+/cve-remote
+/cve-meta
+
+# Profiling files
+*.prof
+*.test
