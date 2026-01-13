@@ -66,8 +66,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -88,17 +86,6 @@ htmlcov/
 # Integration test logs
 logs/
 
-# Binaries (not source directories)
-/access
-/broker
-/cve-local
-/cve-remote
-/cve-meta
-
-# Next.js website
-/website/node_modules/
-/website/.next/
-/website/out/
-/website/.turbo/
-/website/next-env.d.ts
-/website/.env*.local
+# Python build artifacts (not website/lib)
+/lib/
+/lib64/

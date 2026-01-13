@@ -20,6 +20,7 @@ This architecture is fundamental to the system design. Violating it will cause c
 - Do **NOT** generate any documents other than `README.md`
 - All project documentation should be consolidated in the `README.md` file
 - Avoid creating additional markdown files, guides, or documentation files
+- **NEVER** create implementation summaries, change logs, or status documents (e.g., IMPLEMENTATION_SUMMARY.md, CHANGELOG.md, STATUS.md)
 - Keep the documentation simple and focused
 
 ## Project Guidelines

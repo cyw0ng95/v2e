@@ -11,6 +11,73 @@ PACKAGE_DIR=".build/package"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERBOSE=false
 
+# Version requirements
+MIN_GO_VERSION="1.21"
+MIN_NODE_VERSION="20"
+MIN_NPM_VERSION="10"
+
+# Check if a version meets minimum requirement
+version_ge() {
+    # Compare versions: returns 0 if $1 >= $2
+    printf '%s\n%s\n' "$2" "$1" | sort -V -C
+}
+
+# Check Go version
+check_go_version() {
+    if ! command -v go &> /dev/null; then
+        echo "Error: Go is not installed"
+        echo "Please install Go ${MIN_GO_VERSION} or later"
+        return 1
+    fi
+    
+    GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
+    if ! version_ge "$GO_VERSION" "$MIN_GO_VERSION"; then
+        echo "Error: Go version $GO_VERSION is too old"
+        echo "Please upgrade to Go ${MIN_GO_VERSION} or later"
+        return 1
+    fi
+    
+    if [ "$VERBOSE" = true ]; then
+        echo "✓ Go version: $GO_VERSION (>= ${MIN_GO_VERSION})"
+    fi
+    return 0
+}
+
+# Check Node.js and npm versions
+check_node_version() {
+    if ! command -v node &> /dev/null; then
+        echo "Error: Node.js is not installed"
+        echo "Please install Node.js ${MIN_NODE_VERSION} or later"
+        return 1
+    fi
+    
+    NODE_VERSION=$(node --version | sed 's/v//')
+    if ! version_ge "$NODE_VERSION" "$MIN_NODE_VERSION"; then
+        echo "Error: Node.js version $NODE_VERSION is too old"
+        echo "Please upgrade to Node.js ${MIN_NODE_VERSION} or later"
+        return 1
+    fi
+    
+    if ! command -v npm &> /dev/null; then
+        echo "Error: npm is not installed"
+        echo "Please install npm ${MIN_NPM_VERSION} or later"
+        return 1
+    fi
+    
+    NPM_VERSION=$(npm --version)
+    if ! version_ge "$NPM_VERSION" "$MIN_NPM_VERSION"; then
+        echo "Error: npm version $NPM_VERSION is too old"
+        echo "Please upgrade to npm ${MIN_NPM_VERSION} or later"
+        return 1
+    fi
+    
+    if [ "$VERBOSE" = true ]; then
+        echo "✓ Node.js version: $NODE_VERSION (>= ${MIN_NODE_VERSION})"
+        echo "✓ npm version: $NPM_VERSION (>= ${MIN_NPM_VERSION})"
+    fi
+    return 0
+}
+
 # Help function
 show_help() {
     cat << EOF
@@ -51,6 +118,12 @@ build_project() {
     if [ "$VERBOSE" = true ]; then
         echo "Building v2e project..."
     fi
+    
+    # Check Go version
+    if ! check_go_version; then
+        return 1
+    fi
+    
     setup_build_dir
     
     # Check if go.mod exists
@@ -71,6 +144,12 @@ build_project() {
 # Run unit tests
 run_tests() {
     echo "Running unit tests for GitHub CI..."
+    
+    # Check Go version
+    if ! check_go_version; then
+        return 1
+    fi
+    
     setup_build_dir
     
     # Check if go.mod exists
@@ -459,6 +538,13 @@ build_and_package() {
     if [ "$VERBOSE" = true ]; then
         echo "Building and packaging v2e project..."
     fi
+    
+    # Check versions first
+    echo "Checking build requirements..."
+    if ! check_go_version; then
+        return 1
+    fi
+    
     setup_build_dir
     mkdir -p "$PACKAGE_DIR"
     
@@ -487,13 +573,67 @@ build_and_package() {
             cp config.json "$PACKAGE_DIR/"
         fi
         
-        echo "Package created successfully in: $PACKAGE_DIR"
-        if [ "$VERBOSE" = true ]; then
-            echo "Contents:"
-            ls -lh "$PACKAGE_DIR"
+        echo "Go binaries packaged successfully"
+    else
+        echo "No go.mod found. Skipping Go build."
+    fi
+    
+    # Build and package frontend if website directory exists
+    if [ -d "website" ]; then
+        echo "Building frontend website..."
+        
+        # Check Node.js and npm versions
+        if ! check_node_version; then
+            echo "Warning: Skipping frontend build due to version requirements"
+        else
+            cd website
+            
+            # Install dependencies if node_modules doesn't exist
+            if [ ! -d "node_modules" ]; then
+                if [ "$VERBOSE" = true ]; then
+                    echo "Installing frontend dependencies..."
+                fi
+                npm install
+            else
+                if [ "$VERBOSE" = true ]; then
+                    echo "Using cached node_modules"
+                fi
+            fi
+            
+            # Build frontend
+            if [ "$VERBOSE" = true ]; then
+                echo "Building frontend static export..."
+            fi
+            npm run build
+            
+            # Copy frontend build output to package
+            if [ -d "out" ]; then
+                if [ "$VERBOSE" = true ]; then
+                    echo "Copying frontend build to package..."
+                fi
+                mkdir -p "../$PACKAGE_DIR/website"
+                cp -r out/* "../$PACKAGE_DIR/website/"
+                echo "Frontend website packaged successfully"
+            else
+                echo "Warning: Frontend build did not produce out/ directory"
+            fi
+            
+            cd ..
         fi
     else
-        echo "No go.mod found. Skipping build."
+        if [ "$VERBOSE" = true ]; then
+            echo "No website directory found. Skipping frontend build."
+        fi
+    fi
+    
+    echo "Package created successfully in: $PACKAGE_DIR"
+    if [ "$VERBOSE" = true ]; then
+        echo "Contents:"
+        ls -lh "$PACKAGE_DIR"
+        if [ -d "$PACKAGE_DIR/website" ]; then
+            echo "Website contents:"
+            ls -lh "$PACKAGE_DIR/website" | head -10
+        fi
     fi
 }
 

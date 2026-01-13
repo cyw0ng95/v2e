@@ -107,6 +107,29 @@ jobs:
         with:
           go-version: '1.24.11'
       
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: website/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('website/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      
       - name: Cache .build directory
         uses: actions/cache@v4
         with:
@@ -117,6 +140,48 @@ jobs:
       
       - name: Build and package via build.sh
         run: ./build.sh -p -v
+      
+      - name: Verify package contents
+        run: |
+          echo "Package contents:"
+          ls -lh .build/package/
+          echo ""
+          echo "Checking for binaries:"
+          test -f .build/package/access && echo "✓ access binary exists"
+          test -f .build/package/broker && echo "✓ broker binary exists"
+          test -f .build/package/cve-meta && echo "✓ cve-meta binary exists"
+          echo ""
+          echo "Checking for frontend:"
+          if [ -d .build/package/website ]; then
+            echo "✓ Frontend website directory exists"
+            echo "Website files:"
+            ls -lh .build/package/website/ | head -10
+            test -f .build/package/website/index.html && echo "✓ index.html exists"
+          else
+            echo "⚠ Frontend website directory not found"
+          fi
+      
+      - name: Test frontend accessibility
+        run: |
+          if [ -d .build/package/website ]; then
+            echo "Testing frontend can be served..."
+            cd .build/package/website
+            # Start a simple HTTP server in background
+            python3 -m http.server 8000 &
+            SERVER_PID=$!
+            sleep 2
+            # Test if we can fetch the index page
+            if curl -f http://localhost:8000/index.html > /dev/null 2>&1; then
+              echo "✓ Frontend is accessible via HTTP"
+            else
+              echo "✗ Failed to access frontend"
+              kill $SERVER_PID
+              exit 1
+            fi
+            kill $SERVER_PID
+          else
+            echo "Skipping frontend accessibility test (no website directory)"
+          fi
       
       - name: Get short commit SHA
         id: git-sha
