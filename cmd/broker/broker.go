@@ -673,16 +673,22 @@ func (b *Broker) Kill(id string) error {
 		return fmt.Errorf("process '%s' is not running", id)
 	}
 
-	// Cancel the context to stop the process
-	proc.cancel()
+	// Send SIGTERM for graceful shutdown
+	if proc.cmd.Process != nil {
+		if err := proc.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			// If SIGTERM fails, cancel context as fallback
+			proc.cancel()
+		}
+	}
 
 	// Wait for process to exit with timeout
 	select {
 	case <-proc.done:
-		b.logger.Info("Process killed: id=%s", id)
+		b.logger.Info("Process terminated gracefully: id=%s", id)
 		return nil
 	case <-time.After(5 * time.Second):
 		// Force kill if graceful shutdown failed
+		b.logger.Warn("Process did not terminate gracefully, sending SIGKILL: id=%s", id)
 		if proc.cmd.Process != nil {
 			if err := proc.cmd.Process.Kill(); err != nil {
 				return fmt.Errorf("failed to force kill process: %w", err)

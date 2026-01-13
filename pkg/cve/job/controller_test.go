@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 
 // mockRPCInvoker is a mock implementation of RPCInvoker for testing
 type mockRPCInvoker struct {
+	mu            sync.RWMutex
 	fetchResponse *subprocess.Message
 	saveResponse  *subprocess.Message
 	fetchError    error
@@ -26,6 +28,9 @@ type mockRPCInvoker struct {
 }
 
 func (m *mockRPCInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
 	if target == "cve-remote" && method == "RPCFetchCVEs" {
 		m.fetchCalls++
 		if m.fetchError != nil {
@@ -326,7 +331,9 @@ func TestJobLoop_WithResults(t *testing.T) {
 	// After first fetch, change to empty response
 	go func() {
 		time.Sleep(50 * time.Millisecond)
+		mockRPC.mu.Lock()
 		mockRPC.fetchResponse = emptyMsg
+		mockRPC.mu.Unlock()
 	}()
 
 	controller := NewController(mockRPC, sessionManager, logger)
