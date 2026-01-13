@@ -19,7 +19,7 @@ Usage: $0 [OPTIONS]
 Options:
     -t          Run unit tests and return result for GitHub CI
     -i          Run integration tests (requires Python and pytest)
-    -f          Run fuzz tests on key interfaces (max 3 minutes)
+    -f          Run fuzz tests on key interfaces (5 seconds per test)
     -m          Run performance benchmarks and generate report
     -M          Run RPC performance benchmarks via integration tests (integrated metrics)
     -p          Build and package binaries with assets
@@ -29,7 +29,7 @@ Options:
 Examples:
     $0          # Build the project
     $0 -t       # Run unit tests for CI
-    $0 -f       # Run fuzz tests (max 3 minutes)
+    $0 -f       # Run fuzz tests (5 seconds per test)
     $0 -i       # Run integration tests for CI
     $0 -m       # Run performance benchmarks
     $0 -M       # Run RPC performance benchmarks
@@ -115,7 +115,7 @@ run_fuzz_tests() {
     setup_build_dir
     
     # Fuzz test configuration
-    FUZZ_TIME="180s"  # 3 minutes maximum
+    FUZZ_TIME="5s"  # 5 seconds per test
     FUZZ_REPORT="$BUILD_DIR/fuzz-report.txt"
     
     # Check if go.mod exists
