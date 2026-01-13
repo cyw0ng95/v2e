@@ -28,8 +28,8 @@ type mockRPCInvoker struct {
 }
 
 func (m *mockRPCInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	
 	if target == "cve-remote" && method == "RPCFetchCVEs" {
 		m.fetchCalls++
