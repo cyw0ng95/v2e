@@ -19,6 +19,7 @@ Usage: $0 [OPTIONS]
 Options:
     -t          Run unit tests and return result for GitHub CI
     -i          Run integration tests (requires Python and pytest)
+    -f          Run fuzz tests on key interfaces (max 3 minutes)
     -m          Run performance benchmarks and generate report
     -M          Run RPC performance benchmarks via integration tests (integrated metrics)
     -p          Build and package binaries with assets
@@ -28,6 +29,7 @@ Options:
 Examples:
     $0          # Build the project
     $0 -t       # Run unit tests for CI
+    $0 -f       # Run fuzz tests (max 3 minutes)
     $0 -i       # Run integration tests for CI
     $0 -m       # Run performance benchmarks
     $0 -M       # Run RPC performance benchmarks
@@ -103,6 +105,125 @@ run_tests() {
     else
         echo "No go.mod found. No tests to run."
         echo "Tests passed (no tests found)"
+        return 0
+    fi
+}
+
+# Run fuzz tests on key interfaces
+run_fuzz_tests() {
+    echo "Running fuzz tests on key interfaces..."
+    setup_build_dir
+    
+    # Fuzz test configuration
+    FUZZ_TIME="180s"  # 3 minutes maximum
+    FUZZ_REPORT="$BUILD_DIR/fuzz-report.txt"
+    
+    # Check if go.mod exists
+    if [ -f "go.mod" ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "Running Go fuzz tests for $FUZZ_TIME..."
+        fi
+        
+        # Find all fuzz tests
+        FUZZ_TESTS=$(go test -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
+        
+        if [ -z "$FUZZ_TESTS" ]; then
+            echo "No fuzz tests found. Creating report..."
+            {
+                echo "======================================================================"
+                echo "           v2e Fuzz Testing Report"
+                echo "======================================================================"
+                echo ""
+                echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+                echo "Duration: $FUZZ_TIME per test"
+                echo ""
+                echo "No fuzz tests found in the codebase."
+                echo "Fuzz tests should be named FuzzXxx and placed in _test.go files."
+                echo ""
+                echo "======================================================================"
+            } > "$FUZZ_REPORT"
+            echo "Fuzz test report: $FUZZ_REPORT"
+            echo "Fuzz tests passed (no fuzz tests found)"
+            return 0
+        fi
+        
+        echo "Found fuzz tests:"
+        echo "$FUZZ_TESTS"
+        echo ""
+        
+        # Run fuzz tests
+        FUZZ_EXIT_CODE=0
+        FUZZ_RESULTS=""
+        
+        # Iterate through packages and run fuzz tests
+        for PKG in $(go list ./... | grep -E '(pkg/proc|cmd/broker|pkg/cve)'); do
+            PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
+            
+            if [ -n "$PKG_FUZZ_TESTS" ]; then
+                echo "Fuzzing package: $PKG"
+                for FUZZ_TEST in $PKG_FUZZ_TESTS; do
+                    echo "  Running $FUZZ_TEST for $FUZZ_TIME..."
+                    if go test -fuzz="^${FUZZ_TEST}$" -fuzztime="$FUZZ_TIME" "$PKG" 2>&1 | tee -a "$BUILD_DIR/fuzz-raw.log"; then
+                        FUZZ_RESULTS="$FUZZ_RESULTS\n  ✓ $PKG/$FUZZ_TEST: PASSED"
+                        echo "    ✓ PASSED"
+                    else
+                        FUZZ_EXIT_CODE=1
+                        FUZZ_RESULTS="$FUZZ_RESULTS\n  ✗ $PKG/$FUZZ_TEST: FAILED"
+                        echo "    ✗ FAILED"
+                    fi
+                done
+            fi
+        done
+        
+        # Generate report
+        {
+            echo "======================================================================"
+            echo "           v2e Fuzz Testing Report"
+            echo "======================================================================"
+            echo ""
+            echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "Host: $(uname -n)"
+            echo "OS: $(uname -s) $(uname -r)"
+            echo "Duration: $FUZZ_TIME per test"
+            echo ""
+            echo "======================================================================"
+            echo "                    Fuzz Test Results"
+            echo "======================================================================"
+            echo ""
+            echo -e "$FUZZ_RESULTS"
+            echo ""
+            echo "======================================================================"
+            echo "                           Notes"
+            echo "======================================================================"
+            echo ""
+            echo "Fuzz tests help discover:"
+            echo "  - Memory issues (use-after-free, buffer overflows)"
+            echo "  - Hangs and deadlocks"
+            echo "  - Panics and crashes"
+            echo "  - Invalid input handling"
+            echo ""
+            echo "Each test runs for $FUZZ_TIME to find edge cases."
+            echo "Full log: $BUILD_DIR/fuzz-raw.log"
+            echo "======================================================================"
+        } > "$FUZZ_REPORT"
+        
+        if [ "$VERBOSE" = true ]; then
+            cat "$FUZZ_REPORT"
+        fi
+        
+        echo "Fuzz test report: $FUZZ_REPORT"
+        
+        # Return exit code
+        if [ $FUZZ_EXIT_CODE -eq 0 ]; then
+            echo "All fuzz tests passed!"
+            return 0
+        else
+            echo "Fuzz tests failed!"
+            return $FUZZ_EXIT_CODE
+        fi
+    else
+        echo "No go.mod found. No fuzz tests to run."
+        echo "Fuzz tests passed (no tests found)"
         return 0
     fi
 }
@@ -383,20 +504,21 @@ main() {
     # Parse command line arguments
     RUN_TESTS=false
     RUN_INTEGRATION_TESTS=false
+    RUN_FUZZ_TESTS=false
     RUN_BENCHMARKS=false
     RUN_RPC_BENCHMARKS=false
     BUILD_PACKAGE=false
     
-    while getopts "timMphv" opt; do
+    while getopts "tifmMphv" opt; do
         case $opt in
-            p)
-                BUILD_PACKAGE=true
-                ;;
             t)
                 RUN_TESTS=true
                 ;;
             i)
                 RUN_INTEGRATION_TESTS=true
+                ;;
+            f)
+                RUN_FUZZ_TESTS=true
                 ;;
             m)
                 RUN_BENCHMARKS=true
@@ -428,6 +550,9 @@ main() {
         exit $?
     elif [ "$RUN_INTEGRATION_TESTS" = true ]; then
         run_integration_tests
+        exit $?
+    elif [ "$RUN_FUZZ_TESTS" = true ]; then
+        run_fuzz_tests
         exit $?
     elif [ "$RUN_BENCHMARKS" = true ]; then
         run_benchmarks
