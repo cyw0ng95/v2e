@@ -479,6 +479,55 @@ After optimization:
 - **Evidence**: Larger batches reduce syscalls; smaller intervals reduce latency
 - **Tuning**: Monitor metrics and adjust based on actual workload patterns
 
+### Principle 13: Efficient Batch Writing with bufio.Writer
+- **When to use**: Writing multiple messages or data blocks in sequence
+- **Implementation**:
+  ```go
+  // Use pooled bufio.Writer for efficient batch writes
+  writer := writerPool.Get().(*bufio.Writer)
+  writer.Reset(output)
+  defer writerPool.Put(writer)
+  
+  for _, data := range batch {
+      writer.Write(data)
+      writer.WriteByte('\n')
+  }
+  writer.Flush()
+  ```
+- **Impact**: Reduces syscalls and allocation overhead compared to fmt.Fprintf
+- **Evidence**: SendMessage: 29% faster (294.4 → 209.1 ns/op), 51% less memory (162 → 80 B/op)
+
+### Principle 14: Persistent bufio.Writer Pool
+- **When to use**: When creating bufio.Writer objects repeatedly
+- **Implementation**:
+  ```go
+  var writerPool = sync.Pool{
+      New: func() interface{} {
+          return bufio.NewWriterSize(nil, 4096)
+      },
+  }
+  
+  // Usage:
+  writer := writerPool.Get().(*bufio.Writer)
+  writer.Reset(output)
+  defer writerPool.Put(writer)
+  ```
+- **Impact**: Eliminates repeated allocations of Writer objects
+- **Evidence**: Reduced allocations from 4 to 2 per operation (50% reduction)
+
+### Principle 15: Avoid String Formatting in Hot Paths
+- **When to use**: Error messages and logging in frequently-called code
+- **Implementation**:
+  ```go
+  // Before: fmt.Sprintf allocates
+  Error: fmt.Sprintf("failed to parse message: %v", err)
+  
+  // After: Direct concatenation (no allocation for simple cases)
+  Error: "failed to parse message: " + err.Error()
+  ```
+- **Impact**: Eliminates unnecessary allocations in error paths
+- **Evidence**: ConcurrentSend: 37% faster (356.8 → 223.8 ns/op), 44% less memory (287 → 160 B/op)
+
 ### Performance Optimization Checklist
 
 ## RPC API Specification Guidelines
