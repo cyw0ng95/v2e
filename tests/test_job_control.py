@@ -12,6 +12,32 @@ import pytest
 import time
 
 
+@pytest.fixture(scope="function", autouse=True)
+def cleanup_session(access_service):
+    """Clean up any existing session before each test."""
+    # Try to stop any existing session before the test
+    try:
+        access_service.rpc_call(
+            method="RPCStopSession",
+            target="cve-meta",
+            params={}
+        )
+    except:
+        pass
+    
+    yield
+    
+    # Clean up after the test
+    try:
+        access_service.rpc_call(
+            method="RPCStopSession",
+            target="cve-meta",
+            params={}
+        )
+    except:
+        pass
+
+
 @pytest.mark.integration
 class TestJobControl:
     """Integration tests for job control via cve-meta service."""
@@ -56,13 +82,6 @@ class TestJobControl:
         assert "created_at" in payload
         
         print(f"  ✓ Test passed: Successfully started session")
-        
-        # Clean up - stop the session
-        access.rpc_call(
-            method="RPCStopSession",
-            target="cve-meta",
-            params={}
-        )
     
     def test_get_session_status_no_session(self, access_service):
         """Test getting session status when no session exists.
@@ -148,12 +167,6 @@ class TestJobControl:
         
         print(f"  ✓ Test passed: Session status retrieved successfully")
         
-        # Clean up
-        access.rpc_call(
-            method="RPCStopSession",
-            target="cve-meta",
-            params={}
-        )
     
     def test_single_session_enforcement(self, access_service):
         """Test that only one session can exist at a time.
@@ -201,12 +214,6 @@ class TestJobControl:
         
         print(f"  ✓ Test passed: Single session enforcement works")
         
-        # Clean up
-        access.rpc_call(
-            method="RPCStopSession",
-            target="cve-meta",
-            params={}
-        )
     
     def test_pause_and_resume_job(self, access_service):
         """Test pausing and resuming a job.
@@ -231,6 +238,9 @@ class TestJobControl:
             }
         )
         
+        # Give the job a moment to actually start
+        time.sleep(0.2)
+        
         # Pause the job
         pause_response = access.rpc_call(
             method="RPCPauseJob",
@@ -245,6 +255,9 @@ class TestJobControl:
         assert pause_response["retcode"] == 0
         assert pause_response["payload"]["success"] is True
         assert pause_response["payload"]["state"] == "paused"
+        
+        # Give a moment for state to fully propagate
+        time.sleep(0.5)
         
         # Verify session is paused
         status = access.rpc_call(
@@ -281,12 +294,6 @@ class TestJobControl:
         
         print(f"  ✓ Job resumed successfully")
         
-        # Clean up
-        access.rpc_call(
-            method="RPCStopSession",
-            target="cve-meta",
-            params={}
-        )
     
     def test_stop_session(self, access_service):
         """Test stopping a session.
