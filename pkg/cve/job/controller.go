@@ -214,7 +214,9 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 
 			if err != nil {
 				c.logger.Error("Failed to fetch CVEs: %v", err)
-				c.sessionManager.UpdateProgress(0, 0, 1)
+				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
+					c.logger.Warn("Failed to update progress: %v", err)
+				}
 				
 				// Wait before retrying
 				select {
@@ -229,14 +231,18 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			msg, ok := result.(*subprocess.Message)
 			if !ok {
 				c.logger.Error("Invalid response type from cve-remote")
-				c.sessionManager.UpdateProgress(0, 0, 1)
+				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
+					c.logger.Warn("Failed to update progress: %v", err)
+				}
 				continue
 			}
 
 			// Check if it's an error message
 			if msg.Type == subprocess.MessageTypeError {
 				c.logger.Error("Error from cve-remote: %s", msg.Error)
-				c.sessionManager.UpdateProgress(0, 0, 1)
+				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
+					c.logger.Warn("Failed to update progress: %v", err)
+				}
 				
 				// Wait before retrying
 				select {
@@ -251,7 +257,9 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			var response cve.CVEResponse
 			if err := sonic.Unmarshal(msg.Payload, &response); err != nil {
 				c.logger.Error("Failed to unmarshal CVE response: %v", err)
-				c.sessionManager.UpdateProgress(0, 0, 1)
+				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
+					c.logger.Warn("Failed to update progress: %v", err)
+				}
 				continue
 			}
 
@@ -284,7 +292,9 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			c.logger.Info("Stored %d/%d CVEs successfully", storedCount, len(response.Vulnerabilities))
 
 			// Update progress
-			c.sessionManager.UpdateProgress(int64(len(response.Vulnerabilities)), storedCount, errorCount)
+			if err := c.sessionManager.UpdateProgress(int64(len(response.Vulnerabilities)), storedCount, errorCount); err != nil {
+				c.logger.Warn("Failed to update progress: %v", err)
+			}
 
 			// Move to next batch
 			currentIndex += batchSize

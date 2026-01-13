@@ -22,7 +22,8 @@ def cleanup_session(access_service):
             target="cve-meta",
             params={}
         )
-    except:
+    except Exception:
+        # Ignore errors if no session exists
         pass
     
     yield
@@ -34,7 +35,8 @@ def cleanup_session(access_service):
             target="cve-meta",
             params={}
         )
-    except:
+    except Exception:
+        # Ignore errors if no session exists
         pass
 
 

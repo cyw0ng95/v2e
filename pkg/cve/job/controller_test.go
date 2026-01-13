@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -46,8 +47,7 @@ func (m *mockRPCInvoker) InvokeRPC(ctx context.Context, target, method string, p
 
 func TestNewController(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_controller_session.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_controller_session.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -74,8 +74,7 @@ func TestNewController(t *testing.T) {
 
 func TestControllerStart_NoSession(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_start_no_session.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_start_no_session.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -93,8 +92,7 @@ func TestControllerStart_NoSession(t *testing.T) {
 
 func TestControllerStart_AlreadyRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_start_already_running.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_start_already_running.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -135,8 +133,7 @@ func TestControllerStart_AlreadyRunning(t *testing.T) {
 
 func TestControllerStop_NotRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_stop_not_running.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_stop_not_running.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -152,8 +149,7 @@ func TestControllerStop_NotRunning(t *testing.T) {
 
 func TestControllerPause_NotRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_pause_not_running.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_pause_not_running.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -169,8 +165,7 @@ func TestControllerPause_NotRunning(t *testing.T) {
 
 func TestControllerResume_NotPaused(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_resume_not_paused.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_resume_not_paused.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -191,8 +186,7 @@ func TestControllerResume_NotPaused(t *testing.T) {
 
 func TestControllerIsRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_is_running.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_is_running.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -236,8 +230,7 @@ func TestControllerIsRunning(t *testing.T) {
 
 func TestJobLoop_EmptyResults(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_job_empty.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_job_empty.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()
@@ -279,8 +272,7 @@ func TestJobLoop_EmptyResults(t *testing.T) {
 
 func TestJobLoop_WithResults(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	dbPath := "/tmp/test_job_with_results.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_job_with_results.db")
 
 	sessionManager, _ := session.NewManager(dbPath)
 	defer sessionManager.Close()

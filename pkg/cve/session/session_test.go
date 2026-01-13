@@ -1,15 +1,14 @@
 package session
 
 import (
-	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestNewManager(t *testing.T) {
 	// Create temporary database file
-	dbPath := "/tmp/test_session.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_session.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
@@ -23,8 +22,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestCreateSession(t *testing.T) {
-	dbPath := "/tmp/test_create_session.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_create_session.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
@@ -55,8 +53,7 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestSingleSessionEnforcement(t *testing.T) {
-	dbPath := "/tmp/test_single_session.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_single_session.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
@@ -78,8 +75,7 @@ func TestSingleSessionEnforcement(t *testing.T) {
 }
 
 func TestGetSession(t *testing.T) {
-	dbPath := "/tmp/test_get_session.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_get_session.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
@@ -111,8 +107,7 @@ func TestGetSession(t *testing.T) {
 }
 
 func TestUpdateState(t *testing.T) {
-	dbPath := "/tmp/test_update_state.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_update_state.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
@@ -144,8 +139,7 @@ func TestUpdateState(t *testing.T) {
 }
 
 func TestUpdateProgress(t *testing.T) {
-	dbPath := "/tmp/test_update_progress.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_update_progress.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
@@ -208,8 +202,7 @@ func TestUpdateProgress(t *testing.T) {
 }
 
 func TestDeleteSession(t *testing.T) {
-	dbPath := "/tmp/test_delete_session.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_delete_session.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
@@ -237,8 +230,7 @@ func TestDeleteSession(t *testing.T) {
 }
 
 func TestSessionPersistence(t *testing.T) {
-	dbPath := "/tmp/test_session_persistence.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_session_persistence.db")
 
 	// Create session in first manager
 	manager1, err := NewManager(dbPath)
@@ -289,8 +281,7 @@ func TestSessionPersistence(t *testing.T) {
 }
 
 func TestUpdateTimestamps(t *testing.T) {
-	dbPath := "/tmp/test_update_timestamps.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_update_timestamps.db")
 
 	manager, err := NewManager(dbPath)
 	if err != nil {
