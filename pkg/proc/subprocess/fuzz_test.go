@@ -2,6 +2,8 @@ package subprocess
 
 import (
 	"testing"
+	
+	"github.com/bytedance/sonic"
 )
 
 // FuzzMessageUnmarshal tests unmarshaling of arbitrary byte sequences
@@ -17,12 +19,12 @@ func FuzzMessageUnmarshal(f *testing.F) {
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// Attempt to unmarshal - should not panic
-		msg := &Message{}
-		_ = Unmarshal(data, msg)
+		var msg Message
+		_ = sonic.Unmarshal(data, &msg)
 		
 		// If unmarshal succeeded, marshal it back - should not panic
 		if msg.Type != "" {
-			_, _ = msg.Marshal()
+			_, _ = sonic.Marshal(&msg)
 		}
 	})
 }
@@ -46,13 +48,13 @@ func FuzzMessageMarshal(f *testing.F) {
 		}
 		
 		// Marshal - should not panic
-		data, err := msg.Marshal()
+		data, err := sonic.Marshal(msg)
 		if err != nil {
 			return
 		}
 		
 		// Unmarshal back - should not panic
-		msg2 := &Message{}
-		_ = Unmarshal(data, msg2)
+		var msg2 Message
+		_ = sonic.Unmarshal(data, &msg2)
 	})
 }
