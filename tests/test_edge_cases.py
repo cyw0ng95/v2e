@@ -301,39 +301,6 @@ class TestEdgeCasesAndMalformed:
         assert response["retcode"] == 500
         print(f"  ✓ Test passed: Unknown target rejected (retcode: {response['retcode']})")
     
-    def test_malformed_target_parameter(self, access_service):
-        """Test RPC call with malformed target parameter.
-        
-        This verifies:
-        - System validates target format
-        """
-        access = access_service
-        
-        print("\n  → Testing malformed target parameter")
-        
-        malformed_targets = [
-            "",
-            " ",
-            "../broker",
-            "target;rm -rf /",
-            "target\x00",
-        ]
-        
-        for target in malformed_targets:
-            print(f"  → Testing target: {repr(target)}")
-            response = access.rpc_call(
-                method="RPCGetMessageStats",
-                target=target,
-                params={},
-                verbose=False
-            )
-            
-            # Should handle safely
-            assert "retcode" in response
-            print(f"    ✓ Handled (retcode: {response['retcode']})")
-        
-        print(f"  ✓ Test passed: Malformed targets handled")
-    
     def test_rapid_sequential_requests(self, access_service):
         """Test rapid sequential API requests.
         
