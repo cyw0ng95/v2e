@@ -480,3 +480,100 @@ After optimization:
 - **Tuning**: Monitor metrics and adjust based on actual workload patterns
 
 ### Performance Optimization Checklist
+
+## RPC API Specification Guidelines
+
+All RPC services (cmd/* except broker) MUST include a structured API specification at the top of their main.go file.
+
+### RPC API Spec Format
+
+Each cmd/*/main.go file should have a comment block at the top following this format:
+
+```go
+/*
+Package main implements the [service-name] RPC service.
+
+RPC API Specification:
+
+[Service Name] Service
+====================
+
+Service Type: [RPC/REST]
+Description: [Brief description of the service purpose]
+
+Available RPC Methods:
+---------------------
+
+1. RPCMethodName
+   Description: [What this method does]
+   Request Parameters:
+     - param_name (type, required/optional): Description
+     - param_name2 (type, required/optional): Description
+   Response:
+     - field_name (type): Description
+     - field_name2 (type): Description
+   Errors:
+     - Error condition 1: Description
+     - Error condition 2: Description
+   Example:
+     Request:  {"param_name": "value"}
+     Response: {"field_name": "result"}
+
+2. RPCMethodName2
+   [Similar structure as above]
+
+Notes:
+------
+- [Any additional notes about the service]
+- [Usage constraints or requirements]
+- [Dependencies on other services]
+
+*/
+package main
+```
+
+### Development Process Requirements
+
+**CRITICAL**: When developing new features or modifying existing RPC APIs, MUST follow this process:
+
+1. **Design Phase**
+   - Design the RPC method interface (name, parameters, response)
+   - Consider error cases and validation requirements
+   - Plan integration with other services
+
+2. **Update Specification**
+   - Update the RPC API Spec comment block in cmd/*/main.go
+   - Document all parameters, response fields, and error cases
+   - Add usage examples
+
+3. **Implementation**
+   - Implement the RPC handler following the spec
+   - Add parameter validation
+   - Implement error handling as specified
+
+4. **Update Integration Tests**
+   - Add integration test cases in tests/ directory
+   - Test all documented scenarios (success, errors, edge cases)
+   - Verify the spec matches actual behavior
+
+5. **Verification**
+   - Run unit tests: `./build.sh -t`
+   - Run integration tests: `./build.sh -i`
+   - Verify API spec is accurate and complete
+
+### RPC API Specification Principles
+
+- **Single Source of Truth**: The spec in main.go is the authoritative documentation
+- **Always Up-to-Date**: Spec MUST be updated before or with code changes
+- **Complete**: Document all parameters, responses, and errors
+- **Testable**: Every spec item should have corresponding test cases
+- **Examples**: Include realistic request/response examples
+
+### Unit Test and Fuzz Test Separation
+
+The unit test stage (via `./build.sh -t`) excludes fuzz tests by using the `-run='^Test'` flag, which only runs functions matching the Test* pattern. Fuzz tests (Fuzz*) are run separately in the fuzz test stage (via `./build.sh -f`).
+
+This separation ensures:
+- Fast feedback from unit tests
+- Fuzz tests run with appropriate timeouts
+- No unintentional fuzz test execution during normal unit testing
