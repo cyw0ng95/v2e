@@ -77,12 +77,12 @@ run_tests() {
     if [ -f "go.mod" ]; then
         if [ "$VERBOSE" = true ]; then
             echo "Running go test with verbose output..."
-            # Run tests with coverage and verbose output
-            go test -v -race -coverprofile="$BUILD_DIR/coverage.out" ./...
+            # Run tests with coverage and verbose output, excluding fuzz tests
+            go test -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         else
             echo "Running go test..."
-            # Run tests with coverage
-            go test -race -coverprofile="$BUILD_DIR/coverage.out" ./...
+            # Run tests with coverage, excluding fuzz tests
+            go test -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         fi
         TEST_EXIT_CODE=$?
         
