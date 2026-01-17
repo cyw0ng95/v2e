@@ -66,3 +66,25 @@ export const RotateCwIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M20.49 15a9 9 0 11-2.13-9.36L23 10" />
   </svg>
 );
+
+export const CopyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="9" y="9" width="13" height="13" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+export const ExpandAllIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 5 17 10" />
+    <line x1="12" y1="5" x2="12" y2="21" />
+  </svg>
+);
+
+export const CollapseAllIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <polyline points="18 15 12 9 6 15" />
+    <line x1="12" y1="3" x2="12" y2="21" />
+  </svg>
+);
