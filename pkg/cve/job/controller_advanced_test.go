@@ -242,7 +242,7 @@ type mockRPCInvokerWithTracking struct {
 }
 
 func (m *mockRPCInvokerWithTracking) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
-	if target == "cve-remote" && method == "RPCFetchCVEs" {
+	if target == "remote" && method == "RPCFetchCVEs" {
 		// Return empty after first call
 		if len(m.savedCVEs) > 0 {
 			emptyResp := &cve.CVEResponse{Vulnerabilities: []struct {
@@ -254,7 +254,7 @@ func (m *mockRPCInvokerWithTracking) InvokeRPC(ctx context.Context, target, meth
 		return m.fetchResponse, nil
 	}
 
-	if target == "cve-local" && method == "RPCSaveCVEByID" {
+	if target == "local" && method == "RPCSaveCVEByID" {
 		// Extract CVE ID from params
 		paramMap, ok := params.(map[string]interface{})
 		if ok {
@@ -531,7 +531,7 @@ type mockRPCInvokerWithBatches struct {
 }
 
 func (m *mockRPCInvokerWithBatches) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
-	if target == "cve-remote" && method == "RPCFetchCVEs" {
+	if target == "remote" && method == "RPCFetchCVEs" {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
@@ -548,7 +548,7 @@ func (m *mockRPCInvokerWithBatches) InvokeRPC(ctx context.Context, target, metho
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: emptyPayload}, nil
 	}
 
-	if target == "cve-local" && method == "RPCSaveCVEByID" {
+	if target == "local" && method == "RPCSaveCVEByID" {
 		savePayload, _ := sonic.Marshal(map[string]interface{}{"success": true})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: savePayload}, nil
 	}
@@ -564,13 +564,13 @@ type mockRPCInvokerWithDelay struct {
 }
 
 func (m *mockRPCInvokerWithDelay) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
-	if target == "cve-remote" && method == "RPCFetchCVEs" {
+	if target == "remote" && method == "RPCFetchCVEs" {
 		// Delay to keep the job running
 		time.Sleep(m.delay)
 		return m.fetchResponse, nil
 	}
 
-	if target == "cve-local" && method == "RPCSaveCVEByID" {
+	if target == "local" && method == "RPCSaveCVEByID" {
 		savePayload, _ := sonic.Marshal(map[string]interface{}{"success": true})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: savePayload}, nil
 	}

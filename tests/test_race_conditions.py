@@ -33,7 +33,7 @@ class TestRaceConditions:
         # Ensure CVE exists
         create_response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -50,7 +50,7 @@ class TestRaceConditions:
             try:
                 response = access.rpc_call(
                     method="RPCGetCVE",
-                    target="cve-meta",
+                    target="meta",
                     params={"cve_id": cve_id},
                     verbose=False
                 )
@@ -103,7 +103,7 @@ class TestRaceConditions:
         # First delete if exists
         access.rpc_call(
             method="RPCDeleteCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -117,7 +117,7 @@ class TestRaceConditions:
             try:
                 response = access.rpc_call(
                     method="RPCCreateCVE",
-                    target="cve-meta",
+                    target="meta",
                     params={"cve_id": cve_id},
                     verbose=False
                 )
@@ -158,7 +158,7 @@ class TestRaceConditions:
         # Verify only one CVE was created
         list_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -193,7 +193,7 @@ class TestRaceConditions:
                 cve_id = f"CVE-2021-{44228 + cve_num}"
                 response = access.rpc_call(
                     method="RPCGetCVE",
-                    target="cve-meta",
+                    target="meta",
                     params={"cve_id": cve_id},
                     verbose=False
                 )
@@ -243,7 +243,7 @@ class TestRaceConditions:
             try:
                 response = access.rpc_call(
                     method="RPCCreateCVE",
-                    target="cve-meta",
+                    target="meta",
                     params={"cve_id": cve_id},
                     verbose=False
                 )
@@ -257,7 +257,7 @@ class TestRaceConditions:
             try:
                 response = access.rpc_call(
                     method="RPCDeleteCVE",
-                    target="cve-meta",
+                    target="meta",
                     params={"cve_id": cve_id},
                     verbose=False
                 )
@@ -308,7 +308,7 @@ class TestRaceConditions:
         # Ensure CVE exists
         create_response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -328,7 +328,7 @@ class TestRaceConditions:
                 time.sleep(thread_id * 0.5)
                 response = access.rpc_call(
                     method="RPCUpdateCVE",
-                    target="cve-meta",
+                    target="meta",
                     params={"cve_id": cve_id},
                     verbose=False
                 )
@@ -386,7 +386,7 @@ class TestRaceConditions:
             try:
                 response = access.rpc_call(
                     method="RPCListCVEs",
-                    target="cve-meta",
+                    target="meta",
                     params={"offset": 0, "limit": 10},
                     verbose=False
                 )
@@ -458,7 +458,7 @@ class TestRaceConditions:
             try:
                 response = access.rpc_call(
                     method="RPCListCVEs",
-                    target="cve-meta",
+                    target="meta",
                     params={"offset": 0, "limit": 5},
                     verbose=False
                 )
@@ -472,7 +472,7 @@ class TestRaceConditions:
             try:
                 response = access.rpc_call(
                     method="RPCIsCVEStoredByID",
-                    target="cve-local",
+                    target="local",
                     params={"cve_id": "CVE-2021-44228"},
                     verbose=False
                 )

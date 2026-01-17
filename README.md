@@ -8,7 +8,7 @@ A Go-based project demonstrating a multi-command structure with CVE (Common Vuln
 
 **Important: Broker-First Architecture**
 
-The broker (`cmd/broker`) is a standalone process that boots and manages all subprocesses in the system. All other services (including `access`, `cve-remote`, `cve-local`, `cve-meta`, etc.) are subprocesses managed by the broker.
+The broker (`cmd/broker`) is a standalone process that boots and manages all subprocesses in the system. All other services (including `access`, `remote`, `local`, `meta`, etc.) are subprocesses managed by the broker.
 
 **Key Rules:**
 - The broker is the only entry point for process management
@@ -25,9 +25,9 @@ This project contains multiple commands:
 
 - `cmd/access` - RESTful API gateway service (the central entry point for external requests)
 - `cmd/broker` - RPC service for managing subprocesses and process lifecycle
-- `cmd/cve-remote` - RPC service for fetching CVE data from NVD API
-- `cmd/cve-local` - RPC service for storing and retrieving CVE data from local database
-- `cmd/cve-meta` - Backend RPC service that orchestrates CVE fetching and storage operations
+- `cmd/remote` - RPC service for fetching CVE data from NVD API
+- `cmd/local` - RPC service for storing and retrieving CVE data from local database
+- `cmd/meta` - Backend RPC service that orchestrates CVE fetching and storage operations
 
 And packages:
 
@@ -43,7 +43,7 @@ And packages:
 
 ## CVE Meta Job Control
 
-The `cve-meta` service provides job control capabilities for continuous CVE data fetching and storing operations. This allows you to start long-running jobs that continuously fetch CVE data from the NVD API and store it in the local database.
+The `meta` service provides job control capabilities for continuous CVE data fetching and storing operations. This allows you to start long-running jobs that continuously fetch CVE data from the NVD API and store it in the local database.
 
 ### Features
 
@@ -138,7 +138,7 @@ curl -X POST http://localhost:8080/restful/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "RPCStartSession",
-    "target": "cve-meta",
+    "target": "meta",
     "params": {
       "session_id": "bulk-fetch-2026",
       "start_index": 0,
@@ -151,7 +151,7 @@ curl -X POST http://localhost:8080/restful/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "RPCGetSessionStatus",
-    "target": "cve-meta",
+    "target": "meta",
     "params": {}
   }'
 
@@ -160,7 +160,7 @@ curl -X POST http://localhost:8080/restful/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "RPCPauseJob",
-    "target": "cve-meta",
+    "target": "meta",
     "params": {}
   }'
 
@@ -169,7 +169,7 @@ curl -X POST http://localhost:8080/restful/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "RPCResumeJob",
-    "target": "cve-meta",
+    "target": "meta",
     "params": {}
   }'
 
@@ -178,7 +178,7 @@ curl -X POST http://localhost:8080/restful/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "RPCStopSession",
-    "target": "cve-meta",
+    "target": "meta",
     "params": {}
   }'
 ```
@@ -204,7 +204,7 @@ The session state is persisted in `session.db` (bbolt K-V database) and includes
 This project follows a **broker-first architecture** with strict subprocess isolation:
 
 1. **Broker is the entry point**: Users run `broker` with `config.json` as the first argument
-2. **Broker spawns all subprocesses**: Includes access (REST API), cve-remote, cve-local, cve-meta
+2. **Broker spawns all subprocesses**: Includes access (REST API), remote, local, meta
 3. **External users access via REST**: HTTP requests to access service (http://localhost:8080/restful/*)
 4. **Access forwards to broker**: Converts REST → RPC messages sent to broker (future implementation)
 5. **Broker routes to services**: Routes RPC messages to appropriate backend subprocess
@@ -215,15 +215,15 @@ This project follows a **broker-first architecture** with strict subprocess isol
 ```
 User runs:    broker config.json
               ↓
-Broker spawns: access, cve-remote, cve-local, cve-meta
+Broker spawns: access, remote, local, meta
               ↓
 External user → REST API (access) → Broker → Backend Services
                                        ↓
                          Message Routing (RPCInvoke)
                                        ↓
-              cve-remote ←→ Broker ←→ cve-local
+              remote ←→ Broker ←→ local
                              ↓
-                          cve-meta
+                          meta
 ```
 
 This architecture provides:
@@ -318,9 +318,9 @@ To build all commands:
 ```bash
 go build ./cmd/access
 go build ./cmd/broker
-go build ./cmd/cve-remote
-go build ./cmd/cve-local
-go build ./cmd/cve-meta
+go build ./cmd/remote
+go build ./cmd/local
+go build ./cmd/meta
 ```
 
 Or build a specific command:
@@ -328,9 +328,9 @@ Or build a specific command:
 ```bash
 go build -o bin/access ./cmd/access
 go build -o bin/broker ./cmd/broker
-go build -o bin/cve-remote ./cmd/cve-remote
-go build -o bin/cve-local ./cmd/cve-local
-go build -o bin/cve-meta ./cmd/cve-meta
+go build -o bin/remote ./cmd/remote
+go build -o bin/local ./cmd/local
+go build -o bin/meta ./cmd/meta
 ```
 
 ## Running
@@ -372,24 +372,24 @@ The `config.json` file defines which services to start:
         "max_restarts": -1
       },
       {
-        "id": "cve-remote",
-        "command": "./cve-remote",
+        "id": "remote",
+        "command": "./remote",
         "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
       {
-        "id": "cve-local",
-        "command": "./cve-local",
+        "id": "local",
+        "command": "./local",
         "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
       {
-        "id": "cve-meta",
-        "command": "./cve-meta",
+        "id": "meta",
+        "command": "./meta",
         "args": [],
         "rpc": true,
         "restart": true,
@@ -425,7 +425,7 @@ The Access service is the external entry point for the v2e system. It provides a
 In the correct v2e architecture:
 
 1. **Broker is the entry point**: Run broker with `config.json` as the first argument
-2. **Broker spawns all subprocesses**: Including access, cve-remote, cve-local, cve-meta
+2. **Broker spawns all subprocesses**: Including access, remote, local, meta
 3. **Access provides REST API**: External interface for the system
 4. **Access forwards to broker**: Converts REST requests to RPC messages sent to broker
 5. **Broker routes messages**: Routes RPC requests to appropriate backend services
@@ -469,9 +469,9 @@ The access service is configured in `config.json`:
         "restart": true
       },
       {
-        "id": "cve-remote",
+        "id": "remote",
         "command": "go",
-        "args": ["run", "./cmd/cve-remote"],
+        "args": ["run", "./cmd/remote"],
         "rpc": true,
         "restart": true
       }
@@ -507,7 +507,7 @@ External Clients → Access (REST API) → Broker (RPC Router)
                                          ↓
                              ┌──────────┼──────────┐
                              ↓          ↓          ↓
-                         cve-local  cve-remote  cve-meta
+                         local  remote  meta
 ```
 
 All external requests are handled by the Access service, which:
@@ -547,12 +547,12 @@ RPC services should be accessed via the Access service's RESTful API, not direct
 
 ```bash
 # Get CVE count from NVD
-curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVECnt \
+curl -X POST http://localhost:8080/restful/rpc/remote/RPCGetCVECnt \
   -H "Content-Type: application/json" \
   -d '{}'
 
 # Fetch a specific CVE by ID
-curl -X POST http://localhost:8080/restful/rpc/cve-remote/RPCGetCVEByID \
+curl -X POST http://localhost:8080/restful/rpc/remote/RPCGetCVEByID \
   -H "Content-Type: application/json" \
   -d '{"cve_id":"CVE-2021-44228"}'
 ```
@@ -577,8 +577,8 @@ The CVE Local service provides RPC interfaces for storing and retrieving CVE dat
 RPC services should be accessed via the Access service's RESTful API, not directly via stdin/stdout:
 
 ```bash
-# Example: Access cve-local service via RESTful API
-curl -X POST http://localhost:8080/restful/rpc/cve-local/RPCIsCVEStoredByID \
+# Example: Access local service via RESTful API
+curl -X POST http://localhost:8080/restful/rpc/local/RPCIsCVEStoredByID \
   -H "Content-Type: application/json" \
   -d '{"cve_id":"CVE-2021-44228"}'
 ```
@@ -589,10 +589,10 @@ curl -X POST http://localhost:8080/restful/rpc/cve-local/RPCIsCVEStoredByID \
 
 **Production Deployment:** This service should be spawned by the broker via config.json (see "Deployment with Broker" section above).
 
-The CVE Meta service is a backend RPC service that orchestrates CVE fetching and storage operations. It acts as a coordinator between cve-local and cve-remote services.
+The CVE Meta service is a backend RPC service that orchestrates CVE fetching and storage operations. It acts as a coordinator between local and remote services.
 
 **Current RPC Interfaces:**
-- `RPCGetCVE` - Retrieves CVE data (currently returns stub data, will orchestrate cve-local and cve-remote in the future)
+- `RPCGetCVE` - Retrieves CVE data (currently returns stub data, will orchestrate local and remote in the future)
 
 **Planned RPC Interfaces:**
 - `RPCFetchAndStoreCVE` - Will fetch a CVE from NVD (if not already stored locally) and save it to the database
@@ -604,15 +604,15 @@ The CVE Meta service is a backend RPC service that orchestrates CVE fetching and
 
 **Accessing the Service:**
 
-The cve-meta service is accessed via the Access service's RESTful API with the `target` parameter:
+The meta service is accessed via the Access service's RESTful API with the `target` parameter:
 
 ```bash
-# Get CVE data via cve-meta service
+# Get CVE data via meta service
 curl -X POST http://localhost:8080/restful/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "method": "RPCGetCVE",
-    "target": "cve-meta",
+    "target": "meta",
     "params": {"cve_id": "CVE-2021-44228"}
   }'
 
@@ -629,10 +629,10 @@ curl -X POST http://localhost:8080/restful/rpc \
 
 **Testing:**
 
-The cve-meta service has comprehensive integration tests that verify functionality using only the RESTful API. All tests follow the broker-first architecture:
+The meta service has comprehensive integration tests that verify functionality using only the RESTful API. All tests follow the broker-first architecture:
 
 ```bash
-# Run cve-meta integration tests
+# Run meta integration tests
 pytest tests/test_integration.py::TestCVEMetaService -v
 ```
 
@@ -927,7 +927,7 @@ broker := proc.NewBroker()
 defer broker.Shutdown()
 
 // Spawn a subprocess with RPC support (stdin/stdout pipes)
-info, err := broker.SpawnRPC("cve-remote", "go", "run", "./cmd/cve-remote")
+info, err := broker.SpawnRPC("remote", "go", "run", "./cmd/remote")
 if err != nil {
     log.Fatal(err)
 }
@@ -937,7 +937,7 @@ fmt.Printf("Started RPC process %s with PID %d\n", info.ID, info.PID)
 req, _ := proc.NewRequestMessage("RPCGetCVEByID", map[string]string{
     "cve_id": "CVE-2021-44228",
 })
-err = broker.SendToProcess("cve-remote", req)
+err = broker.SendToProcess("remote", req)
 if err != nil {
     log.Fatal(err)
 }
@@ -1137,7 +1137,7 @@ Run specific test files:
 # Test broker RPC service (fast)
 pytest tests/test_broker_integration.py
 
-# Test cve-meta service with multiple cooperating services
+# Test meta service with multiple cooperating services
 pytest tests/test_cve_meta_integration.py
 
 # Run benchmark tests to measure RPC performance
@@ -1197,7 +1197,7 @@ The integration tests follow a broker-centric architecture that mirrors real-wor
 1. **Shared Broker Fixture** (`broker_with_services`): A module-scoped fixture that:
    - Uses pre-built binaries from `./build.sh -p` when available, or builds them on-demand
    - Starts a broker instance
-   - Uses the broker to spawn all required RPC services (cve-remote, cve-local)
+   - Uses the broker to spawn all required RPC services (remote, local)
    - Verifies services are running before tests begin
    - Automatically cleans up after tests complete
 
@@ -1232,7 +1232,7 @@ The integration tests are located in the `tests/` directory:
 - `tests/conftest.py` - Shared fixtures (broker_with_services, test_binaries)
 - `tests/helpers.py` - Helper utilities for RPC testing
 - `tests/test_broker_integration.py` - Integration tests for broker service (5 tests)
-- `tests/test_cve_meta_integration.py` - Integration tests for cve-meta service (4 tests)
+- `tests/test_cve_meta_integration.py` - Integration tests for meta service (4 tests)
 - `tests/test_benchmarks.py` - Performance benchmarks for RPC endpoints
 - `tests/requirements.txt` - Python dependencies for testing
 - `pytest.ini` - Pytest configuration
@@ -1285,7 +1285,7 @@ The integration tests cover:
    - Killing processes
 
 2. **CVE Meta Service** (`test_cve_meta_integration.py` - 4 tests):
-   - Multi-service cooperation (cve-meta, cve-local, cve-remote)
+   - Multi-service cooperation (meta, local, remote)
    - Getting remote CVE count
    - Batch fetching CVEs
    - Service orchestration and message routing

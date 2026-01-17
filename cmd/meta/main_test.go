@@ -230,7 +230,7 @@ func TestRPCListCVEs_DefaultParameters(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	// This will fail to connect to cve-local since it's not running,
+	// This will fail to connect to local since it's not running,
 	// but we're testing that the handler accepts nil payload
 	resp, err := handler(ctx, msg)
 

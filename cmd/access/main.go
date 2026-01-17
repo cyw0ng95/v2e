@@ -39,7 +39,7 @@ Available REST Endpoints:
     - RPC timeout: retcode=500, backend service did not respond in time
     - Backend error: retcode=500, backend service returned an error
     Example:
-    Request:  {"method": "RPCGetCVE", "target": "cve-meta", "params": {"cve_id": "CVE-2021-44228"}}
+    Request:  {"method": "RPCGetCVE", "target": "meta", "params": {"cve_id": "CVE-2021-44228"}}
     Response: {"retcode": 0, "message": "success", "payload": {"id": "CVE-2021-44228", ...}}
 
 Notes:

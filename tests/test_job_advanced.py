@@ -19,7 +19,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -32,7 +32,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -56,7 +56,7 @@ class TestCRUDDuringJobExecution:
         # Start a job session
         start_resp = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "crud-test-session",
                 "start_index": 0,
@@ -73,7 +73,7 @@ class TestCRUDDuringJobExecution:
         # Perform CRUD operation - create a CVE
         create_resp = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": "CVE-2024-12345"}
         )
         
@@ -83,7 +83,7 @@ class TestCRUDDuringJobExecution:
         # Check job status
         status_resp = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -106,7 +106,7 @@ class TestCRUDDuringJobExecution:
         # Start a job
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "list-test-session",
                 "start_index": 0,
@@ -119,7 +119,7 @@ class TestCRUDDuringJobExecution:
         # Try to list CVEs while job is running
         list_resp = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 10}
         )
         
@@ -142,7 +142,7 @@ class TestCRUDDuringJobExecution:
         # Get initial count
         count1_resp = access.rpc_call(
             method="RPCCountCVEs",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         initial_count = count1_resp["payload"]["count"]
@@ -152,7 +152,7 @@ class TestCRUDDuringJobExecution:
         # Start job
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "count-test-session",
                 "start_index": 0,
@@ -166,7 +166,7 @@ class TestCRUDDuringJobExecution:
         # Get count again
         count2_resp = access.rpc_call(
             method="RPCCountCVEs",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         final_count = count2_resp["payload"]["count"]
@@ -196,7 +196,7 @@ class TestJobRobustness:
         # Start job
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "rapid-test-session",
                 "start_index": 0,
@@ -210,7 +210,7 @@ class TestJobRobustness:
         for i in range(3):
             pause_resp = access.rpc_call(
                 method="RPCPauseJob",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             
@@ -219,7 +219,7 @@ class TestJobRobustness:
             
             resume_resp = access.rpc_call(
                 method="RPCResumeJob",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             
@@ -229,7 +229,7 @@ class TestJobRobustness:
         # Verify job is still operational
         status_resp = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -250,7 +250,7 @@ class TestJobRobustness:
         # Start job
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "status-test-session",
                 "start_index": 0,
@@ -268,7 +268,7 @@ class TestJobRobustness:
             try:
                 resp = access.rpc_call(
                     method="RPCGetSessionStatus",
-                    target="cve-meta",
+                    target="meta",
                     params={}
                 )
                 results.append(resp)
@@ -306,7 +306,7 @@ class TestJobRobustness:
         # Start and immediately pause
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "immediate-pause-session",
                 "start_index": 0,
@@ -317,7 +317,7 @@ class TestJobRobustness:
         # Pause without delay
         pause_resp = access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -329,7 +329,7 @@ class TestJobRobustness:
         # Check status
         status_resp = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -356,7 +356,7 @@ class TestJobDataConsistency:
         # Start job
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "consistency-test-session",
                 "start_index": 0,
@@ -373,7 +373,7 @@ class TestJobDataConsistency:
         for i in range(5):
             status_resp = access.rpc_call(
                 method="RPCGetSessionStatus",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             
@@ -411,7 +411,7 @@ class TestJobDataConsistency:
         # Start job
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "state-validity-session",
                 "start_index": 0,
@@ -423,7 +423,7 @@ class TestJobDataConsistency:
         for i in range(10):
             status_resp = access.rpc_call(
                 method="RPCGetSessionStatus",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             
@@ -454,7 +454,7 @@ class TestJobErrorScenarios:
         # Start with very large index
         start_resp = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "large-index-session",
                 "start_index": 999999,
@@ -470,7 +470,7 @@ class TestJobErrorScenarios:
         # Check status
         status_resp = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -491,7 +491,7 @@ class TestJobErrorScenarios:
         # Start first session
         start1_resp = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "session-1",
                 "start_index": 0,
@@ -505,7 +505,7 @@ class TestJobErrorScenarios:
         # Get progress from first session
         status1_resp = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         session1_fetched = status1_resp["payload"]["fetched_count"]
@@ -515,7 +515,7 @@ class TestJobErrorScenarios:
         # Stop first session
         stop_resp = access.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         assert stop_resp["retcode"] == 0
@@ -523,7 +523,7 @@ class TestJobErrorScenarios:
         # Verify no session exists
         status_none = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         assert status_none["payload"]["has_session"] is False
@@ -531,7 +531,7 @@ class TestJobErrorScenarios:
         # Start second session
         start2_resp = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "session-2",
                 "start_index": 0,

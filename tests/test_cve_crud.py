@@ -1,4 +1,4 @@
-"""Integration tests for CVE CRUD operations via cve-meta service.
+"""Integration tests for CVE CRUD operations via meta service.
 
 These tests verify the complete CRUD lifecycle for CVE data management:
 1. Create - Fetch CVE from NVD and store locally
@@ -8,7 +8,7 @@ These tests verify the complete CRUD lifecycle for CVE data management:
 5. List - List CVEs with pagination
 
 All tests follow the broker-first architecture:
-- External requests → Access REST API → Broker → cve-meta → cve-local/cve-remote
+- External requests → Access REST API → Broker → meta → local/remote
 """
 
 import pytest
@@ -40,7 +40,7 @@ class TestCVECreateOperation:
         """Test creating a CVE by fetching from NVD.
         
         This verifies:
-        - cve-meta orchestrates remote fetch and local save
+        - meta orchestrates remote fetch and local save
         - CVE data is fetched from NVD API
         - CVE data is saved to local database
         - Response includes both success flag and CVE data
@@ -53,7 +53,7 @@ class TestCVECreateOperation:
         # Create CVE (fetch from NVD and save locally)
         response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id}
         )
         
@@ -83,7 +83,7 @@ class TestCVECreateOperation:
         """Test creating a CVE with invalid CVE ID.
         
         This verifies:
-        - cve-meta validates CVE ID format
+        - meta validates CVE ID format
         - Appropriate error is returned for invalid IDs
         """
         access = access_service
@@ -93,7 +93,7 @@ class TestCVECreateOperation:
         
         response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id}
         )
         
@@ -111,7 +111,7 @@ class TestCVECreateOperation:
         """Test creating a CVE without cve_id parameter.
         
         This verifies:
-        - cve-meta validates required parameters
+        - meta validates required parameters
         - Appropriate error is returned for missing parameters
         """
         access = access_service
@@ -120,7 +120,7 @@ class TestCVECreateOperation:
         
         response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -144,7 +144,7 @@ class TestCVEReadOperation:
         """Test getting a CVE that is not in local cache.
         
         This verifies:
-        - cve-meta checks local storage first
+        - meta checks local storage first
         - If not found locally, fetches from NVD
         - Saves fetched CVE to local storage
         - Returns CVE data to caller
@@ -158,7 +158,7 @@ class TestCVEReadOperation:
         print(f"  → Deleting CVE if it exists...")
         access.rpc_call(
             method="RPCDeleteCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -188,7 +188,7 @@ class TestCVEReadOperation:
         """Test getting a CVE that is already in local cache.
         
         This verifies:
-        - cve-meta checks local storage first
+        - meta checks local storage first
         - If found locally, returns immediately without NVD call
         - Response is fast (< 1 second)
         """
@@ -201,7 +201,7 @@ class TestCVEReadOperation:
         print(f"  → Creating CVE to cache it...")
         create_response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -235,7 +235,7 @@ class TestCVEReadOperation:
         """Test getting a non-existent CVE ID.
         
         This verifies:
-        - cve-meta handles non-existent CVE IDs gracefully
+        - meta handles non-existent CVE IDs gracefully
         - Appropriate error is returned
         """
         access = access_service
@@ -265,7 +265,7 @@ class TestCVEUpdateOperation:
         """Test updating a CVE by refetching from NVD.
         
         This verifies:
-        - cve-meta fetches latest data from NVD
+        - meta fetches latest data from NVD
         - Local storage is updated with new data
         - Response includes updated CVE data
         """
@@ -278,7 +278,7 @@ class TestCVEUpdateOperation:
         print(f"  → Creating CVE first...")
         create_response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -291,7 +291,7 @@ class TestCVEUpdateOperation:
         print(f"  → Updating CVE from NVD...")
         response = access.rpc_call(
             method="RPCUpdateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id}
         )
         
@@ -321,7 +321,7 @@ class TestCVEUpdateOperation:
         """Test updating a non-existent CVE.
         
         This verifies:
-        - cve-meta handles non-existent CVEs during update
+        - meta handles non-existent CVEs during update
         - Appropriate error is returned
         """
         access = access_service
@@ -331,7 +331,7 @@ class TestCVEUpdateOperation:
         
         response = access.rpc_call(
             method="RPCUpdateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id}
         )
         
@@ -355,7 +355,7 @@ class TestCVEDeleteOperation:
         """Test deleting a CVE from local storage.
         
         This verifies:
-        - cve-meta deletes CVE from local database
+        - meta deletes CVE from local database
         - Subsequent reads fail (CVE not found)
         - Response confirms successful deletion
         """
@@ -368,7 +368,7 @@ class TestCVEDeleteOperation:
         print(f"  → Creating CVE first...")
         create_response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -383,7 +383,7 @@ class TestCVEDeleteOperation:
         print(f"  → Deleting CVE...")
         response = access.rpc_call(
             method="RPCDeleteCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id}
         )
         
@@ -402,7 +402,7 @@ class TestCVEDeleteOperation:
             # Verify CVE is not stored locally anymore
             check_response = access.rpc_call(
                 method="RPCIsCVEStoredByID",
-                target="cve-local",
+                target="local",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -416,7 +416,7 @@ class TestCVEDeleteOperation:
         """Test deleting a CVE without cve_id parameter.
         
         This verifies:
-        - cve-meta validates required parameters
+        - meta validates required parameters
         - Appropriate error is returned
         """
         access = access_service
@@ -425,7 +425,7 @@ class TestCVEDeleteOperation:
         
         response = access.rpc_call(
             method="RPCDeleteCVE",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -449,7 +449,7 @@ class TestCVEListOperation:
         """Test listing CVEs from local storage.
         
         This verifies:
-        - cve-meta retrieves CVEs from local database
+        - meta retrieves CVEs from local database
         - Pagination parameters work correctly
         - Response includes CVE list and total count
         """
@@ -463,7 +463,7 @@ class TestCVEListOperation:
         for cve_id in test_cves:
             create_response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -478,7 +478,7 @@ class TestCVEListOperation:
         print(f"  → Listing CVEs...")
         response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 10}
         )
         
@@ -518,7 +518,7 @@ class TestCVEListOperation:
         print(f"  → Fetching page 1...")
         page1_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 5},
             verbose=False
         )
@@ -527,7 +527,7 @@ class TestCVEListOperation:
         print(f"  → Fetching page 2...")
         page2_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 5, "limit": 5},
             verbose=False
         )
@@ -557,7 +557,7 @@ class TestCVEListOperation:
         """Test listing CVEs when database is empty.
         
         This verifies:
-        - cve-meta handles empty database gracefully
+        - meta handles empty database gracefully
         - Returns empty list with total count of 0
         """
         access = access_service
@@ -567,7 +567,7 @@ class TestCVEListOperation:
         # List CVEs (may or may not be empty depending on other tests)
         response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 10},
             verbose=False
         )
@@ -611,7 +611,7 @@ class TestCVEBusinessFlows:
         print(f"  → Step 1: Create (fetch from NVD)...")
         create_response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -635,7 +635,7 @@ class TestCVEBusinessFlows:
         time.sleep(1)  # Rate limiting
         update_response = access.rpc_call(
             method="RPCUpdateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -646,7 +646,7 @@ class TestCVEBusinessFlows:
         print(f"  → Step 4: Delete...")
         delete_response = access.rpc_call(
             method="RPCDeleteCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -657,7 +657,7 @@ class TestCVEBusinessFlows:
         print(f"  → Step 5: Verify deletion...")
         check_response = access.rpc_call(
             method="RPCIsCVEStoredByID",
-            target="cve-local",
+            target="local",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -684,7 +684,7 @@ class TestCVEBusinessFlows:
         print(f"  → Clearing cache...")
         access.rpc_call(
             method="RPCDeleteCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -741,7 +741,7 @@ class TestCVEBusinessFlows:
             print(f"    - Creating {cve_id}...")
             response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -760,7 +760,7 @@ class TestCVEBusinessFlows:
         print(f"  → Listing CVEs...")
         list_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -806,7 +806,7 @@ class TestCVEBusinessFlows:
             print(f"    - Creating {cve_id}...")
             response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -827,7 +827,7 @@ class TestCVEBusinessFlows:
             print(f"    - Updating {cve_id}...")
             response = access.rpc_call(
                 method="RPCUpdateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -846,7 +846,7 @@ class TestCVEBusinessFlows:
         print(f"  → Step 3: Verifying all CVEs are in storage...")
         list_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -885,7 +885,7 @@ class TestCVEBusinessFlows:
             print(f"    - Creating {cve_id}...")
             response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -910,7 +910,7 @@ class TestCVEBusinessFlows:
             print(f"    - Deleting {cve_id}...")
             response = access.rpc_call(
                 method="RPCDeleteCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -924,7 +924,7 @@ class TestCVEBusinessFlows:
         for cve_id in test_cves:
             check_response = access.rpc_call(
                 method="RPCIsCVEStoredByID",
-                target="cve-local",
+                target="local",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -959,7 +959,7 @@ class TestCVEBusinessFlows:
             print(f"    - Creating {cve_id}...")
             response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -977,7 +977,7 @@ class TestCVEBusinessFlows:
             print(f"    - Updating {cve_id}...")
             response = access.rpc_call(
                 method="RPCUpdateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -994,7 +994,7 @@ class TestCVEBusinessFlows:
         print(f"  → Step 3: Listing CVEs to verify state...")
         list_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -1010,7 +1010,7 @@ class TestCVEBusinessFlows:
             print(f"    - Deleting {cve_id}...")
             response = access.rpc_call(
                 method="RPCDeleteCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -1021,7 +1021,7 @@ class TestCVEBusinessFlows:
         for cve_id in cves_remaining:
             check_response = access.rpc_call(
                 method="RPCIsCVEStoredByID",
-                target="cve-local",
+                target="local",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -1031,7 +1031,7 @@ class TestCVEBusinessFlows:
         for cve_id in cves_to_delete:
             check_response = access.rpc_call(
                 method="RPCIsCVEStoredByID",
-                target="cve-local",
+                target="local",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -1060,7 +1060,7 @@ class TestCVEBusinessFlows:
         # Get total count
         count_response = access.rpc_call(
             method="RPCCountCVEs",
-            target="cve-meta",
+            target="meta",
             params={},
             verbose=False
         )
@@ -1081,7 +1081,7 @@ class TestCVEBusinessFlows:
             # Get first page
             page1_response = access.rpc_call(
                 method="RPCListCVEs",
-                target="cve-meta",
+                target="meta",
                 params={"offset": 0, "limit": page_size},
                 verbose=False
             )
@@ -1099,7 +1099,7 @@ class TestCVEBusinessFlows:
             if total_count > page_size:
                 page2_response = access.rpc_call(
                     method="RPCListCVEs",
-                    target="cve-meta",
+                    target="meta",
                     params={"offset": page_size, "limit": page_size},
                     verbose=False
                 )

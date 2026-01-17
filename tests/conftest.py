@@ -56,7 +56,7 @@ def package_binaries():
         )
     
     # Check for required binaries
-    required_binaries = ["access", "broker", "cve-local", "cve-remote", "cve-meta"]
+    required_binaries = ["access", "broker", "local", "remote", "meta"]
     binaries = {}
     
     for binary_name in required_binaries:

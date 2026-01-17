@@ -31,7 +31,7 @@ func (m *mockRPCInvoker) InvokeRPC(ctx context.Context, target, method string, p
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if target == "cve-remote" && method == "RPCFetchCVEs" {
+	if target == "remote" && method == "RPCFetchCVEs" {
 		m.fetchCalls++
 		if m.fetchError != nil {
 			return nil, m.fetchError
@@ -39,7 +39,7 @@ func (m *mockRPCInvoker) InvokeRPC(ctx context.Context, target, method string, p
 		return m.fetchResponse, nil
 	}
 
-	if target == "cve-local" && method == "RPCSaveCVEByID" {
+	if target == "local" && method == "RPCSaveCVEByID" {
 		m.saveCalls++
 		if m.saveError != nil {
 			return nil, m.saveError

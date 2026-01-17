@@ -144,7 +144,7 @@ Example RPC request:
 ```json
 {
   "method": "RPCGetCVE",
-  "target": "cve-meta",
+  "target": "meta",
   "params": {
     "cve_id": "CVE-2021-44228"
   }

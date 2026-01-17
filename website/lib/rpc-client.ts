@@ -187,7 +187,7 @@ export class RPCClient {
   private async call<TRequest, TResponse>(
     method: string,
     params?: TRequest,
-    target: string = 'cve-meta'
+    target: string = 'meta'
   ): Promise<RPCResponse<TResponse>> {
     // Mock mode: return simulated data
     if (this.useMock) {

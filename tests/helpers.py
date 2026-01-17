@@ -154,9 +154,9 @@ class AccessClient:
         return result
     
     def get_cve(self, cve_id: str) -> Dict[str, Any]:
-        """Get CVE data via cve-meta service.
+        """Get CVE data via meta service.
         
-        This calls the cve-meta service which orchestrates cve-local and cve-remote.
+        This calls the meta service which orchestrates local and remote.
         
         Args:
             cve_id: The CVE ID to retrieve (e.g., "CVE-2021-44228")
@@ -164,7 +164,7 @@ class AccessClient:
         Returns:
             CVE data in standardized response format
         """
-        result = self.rpc_call("RPCGetCVE", params={"cve_id": cve_id}, target="cve-meta")
+        result = self.rpc_call("RPCGetCVE", params={"cve_id": cve_id}, target="meta")
         return result
     
     def create_cve(self, cve_id: str) -> Dict[str, Any]:
@@ -176,7 +176,7 @@ class AccessClient:
         Returns:
             Response with success flag and CVE data
         """
-        result = self.rpc_call("RPCCreateCVE", params={"cve_id": cve_id}, target="cve-meta")
+        result = self.rpc_call("RPCCreateCVE", params={"cve_id": cve_id}, target="meta")
         return result
     
     def update_cve(self, cve_id: str) -> Dict[str, Any]:
@@ -188,7 +188,7 @@ class AccessClient:
         Returns:
             Response with success flag and updated CVE data
         """
-        result = self.rpc_call("RPCUpdateCVE", params={"cve_id": cve_id}, target="cve-meta")
+        result = self.rpc_call("RPCUpdateCVE", params={"cve_id": cve_id}, target="meta")
         return result
     
     def delete_cve(self, cve_id: str) -> Dict[str, Any]:
@@ -200,7 +200,7 @@ class AccessClient:
         Returns:
             Response with success flag
         """
-        result = self.rpc_call("RPCDeleteCVE", params={"cve_id": cve_id}, target="cve-meta")
+        result = self.rpc_call("RPCDeleteCVE", params={"cve_id": cve_id}, target="meta")
         return result
     
     def list_cves(self, offset: int = 0, limit: int = 10) -> Dict[str, Any]:
@@ -213,7 +213,7 @@ class AccessClient:
         Returns:
             Response with CVE list, total count, and pagination info
         """
-        result = self.rpc_call("RPCListCVEs", params={"offset": offset, "limit": limit}, target="cve-meta")
+        result = self.rpc_call("RPCListCVEs", params={"offset": offset, "limit": limit}, target="meta")
         return result
     
     def wait_for_ready(self, timeout: int = 10) -> bool:

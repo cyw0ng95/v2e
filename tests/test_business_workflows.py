@@ -35,7 +35,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 1: User checks if CVE is in local database")
         check_response = access.rpc_call(
             method="RPCIsCVEStoredByID",
-            target="cve-local",
+            target="local",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -47,7 +47,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 2: User views CVE details")
         view_response = access.rpc_call(
             method="RPCGetCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -65,7 +65,7 @@ class TestWebApplicationWorkflows:
             print("  → Step 3: User adds CVE to their collection")
             create_response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -83,7 +83,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 4: User verifies CVE is in collection")
         verify_response = access.rpc_call(
             method="RPCIsCVEStoredByID",
-            target="cve-local",
+            target="local",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -112,7 +112,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 1: User views current collection")
         list_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -129,7 +129,7 @@ class TestWebApplicationWorkflows:
             print(f"    - Adding {cve_id}...")
             create_response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -150,7 +150,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 3: User views updated collection")
         updated_list = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -163,7 +163,7 @@ class TestWebApplicationWorkflows:
         cve_to_remove = "CVE-2021-45046"
         delete_response = access.rpc_call(
             method="RPCDeleteCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_to_remove},
             verbose=False
         )
@@ -173,7 +173,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 5: User verifies final collection")
         final_list = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -204,7 +204,7 @@ class TestWebApplicationWorkflows:
         for cve_id in test_cves:
             create_response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -219,7 +219,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 1: User views first page (2 items)")
         page1 = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 2},
             verbose=False
         )
@@ -231,7 +231,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 2: User navigates to next page")
         page2 = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 2, "limit": 2},
             verbose=False
         )
@@ -242,7 +242,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 3: User goes back to first page")
         page1_again = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 2},
             verbose=False
         )
@@ -254,7 +254,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 4: User changes page size to 5")
         larger_page = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 5},
             verbose=False
         )
@@ -282,7 +282,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 1: Ensure CVE is in collection")
         create_response = access.rpc_call(
             method="RPCCreateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -298,7 +298,7 @@ class TestWebApplicationWorkflows:
         time.sleep(1)  # Rate limiting
         update_response = access.rpc_call(
             method="RPCUpdateCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -314,7 +314,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 3: User views refreshed CVE")
         view_response = access.rpc_call(
             method="RPCGetCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": cve_id},
             verbose=False
         )
@@ -354,7 +354,7 @@ class TestWebApplicationWorkflows:
             print(f"    - Importing {i}/{len(cve_list)}: {cve_id}")
             response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -379,7 +379,7 @@ class TestWebApplicationWorkflows:
         for cve_id in imported:
             check_response = access.rpc_call(
                 method="RPCIsCVEStoredByID",
-                target="cve-local",
+                target="local",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -391,7 +391,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 3: User views complete collection")
         list_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -422,7 +422,7 @@ class TestWebApplicationWorkflows:
         for cve_id in test_cves:
             create_response = access.rpc_call(
                 method="RPCCreateCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -437,7 +437,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 1: User views collection")
         list_response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )
@@ -455,7 +455,7 @@ class TestWebApplicationWorkflows:
             print(f"    - Removing {cve_id}")
             delete_response = access.rpc_call(
                 method="RPCDeleteCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -466,7 +466,7 @@ class TestWebApplicationWorkflows:
         for cve_id in to_remove:
             check_response = access.rpc_call(
                 method="RPCIsCVEStoredByID",
-                target="cve-local",
+                target="local",
                 params={"cve_id": cve_id},
                 verbose=False
             )
@@ -478,7 +478,7 @@ class TestWebApplicationWorkflows:
         print("  → Step 5: User views cleaned collection")
         final_list = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 100},
             verbose=False
         )

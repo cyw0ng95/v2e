@@ -1,7 +1,7 @@
 """Performance benchmark tests for RPC endpoints via integration test style.
 
 These tests measure the performance of RPC endpoints through the broker-first architecture:
-1. Broker spawns all subprocess services (access, cve-meta, cve-local, cve-remote)
+1. Broker spawns all subprocess services (access, meta, local, remote)
 2. Tests make RPC calls via the access REST API
 3. Each test runs 100 iterations to measure performance
 4. Results are collected and formatted as a human-readable report
@@ -181,7 +181,7 @@ class TestRPCBenchmarks:
         """Benchmark RPCGetCVE endpoint for locally cached CVE.
         
         This measures the performance of retrieving a CVE from local storage,
-        which tests the cve-meta → cve-local → database chain.
+        which tests the meta → local → database chain.
         
         Note: This test assumes CVE-2021-44228 is already in the local database.
         If not found, the test will skip.
@@ -196,7 +196,7 @@ class TestRPCBenchmarks:
             response = access.rpc_call(
                 "RPCGetCVE",
                 params={"cve_id": cve_id},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             )
             
@@ -210,7 +210,7 @@ class TestRPCBenchmarks:
             response = access.rpc_call(
                 "RPCGetCVE",
                 params={"cve_id": cve_id},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             )
             assert response["retcode"] == 0
@@ -237,7 +237,7 @@ class TestRPCBenchmarks:
             response = access.rpc_call(
                 "RPCListCVEs",
                 params={"offset": 0, "limit": 10},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             )
             assert response["retcode"] == 0
@@ -263,7 +263,7 @@ class TestRPCBenchmarks:
             response = access.rpc_call(
                 "RPCCountCVEs",
                 params={},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             )
             assert response["retcode"] == 0
@@ -289,7 +289,7 @@ class TestRPCBenchmarks:
             response = access.rpc_call(
                 "RPCIsCVEStoredByID",
                 params={"cve_id": "CVE-2021-44228"},
-                target="cve-local",
+                target="local",
                 verbose=False
             )
             assert response["retcode"] == 0
@@ -315,7 +315,7 @@ class TestRPCBenchmarks:
             response = access.rpc_call(
                 "RPCListCVEs",
                 params={"offset": 0, "limit": 50},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             )
             assert response["retcode"] == 0
@@ -388,7 +388,7 @@ class TestRPCBenchmarksSummary:
             lambda: access.rpc_call(
                 "RPCCountCVEs",
                 params={},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             ),
             iterations=100
@@ -401,7 +401,7 @@ class TestRPCBenchmarksSummary:
             lambda: access.rpc_call(
                 "RPCIsCVEStoredByID",
                 params={"cve_id": "CVE-2021-44228"},
-                target="cve-local",
+                target="local",
                 verbose=False
             ),
             iterations=100
@@ -414,7 +414,7 @@ class TestRPCBenchmarksSummary:
             lambda: access.rpc_call(
                 "RPCListCVEs",
                 params={"offset": 0, "limit": 10},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             ),
             iterations=100
@@ -427,7 +427,7 @@ class TestRPCBenchmarksSummary:
             lambda: access.rpc_call(
                 "RPCListCVEs",
                 params={"offset": 0, "limit": 50},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             ),
             iterations=100
@@ -441,7 +441,7 @@ class TestRPCBenchmarksSummary:
                 lambda: access.rpc_call(
                     "RPCGetCVE",
                     params={"cve_id": "CVE-2021-44228"},
-                    target="cve-meta",
+                    target="meta",
                     verbose=False
                 ),
                 iterations=100
@@ -456,7 +456,7 @@ class TestRPCBenchmarksSummary:
             lambda: access.rpc_call(
                 "RPCListCVEs",
                 params={"offset": 10, "limit": 10},
-                target="cve-meta",
+                target="meta",
                 verbose=False
             ),
             iterations=100

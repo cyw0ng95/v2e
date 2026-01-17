@@ -47,8 +47,8 @@ Available RPC Methods:
     - Duplicate ID: Process with this ID already exists
     - Spawn failure: Failed to start the process
     Example:
-    Request:  {"id": "cve-remote", "command": "./cve-remote", "args": []}
-    Response: {"id": "cve-remote", "pid": 12346, "status": "running"}
+    Request:  {"id": "remote", "command": "./remote", "args": []}
+    Response: {"id": "remote", "pid": 12346, "status": "running"}
 
  3. RPCKill
     Description: Terminates a running subprocess

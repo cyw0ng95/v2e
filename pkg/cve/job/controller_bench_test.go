@@ -54,7 +54,7 @@ func BenchmarkRPCInvoke(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := mockRPC.InvokeRPC(ctx, "cve-remote", "RPCFetchCVEs", params)
+		_, err := mockRPC.InvokeRPC(ctx, "remote", "RPCFetchCVEs", params)
 		if err != nil {
 			b.Fatalf("RPC invocation failed: %v", err)
 		}

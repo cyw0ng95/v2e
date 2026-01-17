@@ -20,12 +20,12 @@ type mockBenchRPCInvoker struct {
 }
 
 func (m *mockBenchRPCInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
-	if target == "cve-remote" && method == "RPCFetchCVEs" {
+	if target == "remote" && method == "RPCFetchCVEs" {
 		m.fetchCalls++
 		emptyPayload, _ := sonic.Marshal(map[string]interface{}{"vulnerabilities": []interface{}{}})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: emptyPayload}, nil
 	}
-	if target == "cve-local" && method == "RPCSaveCVEByID" {
+	if target == "local" && method == "RPCSaveCVEByID" {
 		m.saveCalls++
 		payload, _ := sonic.Marshal(map[string]interface{}{"success": true})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: payload}, nil
@@ -282,7 +282,7 @@ func BenchmarkRPCMessageOverhead(b *testing.B) {
 			Type:          subprocess.MessageTypeResponse,
 			ID:            "bench-1",
 			CorrelationID: "bench-corr-1",
-			Target:        "cve-meta",
+			Target:        "meta",
 		}
 
 		payload, err := sonic.Marshal(data)

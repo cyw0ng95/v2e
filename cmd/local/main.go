@@ -1,5 +1,5 @@
 /*
-Package main implements the cve-local RPC service.
+Package main implements the local RPC service.
 
 RPC API Specification:
 
@@ -126,7 +126,7 @@ func main() {
 	// Get process ID from environment or use default
 	processID := os.Getenv("PROCESS_ID")
 	if processID == "" {
-		processID = "cve-local"
+		processID = "local"
 	}
 
 	// Set up logging using common subprocess framework

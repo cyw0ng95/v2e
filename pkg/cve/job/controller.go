@@ -204,10 +204,10 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			c.logger.Info("Job loop cancelled")
 			return
 		default:
-			// Fetch batch from NVD via cve-remote
+			// Fetch batch from NVD via remote
 			c.logger.Debug("Fetching batch: start_index=%d, batch_size=%d", currentIndex, batchSize)
 
-			result, err := c.rpcInvoker.InvokeRPC(ctx, "cve-remote", "RPCFetchCVEs", map[string]interface{}{
+			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchCVEs", map[string]interface{}{
 				"start_index":      currentIndex,
 				"results_per_page": batchSize,
 			})
@@ -230,7 +230,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			// Parse the RPC response (it's a subprocess.Message)
 			msg, ok := result.(*subprocess.Message)
 			if !ok {
-				c.logger.Error("Invalid response type from cve-remote")
+				c.logger.Error("Invalid response type from remote")
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}
@@ -239,7 +239,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 
 			// Check if it's an error message
 			if msg.Type == subprocess.MessageTypeError {
-				c.logger.Error("Error from cve-remote: %s", msg.Error)
+				c.logger.Error("Error from remote: %s", msg.Error)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}
@@ -272,12 +272,12 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 
 			c.logger.Info("Fetched %d CVEs from NVD", len(response.Vulnerabilities))
 
-			// Store each CVE via cve-local
+			// Store each CVE via local
 			storedCount := int64(0)
 			errorCount := int64(0)
 
 			for _, vuln := range response.Vulnerabilities {
-				_, err := c.rpcInvoker.InvokeRPC(ctx, "cve-local", "RPCSaveCVEByID", map[string]interface{}{
+				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
 					"cve": vuln.CVE,
 				})
 

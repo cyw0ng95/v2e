@@ -1,4 +1,4 @@
-"""Integration tests for CVE job control functionality via cve-meta service.
+"""Integration tests for CVE job control functionality via meta service.
 
 These tests verify the job control features:
 1. Start a session to begin continuous CVE fetching and storing
@@ -19,7 +19,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -32,7 +32,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -42,13 +42,13 @@ def cleanup_session(access_service):
 
 @pytest.mark.integration
 class TestJobControl:
-    """Integration tests for job control via cve-meta service."""
+    """Integration tests for job control via meta service."""
     
     def test_start_session(self, access_service):
         """Test starting a new job session.
         
         This verifies:
-        - cve-meta can create a new session
+        - meta can create a new session
         - Job starts running
         - Session state is properly initialized
         """
@@ -59,7 +59,7 @@ class TestJobControl:
         # Start a new session
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "test-session-1",
                 "start_index": 0,
@@ -89,7 +89,7 @@ class TestJobControl:
         """Test getting session status when no session exists.
         
         This verifies:
-        - cve-meta correctly reports no session
+        - meta correctly reports no session
         """
         access = access_service
         
@@ -97,7 +97,7 @@ class TestJobControl:
         
         response = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -120,7 +120,7 @@ class TestJobControl:
         """Test getting session status when session exists.
         
         This verifies:
-        - cve-meta returns session information
+        - meta returns session information
         - Session state is accessible
         """
         access = access_service
@@ -130,7 +130,7 @@ class TestJobControl:
         # Start a session first
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "test-session-2",
                 "start_index": 0,
@@ -141,7 +141,7 @@ class TestJobControl:
         # Get session status
         response = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -174,7 +174,7 @@ class TestJobControl:
         """Test that only one session can exist at a time.
         
         This verifies:
-        - cve-meta enforces single session rule
+        - meta enforces single session rule
         - Trying to start second session fails
         """
         access = access_service
@@ -184,7 +184,7 @@ class TestJobControl:
         # Start first session
         response1 = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "test-session-3",
                 "start_index": 0,
@@ -198,7 +198,7 @@ class TestJobControl:
         # Try to start second session (should fail)
         response2 = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "test-session-4",
                 "start_index": 0,
@@ -221,8 +221,8 @@ class TestJobControl:
         """Test pausing and resuming a job.
         
         This verifies:
-        - cve-meta can pause a running job
-        - cve-meta can resume a paused job
+        - meta can pause a running job
+        - meta can resume a paused job
         - Session state changes appropriately
         """
         access = access_service
@@ -232,7 +232,7 @@ class TestJobControl:
         # Start a session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "test-session-5",
                 "start_index": 0,
@@ -246,7 +246,7 @@ class TestJobControl:
         # Pause the job
         pause_response = access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -264,7 +264,7 @@ class TestJobControl:
         # Verify session is paused
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         assert status["payload"]["state"] == "paused"
@@ -274,7 +274,7 @@ class TestJobControl:
         # Resume the job
         resume_response = access.rpc_call(
             method="RPCResumeJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -289,7 +289,7 @@ class TestJobControl:
         # Verify session is running
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         assert status["payload"]["state"] == "running"
@@ -301,7 +301,7 @@ class TestJobControl:
         """Test stopping a session.
         
         This verifies:
-        - cve-meta can stop a running session
+        - meta can stop a running session
         - Session is deleted after stop
         - Progress counters are returned
         """
@@ -312,7 +312,7 @@ class TestJobControl:
         # Start a session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "test-session-6",
                 "start_index": 0,
@@ -326,7 +326,7 @@ class TestJobControl:
         # Stop the session
         stop_response = access.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -349,7 +349,7 @@ class TestJobControl:
         # Verify session is deleted
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         assert status["payload"]["has_session"] is False
@@ -360,7 +360,7 @@ class TestJobControl:
         """Test pausing when no job is running.
         
         This verifies:
-        - cve-meta handles pause error correctly
+        - meta handles pause error correctly
         """
         access = access_service
         
@@ -368,7 +368,7 @@ class TestJobControl:
         
         response = access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         

@@ -1,5 +1,5 @@
 /*
-Package main implements the cve-meta RPC service.
+Package main implements the meta RPC service.
 
 RPC API Specification:
 
@@ -7,7 +7,7 @@ CVE Meta Service
 ====================
 
 Service Type: RPC (stdin/stdout message passing)
-Description: Orchestrates CVE fetching and storage operations by coordinating between cve-local and cve-remote services.
+Description: Orchestrates CVE fetching and storage operations by coordinating between local and remote services.
 
 	Provides high-level CVE management and job control for continuous data synchronization.
 
@@ -187,11 +187,11 @@ Job Control Operations:
 
 Notes:
 ------
-- Orchestrates operations between cve-local and cve-remote services
+- Orchestrates operations between local and remote services
 - Job sessions are persistent (stored in bbolt K-V database)
 - Only one job session can run at a time
 - Session state survives service restarts
-- Uses RPC to communicate with cve-local and cve-remote services
+- Uses RPC to communicate with local and remote services
 - All communication is routed through the broker
 - Session database path: session.db (default)
 */
@@ -277,7 +277,7 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 	// Generate correlation ID
 	c.mu.Lock()
 	c.correlationSeq++
-	correlationID := fmt.Sprintf("cve-meta-rpc-%d-%d", time.Now().UnixNano(), c.correlationSeq)
+	correlationID := fmt.Sprintf("meta-rpc-%d-%d", time.Now().UnixNano(), c.correlationSeq)
 	c.mu.Unlock()
 
 	// Create response channel
@@ -400,7 +400,7 @@ func main() {
 	// Get process ID from environment or use default
 	processID := os.Getenv("PROCESS_ID")
 	if processID == "" {
-		processID = "cve-meta"
+		processID = "meta"
 	}
 
 	// Set up logging using common subprocess framework
@@ -453,7 +453,7 @@ func main() {
 	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobController, logger))
 	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobController, logger))
 
-	logger.Info("CVE meta service started - orchestrates cve-local and cve-remote")
+	logger.Info("CVE meta service started - orchestrates local and remote")
 
 	// Run with default lifecycle management
 	subprocess.RunWithDefaults(sp, logger)
@@ -500,7 +500,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 
 		// Step 1: Check if CVE exists locally
 		logger.Info("RPCGetCVE: Checking if CVE %s exists in local storage", req.CVEID)
-		checkResp, err := rpcClient.InvokeRPC(ctx, "cve-local", "RPCIsCVEStoredByID", map[string]interface{}{
+		checkResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCIsCVEStoredByID", map[string]interface{}{
 			"cve_id": req.CVEID,
 		})
 		if err != nil {
@@ -529,7 +529,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		if checkResult.Stored {
 			// Step 2a: CVE is stored locally, retrieve it
 			logger.Info("RPCGetCVE: CVE %s found locally, retrieving from local storage", req.CVEID)
-			getResp, err := rpcClient.InvokeRPC(ctx, "cve-local", "RPCGetCVEByID", map[string]interface{}{
+			getResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCVEByID", map[string]interface{}{
 				"cve_id": req.CVEID,
 			})
 			if err != nil {
@@ -550,7 +550,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		} else {
 			// Step 2b: CVE not found locally, fetch from remote
 			logger.Info("RPCGetCVE: CVE %s not found locally, fetching from remote NVD API", req.CVEID)
-			remoteResp, err := rpcClient.InvokeRPC(ctx, "cve-remote", "RPCGetCVEByID", map[string]interface{}{
+			remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
 				"cve_id": req.CVEID,
 			})
 			if err != nil {
@@ -581,7 +581,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 
 			// Step 3: Save fetched CVE to local storage
 			logger.Info("RPCGetCVE: Saving CVE %s to local storage", req.CVEID)
-			_, err = rpcClient.InvokeRPC(ctx, "cve-local", "RPCSaveCVEByID", map[string]interface{}{
+			_, err = rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
 				"cve": cveData,
 			})
 			if err != nil {
@@ -632,7 +632,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCCreateCVE: Fetching CVE %s from NVD", req.CVEID)
 
 		// Fetch from remote (NVD)
-		remoteResp, err := rpcClient.InvokeRPC(ctx, "cve-remote", "RPCGetCVEByID", map[string]interface{}{
+		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
 			"cve_id": req.CVEID,
 		})
 		if err != nil {
@@ -663,7 +663,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 
 		// Save to local storage
 		logger.Info("RPCCreateCVE: Saving CVE %s to local storage", req.CVEID)
-		saveResp, err := rpcClient.InvokeRPC(ctx, "cve-local", "RPCSaveCVEByID", map[string]interface{}{
+		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
 			"cve": cveData,
 		})
 		if err != nil {
@@ -724,7 +724,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCUpdateCVE: Refetching CVE %s from NVD to update local copy", req.CVEID)
 
 		// Fetch latest data from remote (NVD)
-		remoteResp, err := rpcClient.InvokeRPC(ctx, "cve-remote", "RPCGetCVEByID", map[string]interface{}{
+		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
 			"cve_id": req.CVEID,
 		})
 		if err != nil {
@@ -755,7 +755,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 
 		// Update local storage (save will update if exists, create if not)
 		logger.Info("RPCUpdateCVE: Updating CVE %s in local storage", req.CVEID)
-		saveResp, err := rpcClient.InvokeRPC(ctx, "cve-local", "RPCSaveCVEByID", map[string]interface{}{
+		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
 			"cve": cveData,
 		})
 		if err != nil {
@@ -816,7 +816,7 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCDeleteCVE: Deleting CVE %s from local storage", req.CVEID)
 
 		// Delete from local storage
-		deleteResp, err := rpcClient.InvokeRPC(ctx, "cve-local", "RPCDeleteCVEByID", map[string]interface{}{
+		deleteResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCDeleteCVEByID", map[string]interface{}{
 			"cve_id": req.CVEID,
 		})
 		if err != nil {
@@ -886,7 +886,7 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 		logger.Info("RPCListCVEs: Listing CVEs with offset=%d, limit=%d", req.Offset, req.Limit)
 
 		// List from local storage
-		listResp, err := rpcClient.InvokeRPC(ctx, "cve-local", "RPCListCVEs", map[string]interface{}{
+		listResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCListCVEs", map[string]interface{}{
 			"offset": req.Offset,
 			"limit":  req.Limit,
 		})
@@ -945,7 +945,7 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCCountCVEs: Counting CVEs")
 
 		// Count from local storage
-		countResp, err := rpcClient.InvokeRPC(ctx, "cve-local", "RPCCountCVEs", map[string]interface{}{})
+		countResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCountCVEs", map[string]interface{}{})
 		if err != nil {
 			logger.Error("Failed to count CVEs from local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to count CVEs from local storage: %v", err)), nil
