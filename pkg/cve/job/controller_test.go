@@ -30,7 +30,7 @@ type mockRPCInvoker struct {
 func (m *mockRPCInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if target == "cve-remote" && method == "RPCFetchCVEs" {
 		m.fetchCalls++
 		if m.fetchError != nil {
@@ -107,7 +107,9 @@ func TestControllerStart_AlreadyRunning(t *testing.T) {
 
 	// Create mock responses for successful fetch (empty results to stop immediately)
 	emptyResponse := &cve.CVEResponse{
-		Vulnerabilities: []struct { CVE cve.CVEItem `json:"cve"` }{},
+		Vulnerabilities: []struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{},
 	}
 	payload, _ := sonic.Marshal(emptyResponse)
 	fetchMsg := &subprocess.Message{
@@ -200,7 +202,9 @@ func TestControllerIsRunning(t *testing.T) {
 
 	// Create mock responses for successful fetch (empty results to stop immediately)
 	emptyResponse := &cve.CVEResponse{
-		Vulnerabilities: []struct { CVE cve.CVEItem `json:"cve"` }{},
+		Vulnerabilities: []struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{},
 	}
 	payload, _ := sonic.Marshal(emptyResponse)
 	fetchMsg := &subprocess.Message{
@@ -244,8 +248,10 @@ func TestJobLoop_EmptyResults(t *testing.T) {
 
 	// Mock empty response
 	emptyResponse := &cve.CVEResponse{
-		Vulnerabilities: []struct { CVE cve.CVEItem `json:"cve"` }{},
-		TotalResults:    0,
+		Vulnerabilities: []struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{},
+		TotalResults: 0,
 	}
 	payload, _ := sonic.Marshal(emptyResponse)
 	fetchMsg := &subprocess.Message{
@@ -286,7 +292,9 @@ func TestJobLoop_WithResults(t *testing.T) {
 
 	// Mock response with one CVE
 	cveResponse := &cve.CVEResponse{
-		Vulnerabilities: []struct { CVE cve.CVEItem `json:"cve"` }{
+		Vulnerabilities: []struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{
 			{
 				CVE: cve.CVEItem{
 					ID:         "CVE-2021-44228",
@@ -306,7 +314,9 @@ func TestJobLoop_WithResults(t *testing.T) {
 	}
 
 	emptyResponse := &cve.CVEResponse{
-		Vulnerabilities: []struct { CVE cve.CVEItem `json:"cve"` }{},
+		Vulnerabilities: []struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{},
 	}
 	emptyPayload, _ := sonic.Marshal(emptyResponse)
 	emptyMsg := &subprocess.Message{

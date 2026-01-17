@@ -93,10 +93,10 @@ func TestConcurrentHandlerExecution(t *testing.T) {
 		mu.Lock()
 		handlerCallCount++
 		mu.Unlock()
-		
+
 		// Simulate some work
 		time.Sleep(1 * time.Millisecond)
-		
+
 		return &Message{
 			Type: MessageTypeResponse,
 			ID:   msg.ID,

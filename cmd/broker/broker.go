@@ -260,7 +260,7 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
-		stdin:  writeToSubprocess, // Parent writes to this
+		stdin:  writeToSubprocess,  // Parent writes to this
 		stdout: readFromSubprocess, // Parent reads from this
 	}
 
@@ -414,7 +414,7 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
-		stdin:  writeToSubprocess, // Parent writes to this
+		stdin:  writeToSubprocess,  // Parent writes to this
 		stdout: readFromSubprocess, // Parent reads from this
 		restartConfig: &RestartConfig{
 			Enabled:      true,
@@ -484,7 +484,7 @@ func (b *Broker) readProcessMessages(p *Process) {
 		// Route the message based on its target
 		if err := b.RouteMessage(msg, p.info.ID); err != nil {
 			b.logger.Warn("Failed to route message from process %s: %v", p.info.ID, err)
-			
+
 			// If this was a request message, send an error response back to the source
 			if msg.Type == proc.MessageTypeRequest && msg.CorrelationID != "" {
 				errorMsg := &proc.Message{

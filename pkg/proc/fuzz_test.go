@@ -11,7 +11,7 @@ func FuzzMessageMarshal(f *testing.F) {
 	f.Add("response", "resp-1", "access", "broker", "corr-456", "")
 	f.Add("error", "err-1", "", "", "", "error message")
 	f.Add("event", "", "", "", "", "")
-	
+
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, msgType, id, target, source, corrID, errMsg string) {
 		// Create message with fuzzed fields
@@ -23,13 +23,13 @@ func FuzzMessageMarshal(f *testing.F) {
 			CorrelationID: corrID,
 			Error:         errMsg,
 		}
-		
+
 		// Marshal - should not panic
 		data, err := msg.Marshal()
 		if err != nil {
 			return
 		}
-		
+
 		// Unmarshal back - should not panic
 		_, _ = Unmarshal(data)
 	})
@@ -48,7 +48,7 @@ func FuzzMessageUnmarshal(f *testing.F) {
 	f.Add([]byte(`null`))
 	f.Add([]byte(`[]`))
 	f.Add([]byte(`"string"`))
-	
+
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// Attempt to unmarshal - should not panic
@@ -64,7 +64,7 @@ func FuzzNewRequestMessage(f *testing.F) {
 	f.Add("RPCInvalid", `invalid json`)
 	f.Add("", `{}`)
 	f.Add("RPCTest", `null`)
-	
+
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, method, payloadStr string) {
 		// Create request message - should not panic

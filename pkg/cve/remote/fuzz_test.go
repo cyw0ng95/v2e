@@ -16,7 +16,7 @@ func FuzzValidateCVEID(f *testing.F) {
 	f.Add("CVE-2021-123456")
 	f.Add("NOT-A-CVE-ID")
 	f.Add("CVE-999999-99999")
-	
+
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, cveID string) {
 		// Validate CVE ID - should not panic
@@ -45,18 +45,18 @@ func FuzzFetchCVEsParams(f *testing.F) {
 	f.Add(-1, 0)
 	f.Add(0, -10)
 	f.Add(999999, 1000000)
-	
+
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, startIndex, resultsPerPage int) {
 		// Create fetcher with empty API key
 		fetcher := NewFetcher("")
-		
+
 		// Validate parameters - should not panic
 		if startIndex < 0 || resultsPerPage < 0 || resultsPerPage > 2000 {
 			// Invalid parameters - expected to fail
 			return
 		}
-		
+
 		// Parameters are valid, would make API call in real scenario
 		// For fuzz test, we just validate the parameters don't cause panic
 		_ = fetcher

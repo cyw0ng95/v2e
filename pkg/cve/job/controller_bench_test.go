@@ -36,7 +36,9 @@ func BenchmarkControllerNew(b *testing.B) {
 
 // BenchmarkRPCInvoke benchmarks the overhead of RPC invocation in job loop
 func BenchmarkRPCInvoke(b *testing.B) {
-	emptyResponse := &cve.CVEResponse{Vulnerabilities: []struct{ CVE cve.CVEItem `json:"cve"` }{}}
+	emptyResponse := &cve.CVEResponse{Vulnerabilities: []struct {
+		CVE cve.CVEItem `json:"cve"`
+	}{}}
 	emptyPayload, _ := sonic.Marshal(emptyResponse)
 	emptyMsg := &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: emptyPayload}
 
@@ -44,7 +46,7 @@ func BenchmarkRPCInvoke(b *testing.B) {
 
 	ctx := context.Background()
 	params := map[string]interface{}{
-		"start_index":       0,
+		"start_index":      0,
 		"results_per_page": 100,
 	}
 
@@ -62,9 +64,13 @@ func BenchmarkRPCInvoke(b *testing.B) {
 // BenchmarkMessageSerialization benchmarks CVE response serialization
 func BenchmarkMessageSerialization(b *testing.B) {
 	// Create a realistic CVE response
-	cves := make([]struct{ CVE cve.CVEItem `json:"cve"` }, 100)
+	cves := make([]struct {
+		CVE cve.CVEItem `json:"cve"`
+	}, 100)
 	for i := 0; i < 100; i++ {
-		cves[i] = struct{ CVE cve.CVEItem `json:"cve"` }{
+		cves[i] = struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{
 			CVE: cve.CVEItem{
 				ID:         "CVE-2021-00001",
 				SourceID:   "nvd",
@@ -92,9 +98,13 @@ func BenchmarkMessageSerialization(b *testing.B) {
 // BenchmarkMessageDeserialization benchmarks CVE response deserialization
 func BenchmarkMessageDeserialization(b *testing.B) {
 	// Create a realistic CVE response
-	cves := make([]struct{ CVE cve.CVEItem `json:"cve"` }, 100)
+	cves := make([]struct {
+		CVE cve.CVEItem `json:"cve"`
+	}, 100)
 	for i := 0; i < 100; i++ {
-		cves[i] = struct{ CVE cve.CVEItem `json:"cve"` }{
+		cves[i] = struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{
 			CVE: cve.CVEItem{
 				ID:         "CVE-2021-00001",
 				SourceID:   "nvd",

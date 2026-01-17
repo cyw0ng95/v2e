@@ -245,7 +245,9 @@ func (m *mockRPCInvokerWithTracking) InvokeRPC(ctx context.Context, target, meth
 	if target == "cve-remote" && method == "RPCFetchCVEs" {
 		// Return empty after first call
 		if len(m.savedCVEs) > 0 {
-			emptyResp := &cve.CVEResponse{Vulnerabilities: []struct{ CVE cve.CVEItem `json:"cve"` }{}}
+			emptyResp := &cve.CVEResponse{Vulnerabilities: []struct {
+				CVE cve.CVEItem `json:"cve"`
+			}{}}
 			emptyPayload, _ := sonic.Marshal(emptyResp)
 			return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: emptyPayload}, nil
 		}
@@ -532,23 +534,25 @@ func (m *mockRPCInvokerWithBatches) InvokeRPC(ctx context.Context, target, metho
 	if target == "cve-remote" && method == "RPCFetchCVEs" {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		
+
 		if m.callCount < len(m.batches) {
 			msg := m.batches[m.callCount]
 			m.callCount++
 			return msg, nil
 		}
 		// Return empty after all batches
-		emptyResp := &cve.CVEResponse{Vulnerabilities: []struct{ CVE cve.CVEItem `json:"cve"` }{}}
+		emptyResp := &cve.CVEResponse{Vulnerabilities: []struct {
+			CVE cve.CVEItem `json:"cve"`
+		}{}}
 		emptyPayload, _ := sonic.Marshal(emptyResp)
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: emptyPayload}, nil
 	}
-	
+
 	if target == "cve-local" && method == "RPCSaveCVEByID" {
 		savePayload, _ := sonic.Marshal(map[string]interface{}{"success": true})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: savePayload}, nil
 	}
-	
+
 	return nil, errors.New("unknown method")
 }
 
@@ -565,11 +569,11 @@ func (m *mockRPCInvokerWithDelay) InvokeRPC(ctx context.Context, target, method 
 		time.Sleep(m.delay)
 		return m.fetchResponse, nil
 	}
-	
+
 	if target == "cve-local" && method == "RPCSaveCVEByID" {
 		savePayload, _ := sonic.Marshal(map[string]interface{}{"success": true})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: savePayload}, nil
 	}
-	
+
 	return nil, errors.New("unknown method")
 }

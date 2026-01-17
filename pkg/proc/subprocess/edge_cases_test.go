@@ -33,13 +33,13 @@ func TestMalformedJSON(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			sp.SetInput(strings.NewReader(tc.input + "\n"))
-			
+
 			// Run should handle malformed input gracefully
 			done := make(chan error, 1)
 			go func() {
 				done <- sp.Run()
 			}()
-			
+
 			// Should either return error or continue
 			select {
 			case err := <-done:
@@ -113,13 +113,13 @@ func TestMissingRequiredFields(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			sp.SetInput(strings.NewReader(tc.message + "\n"))
-			
+
 			// Should handle gracefully
 			done := make(chan error, 1)
 			go func() {
 				done <- sp.Run()
 			}()
-			
+
 			select {
 			case <-done:
 				// Any result is acceptable - we just don't want panic

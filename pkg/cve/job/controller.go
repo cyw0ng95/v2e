@@ -31,10 +31,10 @@ type Controller struct {
 	rpcInvoker     RPCInvoker
 	sessionManager *session.Manager
 	logger         *common.Logger
-	
-	mu             sync.RWMutex
-	cancelFunc     context.CancelFunc
-	running        bool
+
+	mu         sync.RWMutex
+	cancelFunc context.CancelFunc
+	running    bool
 }
 
 // NewController creates a new job controller
@@ -76,7 +76,7 @@ func (c *Controller) Start(ctx context.Context) error {
 	// Start job in background
 	go c.runJob(jobCtx, sess)
 
-	c.logger.Info("Job started: session_id=%s, start_index=%d, batch_size=%d", 
+	c.logger.Info("Job started: session_id=%s, start_index=%d, batch_size=%d",
 		sess.ID, sess.StartIndex, sess.ResultsPerBatch)
 
 	return nil
@@ -206,7 +206,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 		default:
 			// Fetch batch from NVD via cve-remote
 			c.logger.Debug("Fetching batch: start_index=%d, batch_size=%d", currentIndex, batchSize)
-			
+
 			result, err := c.rpcInvoker.InvokeRPC(ctx, "cve-remote", "RPCFetchCVEs", map[string]interface{}{
 				"start_index":      currentIndex,
 				"results_per_page": batchSize,
@@ -217,7 +217,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}
-				
+
 				// Wait before retrying
 				select {
 				case <-ctx.Done():
@@ -243,7 +243,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}
-				
+
 				// Wait before retrying
 				select {
 				case <-ctx.Done():

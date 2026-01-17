@@ -43,8 +43,8 @@ func BenchmarkSendMessage(b *testing.B) {
 	sp.SetOutput(&buf)
 
 	msg := &Message{
-		Type: MessageTypeRequest,
-		ID:   "test-msg",
+		Type:    MessageTypeRequest,
+		ID:      "test-msg",
 		Payload: json.RawMessage(`{"test":"value"}`),
 	}
 
@@ -73,11 +73,11 @@ func BenchmarkSendResponse(b *testing.B) {
 // BenchmarkMessageMarshal benchmarks marshaling a message
 func BenchmarkMessageMarshal(b *testing.B) {
 	msg := &Message{
-		Type: MessageTypeRequest,
-		ID:   "test-id",
+		Type:    MessageTypeRequest,
+		ID:      "test-id",
 		Payload: json.RawMessage(`{"test":"value"}`),
-		Source: "process-a",
-		Target: "process-b",
+		Source:  "process-a",
+		Target:  "process-b",
 	}
 
 	b.ReportAllocs()
@@ -106,8 +106,8 @@ func BenchmarkMessageRoundTrip(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Create message
 		msg := &Message{
-			Type: MessageTypeRequest,
-			ID:   "test-id",
+			Type:    MessageTypeRequest,
+			ID:      "test-id",
 			Payload: json.RawMessage(`{"test":"value"}`),
 		}
 
@@ -232,4 +232,3 @@ func BenchmarkConcurrentSend(b *testing.B) {
 		}
 	})
 }
-

@@ -2,7 +2,7 @@ package subprocess
 
 import (
 	"testing"
-	
+
 	"github.com/bytedance/sonic"
 )
 
@@ -15,13 +15,13 @@ func FuzzMessageUnmarshal(f *testing.F) {
 	f.Add([]byte(`{"type":"error","id":"err-1","error":"test error"}`))
 	f.Add([]byte(`{}`))
 	f.Add([]byte(`{"type":"request","id":"test","target":"broker","correlation_id":"abc123"}`))
-	
+
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// Attempt to unmarshal - should not panic
 		var msg Message
 		_ = sonic.Unmarshal(data, &msg)
-		
+
 		// If unmarshal succeeded, marshal it back - should not panic
 		if msg.Type != "" {
 			_, _ = sonic.Marshal(&msg)
@@ -35,7 +35,7 @@ func FuzzMessageMarshal(f *testing.F) {
 	f.Add("request", "test-id", "", "", "")
 	f.Add("response", "resp-1", "target-1", "source-1", "corr-1")
 	f.Add("event", "", "", "", "")
-	
+
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, msgType, id, target, source, corrID string) {
 		// Create message with fuzzed fields
@@ -46,13 +46,13 @@ func FuzzMessageMarshal(f *testing.F) {
 			Source:        source,
 			CorrelationID: corrID,
 		}
-		
+
 		// Marshal - should not panic
 		data, err := sonic.Marshal(msg)
 		if err != nil {
 			return
 		}
-		
+
 		// Unmarshal back - should not panic
 		var msg2 Message
 		_ = sonic.Unmarshal(data, &msg2)

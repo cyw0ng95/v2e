@@ -169,11 +169,11 @@ func TestConcurrentProgressUpdates(t *testing.T) {
 
 	// The counts should match since we update both together
 	if session.FetchedCount != session.StoredCount {
-		t.Errorf("Fetched and stored counts should match, got %d and %d", 
+		t.Errorf("Fetched and stored counts should match, got %d and %d",
 			session.FetchedCount, session.StoredCount)
 	}
 
-	t.Logf("Concurrent updates: %d fetched, %d stored out of %d attempts", 
+	t.Logf("Concurrent updates: %d fetched, %d stored out of %d attempts",
 		session.FetchedCount, session.StoredCount, iterations)
 }
 

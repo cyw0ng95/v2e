@@ -20,7 +20,7 @@ func BenchmarkCreateSession(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Delete previous session
 		manager.DeleteSession()
-		
+
 		// Create new session
 		_, err := manager.CreateSession("bench-session", 0, 100)
 		if err != nil {

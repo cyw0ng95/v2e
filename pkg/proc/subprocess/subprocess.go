@@ -99,13 +99,13 @@ type Subprocess struct {
 
 	// mu protects concurrent access to handlers map
 	mu sync.RWMutex
-	
+
 	// outChan is a buffered channel for batching outgoing messages
 	outChan chan []byte
-	
+
 	// writeMu protects write operations (lighter than full RWMutex)
 	writeMu sync.Mutex
-	
+
 	// disableBatching disables message batching (for tests)
 	disableBatching bool
 }
@@ -133,12 +133,12 @@ func New(id string) *Subprocess {
 		var inputFDNum, outputFDNum int
 		_, err1 := fmt.Sscanf(inputFDStr, "%d", &inputFDNum)
 		_, err2 := fmt.Sscanf(outputFDStr, "%d", &outputFDNum)
-		
+
 		if err1 == nil && err2 == nil && inputFDNum >= 0 && outputFDNum >= 0 {
 			// Open the file descriptors that were inherited from parent
 			inputFile := os.NewFile(uintptr(inputFDNum), "rpc-input")
 			outputFile := os.NewFile(uintptr(outputFDNum), "rpc-output")
-			
+
 			if inputFile != nil && outputFile != nil {
 				sp.input = inputFile
 				sp.output = outputFile
@@ -186,7 +186,7 @@ func (s *Subprocess) Run() error {
 		s.wg.Add(1)
 		go s.messageWriter()
 	}
-	
+
 	// Send a ready event to signal that the subprocess is initialized
 	if err := s.SendEvent("subprocess_ready", map[string]interface{}{
 		"id": s.ID,
@@ -201,7 +201,7 @@ func (s *Subprocess) Run() error {
 	defer bufferPool.Put(bufPtr)
 	buf := *bufPtr
 	scanner.Buffer(buf, MaxMessageSize)
-	
+
 	for scanner.Scan() {
 		select {
 		case <-s.ctx.Done():
@@ -252,7 +252,7 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	s.mu.RLock()
 	var handler Handler
 	var exists bool
-	
+
 	if msg.Type == MessageTypeResponse || msg.Type == MessageTypeError {
 		// For responses and errors, look up by type first
 		handler, exists = s.handlers[string(msg.Type)]
@@ -305,13 +305,13 @@ func (s *Subprocess) handleMessage(msg *Message) {
 // This reduces syscalls and mutex contention for better performance
 func (s *Subprocess) messageWriter() {
 	defer s.wg.Done()
-	
+
 	// Optimized batch buffer size (Principle 12)
 	// Larger batch reduces syscalls but increases latency
 	batch := make([][]byte, 0, 20)
 	ticker := time.NewTicker(5 * time.Millisecond) // Faster flush for lower latency (Principle 12)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -329,7 +329,7 @@ func (s *Subprocess) messageWriter() {
 				return
 			}
 			batch = append(batch, data)
-			
+
 			// Adaptive batching: flush at 20 messages (Principle 12)
 			if len(batch) >= 20 {
 				s.flushBatch(batch)
@@ -352,15 +352,15 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	if len(batch) == 0 {
 		return
 	}
-	
+
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
-	
+
 	// Get writer from pool and reset it
 	writer := writerPool.Get().(*bufio.Writer)
 	writer.Reset(s.output)
 	defer writerPool.Put(writer)
-	
+
 	for _, data := range batch {
 		// Write data directly without fmt.Fprintf overhead
 		if _, err := writer.Write(data); err != nil {
@@ -402,7 +402,7 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 		writer := writerPool.Get().(*bufio.Writer)
 		writer.Reset(s.output)
 		defer writerPool.Put(writer)
-		
+
 		if _, err := writer.Write(data); err != nil {
 			return fmt.Errorf("failed to write message: %w", err)
 		}
@@ -485,7 +485,7 @@ func (s *Subprocess) Stop() error {
 }
 
 // Flush ensures all pending messages are written
-// Useful for testing or before shutdown  
+// Useful for testing or before shutdown
 func (s *Subprocess) Flush() {
 	// Just wait for the ticker to fire (at most 15ms)
 	time.Sleep(15 * time.Millisecond)
