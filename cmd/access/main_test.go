@@ -19,7 +19,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestNewRPCClient_Access(t *testing.T) {
-	client := NewRPCClient("test-access")
+	client := NewRPCClient("test-access", DefaultRPCTimeout)
 	if client == nil {
 		t.Fatal("NewRPCClient returned nil")
 	}
@@ -32,7 +32,7 @@ func TestNewRPCClient_Access(t *testing.T) {
 }
 
 func TestRPCClient_HandleResponse_UnknownCorrelation(t *testing.T) {
-	client := NewRPCClient("test-access-2")
+	client := NewRPCClient("test-access-2", DefaultRPCTimeout)
 	msg := &subprocess.Message{
 		Type:          subprocess.MessageTypeResponse,
 		ID:            "m",
@@ -49,7 +49,7 @@ func TestRPCClient_HandleResponse_UnknownCorrelation(t *testing.T) {
 }
 
 func TestInvokeRPCWithTarget_ResponseDelivered(t *testing.T) {
-	client := NewRPCClient("test-access-3")
+	client := NewRPCClient("test-access-3", DefaultRPCTimeout)
 	ctx := context.Background()
 
 	// Start InvokeRPCWithTarget in a goroutine so we can deliver a response
