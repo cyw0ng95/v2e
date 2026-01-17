@@ -455,6 +455,22 @@ func main() {
 
 	logger.Info("CVE meta service started - orchestrates local and remote")
 
+	// --- CWE Import Control ---
+	go func() {
+		time.Sleep(2 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		params := map[string]interface{}{"path": "assets/cwe-raw.json"}
+		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", params)
+		if err != nil {
+			logger.Error("Failed to import CWE on local: %v", err)
+		} else if resp.Type == subprocess.MessageTypeError {
+			logger.Error("CWE import error: %s", resp.Error)
+		} else {
+			logger.Info("CWE import triggered on local")
+		}
+	}()
+
 	// Run with default lifecycle management
 	subprocess.RunWithDefaults(sp, logger)
 }
