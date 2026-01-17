@@ -267,16 +267,16 @@ func TestSendError(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	sp := New("test")
-	
+
 	// Start the message writer
 	sp.wg.Add(1)
 	go sp.messageWriter()
-	
+
 	// Stop should not error
 	if err := sp.Stop(); err != nil {
 		t.Errorf("Stop() returned error: %v", err)
 	}
-	
+
 	// Context should be cancelled
 	select {
 	case <-sp.ctx.Done():
@@ -290,20 +290,20 @@ func TestFlush(t *testing.T) {
 	sp := New("test")
 	output := &bytes.Buffer{}
 	sp.SetOutput(output)
-	
+
 	// Send a message
 	msg := &Message{
 		Type: MessageTypeEvent,
 		ID:   "test-event",
 	}
-	
+
 	if err := sp.SendMessage(msg); err != nil {
 		t.Fatalf("Failed to send message: %v", err)
 	}
-	
+
 	// Flush should ensure the message is written
 	sp.Flush()
-	
+
 	result := output.String()
 	if result == "" {
 		t.Error("Expected message to be written after flush")
@@ -313,9 +313,9 @@ func TestFlush(t *testing.T) {
 func TestSetInput(t *testing.T) {
 	sp := New("test")
 	input := &bytes.Buffer{}
-	
+
 	sp.SetInput(input)
-	
+
 	if sp.input != input {
 		t.Error("SetInput did not set the input stream")
 	}
@@ -325,12 +325,12 @@ func TestMessageBatching(t *testing.T) {
 	sp := New("test")
 	output := &bytes.Buffer{}
 	sp.output = output
-	
+
 	// Enable batching by NOT calling SetOutput (which disables it)
 	// Start message writer
 	sp.wg.Add(1)
 	go sp.messageWriter()
-	
+
 	// Send multiple messages
 	for i := 0; i < 5; i++ {
 		msg := &Message{
@@ -341,18 +341,18 @@ func TestMessageBatching(t *testing.T) {
 			t.Fatalf("Failed to send message %d: %v", i, err)
 		}
 	}
-	
+
 	// Wait for batching ticker
 	time.Sleep(15 * time.Millisecond)
-	
+
 	// Stop the subprocess and wait for writer to finish
 	// This ensures all messages are flushed and no concurrent access to buffer
 	sp.Stop()
-	
+
 	// Now safe to read from output buffer
 	result := output.String()
 	lines := strings.Split(strings.TrimSpace(result), "\n")
-	
+
 	if len(lines) < 5 {
 		t.Errorf("Expected at least 5 messages, got %d", len(lines))
 	}

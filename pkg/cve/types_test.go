@@ -53,12 +53,12 @@ func TestNVDTime_UnmarshalJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var nvdTime NVDTime
 			err := json.Unmarshal([]byte(tt.input), &nvdTime)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if tt.checkVal && !tt.wantErr {
 				if !nvdTime.Time.Equal(tt.expected) {
 					t.Errorf("UnmarshalJSON() got = %v, want %v", nvdTime.Time, tt.expected)
@@ -93,7 +93,7 @@ func TestNVDTime_MarshalJSON(t *testing.T) {
 			if err != nil {
 				t.Fatalf("MarshalJSON() error = %v", err)
 			}
-			
+
 			if string(data) != tt.expected {
 				t.Errorf("MarshalJSON() = %s, want %s", string(data), tt.expected)
 			}
@@ -104,7 +104,7 @@ func TestNVDTime_MarshalJSON(t *testing.T) {
 func TestNewNVDTime(t *testing.T) {
 	now := time.Now()
 	nvdTime := NewNVDTime(now)
-	
+
 	if !nvdTime.Time.Equal(now) {
 		t.Errorf("NewNVDTime() = %v, want %v", nvdTime.Time, now)
 	}
@@ -112,23 +112,23 @@ func TestNewNVDTime(t *testing.T) {
 
 func TestNVDTime_RoundTrip(t *testing.T) {
 	original := NVDTime{Time: time.Date(2021, 12, 10, 10, 15, 9, 143000000, time.UTC)}
-	
+
 	// Marshal
 	data, err := json.Marshal(original)
 	if err != nil {
 		t.Fatalf("Marshal error: %v", err)
 	}
-	
+
 	// Unmarshal
 	var decoded NVDTime
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
-	
+
 	// Compare (truncate to millisecond precision)
 	originalTrunc := original.Time.Truncate(time.Millisecond)
 	decodedTrunc := decoded.Time.Truncate(time.Millisecond)
-	
+
 	if !originalTrunc.Equal(decodedTrunc) {
 		t.Errorf("Round trip failed: got %v, want %v", decoded.Time, original.Time)
 	}

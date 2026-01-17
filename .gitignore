@@ -66,8 +66,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -88,9 +86,16 @@ htmlcov/
 # Integration test logs
 logs/
 
+# Python build artifacts (not website/lib)
+/lib/
+/lib64/
 # Binaries (not source directories)
 /access
 /broker
 /cve-local
 /cve-remote
 /cve-meta
+
+# Profiling files
+*.prof
+*.test

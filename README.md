@@ -38,6 +38,164 @@ And packages:
 - `pkg/cve` - CVE data types shared across packages
 - `pkg/cve/remote` - Remote CVE fetching from NVD API
 - `pkg/cve/local` - Local CVE storage with SQLite database
+- `pkg/cve/session` - Session management with bbolt K-V database
+- `pkg/cve/job` - Job controller for continuous CVE fetch/store operations
+
+## CVE Meta Job Control
+
+The `cve-meta` service provides job control capabilities for continuous CVE data fetching and storing operations. This allows you to start long-running jobs that continuously fetch CVE data from the NVD API and store it in the local database.
+
+### Features
+
+- **Session Management**: Create and manage job sessions with unique IDs
+- **Single Session Enforcement**: Only one job session can run at a time to prevent conflicts
+- **Persistent State**: Session state is stored in a bbolt K-V database and survives service restarts
+- **Job Control**: Start, stop, pause, and resume continuous CVE fetching operations
+- **Progress Tracking**: Monitor fetched, stored, and error counts during job execution
+
+### RPC APIs
+
+#### RPCStartSession
+Starts a new job session for continuous CVE fetching and storing.
+
+**Parameters:**
+- `session_id` (string, required): Unique identifier for the session
+- `start_index` (int, optional): Starting index for NVD API pagination (default: 0)
+- `results_per_batch` (int, optional): Number of results per batch (default: 100)
+
+**Response:**
+```json
+{
+  "success": true,
+  "session_id": "my-session",
+  "state": "running",
+  "created_at": "2026-01-13T02:00:00Z"
+}
+```
+
+#### RPCStopSession
+Stops the current session and cleans up resources.
+
+**Response:**
+```json
+{
+  "success": true,
+  "session_id": "my-session",
+  "fetched_count": 150,
+  "stored_count": 145,
+  "error_count": 5
+}
+```
+
+#### RPCGetSessionStatus
+Gets the current session status and progress.
+
+**Response:**
+```json
+{
+  "has_session": true,
+  "session_id": "my-session",
+  "state": "running",
+  "start_index": 0,
+  "results_per_batch": 100,
+  "created_at": "2026-01-13T02:00:00Z",
+  "updated_at": "2026-01-13T02:05:00Z",
+  "fetched_count": 150,
+  "stored_count": 145,
+  "error_count": 5
+}
+```
+
+#### RPCPauseJob
+Pauses the running job without deleting the session.
+
+**Response:**
+```json
+{
+  "success": true,
+  "state": "paused"
+}
+```
+
+#### RPCResumeJob
+Resumes a paused job from where it left off.
+
+**Response:**
+```json
+{
+  "success": true,
+  "state": "running"
+}
+```
+
+### Example Usage
+
+Via the REST API (through the access service):
+
+```bash
+# Start a new session
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCStartSession",
+    "target": "cve-meta",
+    "params": {
+      "session_id": "bulk-fetch-2026",
+      "start_index": 0,
+      "results_per_batch": 100
+    }
+  }'
+
+# Check session status
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCGetSessionStatus",
+    "target": "cve-meta",
+    "params": {}
+  }'
+
+# Pause the job
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCPauseJob",
+    "target": "cve-meta",
+    "params": {}
+  }'
+
+# Resume the job
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCResumeJob",
+    "target": "cve-meta",
+    "params": {}
+  }'
+
+# Stop the session
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCStopSession",
+    "target": "cve-meta",
+    "params": {}
+  }'
+```
+
+### Session State Management
+
+Job sessions go through the following states:
+
+- **idle**: Session created but job not yet started
+- **running**: Job is actively fetching and storing CVEs
+- **paused**: Job temporarily paused, can be resumed
+- **stopped**: Session stopped and deleted
+
+The session state is persisted in `session.db` (bbolt K-V database) and includes:
+- Session ID and configuration (start index, batch size)
+- Progress counters (fetched, stored, error counts)
+- Timestamps (created, last updated)
 
 ## Architecture and Security
 

@@ -782,3 +782,342 @@ class TestCVEBusinessFlows:
         print(f"  ✓ Test passed: Batch operations successful")
         print(f"    - Created: {len(test_cves)} CVEs")
         print(f"    - Total in database: {payload['total']} CVEs")
+    
+    @pytest.mark.slow
+    def test_batch_update_workflow(self, access_service):
+        """Test batch update workflow with multiple CVEs.
+        
+        This verifies:
+        1. Create multiple CVEs
+        2. Update all CVEs by refetching from NVD
+        3. Verify all updates succeeded
+        """
+        access = access_service
+        test_cves = [
+            "CVE-2021-44228",  # Log4Shell
+            "CVE-2022-22965",  # Spring4Shell
+        ]
+        
+        print(f"\n  → Testing batch update workflow for {len(test_cves)} CVEs")
+        
+        # Step 1: Create CVEs
+        print(f"  → Step 1: Creating {len(test_cves)} CVEs...")
+        for cve_id in test_cves:
+            print(f"    - Creating {cve_id}...")
+            response = access.rpc_call(
+                method="RPCCreateCVE",
+                target="cve-meta",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            
+            # Check for rate limiting
+            if is_rate_limited(response):
+                pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+            
+            assert response["retcode"] == 0, f"Failed to create {cve_id}"
+            print(f"      ✓ Created {cve_id}")
+            time.sleep(1)  # Rate limiting
+        
+        print(f"    ✓ All CVEs created")
+        
+        # Step 2: Update all CVEs
+        print(f"  → Step 2: Updating {len(test_cves)} CVEs...")
+        for cve_id in test_cves:
+            print(f"    - Updating {cve_id}...")
+            response = access.rpc_call(
+                method="RPCUpdateCVE",
+                target="cve-meta",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            
+            # Check for rate limiting
+            if is_rate_limited(response):
+                pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+            
+            assert response["retcode"] == 0, f"Failed to update {cve_id}"
+            print(f"      ✓ Updated {cve_id}")
+            time.sleep(1)  # Rate limiting
+        
+        print(f"    ✓ All CVEs updated")
+        
+        # Step 3: Verify all CVEs are still in storage
+        print(f"  → Step 3: Verifying all CVEs are in storage...")
+        list_response = access.rpc_call(
+            method="RPCListCVEs",
+            target="cve-meta",
+            params={"offset": 0, "limit": 100},
+            verbose=False
+        )
+        assert list_response["retcode"] == 0
+        
+        payload = list_response["payload"]
+        cve_ids_in_list = [cve["id"] for cve in payload["cves"]]
+        
+        for cve_id in test_cves:
+            assert cve_id in cve_ids_in_list, f"CVE {cve_id} not found after update"
+            print(f"    ✓ {cve_id} verified in storage")
+        
+        print(f"  ✓ Test passed: Batch update workflow successful")
+        print(f"    - Updated: {len(test_cves)} CVEs")
+    
+    @pytest.mark.slow
+    def test_batch_delete_workflow(self, access_service):
+        """Test batch delete workflow with multiple CVEs.
+        
+        This verifies:
+        1. Create multiple CVEs
+        2. Delete all CVEs
+        3. Verify all CVEs are removed from storage
+        """
+        access = access_service
+        test_cves = [
+            "CVE-2021-44228",  # Log4Shell
+            "CVE-2021-45046",  # Log4Shell variant
+        ]
+        
+        print(f"\n  → Testing batch delete workflow for {len(test_cves)} CVEs")
+        
+        # Step 1: Create CVEs
+        print(f"  → Step 1: Creating {len(test_cves)} CVEs...")
+        for cve_id in test_cves:
+            print(f"    - Creating {cve_id}...")
+            response = access.rpc_call(
+                method="RPCCreateCVE",
+                target="cve-meta",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            
+            # Check for rate limiting
+            if is_rate_limited(response):
+                pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+            
+            # Creation may succeed or fail if CVE already exists - either is acceptable
+            # The important part is that CVE is available for deletion test
+            if response["retcode"] == 0:
+                print(f"      ✓ {cve_id} created")
+            else:
+                print(f"      ✓ {cve_id} already exists")
+            time.sleep(0.5)  # Rate limiting
+        
+        print(f"    ✓ All CVEs ready")
+        
+        # Step 2: Delete all CVEs
+        print(f"  → Step 2: Deleting {len(test_cves)} CVEs...")
+        for cve_id in test_cves:
+            print(f"    - Deleting {cve_id}...")
+            response = access.rpc_call(
+                method="RPCDeleteCVE",
+                target="cve-meta",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            # Deletion should succeed even if CVE doesn't exist
+            print(f"      ✓ Deleted {cve_id}")
+        
+        print(f"    ✓ All CVEs deleted")
+        
+        # Step 3: Verify all CVEs are not in storage
+        print(f"  → Step 3: Verifying all CVEs are removed...")
+        for cve_id in test_cves:
+            check_response = access.rpc_call(
+                method="RPCIsCVEStoredByID",
+                target="cve-local",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            assert check_response["payload"]["stored"] is False, f"CVE {cve_id} still in storage"
+            print(f"    ✓ {cve_id} confirmed removed")
+        
+        print(f"  ✓ Test passed: Batch delete workflow successful")
+        print(f"    - Deleted: {len(test_cves)} CVEs")
+    
+    @pytest.mark.slow
+    def test_complex_mixed_operations(self, access_service):
+        """Test complex workflow with mixed CRUD operations.
+        
+        This verifies:
+        1. Create some CVEs
+        2. Update some CVEs
+        3. List to verify state
+        4. Delete some CVEs
+        5. List to verify final state
+        """
+        access = access_service
+        cves_to_create = ["CVE-2021-44228", "CVE-2021-45046", "CVE-2022-22965"]
+        cves_to_update = ["CVE-2021-44228"]
+        cves_to_delete = ["CVE-2021-45046"]
+        cves_remaining = ["CVE-2021-44228", "CVE-2022-22965"]
+        
+        print(f"\n  → Testing complex mixed operations workflow")
+        
+        # Step 1: Create CVEs
+        print(f"  → Step 1: Creating {len(cves_to_create)} CVEs...")
+        for cve_id in cves_to_create:
+            print(f"    - Creating {cve_id}...")
+            response = access.rpc_call(
+                method="RPCCreateCVE",
+                target="cve-meta",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            
+            # Check for rate limiting
+            if is_rate_limited(response):
+                pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+            
+            print(f"      ✓ Created {cve_id}")
+            time.sleep(1)  # Rate limiting
+        
+        # Step 2: Update some CVEs
+        print(f"  → Step 2: Updating {len(cves_to_update)} CVEs...")
+        for cve_id in cves_to_update:
+            print(f"    - Updating {cve_id}...")
+            response = access.rpc_call(
+                method="RPCUpdateCVE",
+                target="cve-meta",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            
+            # Check for rate limiting
+            if is_rate_limited(response):
+                pytest.skip("NVD API rate limited (HTTP 429) - skipping test")
+            
+            assert response["retcode"] == 0
+            print(f"      ✓ Updated {cve_id}")
+            time.sleep(1)  # Rate limiting
+        
+        # Step 3: List to verify all are present
+        print(f"  → Step 3: Listing CVEs to verify state...")
+        list_response = access.rpc_call(
+            method="RPCListCVEs",
+            target="cve-meta",
+            params={"offset": 0, "limit": 100},
+            verbose=False
+        )
+        assert list_response["retcode"] == 0
+        cve_ids = [cve["id"] for cve in list_response["payload"]["cves"]]
+        for cve_id in cves_to_create:
+            assert cve_id in cve_ids, f"{cve_id} not found"
+            print(f"    ✓ {cve_id} present")
+        
+        # Step 4: Delete some CVEs
+        print(f"  → Step 4: Deleting {len(cves_to_delete)} CVEs...")
+        for cve_id in cves_to_delete:
+            print(f"    - Deleting {cve_id}...")
+            response = access.rpc_call(
+                method="RPCDeleteCVE",
+                target="cve-meta",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            print(f"      ✓ Deleted {cve_id}")
+        
+        # Step 5: Verify final state
+        print(f"  → Step 5: Verifying final state...")
+        for cve_id in cves_remaining:
+            check_response = access.rpc_call(
+                method="RPCIsCVEStoredByID",
+                target="cve-local",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            assert check_response["payload"]["stored"] is True, f"{cve_id} should still be stored"
+            print(f"    ✓ {cve_id} still in storage")
+        
+        for cve_id in cves_to_delete:
+            check_response = access.rpc_call(
+                method="RPCIsCVEStoredByID",
+                target="cve-local",
+                params={"cve_id": cve_id},
+                verbose=False
+            )
+            assert check_response["payload"]["stored"] is False, f"{cve_id} should be deleted"
+            print(f"    ✓ {cve_id} confirmed deleted")
+        
+        print(f"  ✓ Test passed: Complex mixed operations successful")
+    
+    @pytest.mark.slow
+    def test_pagination_with_large_dataset(self, access_service):
+        """Test pagination with a larger dataset.
+        
+        This verifies:
+        1. Create multiple CVEs to build up dataset
+        2. List with different pagination parameters
+        3. Verify pagination metadata is correct
+        4. Verify different pages return different results
+        """
+        access = access_service
+        
+        # Note: We can't create too many CVEs due to NVD rate limiting
+        # So we'll test pagination with whatever CVEs are already in the database
+        
+        print(f"\n  → Testing pagination with existing dataset")
+        
+        # Get total count
+        count_response = access.rpc_call(
+            method="RPCCountCVEs",
+            target="cve-meta",
+            params={},
+            verbose=False
+        )
+        total_count = count_response["payload"]["count"]
+        print(f"  → Current dataset size: {total_count} CVEs")
+        
+        # Need at least 5 CVEs to test multiple page sizes (2, 5, 10) with pagination
+        # This ensures we can fetch at least 2 pages with the smallest page size
+        MIN_CVES_FOR_PAGINATION_TEST = 5
+        if total_count < MIN_CVES_FOR_PAGINATION_TEST:
+            pytest.skip(f"Not enough CVEs in database for pagination test (need {MIN_CVES_FOR_PAGINATION_TEST}, have {total_count})")
+        
+        # Test pagination with different page sizes
+        page_sizes = [2, 5, 10]
+        for page_size in page_sizes:
+            print(f"  → Testing with page size {page_size}...")
+            
+            # Get first page
+            page1_response = access.rpc_call(
+                method="RPCListCVEs",
+                target="cve-meta",
+                params={"offset": 0, "limit": page_size},
+                verbose=False
+            )
+            assert page1_response["retcode"] == 0
+            page1 = page1_response["payload"]
+            
+            # Verify metadata
+            assert page1["offset"] == 0
+            assert page1["limit"] == page_size
+            assert page1["total"] == total_count
+            assert len(page1["cves"]) <= page_size
+            print(f"    ✓ Page 1: {len(page1['cves'])} CVEs")
+            
+            # Get second page if there are enough CVEs
+            if total_count > page_size:
+                page2_response = access.rpc_call(
+                    method="RPCListCVEs",
+                    target="cve-meta",
+                    params={"offset": page_size, "limit": page_size},
+                    verbose=False
+                )
+                assert page2_response["retcode"] == 0
+                page2 = page2_response["payload"]
+                
+                # Verify metadata
+                assert page2["offset"] == page_size
+                assert page2["limit"] == page_size
+                assert page2["total"] == total_count
+                print(f"    ✓ Page 2: {len(page2['cves'])} CVEs")
+                
+                # Verify pages have different content (if both have items)
+                if page1["cves"] and page2["cves"]:
+                    page1_ids = {cve["id"] for cve in page1["cves"]}
+                    page2_ids = {cve["id"] for cve in page2["cves"]}
+                    # No overlap expected
+                    assert len(page1_ids & page2_ids) == 0, "Pages should have different CVEs"
+                    print(f"    ✓ Pages have different content")
+        
+        print(f"  ✓ Test passed: Pagination works correctly across page sizes")

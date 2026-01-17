@@ -275,7 +275,7 @@ class TestCVEMetaService:
         print(f"  → Params: {{'cve_id': '{cve_id}'}}")
         
         # Call RPCGetCVE via RESTful API with target=cve-meta
-        response = access.get_cve(cve_id)
+        response = access.rpc_call("RPCGetCVE", params={"cve_id": cve_id}, target="cve-meta", verbose=False)
         
         # Log response details
         print(f"  → Response received:")
@@ -521,7 +521,8 @@ class TestCVERemoteService:
         response = access.rpc_call(
             method="RPCGetCVEByID",
             target="cve-remote",
-            params={"cve_id": cve_id}
+            params={"cve_id": cve_id},
+            verbose=False  # Disable verbose for slow tests to avoid large log output
         )
         
         print(f"  → Response received:")
