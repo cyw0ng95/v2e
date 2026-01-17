@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/bytedance/sonic"
 )
 
 // SendMessage sends a message to the broker via stdout
@@ -18,7 +16,8 @@ func (s *Subprocess) SendMessage(msg *Message) error {
 // Uses lock-free channel-based batching for better performance
 func (s *Subprocess) sendMessage(msg *Message) error {
 	// Use fastest marshaling for performance
-	api := sonic.ConfigFastest
+	// Use package-level sonicFast to avoid repeated config access
+	api := sonicFast
 	data, err := api.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
@@ -26,13 +25,31 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 
 	// If batching is disabled (for tests), write directly
 	if s.disableBatching {
+		// Zero-copy optimization: if payload is large, avoid extra copies by
+		// writing marshaled data directly to the writer buffer and flushing.
 		s.writeMu.Lock()
 		defer s.writeMu.Unlock()
+
 		// Use pooled bufio.Writer for efficient writes (Principle 13, 14)
 		writer := writerPool.Get().(*bufio.Writer)
 		writer.Reset(s.output)
 		defer writerPool.Put(writer)
 
+		// If the marshaled data is large, write directly (no additional joining)
+		if len(data) >= zeroCopyThreshold {
+			if _, err := writer.Write(data); err != nil {
+				return fmt.Errorf("failed to write message: %w", err)
+			}
+			if err := writer.WriteByte('\n'); err != nil {
+				return fmt.Errorf("failed to write newline: %w", err)
+			}
+			if err := writer.Flush(); err != nil {
+				return fmt.Errorf("failed to flush: %w", err)
+			}
+			return nil
+		}
+
+		// Small message path: write as before
 		if _, err := writer.Write(data); err != nil {
 			return fmt.Errorf("failed to write message: %w", err)
 		}
@@ -59,7 +76,7 @@ func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
 		// Use fastest marshaling for performance
-		api := sonic.ConfigFastest
+		api := sonicFast
 		data, err := api.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
@@ -80,7 +97,7 @@ func (s *Subprocess) SendEvent(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
 		// Use fastest marshaling for performance
-		api := sonic.ConfigFastest
+		api := sonicFast
 		data, err := api.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
@@ -118,5 +135,5 @@ func (s *Subprocess) Stop() error {
 // Useful for testing or before shutdown
 func (s *Subprocess) Flush() {
 	// Just wait for the ticker to fire (at most 15ms)
-	time.Sleep(15 * time.Millisecond)
+	time.Sleep(defaultFlushInterval * 3)
 }

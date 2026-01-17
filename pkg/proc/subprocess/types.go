@@ -27,7 +27,7 @@ var bufferPool = sync.Pool{
 // writerPool is a sync.Pool for bufio.Writer to reduce allocations (Principle 14)
 var writerPool = sync.Pool{
 	New: func() interface{} {
-		return bufio.NewWriterSize(nil, 4096) // 4KB buffer
+		return bufio.NewWriterSize(nil, defaultWriterBufSize) // tuned buffer size
 	},
 }
 
@@ -111,7 +111,7 @@ func New(id string) *Subprocess {
 		handlers: make(map[string]Handler),
 		ctx:      ctx,
 		cancel:   cancel,
-		outChan:  make(chan []byte, 256), // Optimized buffer size (Principle 12)
+		outChan:  make(chan []byte, defaultOutChanBufSize), // Optimized buffer size (Principle 12)
 	}
 
 	// Check if custom FDs are specified via environment variables
