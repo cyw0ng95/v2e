@@ -206,6 +206,9 @@ export class RPCClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
+      // Debug: log request details
+      console.debug('[rpc-client] RPC request', { url: `${this.baseUrl}/restful/rpc`, method, target, params: request.params });
+
       const response = await fetch(`${this.baseUrl}/restful/rpc`, {
         method: 'POST',
         headers: {
@@ -217,11 +220,24 @@ export class RPCClient {
 
       clearTimeout(timeoutId);
 
+      // Read raw response text so we can log invalid JSON bodies as well
+      const raw = await response.text();
+
       if (!response.ok) {
+        console.error('[rpc-client] HTTP error response', { status: response.status, body: raw });
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const rpcResponse: RPCResponse<unknown> = await response.json();
+      let rpcResponse: RPCResponse<unknown>;
+      try {
+        rpcResponse = JSON.parse(raw);
+      } catch (err) {
+        console.error('[rpc-client] Failed to parse JSON response', { raw, err });
+        throw new Error('Invalid JSON response from RPC endpoint');
+      }
+
+      // Debug: log parsed RPC response
+      console.debug('[rpc-client] RPC response', rpcResponse);
 
       // Convert response payload keys to camelCase
       if (rpcResponse.payload) {
@@ -232,12 +248,14 @@ export class RPCClient {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
+        console.error('[rpc-client] request aborted (timeout)', { method, target });
         return {
           retcode: 500,
           message: 'Request timeout',
           payload: null,
         };
       }
+      console.error('[rpc-client] request failed', { method, target, error });
       return {
         retcode: 500,
         message: error instanceof Error ? error.message : 'Unknown error',
