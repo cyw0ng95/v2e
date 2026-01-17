@@ -22,6 +22,18 @@ type Config struct {
 	Broker BrokerConfig `json:"broker,omitempty"`
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty"`
+	// Access service configuration
+	Access AccessConfig `json:"access,omitempty"`
+}
+
+// AccessConfig holds configuration for the access (HTTP) service
+type AccessConfig struct {
+	// RPC timeout in seconds for forwarding RPC requests (default: 30)
+	RPCTimeoutSeconds int `json:"rpc_timeout_seconds,omitempty"`
+	// Shutdown timeout in seconds for graceful shutdown (default: 10)
+	ShutdownTimeoutSeconds int `json:"shutdown_timeout_seconds,omitempty"`
+	// StaticDir is the directory to serve static assets from (default: "website/out")
+	StaticDir string `json:"static_dir,omitempty"`
 }
 
 // ServerConfig holds server-specific configuration

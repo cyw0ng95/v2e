@@ -42,5 +42,10 @@
   "logging": {
     "level": "debug",
     "dir": "./logs"
+  },
+  "access": {
+    "rpc_timeout_seconds": 30,
+    "shutdown_timeout_seconds": 10,
+    "static_dir": "website"
   }
 }

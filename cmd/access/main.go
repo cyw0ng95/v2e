@@ -59,6 +59,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -83,14 +85,17 @@ type RPCClient struct {
 	pendingRequests map[string]chan *subprocess.Message
 	mu              sync.RWMutex
 	correlationSeq  uint64
+	// per-client RPC timeout (configurable)
+	rpcTimeout time.Duration
 }
 
 // NewRPCClient creates a new RPC client for broker communication
-func NewRPCClient(processID string) *RPCClient {
+func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 	sp := subprocess.New(processID)
 	client := &RPCClient{
 		sp:              sp,
 		pendingRequests: make(map[string]chan *subprocess.Message),
+		rpcTimeout:      rpcTimeout,
 	}
 
 	// Register handlers for response and error messages
@@ -179,11 +184,11 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 		return nil, fmt.Errorf("failed to send RPC request: %w", err)
 	}
 
-	// Wait for response with timeout
+	// Wait for response with timeout (use configured rpcTimeout)
 	select {
 	case response := <-respChan:
 		return response, nil
-	case <-time.After(DefaultRPCTimeout):
+	case <-time.After(c.rpcTimeout):
 		return nil, fmt.Errorf("RPC timeout waiting for response")
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -199,8 +204,24 @@ func main() {
 	// Load configuration
 	config, err := common.LoadConfig("config.json")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+		common.Error("Error loading config: %v", err)
 		os.Exit(1)
+	}
+
+	// Configure service timeouts and static dir from config (with defaults)
+	rpcTimeout := 30 * time.Second
+	if config.Access.RPCTimeoutSeconds > 0 {
+		rpcTimeout = time.Duration(config.Access.RPCTimeoutSeconds) * time.Second
+	}
+
+	shutdownTimeout := 10 * time.Second
+	if config.Access.ShutdownTimeoutSeconds > 0 {
+		shutdownTimeout = time.Duration(config.Access.ShutdownTimeoutSeconds) * time.Second
+	}
+
+	staticDir := "website"
+	if config.Access.StaticDir != "" {
+		staticDir = config.Access.StaticDir
 	}
 
 	// Set default address if not configured
@@ -215,13 +236,13 @@ func main() {
 		processID = "access"
 	}
 
-	// Create RPC client for broker communication
-	rpcClient := NewRPCClient(processID)
+	// Create RPC client for broker communication (use configured rpc timeout)
+	rpcClient := NewRPCClient(processID, rpcTimeout)
 
 	// Start RPC client in background
 	go func() {
 		if err := rpcClient.Run(context.Background()); err != nil {
-			fmt.Fprintf(os.Stderr, "RPC client error: %v\n", err)
+			common.Error("RPC client error: %v", err)
 		}
 	}()
 
@@ -277,8 +298,8 @@ func main() {
 				target = "broker"
 			}
 
-			// Forward RPC request to target process
-			ctx, cancel := context.WithTimeout(c.Request.Context(), DefaultRPCTimeout)
+			// Forward RPC request to target process (use configured rpc timeout)
+			ctx, cancel := context.WithTimeout(c.Request.Context(), rpcTimeout)
 			defer cancel()
 
 			response, err := rpcClient.InvokeRPCWithTarget(ctx, target, request.Method, request.Params)
@@ -323,6 +344,42 @@ func main() {
 		})
 	}
 
+	// Serve static files from configured staticDir if present (Next.js static export)
+	outDir := staticDir
+	if _, err := os.Stat(outDir); err == nil {
+		absOut, _ := filepath.Abs(outDir)
+		common.Info("[ACCESS] Serving static files from %s", absOut)
+
+		// Use NoRoute to serve files and fallback to index.html for SPA routes.
+		// Avoid registering a catch-all route which conflicts with existing API prefixes.
+		router.NoRoute(func(c *gin.Context) {
+			// Do not handle API routes here
+			if strings.HasPrefix(c.Request.URL.Path, "/restful") {
+				c.JSON(http.StatusNotFound, gin.H{"retcode": 404, "message": "not found", "payload": nil})
+				return
+			}
+
+			// Clean requested path and map to filesystem
+			reqPath := filepath.Clean(c.Request.URL.Path)
+			if reqPath == "." || reqPath == "/" {
+				c.File(filepath.Join(outDir, "index.html"))
+				return
+			}
+
+			relPath := strings.TrimPrefix(reqPath, "/")
+			fullPath := filepath.Join(outDir, relPath)
+			if fi, err := os.Stat(fullPath); err == nil && !fi.IsDir() {
+				c.File(fullPath)
+				return
+			}
+
+			// Fallback to index.html for SPA routing
+			c.File(filepath.Join(outDir, "index.html"))
+		})
+	} else {
+		common.Info("[ACCESS] Static dir %s not found, skipping static serving", outDir)
+	}
+
 	// Create HTTP server
 	srv := &http.Server{
 		Addr:    address,
@@ -331,10 +388,10 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		fmt.Fprintf(os.Stderr, "[ACCESS] Starting access service on %s\n", address)
+		common.Info("[ACCESS] Starting access service on %s", address)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Fprintf(os.Stderr, "[ACCESS] Failed to start server: %v\n", err)
-			os.Exit(1)
+			common.Error("[ACCESS] Failed to start server: %v", err)
+			return
 		}
 	}()
 
@@ -343,16 +400,16 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	fmt.Fprintf(os.Stderr, "[ACCESS] Shutting down access service...\n")
+	common.Info("[ACCESS] Shutting down access service...")
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "[ACCESS] Server forced to shutdown: %v\n", err)
+		common.Error("[ACCESS] Server forced to shutdown: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Fprintf(os.Stderr, "[ACCESS] Access service stopped\n")
+	common.Info("[ACCESS] Access service stopped\n")
 }
