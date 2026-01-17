@@ -131,6 +131,7 @@ build_project() {
         if [ "$VERBOSE" = true ]; then
             echo "Running go build..."
         fi
+        mkdir -p "$BUILD_DIR/v2e"
         go build -o "$BUILD_DIR/v2e" ./...
         if [ "$VERBOSE" = true ]; then
             echo "Build completed successfully"
