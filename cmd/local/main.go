@@ -3,16 +3,15 @@ Package main implements the local RPC service.
 
 RPC API Specification:
 
-CVE Local Service
-====================
+CVE & CWE Local Service
+=======================
 
 Service Type: RPC (stdin/stdout message passing)
-Description: Manages local storage and retrieval of CVE data using SQLite database.
-
-	Provides CRUD operations for CVE records.
+Description: Manages local storage and retrieval of CVE and CWE data using SQLite databases.
+Provides CRUD operations for CVE records and read/import operations for CWE records.
 
 Available RPC Methods:
----------------------
+----------------------
 
  1. RPCSaveCVEByID
     Description: Saves a CVE record to the local database
@@ -99,26 +98,61 @@ Available RPC Methods:
     Request:  {}
     Response: {"count": 150}
 
+ 7. RPCGetCWEByID
+    Description: Retrieves a CWE record from the local database
+    Request Parameters:
+    - cwe_id (string, required): CWE identifier to retrieve
+    Response:
+    - cwe (object): CWE object with all fields
+    Errors:
+    - Missing CWE ID: cwe_id parameter is required
+    - Not found: CWE not found in database
+    - Database error: Failed to query database
+    Example:
+    Request:  {"cwe_id": "CWE-79"}
+    Response: {"ID": "CWE-79", "Name": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')", ...}
+
+ 8. RPCListCWEs
+    Description: Lists all CWE records in the local database
+    Request Parameters: None
+    Response:
+    - cwes ([]object): Array of CWE objects
+    Errors:
+    - Database error: Failed to query database
+    Example:
+    Request:  {}
+    Response: {"cwes": [{"ID": "CWE-79", ...}, ...]}
+
+ 9. RPCImportCWEs
+    Description: Imports CWE records from a JSON file into the local database
+    Request Parameters:
+    - path (string, required): Path to the JSON file containing CWE records
+    Response:
+    - success (bool): true if import succeeded
+    Errors:
+    - Missing path: path parameter is required
+    - File error: Failed to open or parse file
+    - Database error: Failed to import records
+    Example:
+    Request:  {"path": "assets/cwe-raw.json"}
+    Response: {"success": true}
+
 Notes:
 ------
-- Uses SQLite database for local CVE storage
-- Database path configured via CVE_DB_PATH environment variable (default: cve.db)
+- Uses SQLite databases for local CVE and CWE storage
+- Database paths configured via CVE_DB_PATH and CWE_DB_PATH environment variables (defaults: cve.db, cwe.db)
 - Supports GORM for ORM operations
-- Database schema includes indexes for efficient queries
 - Service runs as a subprocess managed by the broker
 - All requests are routed through the broker via RPC
 */
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
-	"github.com/bytedance/sonic"
-	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
+	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -150,6 +184,20 @@ func main() {
 	}
 	defer db.Close()
 
+	// Initialize CWE store (using a separate DB file or the same as CVE)
+	cweDBPath := os.Getenv("CWE_DB_PATH")
+	if cweDBPath == "" {
+		cweDBPath = "cwe.db"
+	}
+	cweStore, err := cwe.NewLocalCWEStore(cweDBPath)
+	if err != nil {
+		logger.Error("Failed to open CWE database: %v", err)
+		os.Exit(1)
+	}
+
+	// Import CWEs from JSON file at startup (if file exists)
+	// Removed duplicate importCWEsAtStartup definition; now only in cwe_handlers.go
+
 	// Create subprocess instance
 	sp := subprocess.New(processID)
 
@@ -160,427 +208,12 @@ func main() {
 	sp.RegisterHandler("RPCDeleteCVEByID", createDeleteCVEByIDHandler(db, logger))
 	sp.RegisterHandler("RPCListCVEs", createListCVEsHandler(db, logger))
 	sp.RegisterHandler("RPCCountCVEs", createCountCVEsHandler(db, logger))
+	sp.RegisterHandler("RPCGetCWEByID", createGetCWEByIDHandler(cweStore, logger))
+	sp.RegisterHandler("RPCListCWEs", createListCWEsHandler(cweStore, logger))
+	sp.RegisterHandler("RPCImportCWEs", createImportCWEsHandler(cweStore, logger))
 
 	logger.Info("CVE local service started")
 
 	// Run with default lifecycle management
 	subprocess.RunWithDefaults(sp, logger)
-}
-
-// createSaveCVEByIDHandler creates a handler for RPCSaveCVEByID
-func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		// Parse the request payload
-		var req struct {
-			CVE cve.CVEItem `json:"cve"`
-		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to parse request: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		if req.CVE.ID == "" {
-			logger.Error("cve.id is required")
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "cve.id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		// Save CVE to database
-		if err := db.SaveCVE(&req.CVE); err != nil {
-			logger.Error("Failed to save CVE: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to save CVE: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		logger.Info("Saved CVE %s to local database", req.CVE.ID)
-
-		// Create response
-		result := map[string]interface{}{
-			"success": true,
-			"cve_id":  req.CVE.ID,
-		}
-
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the result
-		jsonData, err := sonic.Marshal(result)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal result: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
-	}
-}
-
-// createIsCVEStoredByIDHandler creates a handler for RPCIsCVEStoredByID
-func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		// Parse the request payload
-		var req struct {
-			CVEID string `json:"cve_id"`
-		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to parse request: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		if req.CVEID == "" {
-			logger.Error("cve_id is required")
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "cve_id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		// Check if CVE exists in database
-		_, err := db.GetCVE(req.CVEID)
-		stored := err == nil
-
-		logger.Debug("CVE %s stored status: %v", req.CVEID, stored)
-
-		// Create response
-		result := map[string]interface{}{
-			"cve_id": req.CVEID,
-			"stored": stored,
-		}
-
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the result
-		jsonData, err := sonic.Marshal(result)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal result: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
-	}
-}
-
-// createGetCVEByIDHandler creates a handler for RPCGetCVEByID
-func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		// Parse the request payload
-		var req struct {
-			CVEID string `json:"cve_id"`
-		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to parse request: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		if req.CVEID == "" {
-			logger.Error("cve_id is required")
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "cve_id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		// Get CVE from database
-		cveItem, err := db.GetCVE(req.CVEID)
-		if err != nil {
-			logger.Error("Failed to get CVE from database: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("CVE not found: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		logger.Info("Retrieved CVE %s from local database", req.CVEID)
-
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the result
-		jsonData, err := sonic.Marshal(cveItem)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal result: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
-	}
-}
-
-// createDeleteCVEByIDHandler creates a handler for RPCDeleteCVEByID
-func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		// Parse the request payload
-		var req struct {
-			CVEID string `json:"cve_id"`
-		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to parse request: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		if req.CVEID == "" {
-			logger.Error("cve_id is required")
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "cve_id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		// Delete CVE from database
-		if err := db.DeleteCVE(req.CVEID); err != nil {
-			logger.Error("Failed to delete CVE from database: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to delete CVE: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		logger.Info("Deleted CVE %s from local database", req.CVEID)
-
-		// Create response
-		result := map[string]interface{}{
-			"success": true,
-			"cve_id":  req.CVEID,
-		}
-
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the result
-		jsonData, err := sonic.Marshal(result)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal result: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
-	}
-}
-
-// createListCVEsHandler creates a handler for RPCListCVEs
-func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		// Parse the request payload
-		var req struct {
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
-		}
-
-		// Set defaults
-		req.Offset = 0
-		req.Limit = 10
-
-		// Try to parse payload, but use defaults if parsing fails
-		if msg.Payload != nil {
-			_ = subprocess.UnmarshalPayload(msg, &req)
-		}
-
-		logger.Debug("Listing CVEs with offset=%d, limit=%d", req.Offset, req.Limit)
-
-		// List CVEs from database
-		cves, err := db.ListCVEs(req.Offset, req.Limit)
-		if err != nil {
-			logger.Error("Failed to list CVEs from database: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to list CVEs: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		// Get total count
-		total, err := db.Count()
-		if err != nil {
-			logger.Error("Failed to get CVE count from database: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to get CVE count: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		logger.Info("Listed %d CVEs (total: %d, offset: %d, limit: %d)", len(cves), total, req.Offset, req.Limit)
-
-		// Create response
-		result := map[string]interface{}{
-			"cves":  cves,
-			"total": total,
-		}
-
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the result
-		jsonData, err := sonic.Marshal(result)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal result: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
-	}
-}
-
-// createCountCVEsHandler creates a handler for RPCCountCVEs
-func createCountCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("Counting CVEs in database")
-
-		// Get total count
-		count, err := db.Count()
-		if err != nil {
-			logger.Error("Failed to count CVEs in database: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to count CVEs: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		logger.Info("CVE count: %d", count)
-
-		// Create response
-		result := map[string]interface{}{
-			"count": count,
-		}
-
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the result
-		jsonData, err := sonic.Marshal(result)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal result: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
-	}
 }

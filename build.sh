@@ -574,6 +574,12 @@ build_and_package() {
             cp config.json "$PACKAGE_DIR/"
         fi
         
+        # Copy CWE raw JSON asset
+        if [ -f "assets/cwe-raw.json" ]; then
+            mkdir -p "$PACKAGE_DIR/assets"
+            cp assets/cwe-raw.json "$PACKAGE_DIR/assets/"
+        fi
+        
         echo "Go binaries packaged successfully"
     else
         echo "No go.mod found. Skipping Go build."
