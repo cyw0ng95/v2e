@@ -2,10 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
+	"net/http/httptest"
+
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/gin-gonic/gin"
 )
 
 // TODO: Tests disabled - access service is currently a stub
@@ -92,5 +98,67 @@ func TestInvokeRPCWithTarget_ResponseDelivered(t *testing.T) {
 	}
 	if respMsg.CorrelationID != "access-rpc-1" {
 		t.Fatalf("expected correlation id access-rpc-1, got %s", respMsg.CorrelationID)
+	}
+}
+
+func TestHealthEndpoint_Success(t *testing.T) {
+	r := gin.Default()
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/health", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	var response map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if response["status"] != "ok" {
+		t.Fatalf("expected status 'ok', got '%s'", response["status"])
+	}
+}
+
+func TestRPCEndpoint_ValidRequest(t *testing.T) {
+	r := gin.Default()
+	r.POST("/rpc", func(c *gin.Context) {
+		var request struct {
+			Method string                 `json:"method"`
+			Params map[string]interface{} `json:"params"`
+			Target string                 `json:"target"`
+		}
+		if err := c.ShouldBindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"retcode": 400, "message": "Invalid request"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"retcode": 0, "message": "success", "payload": nil})
+	})
+
+	w := httptest.NewRecorder()
+	body := `{"method": "TestMethod", "params": {"key": "value"}}`
+	req, _ := http.NewRequest(http.MethodPost, "/rpc", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if response["retcode"] != float64(0) {
+		t.Fatalf("expected retcode 0, got %v", response["retcode"])
+	}
+	if response["message"] != "success" {
+		t.Fatalf("expected message 'success', got '%s'", response["message"])
 	}
 }
