@@ -21,11 +21,29 @@ func (s *Subprocess) messageWriter() {
 	for {
 		select {
 		case <-s.ctx.Done():
-			// Flush any remaining messages before exiting
-			if len(batch) > 0 {
-				s.flushBatch(batch)
+			// Drain any currently buffered messages from outChan without blocking
+			for {
+				select {
+				case data, ok := <-s.outChan:
+					if !ok {
+						if len(batch) > 0 {
+							s.flushBatch(batch)
+						}
+						return
+					}
+					batch = append(batch, data)
+					// flush if we reached batch size while draining
+					if len(batch) >= defaultBatchSize {
+						s.flushBatch(batch)
+						batch = batch[:0]
+					}
+				default:
+					if len(batch) > 0 {
+						s.flushBatch(batch)
+					}
+					return
+				}
 			}
-			return
 		case data, ok := <-s.outChan:
 			if !ok {
 				// Channel closed, flush and exit
@@ -58,6 +76,8 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	if len(batch) == 0 {
 		return
 	}
+	// DEBUG: log flush activity to stderr to help debug test failures
+	fmt.Fprintf(os.Stderr, "[flushBatch] flushing %d messages\n", len(batch))
 
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()

@@ -67,11 +67,82 @@ func TestSendMessage_BatchedWriter(t *testing.T) {
 		t.Fatalf("Stop failed: %v", err)
 	}
 
+	// Wait up to 500ms for writer to flush to buffer (avoid flakiness)
+	deadline := time.After(500 * time.Millisecond)
+	for {
+		out := buf.String()
+		if bytes.Count([]byte(out), []byte("\n")) > 0 {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("expected output lines, got none (buffer empty)")
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func TestSendMessage_BatchedWriter_ImmediateClose(t *testing.T) {
+	sp := New("test-batch-close")
+	buf := &bytes.Buffer{}
+	sp.SetInput(strings.NewReader(""))
+	sp.mu.Lock()
+	sp.output = buf
+	sp.disableBatching = false
+	sp.mu.Unlock()
+
+	sp.wg.Add(1)
+	go sp.messageWriter()
+
+	msg := &Message{Type: MessageTypeEvent, ID: "close1", Payload: nil}
+	// send fewer than batch size and immediately stop
+	for i := 0; i < 5; i++ {
+		if err := sp.sendMessage(msg); err != nil {
+			t.Fatalf("sendMessage failed: %v", err)
+		}
+	}
+
+	if err := sp.Stop(); err != nil {
+		t.Fatalf("Stop failed: %v", err)
+	}
+
 	out := buf.String()
-	// Expect multiple lines
-	lines := bytes.Count([]byte(out), []byte("\n"))
-	if lines == 0 {
-		t.Fatalf("expected output lines, got none")
+	if bytes.Count([]byte(out), []byte("\n")) == 0 {
+		t.Fatalf("expected output after immediate close, got none")
+	}
+}
+
+func TestSendMessage_BatchedWriter_LargePayload(t *testing.T) {
+	sp := New("test-batch-large")
+	buf := &bytes.Buffer{}
+	sp.SetInput(strings.NewReader(""))
+	sp.mu.Lock()
+	sp.output = buf
+	sp.disableBatching = false
+	sp.mu.Unlock()
+
+	sp.wg.Add(1)
+	go sp.messageWriter()
+
+	// Create a large payload exceeding defaultWriterBufSize
+	large := make([]byte, defaultWriterBufSize*3)
+	for i := range large {
+		large[i] = 'z'
+	}
+
+	msg := &Message{Type: MessageTypeEvent, ID: "large1", Payload: large}
+	if err := sp.sendMessage(msg); err != nil {
+		t.Fatalf("sendMessage failed: %v", err)
+	}
+
+	if err := sp.Stop(); err != nil {
+		t.Fatalf("Stop failed: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "large1") {
+		t.Fatalf("expected large payload message in output, got: %s", out)
 	}
 }
 
