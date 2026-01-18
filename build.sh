@@ -357,7 +357,8 @@ run_benchmarks() {
         else
             echo "Running go benchmarks..."
             # Run benchmarks with memory allocation stats
-            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... > "$BENCHMARK_OUTPUT"
+            # Use tee to stream output to file (prevents blocking when run non-verbosely)
+            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
         fi
         BENCH_EXIT_CODE=$?
         
