@@ -22,7 +22,9 @@ func (s *stubInvoker) InvokeRPC(ctx context.Context, target, method string, para
 	resp := &subprocess.Message{
 		Type: subprocess.MessageTypeResponse,
 	}
-	var vulns []struct{ CVE cve.CVEItem `json:"cve"` }
+	var vulns []struct {
+		CVE cve.CVEItem `json:"cve"`
+	}
 	cr := cve.CVEResponse{Vulnerabilities: vulns}
 	b, _ := sonic.Marshal(cr)
 	resp.Payload = b
