@@ -79,7 +79,18 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 			Limit  int    `json:"limit"`
 			Search string `json:"search"`
 		}
-		_ = subprocess.UnmarshalPayload(msg, &req)
+		if msg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				logger.Error("Failed to parse request: %v", err)
+				return &subprocess.Message{
+					Type:          subprocess.MessageTypeError,
+					ID:            msg.ID,
+					Error:         "failed to parse request",
+					CorrelationID: msg.CorrelationID,
+					Target:        msg.Source,
+				}, nil
+			}
+		}
 		if req.Limit <= 0 || req.Limit > 1000 {
 			req.Limit = 100
 		}
