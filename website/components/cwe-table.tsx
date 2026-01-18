@@ -97,7 +97,7 @@ export function CWETable() {
                     <td className="p-2 max-w-xs truncate" title={cwe.description}>{cwe.description}</td>
                     <td className="p-2">
                       <button
-                        className="px-2 py-1 border rounded text-xs hover:bg-muted"
+                        className="px-2 py-1 border rounded text-xs hover:bg-muted cursor-pointer disabled:cursor-not-allowed"
                         onClick={() => setDetailCWE(findOriginalCWE(cwe.id) || cwe)}
                       >
                         View Detail
@@ -319,14 +319,14 @@ export function CWETable() {
               </span>
               <div className="space-x-2">
                 <button
-                  className="px-2 py-1 border rounded disabled:opacity-50"
+                  className="px-2 py-1 border rounded disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                   onClick={() => setPage(p => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
                   Prev
                 </button>
                 <button
-                  className="px-2 py-1 border rounded disabled:opacity-50"
+                  className="px-2 py-1 border rounded disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                   onClick={() => setPage(p => (p + 1) * pageSize < total ? p + 1 : p)}
                   disabled={(page + 1) * pageSize >= total}
                 >
