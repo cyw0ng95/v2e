@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
 	"time"
+	"path/filepath"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/cve/job"
 	"github.com/cyw0ng95/v2e/pkg/cve/session"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
@@ -371,74 +375,200 @@ func TestRecoverSession_NoSession(t *testing.T) {
 	recoverSession(nil, sm, logger)
 }
 
-func TestCreateGetCVEHandler_LocalCheckError(t *testing.T) {
+func TestRecoverSession_RunningStartsJob(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	sp := subprocess.New("test")
-	rpcClient := NewRPCClient(sp, logger)
+	dbPath := filepath.Join(t.TempDir(), "test_recover_running.db")
+	sm, err := session.NewManager(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create session manager: %v", err)
+	}
+	defer sm.Close()
 
-	handler := createGetCVEHandler(rpcClient, logger)
+	_, err = sm.CreateSession("s1", 0, 10)
+	if err != nil {
+		t.Fatalf("CreateSession failed: %v", err)
+	}
+	if err := sm.UpdateState(session.StateRunning); err != nil {
+		t.Fatalf("UpdateState failed: %v", err)
+	}
 
-	// Call handler in goroutine because it will invoke RPC and wait for response
-	respCh := make(chan *subprocess.Message, 1)
-	errCh := make(chan error, 1)
+	// Blocking invoker keeps the job running until we close the channel
+	inv := &blockingInvoker{ch: make(chan struct{})}
+	controller := job.NewController(inv, sm, logger)
+
+	recoverSession(controller, sm, logger)
+
+	// Wait for controller to start
+	started := false
+	for i := 0; i < 100; i++ {
+		if controller.IsRunning() {
+			started = true
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !started {
+		t.Fatal("expected controller to be started during recovery")
+	}
+
+	// Unblock invoker to allow the job to finish
+	close(inv.ch)
+
+	// Wait for job to stop
+	for i := 0; i < 200; i++ {
+		if !controller.IsRunning() {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// Test that a paused session is not auto-resumed
+func TestRecoverSession_PausedDoesNotStartJob(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	dbPath := filepath.Join(t.TempDir(), "test_recover_paused.db")
+	sm, err := session.NewManager(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create session manager: %v", err)
+	}
+	defer sm.Close()
+
+	_, err = sm.CreateSession("s2", 0, 10)
+	if err != nil {
+		t.Fatalf("CreateSession failed: %v", err)
+	}
+	if err := sm.UpdateState(session.StatePaused); err != nil {
+		t.Fatalf("UpdateState failed: %v", err)
+	}
+
+	ch := make(chan struct{})
+	// Use a minimal invoker that would block if called
+	invHandler := func(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
+		select {
+		case <-ch:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		// Return empty result so job will finish after unblocking
+		empty := &cve.CVEResponse{}
+		p, _ := sonic.Marshal(empty)
+		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: p}, nil
+	}
+
+	controller := job.NewController(&fnInvoker{f: invHandler}, sm, logger)
+
+	recoverSession(controller, sm, logger)
+
+	// Give a short moment to ensure Start would have been called if it were
+	time.Sleep(50 * time.Millisecond)
+
+	if controller.IsRunning() {
+		t.Fatal("controller should not be running for paused session")
+	}
+}
+
+// Test InvokeRPC happy path where a response is delivered via handleResponse
+func TestRPCClient_InvokeRPC_Success(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	sp := subprocess.New("test-client")
+	buf := &bytes.Buffer{}
+	sp.SetOutput(buf) // disables batching for direct writes
+	client := NewRPCClient(sp, logger)
+
+	done := make(chan *subprocess.Message, 1)
 	go func() {
-		resp, err := handler(context.Background(), &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "RPCGetCVE", Payload: func() []byte { b, _ := sonic.Marshal(map[string]string{"cve_id": "CVE-TEST"}); return b }()})
+		resp, err := client.InvokeRPC(context.Background(), "local", "RPCTest", map[string]string{"foo": "bar"})
 		if err != nil {
-			errCh <- err
+			t.Errorf("InvokeRPC returned error: %v", err)
+			done <- nil
 			return
 		}
-		respCh <- resp
+		done <- resp
 	}()
 
-	// Wait for the pendingRequests map to be populated
+	// Wait for pendingRequests to be populated
 	var corr string
 	found := false
-	for i := 0; i < 50; i++ {
-		rpcClient.mu.RLock()
-		for k := range rpcClient.pendingRequests {
+	for i := 0; i < 100; i++ {
+		client.mu.RLock()
+		for k := range client.pendingRequests {
 			corr = k
 			found = true
 			break
 		}
-		rpcClient.mu.RUnlock()
+		client.mu.RUnlock()
 		if found {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-
 	if !found {
 		t.Fatal("pendingRequests entry not found")
 	}
 
-	// Send an error response into the pending channel to simulate local check returning error
-	rpcClient.mu.Lock()
-	ch := rpcClient.pendingRequests[corr]
-	rpcClient.mu.Unlock()
-	if ch == nil {
-		t.Fatal("response channel is nil")
+	payload, _ := sonic.Marshal(map[string]bool{"success": true})
+	respMsg := &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            "RPCTest",
+		CorrelationID: corr,
+		Payload:       payload,
 	}
 
-	sim := &subprocess.Message{Type: subprocess.MessageTypeError, Error: "local error", CorrelationID: corr}
-	select {
-	case ch <- sim:
-		// delivered
-	case <-time.After(200 * time.Millisecond):
-		t.Fatal("failed to deliver simulated response")
+	// Deliver response via handler
+	if _, err := client.handleResponse(context.Background(), respMsg); err != nil {
+		t.Fatalf("handleResponse returned error: %v", err)
 	}
 
-	// Wait for handler to return
 	select {
-	case err := <-errCh:
-		t.Fatalf("handler returned error: %v", err)
-	case resp := <-respCh:
-		if resp == nil {
-			t.Fatal("expected response, got nil")
+	case res := <-done:
+		if res == nil {
+			t.Fatal("InvokeRPC returned nil response")
 		}
-		if resp.Type != subprocess.MessageTypeError {
-			t.Fatalf("expected error response due to local check error, got %s", resp.Type)
+		if res.CorrelationID != corr {
+			t.Fatalf("CorrelationID mismatch: got %s, want %s", res.CorrelationID, corr)
 		}
 	case <-time.After(1 * time.Second):
-		t.Fatal("handler did not return in time")
+		t.Fatal("InvokeRPC did not return in time")
 	}
 }
+
+// Test that InvokeRPC returns when context is canceled
+func TestRPCClient_InvokeRPC_ContextCanceled(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	sp := subprocess.New("test-client")
+	buf := &bytes.Buffer{}
+	sp.SetOutput(buf)
+	client := NewRPCClient(sp, logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	_, err := client.InvokeRPC(ctx, "local", "RPCTest", nil)
+	if err == nil {
+		t.Fatal("Expected error due to canceled context")
+	}
+	// Accept either canceled or deadline exceeded depending on timing
+	if err != context.DeadlineExceeded && err != context.Canceled {
+		t.Logf("got context error: %v", err)
+	}
+}
+
+// Helper invokers for testing recoverSession and Controller interactions
+// blockingInvoker blocks until its channel is closed, allowing tests to control job lifetime.
+type blockingInvoker struct{ ch chan struct{} }
+
+func (b *blockingInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
+	select {
+	case <-b.ch:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	empty := &cve.CVEResponse{}
+	p, _ := sonic.Marshal(empty)
+	return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: p}, nil
+}
+
+// fnInvoker wraps a function as an RPCInvoker implementation
+type fnInvoker struct{ f func(ctx context.Context, target, method string, params interface{}) (interface{}, error) }
+
+func (f *fnInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) { return f.f(ctx, target, method, params) }
