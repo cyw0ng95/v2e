@@ -25,6 +25,9 @@ import type {
   ResumeJobResponse,
   HealthResponse,
   CVEItem,
+  CWEItem,
+  ListCWEsRequest,
+  ListCWEsResponse,
 } from './types';
 
 // ============================================================================
@@ -428,6 +431,22 @@ export class RPCClient {
         payload: null,
       };
     }
+  }
+
+  // ==========================================================================
+  // CWE Data Methods
+  // ==========================================================================
+
+  async listCWEs(params?: ListCWEsRequest): Promise<RPCResponse<ListCWEsResponse>> {
+    return this.call<ListCWEsRequest, ListCWEsResponse>(
+      'RPCListCWEs',
+      params,
+      'local'
+    );
+  }
+
+  async getCWE(cweId: string): Promise<RPCResponse<{ cwe: CWEItem }>> {
+    return this.call<{ cweId: string }, { cwe: CWEItem }>('RPCGetCWEByID', { cweId }, 'local');
   }
 }
 

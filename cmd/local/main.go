@@ -113,15 +113,20 @@ Available RPC Methods:
     Response: {"ID": "CWE-79", "Name": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')", ...}
 
  8. RPCListCWEs
-    Description: Lists all CWE records in the local database
-    Request Parameters: None
+    Description: Lists CWE records with pagination support
+    Request Parameters:
+    - offset (int, optional): Starting offset for pagination (default: 0)
+    - limit (int, optional): Maximum number of records to return (default: 100)
     Response:
     - cwes ([]object): Array of CWE objects
+    - offset (int): Starting offset used
+    - limit (int): Limit used
+    - total (int): Total number of CWEs in database
     Errors:
     - Database error: Failed to query database
     Example:
-    Request:  {}
-    Response: {"cwes": [{"ID": "CWE-79", ...}, ...]}
+    Request:  {"offset": 0, "limit": 100}
+    Response: {"cwes": [...], "offset": 0, "limit": 100, "total": 1200}
 
  9. RPCImportCWEs
     Description: Imports CWE records from a JSON file into the local database

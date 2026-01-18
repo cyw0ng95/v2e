@@ -8,6 +8,7 @@ import { useState, Suspense, useMemo } from "react";
 import dynamic from 'next/dynamic';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Lazy-load heavier client components to reduce initial bundle size
 const CVETable = dynamic(() => import('@/components/cve-table').then(mod => mod.CVETable), {
@@ -28,10 +29,20 @@ const SessionControl = dynamic(() => import('@/components/session-control').then
   ),
 });
 
+const CWETable = dynamic(() => import('@/components/cwe-table').then(mod => mod.CWETable), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 export default function Home() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tab, setTab] = useState<'cwe' | 'cve'>('cwe'); // Default to CWE
   // memoize offset to avoid unnecessary recalculation on unrelated state updates
   const offset = useMemo(() => page * pageSize, [page, pageSize]);
 
@@ -108,35 +119,43 @@ export default function Home() {
           {/* Right Main Area */}
           <main className="flex-1 overflow-auto h-full">
             <div className="space-y-6 h-full">
-              {/* CVE Table occupying full height */}
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>CVE Database</CardTitle>
-                  <CardDescription>Browse and manage CVE records in the local database</CardDescription>
-                  <div className="mt-3">
-                    <Input
-                      placeholder="Search CVE ID or description (local filter)"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Note: server-side search not implemented yet; this filters currently loaded results.</p>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Suspense>
-                    <CVETable
-                      cves={cveList?.cves || []}
-                      total={cveList?.total || 0}
-                      page={page}
-                      pageSize={pageSize}
-                      isLoading={isLoadingList}
-                      onPageChange={setPage}
-                      onPageSizeChange={setPageSize}
-                      searchQuery={searchQuery}
-                    />
-                  </Suspense>
-                </CardContent>
-              </Card>
+              <Tabs value={tab} onValueChange={setTab} className="w-full h-full flex flex-col">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="cwe">CWE Database</TabsTrigger>
+                  <TabsTrigger value="cve">CVE Database</TabsTrigger>
+                </TabsList>
+                <TabsContent value="cwe" className="h-full"><CWETable /></TabsContent>
+                <TabsContent value="cve" className="h-full">
+                  <Card className="h-full flex flex-col">
+                    <CardHeader>
+                      <CardTitle>CVE Database</CardTitle>
+                      <CardDescription>Browse and manage CVE records in the local database</CardDescription>
+                      <div className="mt-3">
+                        <Input
+                          placeholder="Search CVE ID or description (local filter)"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Note: server-side search not implemented yet; this filters currently loaded results.</p>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Suspense>
+                        <CVETable
+                          cves={cveList?.cves || []}
+                          total={cveList?.total || 0}
+                          page={page}
+                          pageSize={pageSize}
+                          isLoading={isLoadingList}
+                          onPageChange={setPage}
+                          onPageSizeChange={setPageSize}
+                          searchQuery={searchQuery}
+                        />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
           </main>
         </div>

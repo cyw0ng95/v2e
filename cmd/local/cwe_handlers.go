@@ -35,9 +35,10 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Debug("GetCWEByID request: cwe_id=%s", req.CWEID)
 		item, err := store.GetByID(ctx, req.CWEID)
 		if err != nil {
-			logger.Error("Failed to get CWE: %v", err)
+			logger.Error("Failed to get CWE: %v (cwe_id=%s)", err, req.CWEID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -46,9 +47,10 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Debug("Found CWE: %+v", item)
 		jsonData, err := sonic.Marshal(item)
 		if err != nil {
-			logger.Error("Failed to marshal CWE: %v", err)
+			logger.Error("Failed to marshal CWE: %v (cwe_id=%s)", err, req.CWEID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -57,6 +59,7 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Debug("Marshalled CWE JSON: %s", string(jsonData))
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,
@@ -70,7 +73,22 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 // createListCWEsHandler creates a handler for RPCListCWEs
 func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		items, err := store.ListAll(ctx)
+		common.Info("RPCListCWEs handler invoked with message ID: %s", msg.ID)
+		var req struct {
+			Offset int    `json:"offset"`
+			Limit  int    `json:"limit"`
+			Search string `json:"search"`
+		}
+		_ = subprocess.UnmarshalPayload(msg, &req)
+		if req.Limit <= 0 || req.Limit > 1000 {
+			req.Limit = 100
+		}
+		if req.Offset < 0 {
+			req.Offset = 0
+		}
+		// Currently, search is ignored. Add search logic here if needed.
+		common.Info("Listing CWEs with offset=%d, limit=%d", req.Offset, req.Limit)
+		items, total, err := store.ListCWEsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
 			logger.Error("Failed to list CWEs: %v", err)
 			return &subprocess.Message{
@@ -81,7 +99,13 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 				Target:        msg.Source,
 			}, nil
 		}
-		jsonData, err := sonic.Marshal(items)
+		resp := map[string]interface{}{
+			"cwes":   items,
+			"offset": req.Offset,
+			"limit":  req.Limit,
+			"total":  total,
+		}
+		jsonData, err := sonic.Marshal(resp)
 		if err != nil {
 			logger.Error("Failed to marshal CWEs: %v", err)
 			return &subprocess.Message{
@@ -105,6 +129,7 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 // createImportCWEsHandler creates a handler for RPCImportCWEs
 func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("RPCImportCWEs handler invoked")
 		var req struct {
 			Path string `json:"path"`
 		}
@@ -118,6 +143,7 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Debug("RPCImportCWEs received path: %s", req.Path)
 		if req.Path == "" {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -129,7 +155,10 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 		}
 		err := store.ImportFromJSON(req.Path)
 		if err != nil {
-			logger.Error("Failed to import CWEs: %v", err)
+			logger.Error("Failed to import CWE from raw JSON: %v (path: %s)", err, req.Path)
+			if _, statErr := os.Stat(req.Path); statErr != nil {
+				logger.Error("CWE import file stat error: %v (path: %s)", statErr, req.Path)
+			}
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -145,67 +174,5 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 			Target:        msg.Source,
 			Payload:       []byte(`{"success":true}`),
 		}, nil
-	}
-}
-
-// createGetImportCWEStatusHandler creates a handler for RPCGetImportCWEStatus
-func createGetImportCWEStatusHandler(store *cwe.LocalCWEStore, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		cweImportPath := os.Getenv("CWE_IMPORT_PATH")
-		if cweImportPath == "" {
-			cweImportPath = "assets/cwe-raw.json"
-		}
-		status := map[string]interface{}{
-			"importPath": cweImportPath,
-			"imported":   false,
-			"count":      0,
-			"error":      "",
-		}
-		if _, err := os.Stat(cweImportPath); err == nil {
-			items, err := store.ListAll(ctx)
-			if err == nil {
-				status["imported"] = true
-				status["count"] = len(items)
-			} else {
-				status["error"] = err.Error()
-			}
-		} else {
-			status["error"] = "import file not found"
-		}
-		jsonData, err := sonic.Marshal(status)
-		if err != nil {
-			logger.Error("Failed to marshal import status: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal import status",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
-	}
-}
-
-// importCWEsAtStartup imports CWEs from a JSON file at startup if the file exists
-func importCWEsAtStartup(store *cwe.LocalCWEStore, logger *common.Logger) {
-	cweImportPath := os.Getenv("CWE_IMPORT_PATH")
-	if cweImportPath == "" {
-		cweImportPath = "assets/cwe-raw.json"
-	}
-	if _, err := os.Stat(cweImportPath); err == nil {
-		if err := store.ImportFromJSON(cweImportPath); err != nil {
-			logger.Error("Failed to import CWEs from %s: %v", cweImportPath, err)
-		} else {
-			logger.Info("Imported CWEs from %s", cweImportPath)
-		}
-	} else {
-		logger.Warn("CWE import file not found: %s", cweImportPath)
 	}
 }

@@ -16,6 +16,17 @@ export const queryKeys = {
     count: () => ['cves', 'count'] as const,
     detail: (id: string) => ['cves', 'detail', id] as const,
   },
+  cwes: {
+    all: ['cwes'] as const,
+    list: (params?: { offset?: number; limit?: number; search?: string }) => [
+      'cwes',
+      'list',
+      params?.offset ?? 0,
+      params?.limit ?? 100,
+      params?.search ?? ''
+    ] as const,
+    detail: (id: string) => ['cwes', 'detail', id] as const,
+  },
   session: {
     status: () => ['session', 'status'] as const,
   },
@@ -122,6 +133,39 @@ export function useDeleteCVE() {
       // Invalidate CVE list to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.cves.all });
     },
+  });
+}
+
+// ============================================================================
+// CWE Queries
+// ============================================================================
+
+import type { CWEItem, ListCWEsRequest, ListCWEsResponse } from './types';
+
+export function useCWEList(params?: ListCWEsRequest) {
+  return useQuery<ListCWEsResponse>({
+    queryKey: queryKeys.cwes.list(params),
+    queryFn: async () => {
+      const response = await rpcClient.listCWEs(params);
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      return response.payload || { cwes: [], offset: 0, limit: 0, total: 0 };
+    },
+  });
+}
+
+export function useCWE(cweId: string) {
+  return useQuery({
+    queryKey: queryKeys.cwes.detail(cweId),
+    queryFn: async () => {
+      const response = await rpcClient.getCWE(cweId);
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      return response.payload?.cwe;
+    },
+    enabled: !!cweId,
   });
 }
 

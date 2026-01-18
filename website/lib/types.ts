@@ -299,3 +299,175 @@ export type JobState = 'idle' | 'running' | 'paused';
 export interface HealthResponse {
   status: string;
 }
+
+// ============================================================================
+// CWE Data Types (from pkg/cwe/types.go)
+// ============================================================================
+
+export interface CWEItem {
+  id: string;
+  name: string;
+  diagram?: string;
+  abstraction: string;
+  structure: string;
+  status: string;
+  description: string;
+  extendedDescription?: string;
+  likelihoodOfExploit?: string;
+  relatedWeaknesses?: RelatedWeakness[];
+  weaknessOrdinalities?: WeaknessOrdinality[];
+  applicablePlatforms?: ApplicablePlatform[];
+  backgroundDetails?: string[];
+  alternateTerms?: AlternateTerm[];
+  modesOfIntroduction?: ModeOfIntroduction[];
+  commonConsequences?: Consequence[];
+  detectionMethods?: DetectionMethod[];
+  potentialMitigations?: Mitigation[];
+  demonstrativeExamples?: DemonstrativeExample[];
+  observedExamples?: ObservedExample[];
+  functionalAreas?: string[];
+  affectedResources?: string[];
+  taxonomyMappings?: TaxonomyMapping[];
+  relatedAttackPatterns?: string[];
+  references?: Reference[];
+  mappingNotes?: MappingNotes;
+  notes?: Note[];
+  contentHistory?: ContentHistory[];
+}
+
+export interface RelatedWeakness {
+  nature: string;
+  cweId: string;
+  viewId: string;
+  ordinal?: string;
+}
+
+export interface WeaknessOrdinality {
+  ordinality: string;
+  description?: string;
+}
+
+export interface ApplicablePlatform {
+  type: string;
+  name?: string;
+  class?: string;
+  prevalence: string;
+}
+
+export interface AlternateTerm {
+  term: string;
+  description?: string;
+}
+
+export interface ModeOfIntroduction {
+  phase: string;
+  note?: string;
+}
+
+export interface Consequence {
+  scope: string[];
+  impact?: string[];
+  likelihood?: string[];
+  note?: string;
+}
+
+export interface DetectionMethod {
+  detectionMethodId?: string;
+  method: string;
+  description: string;
+  effectiveness?: string;
+  effectivenessNotes?: string;
+}
+
+export interface Mitigation {
+  mitigationId?: string;
+  phase?: string[];
+  strategy: string;
+  description: string;
+  effectiveness?: string;
+  effectivenessNotes?: string;
+}
+
+export interface DemonstrativeExample {
+  id?: string;
+  entries: DemonstrativeEntry[];
+}
+
+export interface DemonstrativeEntry {
+  introText?: string;
+  bodyText?: string;
+  nature?: string;
+  language?: string;
+  exampleCode?: string;
+  reference?: string;
+}
+
+export interface ObservedExample {
+  reference: string;
+  description: string;
+  link: string;
+}
+
+export interface TaxonomyMapping {
+  taxonomyName: string;
+  entryName?: string;
+  entryId?: string;
+  mappingFit?: string;
+}
+
+export interface MappingNotes {
+  usage: string;
+  rationale: string;
+  comments: string;
+  reasons: string[];
+  suggestions?: SuggestionComment[];
+}
+
+export interface SuggestionComment {
+  comment: string;
+  cweId: string;
+}
+
+export interface Note {
+  type: string;
+  note: string;
+}
+
+export interface ContentHistory {
+  type: string;
+  submissionName?: string;
+  submissionOrganization?: string;
+  submissionDate?: string;
+  submissionVersion?: string;
+  submissionReleaseDate?: string;
+  submissionComment?: string;
+  modificationName?: string;
+  modificationOrganization?: string;
+  modificationDate?: string;
+  modificationVersion?: string;
+  modificationReleaseDate?: string;
+  modificationComment?: string;
+  contributionName?: string;
+  contributionOrganization?: string;
+  contributionDate?: string;
+  contributionVersion?: string;
+  contributionReleaseDate?: string;
+  contributionComment?: string;
+  contributionType?: string;
+  previousEntryName?: string;
+  date?: string;
+  version?: string;
+}
+
+export interface ListCWEsRequest {
+  offset?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface ListCWEsResponse {
+  cwes: CWEItem[];
+  offset: number;
+  limit: number;
+  total: number;
+}

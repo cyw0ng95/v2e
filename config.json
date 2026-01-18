@@ -14,24 +14,24 @@
         "max_restarts": -1
       },
       {
-        "id": "cve-remote",
-        "command": "./cve-remote",
+        "id": "remote",
+        "command": "./remote",
         "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
       {
-        "id": "cve-local",
-        "command": "./cve-local",
+        "id": "local",
+        "command": "./local",
         "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
       {
-        "id": "cve-meta",
-        "command": "./cve-meta",
+        "id": "meta",
+        "command": "./meta",
         "args": [],
         "rpc": true,
         "restart": true,
