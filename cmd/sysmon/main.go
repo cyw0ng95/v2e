@@ -111,8 +111,11 @@ func main() {
 
 	sp := subprocess.New(processID)
 
-	// Register RPC handler for system metrics
-	sp.RegisterHandler("RPCGetSysMetrics", createGetSysMetricsHandler(logger))
+	// RPC client to query the broker for message statistics
+	rpcClient := NewRPCClient(sp)
+
+	// Register RPC handler for system metrics (pass rpcClient so we can query broker)
+	sp.RegisterHandler("RPCGetSysMetrics", createGetSysMetricsHandler(logger, rpcClient))
 	logger.Info("[sysmon] Registered RPCGetSysMetrics handler")
 
 	logger.Info("[sysmon] Sysmon service started")
@@ -121,7 +124,7 @@ func main() {
 }
 
 // createGetSysMetricsHandler creates a handler for RPCGetSysMetrics
-func createGetSysMetricsHandler(logger *common.Logger) subprocess.Handler {
+func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Info("[sysmon] RPCGetSysMetrics handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
 		metrics, err := collectMetrics()
@@ -135,7 +138,23 @@ func createGetSysMetricsHandler(logger *common.Logger) subprocess.Handler {
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Info("[sysmon] Collected metrics: cpu_usage=%.2f, memory_usage=%.2f", metrics["cpu_usage"], metrics["memory_usage"])
+		// Attempt to fetch broker message statistics via RPC
+		if rpcClient != nil {
+			rpcCtx, cancel := context.WithTimeout(ctx, DefaultRPCTimeout)
+			defer cancel()
+			resp, rpcErr := rpcClient.InvokeRPC(rpcCtx, "broker", "RPCGetMessageStats", nil)
+			if rpcErr != nil {
+				logger.Info("[sysmon] Failed to fetch message stats from broker: %v", rpcErr)
+			} else if resp != nil && len(resp.Payload) > 0 {
+				var msgStats map[string]interface{}
+				if err := sonic.Unmarshal(resp.Payload, &msgStats); err != nil {
+					logger.Info("[sysmon] Failed to unmarshal broker message stats: %v", err)
+				} else {
+					metrics["message_stats"] = msgStats
+				}
+			}
+		}
+		logger.Info("[sysmon] Collected metrics: cpu_usage=%.2f, memory_usage=%.2f, load_avg=%v, uptime=%.0fs", metrics["cpu_usage"], metrics["memory_usage"], metrics["load_avg"], metrics["uptime"])
 		payload, err := sonic.Marshal(metrics)
 		if err != nil {
 			logger.Error("[sysmon] Failed to marshal metrics: %v", err)
@@ -167,8 +186,43 @@ func collectMetrics() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"cpu_usage":    cpuUsage,
 		"memory_usage": memoryUsage,
-	}, nil
+	}
+
+	if loadAvg, err := procfs.ReadLoadAvg(); err == nil {
+		m["load_avg"] = loadAvg
+	}
+	if up, err := procfs.ReadUptime(); err == nil {
+		m["uptime"] = up
+	}
+	if used, total, err := procfs.ReadDiskUsage("/"); err == nil {
+		// provide object-style disk info keyed by mount path, and keep totals for compatibility
+		m["disk"] = map[string]map[string]uint64{"/": {"used": used, "total": total}}
+		m["disk_usage"] = used
+		m["disk_total"] = total
+	}
+	if swap, err := procfs.ReadSwapUsage(); err == nil {
+		m["swap_usage"] = swap
+	}
+	if netMap, err := procfs.ReadNetDevDetailed(); err == nil {
+		// also provide totals for compatibility
+		var totalRx, totalTx uint64
+		for ifName, s := range netMap {
+			if ifName == "lo" {
+				continue
+			}
+			if v, ok := s["rx"]; ok {
+				totalRx += v
+			}
+			if v, ok := s["tx"]; ok {
+				totalTx += v
+			}
+		}
+		m["network"] = netMap
+		m["net_rx"] = totalRx
+		m["net_tx"] = totalTx
+	}
+	return m, nil
 }

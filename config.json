@@ -49,7 +49,7 @@
     ]
   },
   "logging": {
-    "level": "debug",
+    "level": "info",
     "dir": "./logs"
   },
   "access": {

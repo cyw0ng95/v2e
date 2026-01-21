@@ -30,8 +30,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased transition-colors duration-300 ease-in-out`}
       >
         <Providers>
-          {children}
-          <Toaster />
+          <div className="min-h-screen min-w-screen flex flex-col bg-background">
+            <main className="w-full h-full container overflow-auto">{children}</main>
+            <Toaster />
+          </div>
         </Providers>
       </body>
     </html>

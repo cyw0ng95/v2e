@@ -123,3 +123,40 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Ensure the app root and body fill the viewport so layout can stretch */
+/* Ensure the app root and body fill the viewport exactly and prevent outer overflow */
+html, body, #__next {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+@layer components {
+  /* Full-viewport container used for dashboard pages */
+  .container {
+    @apply w-full h-full mx-auto px-4 sm:px-6 lg:px-8;
+    max-width: none;
+  }
+
+  /* main area should scroll internally when content overflows */
+  .app-main-scrollable {
+    @apply w-full h-full overflow-auto;
+  }
+
+  .card {
+    @apply bg-card text-card-foreground rounded-lg shadow-sm border border-border p-4;
+  }
+
+  .card-header {
+    @apply flex items-center justify-between pb-2 mb-4 border-b border-border;
+  }
+
+  .card-title {
+    @apply text-lg font-semibold;
+  }
+
+  .controls {
+    @apply flex items-center gap-4;
+  }
+}

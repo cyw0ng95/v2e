@@ -61,80 +61,87 @@ export default function Home() {
 
   return (
     <div className="h-screen w-screen bg-background overflow-hidden">
-      <div className="h-full p-6">
-        <div className="h-full flex flex-col md:flex-row gap-6">
-          {/* Left Sidebar */}
-          <aside className="w-full md:w-72 shrink-0">
-            <div className="space-y-4 sticky top-6">
-              <div className="space-y-2">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">v2e</h1>
-                <p className="text-sm text-muted-foreground">CVE Management</p>
-              </div>
-
-              {/* Stats stacked */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total CVEs</CardTitle>
-                    <Database className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl font-bold">
-                      {cveCount?.count?.toLocaleString() || '0'}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Local DB</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Session</CardTitle>
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-medium">
-                      {sessionStatus?.hasSession ? (
-                        <Badge variant={sessionStatus.state === 'running' ? 'default' : 'secondary'}>
-                          {sessionStatus.state}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Idle</Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{sessionStatus?.hasSession ? sessionStatus.sessionId : 'No active session'}</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Progress</CardTitle>
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-medium">{sessionStatus?.hasSession ? sessionStatus.fetchedCount || 0 : 0}</div>
-                    <p className="text-xs text-muted-foreground mt-1">{sessionStatus?.hasSession ? `${sessionStatus.storedCount || 0} stored, ${sessionStatus.errorCount || 0} errors` : 'No activity'}</p>
-                  </CardContent>
-                </Card>
-              </div>
-              {/* Session control in left sidebar (lazy-loaded) */}
-              <div className="mt-4 w-full max-w-70">
-                <Suspense>
-                  <SessionControl />
-                </Suspense>
-              </div>
+      <div className="h-full flex flex-col md:flex-row">
+        {/* Left Sidebar */}
+        <aside className="w-full md:w-1/5 shrink-0 bg-muted h-full flex flex-col">
+          <div className="sticky top-0 left-0 h-screen p-6 space-y-4">
+            <div className="space-y-2">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">v2e</h1>
+              <p className="text-sm text-muted-foreground">CVE Management</p>
             </div>
-          </aside>
 
-          {/* Right Main Area */}
-          <main className="flex-1 overflow-auto h-full">
-            <div className="space-y-6 h-full">
+            {/* Stats stacked */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total CVEs</CardTitle>
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl font-bold">{cveCount?.count?.toLocaleString() || '0'}</div>
+                  <p className="text-xs text-muted-foreground">Local DB</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Session</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-medium">
+                    {sessionStatus?.hasSession ? (
+                      <Badge variant={sessionStatus.state === 'running' ? 'default' : 'secondary'}>
+                        {sessionStatus.state}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Idle</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{sessionStatus?.hasSession ? sessionStatus.sessionId : 'No active session'}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Progress</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-medium">{sessionStatus?.hasSession ? sessionStatus.fetchedCount || 0 : 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{sessionStatus?.hasSession ? `${sessionStatus.storedCount || 0} stored, ${sessionStatus.errorCount || 0} errors` : 'No activity'}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="mt-4 w-full max-w-70">
+              <Suspense>
+                <SessionControl />
+              </Suspense>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Main Area */}
+        <div className="hidden md:block w-px h-full bg-border" />
+        <main className="w-full md:w-4/5 h-screen flex flex-col px-8 py-6">
+          <div className="flex-1 flex flex-col h-full">
+            <div className="space-y-8 flex-1 flex flex-col h-full">
               <Tabs value={tab} onValueChange={setTab} className="w-full h-full flex flex-col">
                 <TabsList className="mb-4">
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
                 </TabsList>
-                <TabsContent value="cwe" className="h-full"><CWETable /></TabsContent>
+
+                <TabsContent value="cwe" className="h-full">
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <CWETable />
+                    </div>
+                  </div>
+                </TabsContent>
+
                 <TabsContent value="cve" className="h-full">
                   <Card className="h-full flex flex-col">
                     <CardHeader>
@@ -149,39 +156,44 @@ export default function Home() {
                         <p className="text-xs text-muted-foreground mt-1">Note: server-side search not implemented yet; this filters currently loaded results.</p>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <Suspense>
-                        <CVETable
-                          cves={cveList?.cves || []}
-                          total={cveList?.total || 0}
-                          page={page}
-                          pageSize={pageSize}
-                          isLoading={isLoadingList}
-                          onPageChange={setPage}
-                          onPageSizeChange={setPageSize}
-                          searchQuery={searchQuery}
-                        />
-                      </Suspense>
+                    <CardContent className="flex-1 min-h-0 flex flex-col">
+                      <div className="flex-1 min-h-0 overflow-auto">
+                        <Suspense>
+                          <CVETable
+                            cves={cveList?.cves || []}
+                            total={cveList?.total || 0}
+                            page={page}
+                            pageSize={pageSize}
+                            isLoading={isLoadingList}
+                            onPageChange={setPage}
+                            onPageSizeChange={setPageSize}
+                            searchQuery={searchQuery}
+                          />
+                        </Suspense>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
+
                 <TabsContent value="sysmon" className="h-full">
                   <Card className="h-full flex flex-col">
                     <CardHeader>
                       <CardTitle>System Monitor</CardTitle>
                       <CardDescription>View system performance metrics</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <Suspense>
-                        <SysMonitor />
-                      </Suspense>
+                    <CardContent className="flex-1 min-h-0 flex flex-col">
+                      <div className="flex-1 min-h-0 overflow-auto">
+                        <Suspense>
+                          <SysMonitor />
+                        </Suspense>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
               </Tabs>
             </div>
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
     </div>
   );

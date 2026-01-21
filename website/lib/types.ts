@@ -5,6 +5,19 @@
 export interface SysMetrics {
   cpuUsage: number;
   memoryUsage: number;
+  // Optional expanded fields returned by sysmon
+  loadAvg?: number[] | number;
+  uptime?: number;
+  // disk is an object keyed by mount path
+  disk?: Record<string, { total: number; used: number }>;
+  // compatibility totals
+  diskTotal?: number;
+  diskUsage?: number;
+  // network totals and per-interface breakdown
+  netRx?: number;
+  netTx?: number;
+  network?: Record<string, { rx: number; tx: number }>;
+  swapUsage?: number;
 }
 /**
  * TypeScript types mirroring Go structs from the v2e backend
