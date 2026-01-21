@@ -2,11 +2,31 @@ package job
 
 import (
 	"context"
+	"io"
 	"testing"
+
+	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
+// mockInvoker returns an empty views response so the job loop exits quickly.
+type mockInvoker struct{}
+
+func (m *mockInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
+	// return a subprocess.Message with an empty "views" array
+	payload, _ := sonic.Marshal(map[string]interface{}{"views": []interface{}{}})
+	return &subprocess.Message{
+		Type:    subprocess.MessageTypeResponse,
+		Payload: payload,
+	}, nil
+}
+
 func TestController_StartStopStatus(t *testing.T) {
-	c := NewController()
+	logger := common.NewLogger(io.Discard, "test", common.InfoLevel)
+	mock := &mockInvoker{}
+	c := NewController(mock, logger)
+
 	ctx := context.Background()
 	sid, err := c.Start(ctx, map[string]interface{}{"test": true})
 	if err != nil {

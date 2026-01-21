@@ -8,12 +8,19 @@ Package main provides the implementation of the remote CVE service using RPC.
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
+	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -44,11 +51,151 @@ func main() {
 	sp.RegisterHandler("RPCGetCVEByID", createGetCVEByIDHandler(fetcher))
 	sp.RegisterHandler("RPCGetCVECnt", createGetCVECntHandler(fetcher))
 	sp.RegisterHandler("RPCFetchCVEs", createFetchCVEsHandler(fetcher))
+	sp.RegisterHandler("RPCFetchViews", createFetchViewsHandler())
 
 	logger.Info("CVE remote service started")
 
 	// Run with default lifecycle management
 	subprocess.RunWithDefaults(sp, logger)
+}
+
+// createFetchViewsHandler creates a handler for RPCFetchViews which downloads
+// the GitHub archive and extracts JSON files under json_repo/V.
+func createFetchViewsHandler() subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		var req struct {
+			StartIndex     int `json:"start_index"`
+			ResultsPerPage int `json:"results_per_page"`
+		}
+
+		// Set sensible defaults
+		req.StartIndex = 0
+		req.ResultsPerPage = 100
+		if msg.Payload != nil {
+			_ = subprocess.UnmarshalPayload(msg, &req)
+		}
+
+		// Download GitHub zip archive
+		zipURL := "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip"
+		resp, err := http.Get(zipURL)
+		if err != nil {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to download archive: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("unexpected HTTP status: %s", resp.Status),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to read archive body: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+
+		zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+		if err != nil {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to open zip archive: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+
+		var allViews []cwe.CWEView
+		for _, f := range zr.File {
+			// look for files under json_repo/V and with .json suffix
+			// zip entries from GitHub will have a top-level folder like REST-API-wg-main/
+			if !strings.Contains(f.Name, "json_repo/"+"V/") {
+				continue
+			}
+			if !strings.HasSuffix(strings.ToLower(f.Name), ".json") {
+				continue
+			}
+
+			rc, err := f.Open()
+			if err != nil {
+				continue
+			}
+			data, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				continue
+			}
+
+			var view cwe.CWEView
+			// Try to unmarshal with sonic for speed
+			if err := sonic.Unmarshal(data, &view); err != nil {
+				// try standard unmarshal as fallback
+				_ = sonic.Unmarshal(data, &view)
+			}
+			// If ID is empty, try to derive filename as ID
+			if view.ID == "" {
+				view.ID = strings.TrimSuffix(filepath.Base(f.Name), filepath.Ext(f.Name))
+			}
+			allViews = append(allViews, view)
+		}
+
+		// Pagination
+		start := req.StartIndex
+		if start < 0 {
+			start = 0
+		}
+		pageSize := req.ResultsPerPage
+		if pageSize <= 0 {
+			pageSize = 100
+		}
+
+		if start > len(allViews) {
+			start = len(allViews)
+		}
+		end := start + pageSize
+		if end > len(allViews) {
+			end = len(allViews)
+		}
+
+		respPayload := map[string]interface{}{
+			"views": allViews[start:end],
+		}
+
+		jsonData, err := sonic.Marshal(respPayload)
+		if err != nil {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to marshal response: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+
+		return &subprocess.Message{
+			Type:          subprocess.MessageTypeResponse,
+			ID:            msg.ID,
+			CorrelationID: msg.CorrelationID,
+			Target:        msg.Source,
+			Payload:       jsonData,
+		}, nil
+	}
 }
 
 // createGetCVEByIDHandler creates a handler for RPCGetCVEByID
