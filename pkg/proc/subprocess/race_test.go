@@ -41,7 +41,7 @@ func TestConcurrentMessageSending(t *testing.T) {
 	sp.Flush()
 
 	// Verify all messages were sent
-	output.String() // Just ensure no panic when reading
+	_ = output.String() // Just ensure no panic when reading
 	t.Logf("Successfully sent %d messages concurrently", numGoroutines*messagesPerGoroutine)
 }
 
