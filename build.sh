@@ -537,8 +537,10 @@ run_rpc_benchmarks() {
     fi
 }
 
-# Run Node.js process and broker (for development)
-# Modify the Node.js process check to handle no running process gracefully
+# Ensure Node.js process runs in the website directory for development
+# Ensure proper restart with debouncing to avoid rapid restarts
+# Ensure broker runs on the first execution of -r and restarts on changes
+# Ensure broker and all subprocesses are stopped on each rerun
 run_node_and_broker() {
     echo "Checking for running Node.js process in website directory..."
 
@@ -551,7 +553,7 @@ run_node_and_broker() {
         echo "No running Node.js process found in website directory."
     fi
 
-    # Start Node.js process in the background
+    # Start Node.js process in the website directory for development
     echo "Starting Node.js process in website directory..."
     pushd website > /dev/null
     npm run dev &
@@ -560,34 +562,80 @@ run_node_and_broker() {
     popd > /dev/null
 
     # Trap Ctrl-C (SIGINT) to ensure cleanup
-    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; exit 1" SIGINT
+    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; pkill -TERM -P $BROKER_PID; pkill -f \"$PACKAGE_DIR/broker\"; exit 1" SIGINT
 
-    # Build the project without frontend
-    echo "Building the project without frontend..."
-    if ! check_go_version; then
-        return 1
-    fi
+    # Create a timestamp file to track changes
+    TIMESTAMP_FILE="$BUILD_DIR/last_build_time"
 
-    setup_build_dir
-
-    if [ -f "go.mod" ]; then
-        echo "Running go build..."
-        mkdir -p "$BUILD_DIR/v2e"
-        go build -o "$BUILD_DIR/v2e" ./...
-        echo "Binary saved to: $BUILD_DIR/v2e"
-    else
-        echo "No go.mod found. Skipping Go build."
-    fi
-
-    # Run the broker
-    echo "Running broker in ./.build/package..."
+    # Run the broker on the first execution
+    echo "Starting broker..."
     pushd "$PACKAGE_DIR" > /dev/null
-    ./broker
+    ./broker &
+    BROKER_PID=$!
+    echo "Broker started with PID: $BROKER_PID"
     popd > /dev/null
 
-    # Cleanup Node.js process on normal exit
+    # Update the timestamp file after the first run
+    touch "$TIMESTAMP_FILE"
+
+    # Watch for Go source changes and rebuild/restart broker with debouncing
+    echo "Watching for Go source changes..."
+    LAST_RESTART_TIME=0
+    DEBOUNCE_INTERVAL=5  # Minimum seconds between restarts
+
+    while true; do
+        CHANGED=$(find . -name '*.go' -type f -newer "$TIMESTAMP_FILE" 2>/dev/null)
+        if [ -n "$CHANGED" ]; then
+            CURRENT_TIME=$(date +%s)
+            TIME_SINCE_LAST_RESTART=$((CURRENT_TIME - LAST_RESTART_TIME))
+
+            if [ $TIME_SINCE_LAST_RESTART -ge $DEBOUNCE_INTERVAL ]; then
+                echo "Detected changes in Go source files. Rebuilding..."
+
+                # Build the project without frontend
+                if ! check_go_version; then
+                    return 1
+                fi
+
+                setup_build_dir
+
+                if [ -f "go.mod" ]; then
+                    echo "Running go build..."
+                    mkdir -p "$BUILD_DIR/v2e"
+                    go build -o "$BUILD_DIR/v2e" ./...
+                    echo "Binary saved to: $BUILD_DIR/v2e"
+
+                    # Update the timestamp file after a successful build
+                    touch "$TIMESTAMP_FILE"
+                else
+                    echo "No go.mod found. Skipping Go build."
+                fi
+
+                # Restart the broker and ensure all subprocesses are stopped
+                echo "Restarting broker..."
+                pkill -TERM -P $BROKER_PID || true  # Kill all subprocesses of the broker
+                pkill -f "$PACKAGE_DIR/broker" || true
+                sleep 1  # Ensure the previous process is fully terminated
+                pushd "$PACKAGE_DIR" > /dev/null
+                ./broker &
+                BROKER_PID=$!
+                echo "Broker restarted with PID: $BROKER_PID"
+                popd > /dev/null
+
+                LAST_RESTART_TIME=$CURRENT_TIME
+            else
+                echo "Change detected, but debouncing restart (last restart was $TIME_SINCE_LAST_RESTART seconds ago)."
+            fi
+        fi
+        sleep 2
+    done
+
+    # Cleanup Node.js process and broker on normal exit
     echo "Stopping Node.js process (PID: $NODE_DEV_PID)..."
     kill $NODE_DEV_PID
+    echo "Stopping broker and all subprocesses (PID: $BROKER_PID)..."
+    pkill -TERM -P $BROKER_PID
+    pkill -f "$PACKAGE_DIR/broker"
 }
 
 # Build and package binaries with assets

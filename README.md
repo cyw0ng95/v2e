@@ -34,6 +34,27 @@ Run tests:
 ./build.sh -i
 ```
 
+## Live Development Workflow
+
+To enable live development, use the `-r` option with the `build.sh` script. This option is designed to streamline the development process by automatically restarting the broker and Node.js processes whenever changes are detected in the Go source files or frontend assets.
+
+### Usage
+
+Run the following command from the project root:
+
+```bash
+./build.sh -r
+```
+
+### Features
+- **Automatic Restart**: The broker and Node.js processes are restarted automatically on file changes.
+- **Debouncing**: Prevents rapid restarts by introducing a delay between file change detection and process restarts.
+- **Process Cleanup**: Ensures that all subprocesses are properly terminated before restarting.
+
+### Notes
+- Ensure that all dependencies are installed and the environment is properly configured before using the `-r` option.
+- This workflow is intended for development purposes only and should not be used in production environments.
+
 Project layout (high level)
 - cmd/
   - broker/    - process manager and RPC router
