@@ -170,6 +170,11 @@ func NewLocalCWEStore(dbPath string) (*LocalCWEStore, error) {
 	); err != nil {
 		return nil, err
 	}
+
+	// Migrate view-related tables
+	if err := AutoMigrateViews(db); err != nil {
+		return nil, err
+	}
 	return &LocalCWEStore{db: db}, nil
 }
 

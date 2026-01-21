@@ -78,6 +78,9 @@ func main() {
 	sp.RegisterHandler("RPCListCWEs", createListCWEsHandler(cweStore, logger))
 	sp.RegisterHandler("RPCImportCWEs", createImportCWEsHandler(cweStore, logger))
 
+	// Register CWE View handlers
+	RegisterCWEViewHandlers(sp, cweStore, logger)
+
 	logger.Info("CVE local service started")
 
 	// Run with default lifecycle management
