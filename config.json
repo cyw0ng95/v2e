@@ -36,6 +36,14 @@
         "rpc": true,
         "restart": true,
         "max_restarts": -1
+      },
+      {
+        "id": "sysmon",
+        "command": "./sysmon",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
       }
     ]
   },
