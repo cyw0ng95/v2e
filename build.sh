@@ -90,6 +90,7 @@ Options:
     -m          Run performance benchmarks and generate report
     -M          Run RPC performance benchmarks via integration tests (integrated metrics)
     -p          Build and package binaries with assets
+    -r          Run Node.js process and broker (for development)
     -v          Enable verbose output
     -h          Show this help message
 
@@ -101,6 +102,7 @@ Examples:
     $0 -m       # Run performance benchmarks
     $0 -M       # Run RPC performance benchmarks
     $0 -p       # Build and package binaries
+    $0 -r       # Run Node.js process and broker
     $0 -t -v    # Run unit tests with verbose output
 EOF
 }
@@ -535,6 +537,59 @@ run_rpc_benchmarks() {
     fi
 }
 
+# Run Node.js process and broker (for development)
+# Modify the Node.js process check to handle no running process gracefully
+run_node_and_broker() {
+    echo "Checking for running Node.js process in website directory..."
+
+    # Check if a Node.js process is running in the website directory
+    NODE_PID=$(pgrep -f "node.*website" || true)
+    if [ -n "$NODE_PID" ]; then
+        echo "Stopping running Node.js process (PID: $NODE_PID)..."
+        kill "$NODE_PID"
+    else
+        echo "No running Node.js process found in website directory."
+    fi
+
+    # Start Node.js process in the background
+    echo "Starting Node.js process in website directory..."
+    pushd website > /dev/null
+    npm run dev &
+    NODE_DEV_PID=$!
+    echo "Node.js process started with PID: $NODE_DEV_PID"
+    popd > /dev/null
+
+    # Trap Ctrl-C (SIGINT) to ensure cleanup
+    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; exit 1" SIGINT
+
+    # Build the project without frontend
+    echo "Building the project without frontend..."
+    if ! check_go_version; then
+        return 1
+    fi
+
+    setup_build_dir
+
+    if [ -f "go.mod" ]; then
+        echo "Running go build..."
+        mkdir -p "$BUILD_DIR/v2e"
+        go build -o "$BUILD_DIR/v2e" ./...
+        echo "Binary saved to: $BUILD_DIR/v2e"
+    else
+        echo "No go.mod found. Skipping Go build."
+    fi
+
+    # Run the broker
+    echo "Running broker in ./.build/package..."
+    pushd "$PACKAGE_DIR" > /dev/null
+    ./broker
+    popd > /dev/null
+
+    # Cleanup Node.js process on normal exit
+    echo "Stopping Node.js process (PID: $NODE_DEV_PID)..."
+    kill $NODE_DEV_PID
+}
+
 # Build and package binaries with assets
 build_and_package() {
     if [ "$VERBOSE" = true ]; then
@@ -564,6 +619,7 @@ build_and_package() {
                     echo "Building $cmd_name..."
                 fi
                 go build -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir"
+                chmod +x "$PACKAGE_DIR/$cmd_name"
             fi
         done
         
@@ -656,42 +712,22 @@ main() {
     RUN_BENCHMARKS=false
     RUN_RPC_BENCHMARKS=false
     BUILD_PACKAGE=false
-    
-    while getopts "tifmMphv" opt; do
-        case $opt in
-            t)
-                RUN_TESTS=true
-                ;;
-            i)
-                RUN_INTEGRATION_TESTS=true
-                ;;
-            f)
-                RUN_FUZZ_TESTS=true
-                ;;
-            m)
-                RUN_BENCHMARKS=true
-                ;;
-            M)
-                RUN_RPC_BENCHMARKS=true
-                ;;
-            p)
-                BUILD_PACKAGE=true
-                ;;
-            v)
-                VERBOSE=true
-                ;;
-            h)
-                show_help
-                exit 0
-                ;;
-            \?)
-                echo "Invalid option: -$OPTARG" >&2
-                show_help
-                exit 1
-                ;;
+    RUN_NODE_AND_BROKER=false
+
+    while getopts "tifmMphr" opt; do
+        case "$opt" in
+            t) RUN_TESTS=true ;;
+            i) RUN_INTEGRATION_TESTS=true ;;
+            f) RUN_FUZZ_TESTS=true ;;
+            m) RUN_BENCHMARKS=true ;;
+            M) RUN_RPC_BENCHMARKS=true ;;
+            p) BUILD_PACKAGE=true ;;
+            r) RUN_NODE_AND_BROKER=true ;;
+            h) show_help; exit 0 ;;
+            *) show_help; exit 1 ;;
         esac
     done
-    
+
     # Execute based on options
     if [ "$RUN_TESTS" = true ]; then
         run_tests
@@ -710,6 +746,9 @@ main() {
         exit $?
     elif [ "$BUILD_PACKAGE" = true ]; then
         build_and_package
+        exit $?
+    elif [ "$RUN_NODE_AND_BROKER" = true ]; then
+        run_node_and_broker
         exit $?
     else
         build_project
