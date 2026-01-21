@@ -839,3 +839,13 @@ NEXT_PUBLIC_USE_MOCK_DATA=false // Use real backend
 - Check `.env.local` has `NEXT_PUBLIC_USE_MOCK_DATA=true`
 - Restart dev server after changing env vars
 - Verify mock data in `lib/rpc-client.ts`
+
+## Updated Documentation Locations
+
+The service descriptions have been moved to standalone `service.md` files for each service. Refer to the following files for detailed descriptions:
+
+- Access Service: `cmd/access/service.md`
+- Broker Service: `cmd/broker/service.md`
+- Local Service: `cmd/local/service.md`
+- Meta Service: `cmd/meta/service.md`
+- Remote Service: `cmd/remote/service.md`
