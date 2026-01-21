@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
-	"path/filepath"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -362,7 +362,7 @@ func TestRecoverSession_NoSession(t *testing.T) {
 	// create a temporary session DB to avoid interfering with real data
 	tmp := "./test_session.db"
 	_ = os.Remove(tmp)
-	sm, err := session.NewManager(tmp)
+	sm, err := session.NewManager(tmp, logger)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}
@@ -378,7 +378,7 @@ func TestRecoverSession_NoSession(t *testing.T) {
 func TestRecoverSession_RunningStartsJob(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_recover_running.db")
-	sm, err := session.NewManager(dbPath)
+	sm, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestRecoverSession_RunningStartsJob(t *testing.T) {
 func TestRecoverSession_PausedDoesNotStartJob(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_recover_paused.db")
-	sm, err := session.NewManager(dbPath)
+	sm, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}
@@ -569,6 +569,10 @@ func (b *blockingInvoker) InvokeRPC(ctx context.Context, target, method string, 
 }
 
 // fnInvoker wraps a function as an RPCInvoker implementation
-type fnInvoker struct{ f func(ctx context.Context, target, method string, params interface{}) (interface{}, error) }
+type fnInvoker struct {
+	f func(ctx context.Context, target, method string, params interface{}) (interface{}, error)
+}
 
-func (f *fnInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) { return f.f(ctx, target, method, params) }
+func (f *fnInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
+	return f.f(ctx, target, method, params)
+}

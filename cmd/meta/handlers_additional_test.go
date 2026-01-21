@@ -37,7 +37,7 @@ func TestCreateStartAndStopSessionHandler(t *testing.T) {
 	// Create session manager
 	tmp := t.TempDir()
 	sessDB := tmp + "/sess.db"
-	sm, err := session.NewManager(sessDB)
+	sm, err := session.NewManager(sessDB, logger)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestGetSessionStatusHandler_HasSession(t *testing.T) {
 	// Create session manager
 	tmp := t.TempDir()
 	sessDB := tmp + "/sess2.db"
-	sm, err := session.NewManager(sessDB)
+	sm, err := session.NewManager(sessDB, logger)
 	if err != nil {
 		t.Fatalf("failed to create session manager: %v", err)
 	}

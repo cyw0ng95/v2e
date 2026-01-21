@@ -18,7 +18,11 @@ func BenchmarkControllerNew(b *testing.B) {
 	logger := common.NewLogger(os.Stderr, "bench", common.InfoLevel)
 	dbPath := filepath.Join(b.TempDir(), "bench_controller.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger = common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	// Update NewManager calls to include logger
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create session manager: %v", err)
 	}

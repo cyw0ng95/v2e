@@ -1,16 +1,22 @@
 package session
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 func TestNewManager(t *testing.T) {
 	// Create temporary database file
 	dbPath := filepath.Join(t.TempDir(), "test_session.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -24,7 +30,10 @@ func TestNewManager(t *testing.T) {
 func TestCreateSession(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_create_session.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -55,7 +64,10 @@ func TestCreateSession(t *testing.T) {
 func TestSingleSessionEnforcement(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_single_session.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -77,7 +89,10 @@ func TestSingleSessionEnforcement(t *testing.T) {
 func TestGetSession(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_get_session.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -109,7 +124,10 @@ func TestGetSession(t *testing.T) {
 func TestUpdateState(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_update_state.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -141,7 +159,10 @@ func TestUpdateState(t *testing.T) {
 func TestUpdateProgress(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_update_progress.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -204,7 +225,10 @@ func TestUpdateProgress(t *testing.T) {
 func TestDeleteSession(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_delete_session.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -233,7 +257,10 @@ func TestSessionPersistence(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_session_persistence.db")
 
 	// Create session in first manager
-	manager1, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager1, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create first manager: %v", err)
 	}
@@ -251,7 +278,7 @@ func TestSessionPersistence(t *testing.T) {
 	manager1.Close()
 
 	// Open database with second manager
-	manager2, err := NewManager(dbPath)
+	manager2, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create second manager: %v", err)
 	}
@@ -283,7 +310,10 @@ func TestSessionPersistence(t *testing.T) {
 func TestUpdateTimestamps(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_update_timestamps.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}

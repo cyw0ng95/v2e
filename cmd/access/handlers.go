@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"testing"
+	"time"
+
+	"net/http/httptest"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -83,4 +88,87 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeout
 			"payload": payload,
 		})
 	})
+}
+
+func TestRegisterHandlers_HealthEndpoint(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	rg := r.Group("/api")
+	registerHandlers(rg, nil, 0)
+
+	// Perform request
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/health", nil)
+	r.ServeHTTP(w, req)
+
+	// Assertions
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestRegisterHandlers_RPCForwarding(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	rg := r.Group("/api")
+
+	// Create a real RPCClient with a mocked subprocess
+	mockSubprocess := &subprocess.Subprocess{
+		ID: "mock-subprocess",
+	}
+	rpcClient := &RPCClient{
+		sp:              mockSubprocess,
+		pendingRequests: make(map[string]chan *subprocess.Message),
+		rpcTimeout:      5 * time.Second,
+	}
+	registerHandlers(rg, rpcClient, 5)
+
+	// Perform request
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/rpc", nil)
+	r.ServeHTTP(w, req)
+
+	// Assertions
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+// MockRPCClient is a mock implementation of RPCClient for testing
+// Add methods as needed to simulate behavior
+type MockRPCClient struct{}
+
+func (m *MockRPCClient) InvokeRPCWithTarget(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error) {
+	return &subprocess.Message{
+		Type:    subprocess.MessageTypeResponse,
+		Payload: []byte(`{"mock": "response"}`),
+	}, nil
+}
+
+func (m *MockRPCClient) Run(ctx context.Context) error {
+	return nil
+}
+
+// MockSubprocess is a mock implementation of subprocess.Subprocess for testing
+// Add methods as needed to simulate behavior
+type MockSubprocess struct {
+	ID       string
+	handlers map[string]subprocess.Handler
+}
+
+func (m *MockSubprocess) RegisterHandler(messageType string, handler subprocess.Handler) {
+	if m.handlers == nil {
+		m.handlers = make(map[string]subprocess.Handler)
+	}
+	m.handlers[messageType] = handler
+}
+
+func (m *MockSubprocess) Send(ctx context.Context, msg *subprocess.Message) error {
+	return nil
+}
+
+func (m *MockSubprocess) Run(ctx context.Context) error {
+	return nil
 }

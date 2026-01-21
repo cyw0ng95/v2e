@@ -2,10 +2,13 @@ package session
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // TestConcurrentSessionCreation tests concurrent session creation attempts
@@ -15,7 +18,10 @@ import (
 func TestConcurrentSessionCreation(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_concurrent_creation.db")
 
-	manager, err := NewManager(dbPath)
+	// Correct logger initialization
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -70,7 +76,10 @@ func TestConcurrentSessionCreation(t *testing.T) {
 func TestConcurrentStateUpdates(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_concurrent_state_updates.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -122,7 +131,10 @@ func TestConcurrentStateUpdates(t *testing.T) {
 func TestConcurrentProgressUpdates(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_concurrent_progress.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -181,7 +193,10 @@ func TestConcurrentProgressUpdates(t *testing.T) {
 func TestSessionDataIntegrity(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_data_integrity.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -262,7 +277,10 @@ func TestSessionDataIntegrity(t *testing.T) {
 func TestMultipleSessionLifecycles(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_multiple_lifecycles.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -309,7 +327,10 @@ func TestMultipleSessionLifecycles(t *testing.T) {
 func TestSessionTimestampsAccuracy(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_timestamps_accuracy.db")
 
-	manager, err := NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -368,8 +389,11 @@ func TestSessionTimestampsAccuracy(t *testing.T) {
 func TestSessionManagerReopen(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_reopen.db")
 
+	// Ensure consistent logger initialization
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
 	// Create first manager and session
-	manager1, err := NewManager(dbPath)
+	manager1, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create first manager: %v", err)
 	}
@@ -386,7 +410,7 @@ func TestSessionManagerReopen(t *testing.T) {
 	manager1.Close()
 
 	// Open second manager with same database
-	manager2, err := NewManager(dbPath)
+	manager2, err := NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create second manager: %v", err)
 	}

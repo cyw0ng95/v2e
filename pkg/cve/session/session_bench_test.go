@@ -1,14 +1,32 @@
 package session
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
+
+func TestMain(m *testing.M) {
+	// Set up any necessary global state or resources here.
+	// For example, you might initialize a logger or a database connection.
+
+	// Run the tests
+	code := m.Run()
+
+	// Clean up any global state or resources here.
+
+	// Exit with the code from running the tests
+	os.Exit(code)
+}
 
 // BenchmarkCreateSession benchmarks session creation
 func BenchmarkCreateSession(b *testing.B) {
 	dbPath := filepath.Join(b.TempDir(), "bench_session.db")
-	manager, err := NewManager(dbPath)
+
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create manager: %v", err)
 	}
@@ -32,7 +50,9 @@ func BenchmarkCreateSession(b *testing.B) {
 // BenchmarkGetSession benchmarks session retrieval
 func BenchmarkGetSession(b *testing.B) {
 	dbPath := filepath.Join(b.TempDir(), "bench_get_session.db")
-	manager, err := NewManager(dbPath)
+
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create manager: %v", err)
 	}
@@ -58,7 +78,9 @@ func BenchmarkGetSession(b *testing.B) {
 // BenchmarkUpdateState benchmarks state updates
 func BenchmarkUpdateState(b *testing.B) {
 	dbPath := filepath.Join(b.TempDir(), "bench_update_state.db")
-	manager, err := NewManager(dbPath)
+
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create manager: %v", err)
 	}
@@ -86,7 +108,9 @@ func BenchmarkUpdateState(b *testing.B) {
 // BenchmarkUpdateProgress benchmarks progress updates
 func BenchmarkUpdateProgress(b *testing.B) {
 	dbPath := filepath.Join(b.TempDir(), "bench_update_progress.db")
-	manager, err := NewManager(dbPath)
+
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create manager: %v", err)
 	}
@@ -111,7 +135,9 @@ func BenchmarkUpdateProgress(b *testing.B) {
 // BenchmarkDeleteSession benchmarks session deletion
 func BenchmarkDeleteSession(b *testing.B) {
 	dbPath := filepath.Join(b.TempDir(), "bench_delete_session.db")
-	manager, err := NewManager(dbPath)
+
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create manager: %v", err)
 	}
@@ -139,7 +165,9 @@ func BenchmarkDeleteSession(b *testing.B) {
 // BenchmarkConcurrentGetSession benchmarks concurrent session retrieval
 func BenchmarkConcurrentGetSession(b *testing.B) {
 	dbPath := filepath.Join(b.TempDir(), "bench_concurrent_get.db")
-	manager, err := NewManager(dbPath)
+
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create manager: %v", err)
 	}
@@ -166,7 +194,9 @@ func BenchmarkConcurrentGetSession(b *testing.B) {
 // BenchmarkConcurrentUpdateProgress benchmarks concurrent progress updates
 func BenchmarkConcurrentUpdateProgress(b *testing.B) {
 	dbPath := filepath.Join(b.TempDir(), "bench_concurrent_progress.db")
-	manager, err := NewManager(dbPath)
+
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	manager, err := NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create manager: %v", err)
 	}

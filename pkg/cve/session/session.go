@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -49,10 +50,11 @@ type Session struct {
 type Manager struct {
 	db         *bolt.DB
 	bucketName []byte
+	logger     *common.Logger // Added logger field for logging
 }
 
 // NewManager creates a new session manager
-func NewManager(dbPath string) (*Manager, error) {
+func NewManager(dbPath string, logger *common.Logger) (*Manager, error) {
 	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open session database: %w", err)
@@ -73,6 +75,7 @@ func NewManager(dbPath string) (*Manager, error) {
 	return &Manager{
 		db:         db,
 		bucketName: bucketName,
+		logger:     logger, // Initialize logger
 	}, nil
 }
 
@@ -137,14 +140,17 @@ func (m *Manager) GetSession() (*Session, error) {
 }
 
 // UpdateState updates the session state
+// Add debug logging to track state updates
 func (m *Manager) UpdateState(state SessionState) error {
 	session, err := m.GetSession()
 	if err != nil {
+		m.logger.Error("Failed to retrieve session for state update: %v", err)
 		return err
 	}
 
 	session.State = state
 	session.UpdatedAt = time.Now()
+	m.logger.Debug("Updating session state to: %s", state)
 
 	return m.saveSession(session)
 }

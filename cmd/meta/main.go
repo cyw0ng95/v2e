@@ -235,7 +235,7 @@ func main() {
 	}
 
 	// Create session manager
-	sessionManager, err := session.NewManager(sessionDBPath)
+	sessionManager, err := session.NewManager(sessionDBPath, logger)
 	if err != nil {
 		logger.Error("Failed to create session manager: %v", err)
 		os.Exit(1)

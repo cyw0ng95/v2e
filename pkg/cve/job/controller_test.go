@@ -54,7 +54,7 @@ func TestNewController(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_controller_session.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	mockRPC := &mockRPCInvoker{}
@@ -81,7 +81,7 @@ func TestControllerStart_NoSession(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_start_no_session.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	mockRPC := &mockRPCInvoker{}
@@ -99,7 +99,7 @@ func TestControllerStart_AlreadyRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_start_already_running.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	// Create a session
@@ -142,7 +142,7 @@ func TestControllerStop_NotRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_stop_not_running.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	mockRPC := &mockRPCInvoker{}
@@ -158,7 +158,7 @@ func TestControllerPause_NotRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_pause_not_running.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	mockRPC := &mockRPCInvoker{}
@@ -174,7 +174,7 @@ func TestControllerResume_NotPaused(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_resume_not_paused.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	// Create a session in idle state
@@ -195,7 +195,7 @@ func TestControllerIsRunning(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_is_running.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	sessionManager.CreateSession("test-session", 0, 100)
@@ -241,7 +241,7 @@ func TestJobLoop_EmptyResults(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_job_empty.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	sessionManager.CreateSession("test-session", 0, 100)
@@ -285,7 +285,7 @@ func TestJobLoop_WithResults(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_job_with_results.db")
 
-	sessionManager, _ := session.NewManager(dbPath)
+	sessionManager, _ := session.NewManager(dbPath, logger)
 	defer sessionManager.Close()
 
 	sessionManager.CreateSession("test-session", 0, 100)

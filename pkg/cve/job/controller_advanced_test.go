@@ -21,7 +21,7 @@ func TestConcurrentJobControl(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_concurrent.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestConcurrentStartAttempts(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_concurrent_start.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestJobDataIntegrity(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_data_integrity.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestJobErrorHandling(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_error_handling.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -316,7 +316,7 @@ func TestJobStateTransitions(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_state_transitions.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestJobPauseResumeMultipleTimes(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_pause_resume_multiple.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -451,7 +451,7 @@ func TestJobProgressTracking(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	dbPath := filepath.Join(t.TempDir(), "test_progress_tracking.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		t.Fatalf("Failed to create session manager: %v", err)
 	}
