@@ -6,6 +6,7 @@
 import type {
   RPCRequest,
   RPCResponse,
+  SysMetrics,
   GetCVERequest,
   GetCVEResponse,
   CreateCVERequest,
@@ -258,7 +259,11 @@ export class RPCClient {
           payload: null,
         };
       }
-      console.error('[rpc-client] request failed', { method, target, error });
+      console.error('[rpc-client] request failed', {
+        method,
+        target,
+        error: error instanceof Error ? error.message : error,
+      });
       return {
         retcode: 500,
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -447,6 +452,14 @@ export class RPCClient {
 
   async getCWE(cweId: string): Promise<RPCResponse<{ cwe: CWEItem }>> {
     return this.call<{ cweId: string }, { cwe: CWEItem }>('RPCGetCWEByID', { cweId }, 'local');
+  }
+
+  // ==========================================================================
+  // System Metrics
+  // ==========================================================================
+
+  async getSysMetrics(): Promise<RPCResponse<SysMetrics>> {
+    return this.call<undefined, SysMetrics>("RPCGetSysMetrics", undefined, "sysmon");
   }
 }
 

@@ -42,16 +42,30 @@ func main() {
 		logOutput = os.Stdout
 	}
 
-	// Set default logger output
-	common.SetOutput(logOutput)
-	common.SetLevel(common.InfoLevel)
+	   // Set default logger output
+	   common.SetOutput(logOutput)
+	   // Set log level from config if present, default to InfoLevel
+	   logLevel := common.InfoLevel
+	   if config.Logging.Level != "" {
+		   switch config.Logging.Level {
+		   case "debug":
+			   logLevel = common.DebugLevel
+		   case "info":
+			   logLevel = common.InfoLevel
+		   case "warn":
+			   logLevel = common.WarnLevel
+		   case "error":
+			   logLevel = common.ErrorLevel
+		   }
+	   }
+	   common.SetLevel(logLevel)
 
 	// Create broker instance
 	broker := NewBroker()
 	defer broker.Shutdown()
 
-	// Set up broker logger with dual output
-	brokerLogger := common.NewLogger(logOutput, "[BROKER] ", common.InfoLevel)
+	// Set up broker logger with dual output and correct level
+	brokerLogger := common.NewLogger(logOutput, "[BROKER] ", logLevel)
 	broker.SetLogger(brokerLogger)
 
 	// Load processes from configuration

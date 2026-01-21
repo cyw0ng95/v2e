@@ -5,6 +5,78 @@
 
 set -e
 
+# Run Node.js process and broker once, terminate both on Ctrl-C
+run_node_and_broker_once() {
+    # Set flag to skip website build
+    export V2E_SKIP_WEBSITE_BUILD=1
+        # Remove the most recent log file in .build/log if it exists
+        LOG_DIR="$BUILD_DIR/log"
+        if [ -d "$LOG_DIR" ]; then
+            LAST_LOG=$(ls -1t "$LOG_DIR" 2>/dev/null | head -n1)
+            if [ -n "$LAST_LOG" ]; then
+                echo "Removing last log: $LOG_DIR/$LAST_LOG"
+                rm -f "$LOG_DIR/$LAST_LOG"
+            fi
+        fi
+    set +e
+    echo "Checking for running Node.js process in website directory..."
+    NODE_PID=$(pgrep -f "node.*website" || true)
+    if [ -n "$NODE_PID" ]; then
+        echo "Stopping running Node.js process (PID: $NODE_PID)..."
+        kill $NODE_PID
+    else
+        echo "No running Node.js process found in website directory."
+    fi
+
+    # Kill all previous broker and v2e subprocesses from any -r session (before starting new watcher)
+    echo "Killing all previous broker and v2e subprocesses from any -r session..."
+    pkill -f "$PACKAGE_DIR/broker" || true
+    pkill -f "$PACKAGE_DIR/access" || true
+    pkill -f "$PACKAGE_DIR/local" || true
+    pkill -f "$PACKAGE_DIR/meta" || true
+    pkill -f "$PACKAGE_DIR/remote" || true
+    pkill -f "$PACKAGE_DIR/sysmon" || true
+    for i in {1..10}; do
+        BROKER_PROCS=$(pgrep -f "$PACKAGE_DIR/broker")
+        V2E_PROCS=$(pgrep -f "$PACKAGE_DIR/access|$PACKAGE_DIR/local|$PACKAGE_DIR/meta|$PACKAGE_DIR/remote|$PACKAGE_DIR/sysmon")
+        if [ -z "$BROKER_PROCS" ] && [ -z "$V2E_PROCS" ]; then
+            echo "All previous broker and v2e subprocesses stopped (or none found)."
+            break
+        fi
+        echo "Waiting for previous broker and v2e subprocesses to exit... ($i)"
+        sleep 1
+    done
+
+    build_and_package
+    unset V2E_SKIP_WEBSITE_BUILD
+    if [ $? -ne 0 ]; then
+        echo "Error: Build and package failed. Cannot start broker."
+        return 1
+    fi
+
+    echo "Starting Node.js process in website directory..."
+    pushd website > /dev/null
+    npm run dev &
+    NODE_DEV_PID=$!
+    echo "Node.js process started with PID: $NODE_DEV_PID"
+    popd > /dev/null
+
+    echo "[build.sh] Starting broker from $PACKAGE_DIR..."
+    pushd "$PACKAGE_DIR" > /dev/null
+    echo "[build.sh] Launch command: ./broker"
+    ./broker &
+    BROKER_PID=$!
+    echo "[build.sh] Broker started with PID: $BROKER_PID"
+    popd > /dev/null
+
+    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; echo 'Stopping broker and all subprocesses (PID: $BROKER_PID)...'; pkill -TERM -P $BROKER_PID; pkill -f \"$PACKAGE_DIR/broker\"; exit 1" SIGINT
+
+    wait $NODE_DEV_PID
+    wait $BROKER_PID
+
+    set -e
+}
+
 # Configuration
 BUILD_DIR=".build"
 PACKAGE_DIR=".build/package"
@@ -537,106 +609,6 @@ run_rpc_benchmarks() {
     fi
 }
 
-# Ensure Node.js process runs in the website directory for development
-# Ensure proper restart with debouncing to avoid rapid restarts
-# Ensure broker runs on the first execution of -r and restarts on changes
-# Ensure broker and all subprocesses are stopped on each rerun
-run_node_and_broker() {
-    echo "Checking for running Node.js process in website directory..."
-
-    # Check if a Node.js process is running in the website directory
-    NODE_PID=$(pgrep -f "node.*website" || true)
-    if [ -n "$NODE_PID" ]; then
-        echo "Stopping running Node.js process (PID: $NODE_PID)..."
-        kill "$NODE_PID"
-    else
-        echo "No running Node.js process found in website directory."
-    fi
-
-    # Start Node.js process in the website directory for development
-    echo "Starting Node.js process in website directory..."
-    pushd website > /dev/null
-    npm run dev &
-    NODE_DEV_PID=$!
-    echo "Node.js process started with PID: $NODE_DEV_PID"
-    popd > /dev/null
-
-    # Trap Ctrl-C (SIGINT) to ensure cleanup
-    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; pkill -TERM -P $BROKER_PID; pkill -f \"$PACKAGE_DIR/broker\"; exit 1" SIGINT
-
-    # Create a timestamp file to track changes
-    TIMESTAMP_FILE="$BUILD_DIR/last_build_time"
-
-    # Run the broker on the first execution
-    echo "Starting broker..."
-    pushd "$PACKAGE_DIR" > /dev/null
-    ./broker &
-    BROKER_PID=$!
-    echo "Broker started with PID: $BROKER_PID"
-    popd > /dev/null
-
-    # Update the timestamp file after the first run
-    touch "$TIMESTAMP_FILE"
-
-    # Watch for Go source changes and rebuild/restart broker with debouncing
-    echo "Watching for Go source changes..."
-    LAST_RESTART_TIME=0
-    DEBOUNCE_INTERVAL=5  # Minimum seconds between restarts
-
-    while true; do
-        CHANGED=$(find . -name '*.go' -type f -newer "$TIMESTAMP_FILE" 2>/dev/null)
-        if [ -n "$CHANGED" ]; then
-            CURRENT_TIME=$(date +%s)
-            TIME_SINCE_LAST_RESTART=$((CURRENT_TIME - LAST_RESTART_TIME))
-
-            if [ $TIME_SINCE_LAST_RESTART -ge $DEBOUNCE_INTERVAL ]; then
-                echo "Detected changes in Go source files. Rebuilding..."
-
-                # Build the project without frontend
-                if ! check_go_version; then
-                    return 1
-                fi
-
-                setup_build_dir
-
-                if [ -f "go.mod" ]; then
-                    echo "Running go build..."
-                    mkdir -p "$BUILD_DIR/v2e"
-                    go build -o "$BUILD_DIR/v2e" ./...
-                    echo "Binary saved to: $BUILD_DIR/v2e"
-
-                    # Update the timestamp file after a successful build
-                    touch "$TIMESTAMP_FILE"
-                else
-                    echo "No go.mod found. Skipping Go build."
-                fi
-
-                # Restart the broker and ensure all subprocesses are stopped
-                echo "Restarting broker..."
-                pkill -TERM -P $BROKER_PID || true  # Kill all subprocesses of the broker
-                pkill -f "$PACKAGE_DIR/broker" || true
-                sleep 1  # Ensure the previous process is fully terminated
-                pushd "$PACKAGE_DIR" > /dev/null
-                ./broker &
-                BROKER_PID=$!
-                echo "Broker restarted with PID: $BROKER_PID"
-                popd > /dev/null
-
-                LAST_RESTART_TIME=$CURRENT_TIME
-            else
-                echo "Change detected, but debouncing restart (last restart was $TIME_SINCE_LAST_RESTART seconds ago)."
-            fi
-        fi
-        sleep 2
-    done
-
-    # Cleanup Node.js process and broker on normal exit
-    echo "Stopping Node.js process (PID: $NODE_DEV_PID)..."
-    kill $NODE_DEV_PID
-    echo "Stopping broker and all subprocesses (PID: $BROKER_PID)..."
-    pkill -TERM -P $BROKER_PID
-    pkill -f "$PACKAGE_DIR/broker"
-}
 
 # Build and package binaries with assets
 build_and_package() {
@@ -690,51 +662,52 @@ build_and_package() {
         echo "No go.mod found. Skipping Go build."
     fi
     
-    # Build and package frontend if website directory exists
-    if [ -d "website" ]; then
-        echo "Building frontend website..."
-        
-        # Check Node.js and npm versions
-        if ! check_node_version; then
-            echo "Warning: Skipping frontend build due to version requirements"
+    # Build and package frontend if website directory exists and not skipped
+    if [ -z "$V2E_SKIP_WEBSITE_BUILD" ]; then
+        if [ -d "website" ]; then
+            echo "Building frontend website..."
+            # Check Node.js and npm versions
+            if ! check_node_version; then
+                echo "Warning: Skipping frontend build due to version requirements"
+            else
+                cd website
+                # Install dependencies if node_modules doesn't exist
+                if [ ! -d "node_modules" ]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Installing frontend dependencies..."
+                    fi
+                    npm install
+                else
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Using cached node_modules"
+                    fi
+                fi
+                # Build frontend
+                if [ "$VERBOSE" = true ]; then
+                    echo "Building frontend static export..."
+                fi
+                npm run build
+                # Copy frontend build output to package
+                if [ -d "out" ]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Copying frontend build to package..."
+                    fi
+                    mkdir -p "../$PACKAGE_DIR/website"
+                    cp -r out/* "../$PACKAGE_DIR/website/"
+                    echo "Frontend website packaged successfully"
+                else
+                    echo "Warning: Frontend build did not produce out/ directory"
+                fi
+                cd ..
+            fi
         else
-            cd website
-            
-            # Install dependencies if node_modules doesn't exist
-            if [ ! -d "node_modules" ]; then
-                if [ "$VERBOSE" = true ]; then
-                    echo "Installing frontend dependencies..."
-                fi
-                npm install
-            else
-                if [ "$VERBOSE" = true ]; then
-                    echo "Using cached node_modules"
-                fi
-            fi
-            
-            # Build frontend
             if [ "$VERBOSE" = true ]; then
-                echo "Building frontend static export..."
+                echo "No website directory found. Skipping frontend build."
             fi
-            npm run build
-            
-            # Copy frontend build output to package
-            if [ -d "out" ]; then
-                if [ "$VERBOSE" = true ]; then
-                    echo "Copying frontend build to package..."
-                fi
-                mkdir -p "../$PACKAGE_DIR/website"
-                cp -r out/* "../$PACKAGE_DIR/website/"
-                echo "Frontend website packaged successfully"
-            else
-                echo "Warning: Frontend build did not produce out/ directory"
-            fi
-            
-            cd ..
         fi
     else
         if [ "$VERBOSE" = true ]; then
-            echo "No website directory found. Skipping frontend build."
+            echo "Skipping frontend build (V2E_SKIP_WEBSITE_BUILD set)"
         fi
     fi
     
@@ -762,7 +735,7 @@ main() {
     BUILD_PACKAGE=false
     RUN_NODE_AND_BROKER=false
 
-    while getopts "tifmMphr" opt; do
+    while getopts "tifmMphrv" opt; do
         case "$opt" in
             t) RUN_TESTS=true ;;
             i) RUN_INTEGRATION_TESTS=true ;;
@@ -770,8 +743,9 @@ main() {
             m) RUN_BENCHMARKS=true ;;
             M) RUN_RPC_BENCHMARKS=true ;;
             p) BUILD_PACKAGE=true ;;
-            r) RUN_NODE_AND_BROKER=true ;;
             h) show_help; exit 0 ;;
+            r) RUN_NODE_AND_BROKER=true ;;
+            v) VERBOSE=true ;;
             *) show_help; exit 1 ;;
         esac
     done
@@ -796,7 +770,7 @@ main() {
         build_and_package
         exit $?
     elif [ "$RUN_NODE_AND_BROKER" = true ]; then
-        run_node_and_broker
+        run_node_and_broker_once
         exit $?
     else
         build_project

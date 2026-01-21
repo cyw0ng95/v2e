@@ -1018,27 +1018,30 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 
 	// If message is a response with correlation ID, route it back to the pending request FIRST
 	// This takes priority over Target-based routing to ensure responses go to the right waiting caller
-	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
-		b.pendingMu.Lock()
-		pending, exists := b.pendingRequests[msg.CorrelationID]
-		if exists {
-			delete(b.pendingRequests, msg.CorrelationID)
-		}
-		b.pendingMu.Unlock()
+	   if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
+		   b.logger.Debug("[TRACE] Received response message: id=%s correlation_id=%s from=%s", msg.ID, msg.CorrelationID, msg.Source)
+		   b.pendingMu.Lock()
+		   pending, exists := b.pendingRequests[msg.CorrelationID]
+		   if exists {
+			   delete(b.pendingRequests, msg.CorrelationID)
+		   }
+		   b.pendingMu.Unlock()
 
-		if exists {
-			b.logger.Debug("Routing response to pending request: correlation_id=%s", msg.CorrelationID)
-			select {
-			case pending.ResponseChan <- msg:
-				return nil
-			case <-time.After(5 * time.Second):
-				return fmt.Errorf("timeout sending response to pending request")
-			}
-		}
-		// If no pending request found in broker, fall through to target-based routing
-		// This allows subprocess-to-subprocess RPC where the correlation is tracked by the calling subprocess
-		b.logger.Debug("No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
-	}
+		   if exists {
+			   b.logger.Debug("[TRACE] Routing response to pending request: correlation_id=%s", msg.CorrelationID)
+			   select {
+			   case pending.ResponseChan <- msg:
+				   b.logger.Debug("[TRACE] Response delivered to waiting channel: correlation_id=%s", msg.CorrelationID)
+				   return nil
+			   case <-time.After(5 * time.Second):
+				   b.logger.Warn("[TRACE] Timeout sending response to pending request: correlation_id=%s", msg.CorrelationID)
+				   return fmt.Errorf("timeout sending response to pending request")
+			   }
+		   }
+		   // If no pending request found in broker, fall through to target-based routing
+		   // This allows subprocess-to-subprocess RPC where the correlation is tracked by the calling subprocess
+		   b.logger.Debug("[TRACE] No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
+	   }
 
 	// If message has a target, route it to that process or broker
 	if msg.Target != "" {
@@ -1100,15 +1103,19 @@ func (b *Broker) InvokeRPC(sourceProcess, targetProcess, rpcMethod string, paylo
 	b.logger.Debug("Invoked RPC: source=%s target=%s method=%s correlation_id=%s",
 		sourceProcess, targetProcess, rpcMethod, correlationID)
 
-	// Wait for response with timeout
-	select {
-	case response := <-responseChan:
-		return response, nil
-	case <-time.After(timeout):
-		return nil, fmt.Errorf("timeout waiting for response from %s", targetProcess)
-	case <-b.ctx.Done():
-		return nil, fmt.Errorf("broker is shutting down")
-	}
+	   b.logger.Debug("[TRACE] Waiting for response: correlation_id=%s target=%s method=%s timeout=%v", correlationID, targetProcess, rpcMethod, timeout)
+	   // Wait for response with timeout
+	   select {
+	   case response := <-responseChan:
+		   b.logger.Debug("[TRACE] Received response for correlation_id=%s: type=%s", correlationID, response.Type)
+		   return response, nil
+	   case <-time.After(timeout):
+		   b.logger.Warn("[TRACE] Timeout waiting for response: correlation_id=%s target=%s method=%s", correlationID, targetProcess, rpcMethod)
+		   return nil, fmt.Errorf("timeout waiting for response from %s", targetProcess)
+	   case <-b.ctx.Done():
+		   b.logger.Warn("[TRACE] Broker context cancelled while waiting for response: correlation_id=%s", correlationID)
+		   return nil, fmt.Errorf("broker is shutting down")
+	   }
 }
 
 // LoadProcessesFromConfig loads and starts processes from a configuration

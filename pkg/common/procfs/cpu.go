@@ -6,27 +6,19 @@ import (
 	"strings"
 )
 
-// ReadCPUUsage reads CPU usage from /proc/stat
+// ReadCPUUsage returns the 1-minute load average from /proc/loadavg (fast, non-blocking)
 func ReadCPUUsage() (float64, error) {
-	data, err := ioutil.ReadFile("/proc/stat")
+	data, err := ioutil.ReadFile("/proc/loadavg")
 	if err != nil {
 		return 0, err
 	}
-
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) > 0 && fields[0] == "cpu" {
-			total := 0.0
-			for _, value := range fields[1:] {
-				v, err := strconv.ParseFloat(value, 64)
-				if err != nil {
-					return 0, err
-				}
-				total += v
-			}
-			return total, nil
-		}
+	fields := strings.Fields(string(data))
+	if len(fields) < 1 {
+		return 0, nil
 	}
-	return 0, nil
+	load, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return 0, err
+	}
+	return load, nil
 }

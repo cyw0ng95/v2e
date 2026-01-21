@@ -2,8 +2,9 @@
  * React Query hooks for v2e API
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { rpcClient } from './rpc-client';
+import { SysMetrics } from './types';
 
 // ============================================================================
 // Query Keys
@@ -287,5 +288,23 @@ export function useHealth() {
       return response.payload;
     },
     refetchInterval: 30000, // Refetch every 30 seconds
+  });
+}
+
+// ============================================================================
+// System Metrics
+// ============================================================================
+
+export function useSysMetrics(): UseQueryResult<SysMetrics, Error> {
+  return useQuery<SysMetrics, Error>({
+    queryKey: ['sysMetrics'],
+    queryFn: async () => {
+      const response = await rpcClient.getSysMetrics();
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      // Ensure payload is typed
+      return response.payload as SysMetrics;
+    },
   });
 }

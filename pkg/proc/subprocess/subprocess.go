@@ -2,6 +2,7 @@ package subprocess
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 
 	"github.com/bytedance/sonic"
@@ -133,6 +134,34 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	if response != nil {
 		_ = s.sendMessage(response)
 	}
+}
+
+// HandleMessage is a public wrapper for the unexported handleMessage method
+func (s *Subprocess) HandleMessage(ctx context.Context, msg *Message) (*Message, error) {
+	// Use the existing handleMessage logic
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var handler Handler
+	var exists bool
+
+	if msg.Type == MessageTypeResponse || msg.Type == MessageTypeError {
+		handler, exists = s.handlers[string(msg.Type)]
+		if !exists {
+			handler, exists = s.handlers[msg.ID]
+		}
+	} else {
+		handler, exists = s.handlers[msg.ID]
+		if !exists {
+			handler, exists = s.handlers[string(msg.Type)]
+		}
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("no handler found for message: %s", msg.ID)
+	}
+
+	return handler(ctx, msg)
 }
 
 // messageWriter and flushBatch have been moved to writer.go to improve

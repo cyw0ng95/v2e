@@ -1,3 +1,11 @@
+// ============================================================================
+// Sysmon Types (from sysmon RPC API)
+// ============================================================================
+
+export interface SysMetrics {
+  cpuUsage: number;
+  memoryUsage: number;
+}
 /**
  * TypeScript types mirroring Go structs from the v2e backend
  * Generated from pkg/cve/types.go and RPC API specifications

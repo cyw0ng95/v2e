@@ -4,6 +4,7 @@
   },
   "broker": {
     "logs_dir": "./logs",
+    "log_file": "./logs/broker.log",
     "processes": [
       {
         "id": "access",

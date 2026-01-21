@@ -3,8 +3,9 @@ package proc
 import (
 	"encoding/json"
 	"errors"
-	"github.com/bytedance/sonic"
 	"testing"
+
+	"github.com/bytedance/sonic"
 )
 
 func TestMessageType_Constants(t *testing.T) {

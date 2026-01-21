@@ -38,11 +38,20 @@ const CWETable = dynamic(() => import('@/components/cwe-table').then(mod => mod.
   ),
 });
 
+const SysMonitor = dynamic(() => import('@/components/sysmon-table').then(mod => mod.SysMonitor), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 export default function Home() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tab, setTab] = useState<'cwe' | 'cve'>('cwe'); // Default to CWE
+  const [tab, setTab] = useState<'cwe' | 'cve' | 'sysmon'>('cwe'); // Default to CWE
   // memoize offset to avoid unnecessary recalculation on unrelated state updates
   const offset = useMemo(() => page * pageSize, [page, pageSize]);
 
@@ -123,6 +132,7 @@ export default function Home() {
                 <TabsList className="mb-4">
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
+                  <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
                 </TabsList>
                 <TabsContent value="cwe" className="h-full"><CWETable /></TabsContent>
                 <TabsContent value="cve" className="h-full">
@@ -151,6 +161,19 @@ export default function Home() {
                           onPageSizeChange={setPageSize}
                           searchQuery={searchQuery}
                         />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                <TabsContent value="sysmon" className="h-full">
+                  <Card className="h-full flex flex-col">
+                    <CardHeader>
+                      <CardTitle>System Monitor</CardTitle>
+                      <CardDescription>View system performance metrics</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Suspense>
+                        <SysMonitor />
                       </Suspense>
                     </CardContent>
                   </Card>

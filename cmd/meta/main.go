@@ -215,16 +215,23 @@ func recoverSession(jobController *job.Controller, sessionManager *session.Manag
 }
 
 func main() {
+
 	// Get process ID from environment or use default
 	processID := os.Getenv("PROCESS_ID")
 	if processID == "" {
 		processID = "meta"
 	}
 
+	// Log all environment variables for debug
+	fmt.Fprintf(os.Stderr, "[meta] ENV: PROCESS_ID=%s SESSION_DB_PATH=%s PWD=%s\n", os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"), os.Getenv("PWD"))
+	for _, e := range os.Environ() {
+		fmt.Fprintf(os.Stderr, "[meta] ENV: %s\n", e)
+	}
+
 	// Set up logging using common subprocess framework
 	logger, err := subprocess.SetupLogging(processID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to setup logging: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[meta] Failed to setup logging: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -233,13 +240,21 @@ func main() {
 	if sessionDBPath == "" {
 		sessionDBPath = DefaultSessionDBPath
 	}
+	logger.Info("[meta] Using session DB path: %s", sessionDBPath)
+	if _, err := os.Stat(sessionDBPath); err == nil {
+		logger.Info("[meta] Session DB file exists: %s", sessionDBPath)
+	} else {
+		logger.Warn("[meta] Session DB file does not exist or cannot stat: %s (err=%v)", sessionDBPath, err)
+	}
 
 	// Create session manager
+	logger.Info("[meta] Creating session manager...")
 	sessionManager, err := session.NewManager(sessionDBPath, logger)
 	if err != nil {
-		logger.Error("Failed to create session manager: %v", err)
+		logger.Error("[meta] Failed to create session manager: %v", err)
 		os.Exit(1)
 	}
+	logger.Info("[meta] Session manager created successfully")
 	defer sessionManager.Close()
 
 	// Create subprocess instance
@@ -271,7 +286,7 @@ func main() {
 	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobController, logger))
 	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobController, logger))
 
-	logger.Info("CVE meta service started - orchestrates local and remote")
+	logger.Info("[meta] CVE meta service started - orchestrates local and remote")
 
 	// --- CWE Import Control ---
 	go func() {
