@@ -7,6 +7,7 @@ import time
 import shutil
 import subprocess
 from tests.helpers import AccessClient
+import inspect
 
 
 # Global logs directory for all tests
@@ -172,3 +173,38 @@ def access_service(package_binaries, setup_logs_directory):
         log.write(f"Process stopped at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     print(f"  ✓ Broker shutdown complete")
+
+
+def pytest_addoption(parser):
+    """Add custom options to pytest."""
+    parser.addoption(
+        "--list-tests",
+        action="store_true",
+        default=False,
+        help="List all available integration tests and exit."
+    )
+    parser.addoption(
+        "--select-tests",
+        action="store",
+        default=None,
+        help="Comma-separated list of test names to run."
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test collection based on user options."""
+    if config.getoption("--list-tests"):
+        print("\nAvailable integration tests:")
+        for item in items:
+            print(f"- {item.nodeid}")
+        pytest.exit("Listed all tests.")
+
+    selected_tests = config.getoption("--select-tests")
+    if selected_tests:
+        selected_tests = set(selected_tests.split(","))
+        selected_items = [item for item in items if item.name in selected_tests]
+
+        if not selected_items:
+            pytest.exit("No matching tests found for the given selection.")
+
+        items[:] = selected_items
