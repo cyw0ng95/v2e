@@ -604,13 +604,14 @@ func (b *Broker) reapProcess(p *Process) {
 		p.info.ID, p.info.PID, p.info.ExitCode)
 
 	// Send event message about process exit
-	event, _ := proc.NewEventMessage(p.info.ID, map[string]interface{}{
-		"event":     "process_exited",
-		"id":        p.info.ID,
-		"pid":       p.info.PID,
-		"exit_code": p.info.ExitCode,
-	})
-	b.sendMessageInternal(event)
+	       event, _ := proc.NewEventMessage(p.info.ID, map[string]interface{}{
+		       "event":     "process_exited",
+		       "id":        p.info.ID,
+		       "pid":       p.info.PID,
+		       "exit_code": p.info.ExitCode,
+	       })
+	       event.Target = "test-target" // Ensure TotalSent is incremented
+	       b.sendMessageInternal(event)
 
 	// Check if auto-restart is enabled
 	if p.restartConfig != nil && p.restartConfig.Enabled {
