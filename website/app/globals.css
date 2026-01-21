@@ -79,6 +79,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Height reserved for top header / toolbar (adjust as needed) */
+  --app-header-height: 96px;
 }
 
 .dark {
@@ -144,8 +146,19 @@ html, body, #__next {
     @apply w-full h-full overflow-auto;
   }
 
-  .card {
-    @apply bg-card text-card-foreground rounded-lg shadow-sm border border-border p-4;
+  [data-slot="card"] {
+    @apply bg-card text-card-foreground rounded-lg shadow-sm border border-border p-4 flex flex-col overflow-hidden;
+    max-height: calc(100vh - var(--app-header-height));
+  }
+
+  /* Scrollable area inside a card that will never exceed its parent card */
+  [data-slot="card-content"] {
+    @apply overflow-auto flex-1 px-6;
+  }
+
+  /* Constrain CWE table list to viewport height (subtract header + UI chrome) */
+  .cwe-table-content {
+    max-height: calc(100vh - var(--app-header-height) - 160px);
   }
 
   .card-header {

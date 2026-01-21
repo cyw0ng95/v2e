@@ -751,9 +751,9 @@ func TestBroker_MessageStats_ConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < messagesPerGoroutine; j++ {
-				   msg, _ := proc.NewRequestMessage(fmt.Sprintf("req-%d-%d", id, j), nil)
-				   msg.Target = "test-target"
-				   broker.SendMessage(msg)
+				msg, _ := proc.NewRequestMessage(fmt.Sprintf("req-%d-%d", id, j), nil)
+				msg.Target = "test-target"
+				broker.SendMessage(msg)
 			}
 		}(i)
 	}
@@ -920,24 +920,24 @@ func TestHandleRPCGetMessageStats(t *testing.T) {
 		t.Errorf("Expected target 'test-caller', got %s", respMsg.Target)
 	}
 
-	       // Parse the response payload as a map
-	       var payload map[string]interface{}
-	       if err := respMsg.UnmarshalPayload(&payload); err != nil {
-		       t.Fatalf("Failed to unmarshal payload: %v", err)
-	       }
+	// Parse the response payload as a map
+	var payload map[string]interface{}
+	if err := respMsg.UnmarshalPayload(&payload); err != nil {
+		t.Fatalf("Failed to unmarshal payload: %v", err)
+	}
 
-	       // Extract 'total' sub-map and check TotalSent
-	       total, ok := payload["total"].(map[string]interface{})
-	       if !ok {
-		       t.Fatalf("Response payload missing 'total' field or wrong type")
-	       }
-	       totalSent, ok := total["total_sent"].(float64)
-	       if !ok {
-		       t.Fatalf("Expected total_sent to be float64, got %T", total["total_sent"])
-	       }
-	       if totalSent < 1 {
-		       t.Errorf("Expected TotalSent >= 1, got %v", totalSent)
-	       }
+	// Extract 'total' sub-map and check TotalSent
+	total, ok := payload["total"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Response payload missing 'total' field or wrong type")
+	}
+	totalSent, ok := total["total_sent"].(float64)
+	if !ok {
+		t.Fatalf("Expected total_sent to be float64, got %T", total["total_sent"])
+	}
+	if totalSent < 1 {
+		t.Errorf("Expected TotalSent >= 1, got %v", totalSent)
+	}
 }
 
 func TestHandleRPCGetMessageCount(t *testing.T) {

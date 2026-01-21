@@ -64,7 +64,7 @@ export default function Home() {
       <div className="h-full flex flex-col md:flex-row">
         {/* Left Sidebar */}
         <aside className="w-full md:w-1/5 shrink-0 bg-muted h-full flex flex-col">
-          <div className="sticky top-0 left-0 h-screen p-6 space-y-4">
+          <div className="sticky top-0 left-0 bottom-0 p-6 space-y-4 overflow-auto">
             <div className="space-y-2">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">v2e</h1>
               <p className="text-sm text-muted-foreground">CVE Management</p>

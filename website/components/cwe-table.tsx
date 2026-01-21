@@ -9,28 +9,10 @@ const PAGE_SIZE = 10;
 export function CWETable() {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(10);
+  // Fixed page size: show 20 items per page
+  const [pageSize, setPageSize] = useState(20);
   const [detailCWE, setDetailCWE] = useState<any | null>(null);
   const tableRef = React.useRef<HTMLDivElement>(null);
-
-  // Adaptive page size based on available height
-  useEffect(() => {
-    function updatePageSize() {
-      if (tableRef.current) {
-        // Use the height of the CardContent (table container) for calculation
-        const content = tableRef.current.querySelector('.cwe-table-content') as HTMLElement | null;
-        if (content) {
-          const rowHeight = 36; // px, estimate per row
-          const available = content.clientHeight;
-          const rows = Math.max(5, Math.floor(available / rowHeight));
-          setPageSize(rows);
-        }
-      }
-    }
-    updatePageSize();
-    window.addEventListener("resize", updatePageSize);
-    return () => window.removeEventListener("resize", updatePageSize);
-  }, []);
 
   const { data, isLoading } = useCWEList({ offset: page * pageSize, limit: pageSize, search });
   // Map backend CWE items to a plain object for table display
@@ -70,7 +52,7 @@ export function CWETable() {
           />
         </div>
       </CardHeader>
-      <CardContent className="flex-1 cwe-table-content">
+      <CardContent className="flex-1 min-h-0 overflow-auto cwe-table-content">
         {isLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (

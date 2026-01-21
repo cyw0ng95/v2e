@@ -31,7 +31,7 @@ export default function RootLayout({
       >
         <Providers>
           <div className="min-h-screen min-w-screen flex flex-col bg-background">
-            <main className="w-full h-full container overflow-auto">{children}</main>
+            <main className="w-full h-full overflow-auto">{children}</main>
             <Toaster />
           </div>
         </Providers>
