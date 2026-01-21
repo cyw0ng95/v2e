@@ -38,6 +38,15 @@ const CWETable = dynamic(() => import('@/components/cwe-table').then(mod => mod.
   ),
 });
 
+const CWEViews = dynamic(() => import('@/components/cwe-views').then(mod => mod.CWEViews), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 const SysMonitor = dynamic(() => import('@/components/sysmon-table').then(mod => mod.SysMonitor), {
   ssr: false,
   loading: () => (
@@ -130,6 +139,7 @@ export default function Home() {
               <Tabs value={tab} onValueChange={setTab} className="w-full h-full flex flex-col">
                 <TabsList className="mb-4">
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
+                  <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
                 </TabsList>
@@ -138,6 +148,14 @@ export default function Home() {
                   <div className="h-full flex flex-col">
                     <div className="flex-1 min-h-0 overflow-auto">
                       <CWETable />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="cweviews" className="h-full">
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <CWEViews />
                     </div>
                   </div>
                 </TabsContent>

@@ -152,6 +152,11 @@ func createFetchViewsHandler() subprocess.Handler {
 			if view.ID == "" {
 				view.ID = strings.TrimSuffix(filepath.Base(f.Name), filepath.Ext(f.Name))
 			}
+
+			// Skip entries that are just header rows like "view"
+			if strings.ToLower(strings.TrimSpace(view.ID)) == "view" {
+				continue
+			}
 			allViews = append(allViews, view)
 		}
 

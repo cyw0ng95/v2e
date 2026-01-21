@@ -312,6 +312,26 @@ export interface ResumeJobResponse {
 }
 
 // ============================================================================
+// CWE View Job RPC Types
+// ============================================================================
+
+export interface StartCWEViewJobRequest {
+  sessionId?: string;
+  startIndex?: number;
+  resultsPerBatch?: number;
+}
+
+export interface StartCWEViewJobResponse {
+  success: boolean;
+  sessionId: string;
+}
+
+export interface StopCWEViewJobResponse {
+  success: boolean;
+  sessionId?: string;
+}
+
+// ============================================================================
 // Utility Types
 // ============================================================================
 
@@ -491,4 +511,45 @@ export interface ListCWEsResponse {
   offset: number;
   limit: number;
   total: number;
+}
+
+// CWE View Types (from pkg/cwe/views.go)
+export interface CWEViewMember {
+  cweId: string;
+  role?: string;
+}
+
+export interface CWEViewStakeholder {
+  type: string;
+  description?: string;
+}
+
+export interface CWEView {
+  id: string;
+  name?: string;
+  type?: string;
+  status?: string;
+  objective?: string;
+  audience?: CWEViewStakeholder[];
+  members?: CWEViewMember[];
+  references?: Reference[];
+  notes?: Note[];
+  contentHistory?: ContentHistory[];
+  raw?: unknown;
+}
+
+export interface ListCWEViewsRequest {
+  offset?: number;
+  limit?: number;
+}
+
+export interface ListCWEViewsResponse {
+  views: CWEView[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface GetCWEViewResponse {
+  view: CWEView;
 }

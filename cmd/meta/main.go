@@ -27,6 +27,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/job"
 	"github.com/cyw0ng95/v2e/pkg/cve/session"
+	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -267,6 +268,9 @@ func main() {
 	// Create job controller
 	jobController := job.NewController(rpcAdapter, sessionManager, logger)
 
+	// Create CWE job controller (separate controller for view jobs)
+	cweJobController := cwejob.NewController(rpcAdapter, logger)
+
 	// Recover session if needed after restart
 	// This ensures job consistency when the service restarts
 	recoverSession(jobController, sessionManager, logger)
@@ -285,6 +289,10 @@ func main() {
 	sp.RegisterHandler("RPCGetSessionStatus", createGetSessionStatusHandler(sessionManager, logger))
 	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobController, logger))
 	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobController, logger))
+
+	// Register CWE view job RPC handlers
+	sp.RegisterHandler("RPCStartCWEViewJob", createStartCWEViewJobHandler(cweJobController, logger))
+	sp.RegisterHandler("RPCStopCWEViewJob", createStopCWEViewJobHandler(cweJobController, logger))
 
 	logger.Info("[meta] CVE meta service started - orchestrates local and remote")
 
@@ -1068,6 +1076,58 @@ func createPauseJobHandler(jobController *job.Controller, logger *common.Logger)
 
 		logger.Info("RPCPauseJob: Successfully paused job")
 		return respMsg, nil
+	}
+}
+
+// createStartCWEViewJobHandler starts a background job that fetches and saves CWE views
+func createStartCWEViewJobHandler(jobController *cwejob.Controller, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		var req map[string]interface{}
+		if msg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				logger.Error("RPCStartCWEViewJob: failed to parse request: %v", err)
+				return createErrorResponse(msg, "failed to parse request"), nil
+			}
+		}
+
+		sessionID, err := jobController.Start(ctx, req)
+		if err != nil {
+			logger.Error("RPCStartCWEViewJob: failed to start job: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to start job: %v", err)), nil
+		}
+
+		result := map[string]interface{}{"success": true, "session_id": sessionID}
+		data, err := sonic.Marshal(result)
+		if err != nil {
+			logger.Error("RPCStartCWEViewJob: failed to marshal response: %v", err)
+			return createErrorResponse(msg, "failed to marshal response"), nil
+		}
+		return &subprocess.Message{Type: subprocess.MessageTypeResponse, ID: msg.ID, CorrelationID: msg.CorrelationID, Target: msg.Source, Payload: data}, nil
+	}
+}
+
+// createStopCWEViewJobHandler stops a running CWE view job
+func createStopCWEViewJobHandler(jobController *cwejob.Controller, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		var req struct {
+			SessionID string `json:"session_id"`
+		}
+		if msg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				logger.Error("RPCStopCWEViewJob: failed to parse request: %v", err)
+				return createErrorResponse(msg, "failed to parse request"), nil
+			}
+		}
+
+		err := jobController.Stop(ctx, req.SessionID)
+		if err != nil && err != cwejob.ErrJobNotRunning {
+			logger.Error("RPCStopCWEViewJob: failed to stop job: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to stop job: %v", err)), nil
+		}
+
+		result := map[string]interface{}{"success": true, "session_id": req.SessionID}
+		data, _ := sonic.Marshal(result)
+		return &subprocess.Message{Type: subprocess.MessageTypeResponse, ID: msg.ID, CorrelationID: msg.CorrelationID, Target: msg.Source, Payload: data}, nil
 	}
 }
 

@@ -31,6 +31,9 @@ export const queryKeys = {
   session: {
     status: () => ['session', 'status'] as const,
   },
+  cweJob: {
+    status: () => ['cwe', 'job', 'status'] as const,
+  },
   health: () => ['health'] as const,
 };
 
@@ -142,6 +145,7 @@ export function useDeleteCVE() {
 // ============================================================================
 
 import type { CWEItem, ListCWEsRequest, ListCWEsResponse } from './types';
+import type { CWEView, ListCWEViewsRequest, ListCWEViewsResponse, GetCWEViewResponse } from './types';
 
 export function useCWEList(params?: ListCWEsRequest) {
   return useQuery<ListCWEsResponse>({
@@ -164,9 +168,57 @@ export function useCWE(cweId: string) {
       if (response.retcode !== 0) {
         throw new Error(response.message);
       }
-      return response.payload?.cwe;
+      // Backend may return the CWE either as `payload.cwe` or as the CWE object directly.
+      const payload: any = response.payload ?? null;
+      const cwe = payload?.cwe ?? payload;
+      // Ensure we never return `undefined` (React Query requires a non-undefined return)
+      return cwe ?? null;
     },
     enabled: !!cweId,
+  });
+}
+
+// ============================================================================
+// CWE View Queries
+// ============================================================================
+
+export function useCWEViews(params?: ListCWEViewsRequest) {
+  return useQuery<ListCWEViewsResponse>({
+    queryKey: ['cweViews', params?.offset ?? 0, params?.limit ?? 100],
+    queryFn: async () => {
+      const response = await rpcClient.listCWEViews(params?.offset, params?.limit);
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      return response.payload || { views: [], offset: params?.offset || 0, limit: params?.limit || 100, total: 0 };
+    },
+  });
+}
+
+export function useCWEView(id?: string) {
+  return useQuery<CWEView | null>({
+    queryKey: ['cweView', id],
+    queryFn: async () => {
+      if (!id) return null;
+      const response = await rpcClient.getCWEViewByID(id);
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+        // Backend may return the view either as payload.view OR as the payload object itself.
+        const payload: any = response.payload ?? null;
+        let view: CWEView | null = null;
+        if (!payload) {
+          view = null;
+        } else if (payload.view) {
+          view = payload.view as CWEView;
+        } else {
+          // payload might be the view object directly (with keys like id/ID)
+          view = payload as CWEView;
+        }
+
+        return view ?? null;
+    },
+    enabled: !!id,
   });
 }
 
@@ -185,6 +237,20 @@ export function useSessionStatus() {
       return response.payload;
     },
     refetchInterval: 5000, // Refetch every 5 seconds to track progress
+  });
+}
+
+export function useCWEJobStatus() {
+  return useQuery({
+    queryKey: queryKeys.cweJob.status(),
+    queryFn: async () => {
+      const response = await rpcClient.getSessionStatus();
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      return response.payload;
+    },
+    refetchInterval: 5000,
   });
 }
 
@@ -233,6 +299,46 @@ export function useStopSession() {
       // Invalidate session status and CVE list
       queryClient.invalidateQueries({ queryKey: queryKeys.session.status() });
       queryClient.invalidateQueries({ queryKey: queryKeys.cves.all });
+    },
+  });
+}
+
+export function useStartCWEViewJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      sessionId?: string;
+      startIndex?: number;
+      resultsPerBatch?: number;
+    }) => {
+      const response = await rpcClient.startCWEViewJob(
+        params.sessionId,
+        params.startIndex,
+        params.resultsPerBatch
+      );
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      return response.payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.cweJob.status() });
+    },
+  });
+}
+
+export function useStopCWEViewJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (sessionId?: string) => {
+      const response = await rpcClient.stopCWEViewJob(sessionId);
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      return response.payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.cweJob.status() });
     },
   });
 }
