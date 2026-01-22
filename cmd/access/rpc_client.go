@@ -11,10 +11,28 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
+type requestEntry struct {
+	resp chan *subprocess.Message
+	once sync.Once
+}
+
+func (e *requestEntry) signal(m *subprocess.Message) {
+	e.once.Do(func() {
+		e.resp <- m
+		close(e.resp)
+	})
+}
+
+func (e *requestEntry) close() {
+	e.once.Do(func() {
+		close(e.resp)
+	})
+}
+
 // RPCClient handles RPC communication with the broker
 type RPCClient struct {
 	sp              *subprocess.Subprocess
-	pendingRequests map[string]chan *subprocess.Message
+	pendingRequests map[string]*requestEntry
 	mu              sync.RWMutex
 	correlationSeq  uint64
 	// per-client RPC timeout (configurable)
@@ -26,7 +44,7 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 	sp := subprocess.New(processID)
 	client := &RPCClient{
 		sp:              sp,
-		pendingRequests: make(map[string]chan *subprocess.Message),
+		pendingRequests: make(map[string]*requestEntry),
 		rpcTimeout:      rpcTimeout,
 	}
 
@@ -39,20 +57,16 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 
 // handleResponse handles response messages from the broker
 func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	// Look up the pending request
+	// Look up the pending requestEntry
 	c.mu.Lock()
-	respChan, exists := c.pendingRequests[msg.CorrelationID]
-	if exists {
+	entry := c.pendingRequests[msg.CorrelationID]
+	if entry != nil {
 		delete(c.pendingRequests, msg.CorrelationID)
 	}
 	c.mu.Unlock()
 
-	if exists {
-		select {
-		case respChan <- msg:
-		case <-time.After(1 * time.Second):
-			// Timeout sending to channel
-		}
+	if entry != nil {
+		entry.signal(msg)
 	}
 
 	return nil, nil // Don't send another response
@@ -77,20 +91,21 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 	correlationID := fmt.Sprintf("access-rpc-%d", c.correlationSeq)
 	c.mu.Unlock()
 
-	// Create response channel
-	respChan := make(chan *subprocess.Message, 1)
+	// Create response channel and entry
+	resp := make(chan *subprocess.Message, 1)
+	entry := &requestEntry{resp: resp}
 
 	// Register pending request
 	c.mu.Lock()
-	c.pendingRequests[correlationID] = respChan
+	c.pendingRequests[correlationID] = entry
 	c.mu.Unlock()
 
-	// Clean up on exit
+	// Clean up on exit: remove from map and ensure channel is closed exactly once
 	defer func() {
 		c.mu.Lock()
 		delete(c.pendingRequests, correlationID)
 		c.mu.Unlock()
-		close(respChan)
+		entry.close()
 	}()
 
 	// Create request message
@@ -118,7 +133,7 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 
 	// Wait for response with timeout (use configured rpcTimeout)
 	select {
-	case response := <-respChan:
+	case response := <-resp:
 		return response, nil
 	case <-time.After(c.rpcTimeout):
 		return nil, fmt.Errorf("RPC timeout waiting for response")

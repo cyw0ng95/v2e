@@ -120,7 +120,7 @@ func TestRegisterHandlers_RPCForwarding(t *testing.T) {
 	}
 	rpcClient := &RPCClient{
 		sp:              mockSubprocess,
-		pendingRequests: make(map[string]chan *subprocess.Message),
+		pendingRequests: make(map[string]*requestEntry),
 		rpcTimeout:      5 * time.Second,
 	}
 	registerHandlers(rg, rpcClient, 5)

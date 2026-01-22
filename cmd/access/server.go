@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -56,7 +57,7 @@ func setupRouter(rpcClient *RPCClient, rpcTimeoutSec int, staticDir string) *gin
 			}
 
 			// Clean requested path and map to filesystem
-			reqPath := filepath.Clean(c.Request.URL.Path)
+			reqPath := path.Clean(c.Request.URL.Path)
 			if reqPath == "." || reqPath == "/" {
 				c.File(filepath.Join(outDir, "index.html"))
 				return
