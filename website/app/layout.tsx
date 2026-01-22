@@ -27,11 +27,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased transition-colors duration-300 ease-in-out`}
       >
         <Providers>
-          {children}
-          <Toaster />
+          <div className="min-h-screen min-w-screen flex flex-col bg-background">
+            <main className="w-full h-full overflow-auto">{children}</main>
+            <Toaster />
+          </div>
         </Providers>
       </body>
     </html>

@@ -21,7 +21,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -34,7 +34,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -43,17 +43,17 @@ def cleanup_session(access_service):
 
 
 def get_cve_meta_pid(package_binaries):
-    """Get the PID of the cve-meta process by reading the package directory."""
+    """Get the PID of the meta process by reading the package directory."""
     
-    # Find cve-meta process
+    # Find meta process
     try:
-        result = sp.run(['pgrep', '-f', 'cve-meta'], capture_output=True, text=True)
+        result = sp.run(['pgrep', '-f', 'meta'], capture_output=True, text=True)
         if result.returncode == 0 and result.stdout.strip():
             pids = result.stdout.strip().split('\n')
             # Return the first matching PID
             return int(pids[0])
     except Exception as e:
-        print(f"Failed to find cve-meta process: {e}")
+        print(f"Failed to find meta process: {e}")
     
     return None
 
@@ -72,7 +72,7 @@ class TestSessionPersistence:
         Steps:
         1. Start a session
         2. Verify it's running
-        3. Kill cve-meta process (broker will restart it)
+        3. Kill meta process (broker will restart it)
         4. Wait for restart
         5. Verify session is still running
         6. Verify job continues to make progress
@@ -84,7 +84,7 @@ class TestSessionPersistence:
         # Start a session
         start_response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "persistence-test-running",
                 "start_index": 0,
@@ -106,7 +106,7 @@ class TestSessionPersistence:
         # Get status before restart
         status_before = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -116,31 +116,31 @@ class TestSessionPersistence:
         
         print(f"  ✓ Session status before restart: state={status_before['payload']['state']}")
         
-        print("\n  → Step 3: Killing cve-meta process to simulate crash")
+        print("\n  → Step 3: Killing meta process to simulate crash")
         
-        # Find and kill cve-meta process
+        # Find and kill meta process
         pid = get_cve_meta_pid(package_binaries)
         if pid:
-            print(f"  → Found cve-meta process with PID: {pid}")
+            print(f"  → Found meta process with PID: {pid}")
             try:
                 os.kill(pid, signal.SIGTERM)
-                print("  ✓ Sent SIGTERM to cve-meta")
+                print("  ✓ Sent SIGTERM to meta")
             except Exception as e:
                 print(f"  ! Failed to kill process: {e}")
         else:
-            pytest.skip("Could not find cve-meta process to kill")
+            pytest.skip("Could not find meta process to kill")
         
         # Wait for broker to detect crash and restart
-        print("\n  → Step 4: Waiting for cve-meta to restart (broker will auto-restart it)")
+        print("\n  → Step 4: Waiting for meta to restart (broker will auto-restart it)")
         time.sleep(5)
         
-        # Verify cve-meta is running again
+        # Verify meta is running again
         new_pid = get_cve_meta_pid(package_binaries)
         if new_pid:
-            print(f"  ✓ cve-meta restarted with PID: {new_pid}")
+            print(f"  ✓ meta restarted with PID: {new_pid}")
             assert new_pid != pid, "PID should be different after restart"
         else:
-            pytest.fail("cve-meta did not restart")
+            pytest.fail("meta did not restart")
         
         print("\n  → Step 5: Checking session status after restart")
         
@@ -150,7 +150,7 @@ class TestSessionPersistence:
             try:
                 status_after = access.rpc_call(
                     method="RPCGetSessionStatus",
-                    target="cve-meta",
+                    target="meta",
                     params={}
                 )
                 
@@ -180,7 +180,7 @@ class TestSessionPersistence:
             print("  → Session was paused after crash, resuming it manually...")
             resume_response = access.rpc_call(
                 method="RPCResumeJob",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             assert resume_response["retcode"] == 0
@@ -193,7 +193,7 @@ class TestSessionPersistence:
         # Check progress again
         status_final = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -220,7 +220,7 @@ class TestSessionPersistence:
         Steps:
         1. Start a session
         2. Pause it
-        3. Kill cve-meta process (broker will restart it)
+        3. Kill meta process (broker will restart it)
         4. Verify session persists with all data intact
         5. If needed, manually pause again
         """
@@ -231,7 +231,7 @@ class TestSessionPersistence:
         # Start a session
         start_response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "persistence-test-paused",
                 "start_index": 0,
@@ -249,7 +249,7 @@ class TestSessionPersistence:
         # Pause the session
         pause_response = access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -262,7 +262,7 @@ class TestSessionPersistence:
         # Record the state before restart
         status_before_kill = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         fetched_before = status_before_kill["payload"].get("fetched_count", 0)
@@ -270,30 +270,30 @@ class TestSessionPersistence:
         
         print(f"  → Status before kill: fetched={fetched_before}, stored={stored_before}, state={status_before_kill['payload']['state']}")
         
-        print("\n  → Step 3: Killing cve-meta process to simulate crash")
+        print("\n  → Step 3: Killing meta process to simulate crash")
         
-        # Find and kill cve-meta process
+        # Find and kill meta process
         pid = get_cve_meta_pid(package_binaries)
         if pid:
-            print(f"  → Found cve-meta process with PID: {pid}")
+            print(f"  → Found meta process with PID: {pid}")
             try:
                 os.kill(pid, signal.SIGTERM)
-                print("  ✓ Sent SIGTERM to cve-meta")
+                print("  ✓ Sent SIGTERM to meta")
             except Exception as e:
                 print(f"  ! Failed to kill process: {e}")
         else:
-            pytest.skip("Could not find cve-meta process to kill")
+            pytest.skip("Could not find meta process to kill")
         
         # Wait for broker to detect crash and restart
-        print("\n  → Step 4: Waiting for cve-meta to restart")
+        print("\n  → Step 4: Waiting for meta to restart")
         time.sleep(5)
         
-        # Verify cve-meta is running again
+        # Verify meta is running again
         new_pid = get_cve_meta_pid(package_binaries)
         if new_pid:
-            print(f"  ✓ cve-meta restarted with PID: {new_pid}")
+            print(f"  ✓ meta restarted with PID: {new_pid}")
         else:
-            pytest.fail("cve-meta did not restart")
+            pytest.fail("meta did not restart")
         
         print("\n  → Step 5: Verifying session persisted")
         
@@ -303,7 +303,7 @@ class TestSessionPersistence:
             try:
                 status_after = access.rpc_call(
                     method="RPCGetSessionStatus",
-                    target="cve-meta",
+                    target="meta",
                     params={}
                 )
                 

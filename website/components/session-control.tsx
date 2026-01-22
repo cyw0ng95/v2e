@@ -17,7 +17,7 @@ import {
   usePauseJob,
   useResumeJob,
 } from "@/lib/hooks";
-import { Play, Square, Pause, RotateCw } from "lucide-react";
+import { PlayIcon as Play, SquareIcon as Square, PauseIcon as Pause, RotateCwIcon as RotateCw } from '@/components/icons';
 import { toast } from "sonner";
 
 export function SessionControl() {

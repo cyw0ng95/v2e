@@ -632,6 +632,11 @@ func TestBroker_GetMessageStats(t *testing.T) {
 	eventMsg, _ := proc.NewEventMessage("event-1", nil)
 	errorMsg := proc.NewErrorMessage("err-1", fmt.Errorf("test error"))
 
+	reqMsg.Target = "test-target"
+	respMsg.Target = "test-target"
+	eventMsg.Target = "test-target"
+	errorMsg.Target = "test-target"
+
 	broker.SendMessage(reqMsg)
 	broker.SendMessage(respMsg)
 	broker.SendMessage(eventMsg)
@@ -747,6 +752,7 @@ func TestBroker_MessageStats_ConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < messagesPerGoroutine; j++ {
 				msg, _ := proc.NewRequestMessage(fmt.Sprintf("req-%d-%d", id, j), nil)
+				msg.Target = "test-target"
 				broker.SendMessage(msg)
 			}
 		}(i)
@@ -885,6 +891,7 @@ func TestHandleRPCGetMessageStats(t *testing.T) {
 
 	// Send some messages to generate stats
 	reqMsg, _ := proc.NewRequestMessage("test-req", nil)
+	reqMsg.Target = "test-target"
 	broker.SendMessage(reqMsg)
 
 	// Create RPC request for GetMessageStats
@@ -913,15 +920,23 @@ func TestHandleRPCGetMessageStats(t *testing.T) {
 		t.Errorf("Expected target 'test-caller', got %s", respMsg.Target)
 	}
 
-	// Parse the response payload
-	var stats MessageStats
-	if err := respMsg.UnmarshalPayload(&stats); err != nil {
-		t.Fatalf("Failed to unmarshal stats: %v", err)
+	// Parse the response payload as a map
+	var payload map[string]interface{}
+	if err := respMsg.UnmarshalPayload(&payload); err != nil {
+		t.Fatalf("Failed to unmarshal payload: %v", err)
 	}
 
-	// Verify stats contain expected data
-	if stats.TotalSent < 1 {
-		t.Errorf("Expected TotalSent >= 1, got %d", stats.TotalSent)
+	// Extract 'total' sub-map and check TotalSent
+	total, ok := payload["total"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Response payload missing 'total' field or wrong type")
+	}
+	totalSent, ok := total["total_sent"].(float64)
+	if !ok {
+		t.Fatalf("Expected total_sent to be float64, got %T", total["total_sent"])
+	}
+	if totalSent < 1 {
+		t.Errorf("Expected TotalSent >= 1, got %v", totalSent)
 	}
 }
 

@@ -18,7 +18,11 @@ func BenchmarkControllerNew(b *testing.B) {
 	logger := common.NewLogger(os.Stderr, "bench", common.InfoLevel)
 	dbPath := filepath.Join(b.TempDir(), "bench_controller.db")
 
-	sessionManager, err := session.NewManager(dbPath)
+	// Add logger setup for NewManager calls
+	logger = common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	// Update NewManager calls to include logger
+	sessionManager, err := session.NewManager(dbPath, logger)
 	if err != nil {
 		b.Fatalf("Failed to create session manager: %v", err)
 	}
@@ -54,7 +58,7 @@ func BenchmarkRPCInvoke(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := mockRPC.InvokeRPC(ctx, "cve-remote", "RPCFetchCVEs", params)
+		_, err := mockRPC.InvokeRPC(ctx, "remote", "RPCFetchCVEs", params)
 		if err != nil {
 			b.Fatalf("RPC invocation failed: %v", err)
 		}

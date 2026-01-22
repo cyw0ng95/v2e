@@ -79,6 +79,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Height reserved for top header / toolbar (adjust as needed) */
+  --app-header-height: 96px;
 }
 
 .dark {
@@ -117,9 +119,57 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/50 transition-all duration-300;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Ensure the app root and body fill the viewport so layout can stretch */
+/* Ensure the app root and body fill the viewport exactly and prevent outer overflow */
+html, body, #__next {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+@layer components {
+  /* Full-viewport container used for dashboard pages */
+  .container {
+    @apply w-full h-full mx-auto px-4 sm:px-6 lg:px-8;
+    max-width: none;
+  }
+
+  /* main area should scroll internally when content overflows */
+  .app-main-scrollable {
+    @apply w-full h-full overflow-auto;
+  }
+
+  [data-slot="card"] {
+    @apply bg-card text-card-foreground rounded-lg shadow-sm border border-border p-4 flex flex-col overflow-hidden;
+    max-height: calc(100vh - var(--app-header-height));
+  }
+
+  /* Scrollable area inside a card that will never exceed its parent card */
+  [data-slot="card-content"] {
+    @apply overflow-auto flex-1 px-6;
+  }
+
+  /* Constrain CWE table list to viewport height (subtract header + UI chrome) */
+  .cwe-table-content {
+    max-height: calc(100vh - var(--app-header-height) - 160px);
+  }
+
+  .card-header {
+    @apply flex items-center justify-between pb-2 mb-4 border-b border-border;
+  }
+
+  .card-title {
+    @apply text-lg font-semibold;
+  }
+
+  .controls {
+    @apply flex items-center gap-4;
   }
 }

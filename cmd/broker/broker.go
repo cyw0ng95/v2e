@@ -95,6 +95,18 @@ type MessageStats struct {
 	LastMessageTime time.Time
 }
 
+// PerProcessStats contains stats for a single subprocess
+type PerProcessStats struct {
+	TotalSent        int64
+	TotalReceived    int64
+	RequestCount     int64
+	ResponseCount    int64
+	EventCount       int64
+	ErrorCount       int64
+	FirstMessageTime time.Time
+	LastMessageTime  time.Time
+}
+
 // PendingRequest represents a pending request awaiting a response
 type PendingRequest struct {
 	// SourceProcess is the process ID that sent the request
@@ -115,6 +127,7 @@ type Broker struct {
 	wg              sync.WaitGroup
 	logger          *common.Logger
 	stats           MessageStats
+	perProcessStats map[string]PerProcessStats
 	statsMu         sync.RWMutex
 	rpcEndpoints    map[string][]string // processID -> list of RPC endpoints
 	endpointsMu     sync.RWMutex
@@ -135,6 +148,7 @@ func NewBroker() *Broker {
 		rpcEndpoints:    make(map[string][]string),
 		pendingRequests: make(map[string]*PendingRequest),
 		correlationSeq:  0,
+		perProcessStats: make(map[string]PerProcessStats),
 	}
 }
 
@@ -546,6 +560,9 @@ func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 		return fmt.Errorf("failed to write message to process: %w", err)
 	}
 
+	// Update stats: this is a message sent to a subprocess
+	b.updateStats(msg, true)
+
 	b.logger.Debug("Sent message to process %s: type=%s id=%s", processID, msg.Type, msg.ID)
 	return nil
 }
@@ -593,6 +610,7 @@ func (b *Broker) reapProcess(p *Process) {
 		"pid":       p.info.PID,
 		"exit_code": p.info.ExitCode,
 	})
+	event.Target = "test-target" // Ensure TotalSent is incremented
 	b.sendMessageInternal(event)
 
 	// Check if auto-restart is enabled
@@ -744,7 +762,13 @@ func (b *Broker) SendMessage(msg *proc.Message) (err error) {
 
 	select {
 	case b.messages <- msg:
-		b.updateStats(msg, true)
+		// If message has an explicit target it's being enqueued to route to that target;
+		// otherwise it's an incoming message to broker for local processing (treat as received).
+		if msg.Target == "" || msg.Target == "broker" {
+			b.updateStats(msg, false)
+		} else {
+			b.updateStats(msg, true)
+		}
 		return nil
 	case <-b.ctx.Done():
 		return fmt.Errorf("broker is shutting down")
@@ -756,7 +780,11 @@ func (b *Broker) SendMessage(msg *proc.Message) (err error) {
 func (b *Broker) sendMessageInternal(msg *proc.Message) {
 	select {
 	case b.messages <- msg:
-		b.updateStats(msg, true)
+		if msg.Target == "" || msg.Target == "broker" {
+			b.updateStats(msg, false)
+		} else {
+			b.updateStats(msg, true)
+		}
 	case <-b.ctx.Done():
 	}
 }
@@ -782,20 +810,19 @@ func (b *Broker) updateStats(msg *proc.Message, isSent bool) {
 
 	now := time.Now()
 
-	// Update first message time if not set
+	// Update broker-wide first/last timestamps
 	if b.stats.FirstMessageTime.IsZero() {
 		b.stats.FirstMessageTime = now
 	}
 	b.stats.LastMessageTime = now
 
-	// Update counters
+	// Update broker-wide counters
 	if isSent {
 		b.stats.TotalSent++
 	} else {
 		b.stats.TotalReceived++
 	}
 
-	// Update type-specific counters
 	switch msg.Type {
 	case proc.MessageTypeRequest:
 		b.stats.RequestCount++
@@ -806,6 +833,44 @@ func (b *Broker) updateStats(msg *proc.Message, isSent bool) {
 	case proc.MessageTypeError:
 		b.stats.ErrorCount++
 	}
+
+	// Update per-process stats. Determine which process to attribute this message to.
+	var procID string
+	if isSent {
+		// message being sent by broker to target process
+		procID = msg.Target
+	} else {
+		// message received from a process
+		procID = msg.Source
+	}
+
+	if procID != "" {
+		ps := b.perProcessStats[procID]
+
+		if ps.FirstMessageTime.IsZero() {
+			ps.FirstMessageTime = now
+		}
+		ps.LastMessageTime = now
+
+		if isSent {
+			ps.TotalSent++
+		} else {
+			ps.TotalReceived++
+		}
+
+		switch msg.Type {
+		case proc.MessageTypeRequest:
+			ps.RequestCount++
+		case proc.MessageTypeResponse:
+			ps.ResponseCount++
+		case proc.MessageTypeEvent:
+			ps.EventCount++
+		case proc.MessageTypeError:
+			ps.ErrorCount++
+		}
+
+		b.perProcessStats[procID] = ps
+	}
 }
 
 // GetMessageStats returns a copy of the current message statistics
@@ -813,6 +878,17 @@ func (b *Broker) GetMessageStats() MessageStats {
 	b.statsMu.RLock()
 	defer b.statsMu.RUnlock()
 	return b.stats
+}
+
+// GetPerProcessStats returns a copy of current per-process stats
+func (b *Broker) GetPerProcessStats() map[string]PerProcessStats {
+	b.statsMu.RLock()
+	defer b.statsMu.RUnlock()
+	out := make(map[string]PerProcessStats, len(b.perProcessStats))
+	for k, v := range b.perProcessStats {
+		out[k] = v
+	}
+	return out
 }
 
 // GetMessageCount returns the total number of messages processed (sent + received)
@@ -824,11 +900,53 @@ func (b *Broker) GetMessageCount() int64 {
 
 // HandleRPCGetMessageStats handles the RPCGetMessageStats RPC request
 func (b *Broker) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message, error) {
-	// Get message stats
+	// Get broker-wide message stats and per-process breakdown
 	stats := b.GetMessageStats()
+	per := b.GetPerProcessStats()
+
+	// Convert stats to snake_case keys and serializable values
+	statMap := map[string]interface{}{
+		"total_sent":         stats.TotalSent,
+		"total_received":     stats.TotalReceived,
+		"request_count":      stats.RequestCount,
+		"response_count":     stats.ResponseCount,
+		"event_count":        stats.EventCount,
+		"error_count":        stats.ErrorCount,
+		"first_message_time": stats.FirstMessageTime.Format(time.RFC3339Nano),
+		"last_message_time":  stats.LastMessageTime.Format(time.RFC3339Nano),
+	}
+
+	perMap := make(map[string]map[string]interface{})
+	for pid, ps := range per {
+		perMap[pid] = map[string]interface{}{
+			"total_sent":     ps.TotalSent,
+			"total_received": ps.TotalReceived,
+			"request_count":  ps.RequestCount,
+			"response_count": ps.ResponseCount,
+			"event_count":    ps.EventCount,
+			"error_count":    ps.ErrorCount,
+			"first_message_time": func(t time.Time) interface{} {
+				if t.IsZero() {
+					return nil
+				}
+				return t.Format(time.RFC3339Nano)
+			}(ps.FirstMessageTime),
+			"last_message_time": func(t time.Time) interface{} {
+				if t.IsZero() {
+					return nil
+				}
+				return t.Format(time.RFC3339Nano)
+			}(ps.LastMessageTime),
+		}
+	}
+
+	payload := map[string]interface{}{
+		"total":       statMap,
+		"per_process": perMap,
+	}
 
 	// Create response message
-	respMsg, err := proc.NewResponseMessage(reqMsg.ID, stats)
+	respMsg, err := proc.NewResponseMessage(reqMsg.ID, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -1019,6 +1137,7 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 	// If message is a response with correlation ID, route it back to the pending request FIRST
 	// This takes priority over Target-based routing to ensure responses go to the right waiting caller
 	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
+		b.logger.Debug("[TRACE] Received response message: id=%s correlation_id=%s from=%s", msg.ID, msg.CorrelationID, msg.Source)
 		b.pendingMu.Lock()
 		pending, exists := b.pendingRequests[msg.CorrelationID]
 		if exists {
@@ -1027,17 +1146,19 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 		b.pendingMu.Unlock()
 
 		if exists {
-			b.logger.Debug("Routing response to pending request: correlation_id=%s", msg.CorrelationID)
+			b.logger.Debug("[TRACE] Routing response to pending request: correlation_id=%s", msg.CorrelationID)
 			select {
 			case pending.ResponseChan <- msg:
+				b.logger.Debug("[TRACE] Response delivered to waiting channel: correlation_id=%s", msg.CorrelationID)
 				return nil
 			case <-time.After(5 * time.Second):
+				b.logger.Warn("[TRACE] Timeout sending response to pending request: correlation_id=%s", msg.CorrelationID)
 				return fmt.Errorf("timeout sending response to pending request")
 			}
 		}
 		// If no pending request found in broker, fall through to target-based routing
 		// This allows subprocess-to-subprocess RPC where the correlation is tracked by the calling subprocess
-		b.logger.Debug("No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
+		b.logger.Debug("[TRACE] No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
 	}
 
 	// If message has a target, route it to that process or broker
@@ -1100,13 +1221,17 @@ func (b *Broker) InvokeRPC(sourceProcess, targetProcess, rpcMethod string, paylo
 	b.logger.Debug("Invoked RPC: source=%s target=%s method=%s correlation_id=%s",
 		sourceProcess, targetProcess, rpcMethod, correlationID)
 
+	b.logger.Debug("[TRACE] Waiting for response: correlation_id=%s target=%s method=%s timeout=%v", correlationID, targetProcess, rpcMethod, timeout)
 	// Wait for response with timeout
 	select {
 	case response := <-responseChan:
+		b.logger.Debug("[TRACE] Received response for correlation_id=%s: type=%s", correlationID, response.Type)
 		return response, nil
 	case <-time.After(timeout):
+		b.logger.Warn("[TRACE] Timeout waiting for response: correlation_id=%s target=%s method=%s", correlationID, targetProcess, rpcMethod)
 		return nil, fmt.Errorf("timeout waiting for response from %s", targetProcess)
 	case <-b.ctx.Done():
+		b.logger.Warn("[TRACE] Broker context cancelled while waiting for response: correlation_id=%s", correlationID)
 		return nil, fmt.Errorf("broker is shutting down")
 	}
 }

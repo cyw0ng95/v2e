@@ -5,6 +5,78 @@
 
 set -e
 
+# Run Node.js process and broker once, terminate both on Ctrl-C
+run_node_and_broker_once() {
+    # Set flag to skip website build
+    export V2E_SKIP_WEBSITE_BUILD=1
+        # Remove the most recent log file in .build/log if it exists
+        LOG_DIR="$BUILD_DIR/log"
+        if [ -d "$LOG_DIR" ]; then
+            LAST_LOG=$(ls -1t "$LOG_DIR" 2>/dev/null | head -n1)
+            if [ -n "$LAST_LOG" ]; then
+                echo "Removing last log: $LOG_DIR/$LAST_LOG"
+                rm -f "$LOG_DIR/$LAST_LOG"
+            fi
+        fi
+    set +e
+    echo "Checking for running Node.js process in website directory..."
+    NODE_PID=$(pgrep -f "node.*website" || true)
+    if [ -n "$NODE_PID" ]; then
+        echo "Stopping running Node.js process (PID: $NODE_PID)..."
+        kill $NODE_PID
+    else
+        echo "No running Node.js process found in website directory."
+    fi
+
+    # Kill all previous broker and v2e subprocesses from any -r session (before starting new watcher)
+    echo "Killing all previous broker and v2e subprocesses from any -r session..."
+    pkill -f "$PACKAGE_DIR/broker" || true
+    pkill -f "$PACKAGE_DIR/access" || true
+    pkill -f "$PACKAGE_DIR/local" || true
+    pkill -f "$PACKAGE_DIR/meta" || true
+    pkill -f "$PACKAGE_DIR/remote" || true
+    pkill -f "$PACKAGE_DIR/sysmon" || true
+    for i in {1..10}; do
+        BROKER_PROCS=$(pgrep -f "$PACKAGE_DIR/broker")
+        V2E_PROCS=$(pgrep -f "$PACKAGE_DIR/access|$PACKAGE_DIR/local|$PACKAGE_DIR/meta|$PACKAGE_DIR/remote|$PACKAGE_DIR/sysmon")
+        if [ -z "$BROKER_PROCS" ] && [ -z "$V2E_PROCS" ]; then
+            echo "All previous broker and v2e subprocesses stopped (or none found)."
+            break
+        fi
+        echo "Waiting for previous broker and v2e subprocesses to exit... ($i)"
+        sleep 1
+    done
+
+    build_and_package
+    unset V2E_SKIP_WEBSITE_BUILD
+    if [ $? -ne 0 ]; then
+        echo "Error: Build and package failed. Cannot start broker."
+        return 1
+    fi
+
+    echo "Starting Node.js process in website directory..."
+    pushd website > /dev/null
+    npm run dev &
+    NODE_DEV_PID=$!
+    echo "Node.js process started with PID: $NODE_DEV_PID"
+    popd > /dev/null
+
+    echo "[build.sh] Starting broker from $PACKAGE_DIR..."
+    pushd "$PACKAGE_DIR" > /dev/null
+    echo "[build.sh] Launch command: ./broker"
+    ./broker &
+    BROKER_PID=$!
+    echo "[build.sh] Broker started with PID: $BROKER_PID"
+    popd > /dev/null
+
+    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; echo 'Stopping broker and all subprocesses (PID: $BROKER_PID)...'; pkill -TERM -P $BROKER_PID; pkill -f \"$PACKAGE_DIR/broker\"; exit 1" SIGINT
+
+    wait $NODE_DEV_PID
+    wait $BROKER_PID
+
+    set -e
+}
+
 # Configuration
 BUILD_DIR=".build"
 PACKAGE_DIR=".build/package"
@@ -90,6 +162,7 @@ Options:
     -m          Run performance benchmarks and generate report
     -M          Run RPC performance benchmarks via integration tests (integrated metrics)
     -p          Build and package binaries with assets
+    -r          Run Node.js process and broker (for development)
     -v          Enable verbose output
     -h          Show this help message
 
@@ -101,6 +174,7 @@ Examples:
     $0 -m       # Run performance benchmarks
     $0 -M       # Run RPC performance benchmarks
     $0 -p       # Build and package binaries
+    $0 -r       # Run Node.js process and broker
     $0 -t -v    # Run unit tests with verbose output
 EOF
 }
@@ -357,7 +431,8 @@ run_benchmarks() {
         else
             echo "Running go benchmarks..."
             # Run benchmarks with memory allocation stats
-            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... > "$BENCHMARK_OUTPUT"
+            # Use tee to stream output to file (prevents blocking when run non-verbosely)
+            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
         fi
         BENCH_EXIT_CODE=$?
         
@@ -534,6 +609,7 @@ run_rpc_benchmarks() {
     fi
 }
 
+
 # Build and package binaries with assets
 build_and_package() {
     if [ "$VERBOSE" = true ]; then
@@ -563,6 +639,7 @@ build_and_package() {
                     echo "Building $cmd_name..."
                 fi
                 go build -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir"
+                chmod +x "$PACKAGE_DIR/$cmd_name"
             fi
         done
         
@@ -574,56 +651,63 @@ build_and_package() {
             cp config.json "$PACKAGE_DIR/"
         fi
         
+        # Copy CWE raw JSON asset
+        if [ -f "assets/cwe-raw.json" ]; then
+            mkdir -p "$PACKAGE_DIR/assets"
+            cp assets/cwe-raw.json "$PACKAGE_DIR/assets/"
+        fi
+        
         echo "Go binaries packaged successfully"
     else
         echo "No go.mod found. Skipping Go build."
     fi
     
-    # Build and package frontend if website directory exists
-    if [ -d "website" ]; then
-        echo "Building frontend website..."
-        
-        # Check Node.js and npm versions
-        if ! check_node_version; then
-            echo "Warning: Skipping frontend build due to version requirements"
+    # Build and package frontend if website directory exists and not skipped
+    if [ -z "$V2E_SKIP_WEBSITE_BUILD" ]; then
+        if [ -d "website" ]; then
+            echo "Building frontend website..."
+            # Check Node.js and npm versions
+            if ! check_node_version; then
+                echo "Warning: Skipping frontend build due to version requirements"
+            else
+                cd website
+                # Install dependencies if node_modules doesn't exist
+                if [ ! -d "node_modules" ]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Installing frontend dependencies..."
+                    fi
+                    npm install
+                else
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Using cached node_modules"
+                    fi
+                fi
+                # Build frontend
+                if [ "$VERBOSE" = true ]; then
+                    echo "Building frontend static export..."
+                fi
+                npm run build
+                # Copy frontend build output to package
+                if [ -d "out" ]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Copying frontend build to package..."
+                    fi
+                    mkdir -p "../$PACKAGE_DIR/website"
+                    cp -r out/* "../$PACKAGE_DIR/website/"
+                    echo "Frontend website packaged successfully"
+                else
+                    echo "Warning: Frontend build did not produce out/ directory"
+                fi
+                cd ..
+            fi
         else
-            cd website
-            
-            # Install dependencies if node_modules doesn't exist
-            if [ ! -d "node_modules" ]; then
-                if [ "$VERBOSE" = true ]; then
-                    echo "Installing frontend dependencies..."
-                fi
-                npm install
-            else
-                if [ "$VERBOSE" = true ]; then
-                    echo "Using cached node_modules"
-                fi
-            fi
-            
-            # Build frontend
             if [ "$VERBOSE" = true ]; then
-                echo "Building frontend static export..."
+                echo "No website directory found. Skipping frontend build."
             fi
-            npm run build
-            
-            # Copy frontend build output to package
-            if [ -d "out" ]; then
-                if [ "$VERBOSE" = true ]; then
-                    echo "Copying frontend build to package..."
-                fi
-                mkdir -p "../$PACKAGE_DIR/website"
-                cp -r out/* "../$PACKAGE_DIR/website/"
-                echo "Frontend website packaged successfully"
-            else
-                echo "Warning: Frontend build did not produce out/ directory"
-            fi
-            
-            cd ..
         fi
     else
         if [ "$VERBOSE" = true ]; then
-            echo "No website directory found. Skipping frontend build."
+            echo "Skipping frontend build (V2E_SKIP_WEBSITE_BUILD set)"
         fi
     fi
     
@@ -649,42 +733,23 @@ main() {
     RUN_BENCHMARKS=false
     RUN_RPC_BENCHMARKS=false
     BUILD_PACKAGE=false
-    
-    while getopts "tifmMphv" opt; do
-        case $opt in
-            t)
-                RUN_TESTS=true
-                ;;
-            i)
-                RUN_INTEGRATION_TESTS=true
-                ;;
-            f)
-                RUN_FUZZ_TESTS=true
-                ;;
-            m)
-                RUN_BENCHMARKS=true
-                ;;
-            M)
-                RUN_RPC_BENCHMARKS=true
-                ;;
-            p)
-                BUILD_PACKAGE=true
-                ;;
-            v)
-                VERBOSE=true
-                ;;
-            h)
-                show_help
-                exit 0
-                ;;
-            \?)
-                echo "Invalid option: -$OPTARG" >&2
-                show_help
-                exit 1
-                ;;
+    RUN_NODE_AND_BROKER=false
+
+    while getopts "tifmMphrv" opt; do
+        case "$opt" in
+            t) RUN_TESTS=true ;;
+            i) RUN_INTEGRATION_TESTS=true ;;
+            f) RUN_FUZZ_TESTS=true ;;
+            m) RUN_BENCHMARKS=true ;;
+            M) RUN_RPC_BENCHMARKS=true ;;
+            p) BUILD_PACKAGE=true ;;
+            h) show_help; exit 0 ;;
+            r) RUN_NODE_AND_BROKER=true ;;
+            v) VERBOSE=true ;;
+            *) show_help; exit 1 ;;
         esac
     done
-    
+
     # Execute based on options
     if [ "$RUN_TESTS" = true ]; then
         run_tests
@@ -703,6 +768,9 @@ main() {
         exit $?
     elif [ "$BUILD_PACKAGE" = true ]; then
         build_and_package
+        exit $?
+    elif [ "$RUN_NODE_AND_BROKER" = true ]; then
+        run_node_and_broker_once
         exit $?
     else
         build_project

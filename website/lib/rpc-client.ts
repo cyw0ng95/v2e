@@ -6,6 +6,7 @@
 import type {
   RPCRequest,
   RPCResponse,
+  SysMetrics,
   GetCVERequest,
   GetCVEResponse,
   CreateCVERequest,
@@ -23,8 +24,18 @@ import type {
   SessionStatus,
   PauseJobResponse,
   ResumeJobResponse,
+  StartCWEViewJobRequest,
+  StartCWEViewJobResponse,
+  StopCWEViewJobResponse,
   HealthResponse,
   CVEItem,
+  CWEItem,
+  ListCWEsRequest,
+  ListCWEsResponse,
+  ListCWEViewsRequest,
+  ListCWEViewsResponse,
+  CWEView,
+  GetCWEViewResponse,
 } from './types';
 
 // ============================================================================
@@ -104,7 +115,18 @@ const MOCK_CVE_DATA: CVEItem = {
  * Convert PascalCase/snake_case to camelCase
  */
 function toCamelCase(str: string): string {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+  // Handle snake_case -> camelCase
+  if (str.indexOf('_') >= 0) {
+    return str.replace(/_([a-zA-Z0-9])/g, (_, letter) => letter.toUpperCase());
+  }
+
+  // If the key is ALL CAPS (e.g. "ID"), lower-case it entirely
+  if (str === str.toUpperCase()) {
+    return str.toLowerCase();
+  }
+
+  // PascalCase -> camelCase (lowercase first character)
+  return str.charAt(0).toLowerCase() + str.slice(1);
 }
 
 /**
@@ -187,7 +209,7 @@ export class RPCClient {
   private async call<TRequest, TResponse>(
     method: string,
     params?: TRequest,
-    target: string = 'cve-meta'
+    target: string = 'meta'
   ): Promise<RPCResponse<TResponse>> {
     // Mock mode: return simulated data
     if (this.useMock) {
@@ -255,7 +277,11 @@ export class RPCClient {
           payload: null,
         };
       }
-      console.error('[rpc-client] request failed', { method, target, error });
+      console.error('[rpc-client] request failed', {
+        method,
+        target,
+        error: error instanceof Error ? error.message : error,
+      });
       return {
         retcode: 500,
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -311,6 +337,49 @@ export class RPCClient {
           payload: {
             hasSession: false,
           } as TResponse,
+        };
+
+      case 'RPCListCWEViews': {
+        const lp = params as ListCWEViewsRequest | undefined;
+        const sample: CWEView[] = [
+          { id: 'V-1', name: 'View One', type: 'catalog', status: 'active', objective: 'Sample objective', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} },
+          { id: 'V-2', name: 'View Two', type: 'catalog', status: 'deprecated', objective: 'Second view', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            views: sample.slice(0, lp?.limit || sample.length),
+            offset: lp?.offset || 0,
+            limit: lp?.limit || sample.length,
+            total: sample.length,
+          } as TResponse,
+        };
+      }
+
+      case 'RPCGetCWEViewByID': {
+        const req = params as { id?: string } | undefined;
+        const id = req?.id || 'V-1';
+        const view: CWEView = { id, name: `View ${id}`, type: 'catalog', status: 'active', objective: 'Mocked view detail', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { view } as TResponse,
+        };
+      }
+
+      case 'RPCStartCWEViewJob':
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { success: true, sessionId: `mock-session-${Date.now()}` } as TResponse,
+        };
+
+      case 'RPCStopCWEViewJob':
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { success: true, sessionId: undefined } as TResponse,
         };
 
       default:
@@ -399,6 +468,41 @@ export class RPCClient {
     return this.call<undefined, ResumeJobResponse>('RPCResumeJob');
   }
 
+  // ==========================================================================
+  // CWE View Job Methods
+  // ==========================================================================
+
+  async startCWEViewJob(
+    sessionId?: string,
+    startIndex?: number,
+    resultsPerBatch?: number
+  ): Promise<RPCResponse<StartCWEViewJobResponse>> {
+    return this.call<StartCWEViewJobRequest, StartCWEViewJobResponse>(
+      'RPCStartCWEViewJob',
+      {
+        sessionId: sessionId,
+        startIndex: startIndex,
+        resultsPerBatch: resultsPerBatch,
+      }
+    );
+  }
+
+  async stopCWEViewJob(sessionId?: string): Promise<RPCResponse<StopCWEViewJobResponse>> {
+    return this.call<{ sessionId?: string }, StopCWEViewJobResponse>('RPCStopCWEViewJob', { sessionId });
+  }
+
+  // ==========================================================================
+  // CWE View Data Methods
+  // ==========================================================================
+
+  async listCWEViews(offset?: number, limit?: number): Promise<RPCResponse<ListCWEViewsResponse>> {
+    return this.call<ListCWEViewsRequest, ListCWEViewsResponse>('RPCListCWEViews', { offset: offset || 0, limit: limit || 100 }, 'local');
+  }
+
+  async getCWEViewByID(id: string): Promise<RPCResponse<GetCWEViewResponse>> {
+    return this.call<{ id: string }, GetCWEViewResponse>('RPCGetCWEViewByID', { id }, 'local');
+  }
+
   // ============================================================================
   // Health Check
   // ============================================================================
@@ -428,6 +532,30 @@ export class RPCClient {
         payload: null,
       };
     }
+  }
+
+  // ==========================================================================
+  // CWE Data Methods
+  // ==========================================================================
+
+  async listCWEs(params?: ListCWEsRequest): Promise<RPCResponse<ListCWEsResponse>> {
+    return this.call<ListCWEsRequest, ListCWEsResponse>(
+      'RPCListCWEs',
+      params,
+      'local'
+    );
+  }
+
+  async getCWE(cweId: string): Promise<RPCResponse<{ cwe: CWEItem }>> {
+    return this.call<{ cweId: string }, { cwe: CWEItem }>('RPCGetCWEByID', { cweId }, 'local');
+  }
+
+  // ==========================================================================
+  // System Metrics
+  // ==========================================================================
+
+  async getSysMetrics(): Promise<RPCResponse<SysMetrics>> {
+    return this.call<undefined, SysMetrics>("RPCGetSysMetrics", undefined, "sysmon");
   }
 }
 

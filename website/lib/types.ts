@@ -1,3 +1,24 @@
+// ============================================================================
+// Sysmon Types (from sysmon RPC API)
+// ============================================================================
+
+export interface SysMetrics {
+  cpuUsage: number;
+  memoryUsage: number;
+  // Optional expanded fields returned by sysmon
+  loadAvg?: number[] | number;
+  uptime?: number;
+  // disk is an object keyed by mount path
+  disk?: Record<string, { total: number; used: number }>;
+  // compatibility totals
+  diskTotal?: number;
+  diskUsage?: number;
+  // network totals and per-interface breakdown
+  netRx?: number;
+  netTx?: number;
+  network?: Record<string, { rx: number; tx: number }>;
+  swapUsage?: number;
+}
 /**
  * TypeScript types mirroring Go structs from the v2e backend
  * Generated from pkg/cve/types.go and RPC API specifications
@@ -291,6 +312,26 @@ export interface ResumeJobResponse {
 }
 
 // ============================================================================
+// CWE View Job RPC Types
+// ============================================================================
+
+export interface StartCWEViewJobRequest {
+  sessionId?: string;
+  startIndex?: number;
+  resultsPerBatch?: number;
+}
+
+export interface StartCWEViewJobResponse {
+  success: boolean;
+  sessionId: string;
+}
+
+export interface StopCWEViewJobResponse {
+  success: boolean;
+  sessionId?: string;
+}
+
+// ============================================================================
 // Utility Types
 // ============================================================================
 
@@ -298,4 +339,217 @@ export type JobState = 'idle' | 'running' | 'paused';
 
 export interface HealthResponse {
   status: string;
+}
+
+// ============================================================================
+// CWE Data Types (from pkg/cwe/types.go)
+// ============================================================================
+
+export interface CWEItem {
+  id: string;
+  name: string;
+  diagram?: string;
+  abstraction: string;
+  structure: string;
+  status: string;
+  description: string;
+  extendedDescription?: string;
+  likelihoodOfExploit?: string;
+  relatedWeaknesses?: RelatedWeakness[];
+  weaknessOrdinalities?: WeaknessOrdinality[];
+  applicablePlatforms?: ApplicablePlatform[];
+  backgroundDetails?: string[];
+  alternateTerms?: AlternateTerm[];
+  modesOfIntroduction?: ModeOfIntroduction[];
+  commonConsequences?: Consequence[];
+  detectionMethods?: DetectionMethod[];
+  potentialMitigations?: Mitigation[];
+  demonstrativeExamples?: DemonstrativeExample[];
+  observedExamples?: ObservedExample[];
+  functionalAreas?: string[];
+  affectedResources?: string[];
+  taxonomyMappings?: TaxonomyMapping[];
+  relatedAttackPatterns?: string[];
+  references?: Reference[];
+  mappingNotes?: MappingNotes;
+  notes?: Note[];
+  contentHistory?: ContentHistory[];
+}
+
+export interface RelatedWeakness {
+  nature: string;
+  cweId: string;
+  viewId: string;
+  ordinal?: string;
+}
+
+export interface WeaknessOrdinality {
+  ordinality: string;
+  description?: string;
+}
+
+export interface ApplicablePlatform {
+  type: string;
+  name?: string;
+  class?: string;
+  prevalence: string;
+}
+
+export interface AlternateTerm {
+  term: string;
+  description?: string;
+}
+
+export interface ModeOfIntroduction {
+  phase: string;
+  note?: string;
+}
+
+export interface Consequence {
+  scope: string[];
+  impact?: string[];
+  likelihood?: string[];
+  note?: string;
+}
+
+export interface DetectionMethod {
+  detectionMethodId?: string;
+  method: string;
+  description: string;
+  effectiveness?: string;
+  effectivenessNotes?: string;
+}
+
+export interface Mitigation {
+  mitigationId?: string;
+  phase?: string[];
+  strategy: string;
+  description: string;
+  effectiveness?: string;
+  effectivenessNotes?: string;
+}
+
+export interface DemonstrativeExample {
+  id?: string;
+  entries: DemonstrativeEntry[];
+}
+
+export interface DemonstrativeEntry {
+  introText?: string;
+  bodyText?: string;
+  nature?: string;
+  language?: string;
+  exampleCode?: string;
+  reference?: string;
+}
+
+export interface ObservedExample {
+  reference: string;
+  description: string;
+  link: string;
+}
+
+export interface TaxonomyMapping {
+  taxonomyName: string;
+  entryName?: string;
+  entryId?: string;
+  mappingFit?: string;
+}
+
+export interface MappingNotes {
+  usage: string;
+  rationale: string;
+  comments: string;
+  reasons: string[];
+  suggestions?: SuggestionComment[];
+}
+
+export interface SuggestionComment {
+  comment: string;
+  cweId: string;
+}
+
+export interface Note {
+  type: string;
+  note: string;
+}
+
+export interface ContentHistory {
+  type: string;
+  submissionName?: string;
+  submissionOrganization?: string;
+  submissionDate?: string;
+  submissionVersion?: string;
+  submissionReleaseDate?: string;
+  submissionComment?: string;
+  modificationName?: string;
+  modificationOrganization?: string;
+  modificationDate?: string;
+  modificationVersion?: string;
+  modificationReleaseDate?: string;
+  modificationComment?: string;
+  contributionName?: string;
+  contributionOrganization?: string;
+  contributionDate?: string;
+  contributionVersion?: string;
+  contributionReleaseDate?: string;
+  contributionComment?: string;
+  contributionType?: string;
+  previousEntryName?: string;
+  date?: string;
+  version?: string;
+}
+
+export interface ListCWEsRequest {
+  offset?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface ListCWEsResponse {
+  cwes: CWEItem[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+// CWE View Types (from pkg/cwe/views.go)
+export interface CWEViewMember {
+  cweId: string;
+  role?: string;
+}
+
+export interface CWEViewStakeholder {
+  type: string;
+  description?: string;
+}
+
+export interface CWEView {
+  id: string;
+  name?: string;
+  type?: string;
+  status?: string;
+  objective?: string;
+  audience?: CWEViewStakeholder[];
+  members?: CWEViewMember[];
+  references?: Reference[];
+  notes?: Note[];
+  contentHistory?: ContentHistory[];
+  raw?: unknown;
+}
+
+export interface ListCWEViewsRequest {
+  offset?: number;
+  limit?: number;
+}
+
+export interface ListCWEViewsResponse {
+  views: CWEView[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface GetCWEViewResponse {
+  view: CWEView;
 }

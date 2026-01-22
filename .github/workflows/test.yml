@@ -1,10 +1,6 @@
 name: CI Tests
 
 on:
-  push:
-    branches:
-      - main
-      - develop
   pull_request:
     branches:
       - main
@@ -149,7 +145,7 @@ jobs:
           echo "Checking for binaries:"
           test -f .build/package/access && echo "✓ access binary exists"
           test -f .build/package/broker && echo "✓ broker binary exists"
-          test -f .build/package/cve-meta && echo "✓ cve-meta binary exists"
+          test -f .build/package/meta && echo "✓ meta binary exists"
           echo ""
           echo "Checking for frontend:"
           if [ -d .build/package/website ]; then
@@ -269,9 +265,9 @@ jobs:
         run: |
           chmod +x .build/package/access
           chmod +x .build/package/broker
-          chmod +x .build/package/cve-local
-          chmod +x .build/package/cve-meta
-          chmod +x .build/package/cve-remote
+          chmod +x .build/package/local
+          chmod +x .build/package/meta
+          chmod +x .build/package/remote
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -331,9 +327,9 @@ jobs:
         run: |
           chmod +x .build/package/access
           chmod +x .build/package/broker
-          chmod +x .build/package/cve-local
-          chmod +x .build/package/cve-meta
-          chmod +x .build/package/cve-remote
+          chmod +x .build/package/local
+          chmod +x .build/package/meta
+          chmod +x .build/package/remote
       
       - name: Set up Python
         uses: actions/setup-python@v5

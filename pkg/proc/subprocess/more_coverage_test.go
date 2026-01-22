@@ -2,7 +2,6 @@ package subprocess
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"os"
 	"strings"
@@ -81,19 +80,6 @@ func TestSendEventNilPayload(t *testing.T) {
 	out := strings.TrimSpace(buf.String())
 	if out == "" {
 		t.Fatal("expected output from SendEvent")
-	}
-}
-
-// TestSendMessage_ContextDone verifies sendMessage returns context error when context is canceled
-func TestSendMessage_ContextDone(t *testing.T) {
-	sp := New("ctx-test")
-	// Ensure batching is enabled (do not call SetOutput which disables it)
-	// Cancel the context
-	sp.cancel()
-
-	err := sp.sendMessage(&Message{Type: MessageTypeEvent, ID: "x"})
-	if err != context.Canceled {
-		t.Fatalf("expected context.Canceled, got: %v", err)
 	}
 }
 

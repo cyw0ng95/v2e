@@ -19,7 +19,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -32,7 +32,7 @@ def cleanup_session(access_service):
     try:
         access_service.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
     except Exception:
@@ -55,7 +55,7 @@ class TestSessionLifecycle:
         
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "default-params-session"}
         )
         
@@ -66,7 +66,7 @@ class TestSessionLifecycle:
         # Check status to verify defaults
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -88,7 +88,7 @@ class TestSessionLifecycle:
         
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "custom-params-session",
                 "start_index": 100,
@@ -101,7 +101,7 @@ class TestSessionLifecycle:
         # Verify custom params were applied
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -122,7 +122,7 @@ class TestSessionLifecycle:
         # Start session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "pause-resume-test", "results_per_batch": 5}
         )
         
@@ -133,7 +133,7 @@ class TestSessionLifecycle:
             # Pause
             pause_resp = access.rpc_call(
                 method="RPCPauseJob",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             assert pause_resp["retcode"] == 0
@@ -144,7 +144,7 @@ class TestSessionLifecycle:
             # Resume
             resume_resp = access.rpc_call(
                 method="RPCResumeJob",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             assert resume_resp["retcode"] == 0
@@ -168,7 +168,7 @@ class TestSessionLifecycle:
         # Start session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "stats-test", "results_per_batch": 5}
         )
         
@@ -177,7 +177,7 @@ class TestSessionLifecycle:
         # Stop and check statistics
         stop_resp = access.rpc_call(
             method="RPCStopSession",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -206,7 +206,7 @@ class TestSessionStateValidation:
         
         response = access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -225,7 +225,7 @@ class TestSessionStateValidation:
         
         response = access.rpc_call(
             method="RPCResumeJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -245,7 +245,7 @@ class TestSessionStateValidation:
         # Start session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "running-test"}
         )
         
@@ -254,7 +254,7 @@ class TestSessionStateValidation:
         # Try to resume (should fail since it's already running)
         response = access.rpc_call(
             method="RPCResumeJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -274,7 +274,7 @@ class TestSessionStateValidation:
         # Start session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "paused-test"}
         )
         
@@ -283,14 +283,14 @@ class TestSessionStateValidation:
         # Pause
         access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
         # Pause again
         response = access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -316,7 +316,7 @@ class TestSessionStateValidation:
         for invalid_id in invalid_ids:
             response = access.rpc_call(
                 method="RPCStartSession",
-                target="cve-meta",
+                target="meta",
                 params={"session_id": invalid_id}
             )
             
@@ -340,7 +340,7 @@ class TestSessionParameters:
         
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "zero-index-session",
                 "start_index": 0,
@@ -352,7 +352,7 @@ class TestSessionParameters:
         
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -370,7 +370,7 @@ class TestSessionParameters:
         
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "negative-index-session",
                 "start_index": -1,
@@ -393,7 +393,7 @@ class TestSessionParameters:
         
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "small-batch-session",
                 "start_index": 0,
@@ -405,7 +405,7 @@ class TestSessionParameters:
         
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -423,7 +423,7 @@ class TestSessionParameters:
         
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "large-batch-session",
                 "start_index": 0,
@@ -437,7 +437,7 @@ class TestSessionParameters:
         if response["retcode"] == 0:
             status = access.rpc_call(
                 method="RPCGetSessionStatus",
-                target="cve-meta",
+                target="meta",
                 params={}
             )
             print(f"  → Actual batch size: {status['payload']['results_per_batch']}")
@@ -455,7 +455,7 @@ class TestSessionParameters:
         
         response = access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={
                 "session_id": "zero-batch-session",
                 "start_index": 0,
@@ -484,14 +484,14 @@ class TestSessionStatus:
         # Start session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "progress-test", "results_per_batch": 5}
         )
         
         # Get initial status
         status1 = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         initial_fetched = status1["payload"]["fetched_count"]
@@ -501,7 +501,7 @@ class TestSessionStatus:
         # Get updated status
         status2 = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         updated_fetched = status2["payload"]["fetched_count"]
@@ -522,7 +522,7 @@ class TestSessionStatus:
         # Start and pause
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "pause-status-test"}
         )
         
@@ -530,14 +530,14 @@ class TestSessionStatus:
         
         access.rpc_call(
             method="RPCPauseJob",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
         # Check status
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         
@@ -556,7 +556,7 @@ class TestSessionStatus:
         # Start session
         access.rpc_call(
             method="RPCStartSession",
-            target="cve-meta",
+            target="meta",
             params={"session_id": "timestamp-test"}
         )
         
@@ -564,7 +564,7 @@ class TestSessionStatus:
         
         status = access.rpc_call(
             method="RPCGetSessionStatus",
-            target="cve-meta",
+            target="meta",
             params={}
         )
         

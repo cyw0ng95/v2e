@@ -106,7 +106,7 @@ class TestEdgeCasesAndMalformed:
         
         response = access.rpc_call(
             method="RPCGetCVE",
-            target="cve-meta",
+            target="meta",
             params={"cve_id": long_id},
             verbose=False
         )
@@ -139,7 +139,7 @@ class TestEdgeCasesAndMalformed:
             print(f"  → Testing: {repr(special_id)}")
             response = access.rpc_call(
                 method="RPCGetCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": special_id},
                 verbose=False
             )
@@ -171,7 +171,7 @@ class TestEdgeCasesAndMalformed:
             print(f"  → Testing params: {params}")
             response = access.rpc_call(
                 method="RPCListCVEs",
-                target="cve-meta",
+                target="meta",
                 params=params,
                 verbose=False
             )
@@ -195,7 +195,7 @@ class TestEdgeCasesAndMalformed:
         
         response = access.rpc_call(
             method="RPCListCVEs",
-            target="cve-meta",
+            target="meta",
             params={"offset": 0, "limit": 999999999},
             verbose=False
         )
@@ -233,7 +233,7 @@ class TestEdgeCasesAndMalformed:
             print(f"  → Testing {method} with empty string")
             response = access.rpc_call(
                 method=method,
-                target="cve-meta",
+                target="meta",
                 params=params,
                 verbose=False
             )
@@ -267,7 +267,7 @@ class TestEdgeCasesAndMalformed:
             print(f"  → Testing: {unicode_id}")
             response = access.rpc_call(
                 method="RPCGetCVE",
-                target="cve-meta",
+                target="meta",
                 params={"cve_id": unicode_id},
                 verbose=False
             )
@@ -386,7 +386,7 @@ class TestEdgeCasesAndMalformed:
         results = []
         for method, params, should_succeed in requests:
             if "CVE" in method:
-                response = access.rpc_call(method, params, target="cve-meta", verbose=False)
+                response = access.rpc_call(method, params, target="meta", verbose=False)
             else:
                 response = access.rpc_call(method, params, verbose=False)
             

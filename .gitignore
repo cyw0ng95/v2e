@@ -14,9 +14,9 @@
 /broker
 /broker-stats
 /worker
-/cve-local
-/cve-remote
-/cve-meta
+/local
+/remote
+/meta
 /bin/
 
 # Test binary, built with `go test -c`
@@ -92,9 +92,9 @@ logs/
 # Binaries (not source directories)
 /access
 /broker
-/cve-local
-/cve-remote
-/cve-meta
+/local
+/remote
+/meta
 
 # Profiling files
 *.prof

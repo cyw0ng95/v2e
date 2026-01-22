@@ -2,6 +2,8 @@ package common
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -265,5 +267,32 @@ func TestGetLevel(t *testing.T) {
 	SetLevel(ErrorLevel)
 	if GetLevel() != ErrorLevel {
 		t.Errorf("Expected GetLevel() to return ErrorLevel, got %v", GetLevel())
+	}
+}
+
+func TestNewLoggerWithFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	fname := filepath.Join(tmpDir, "testlog.log")
+
+	logger, err := NewLoggerWithFile(fname, "TEST", InfoLevel)
+	if err != nil {
+		t.Fatalf("NewLoggerWithFile failed: %v", err)
+	}
+
+	// Log a message which should be written to the file
+	logger.Info("file log message")
+
+	// Read the file contents
+	data, err := os.ReadFile(fname)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+	output := string(data)
+
+	if !strings.Contains(output, "file log message") {
+		t.Errorf("Expected file to contain log message, got: %s", output)
+	}
+	if !strings.Contains(output, "[INFO]") {
+		t.Errorf("Expected file to contain [INFO], got: %s", output)
 	}
 }

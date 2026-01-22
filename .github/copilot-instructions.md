@@ -178,18 +178,18 @@ The benchmark report includes:
 2. **No direct subprocess testing**: Do NOT start or test subprocesses directly without going through the broker
 3. **Use access service as gateway**: Integration tests should use the access REST API as the primary entry point
 4. **Broker spawns subprocesses**: Let the broker spawn and manage all subprocess services via configuration or REST API
-5. **RESTful testing only**: All RPC tests for backend services (like cve-meta) MUST use the RESTful API endpoint `/restful/rpc` with the `target` parameter
+5. **RESTful testing only**: All RPC tests for backend services (like meta) MUST use the RESTful API endpoint `/restful/rpc` with the `target` parameter
 
 #### Testing Backend Services via RESTful API
 
-When testing backend RPC services (cve-meta, cve-local, cve-remote), use the access service's generic RPC endpoint:
+When testing backend RPC services (meta, local, remote), use the access service's generic RPC endpoint:
 
 ```python
-# Example: Testing cve-meta service
+# Example: Testing meta service
 access = AccessClient()
 response = access.rpc_call(
     method="RPCGetCVE",
-    target="cve-meta",  # Target the specific backend service
+    target="meta",  # Target the specific backend service
     params={"cve_id": "CVE-2021-44228"}
 )
 
@@ -202,7 +202,7 @@ assert response["payload"] is not None
 The access service routes the request as follows:
 1. External test → REST API (`POST /restful/rpc`)
 2. Access service → Broker (via RPC with `target` field)
-3. Broker → Backend service (e.g., cve-meta)
+3. Broker → Backend service (e.g., meta)
 4. Response flows back through the same chain
 
 This ensures integration tests follow the same deployment model as production, where the broker is the central entry point.
@@ -839,3 +839,13 @@ NEXT_PUBLIC_USE_MOCK_DATA=false // Use real backend
 - Check `.env.local` has `NEXT_PUBLIC_USE_MOCK_DATA=true`
 - Restart dev server after changing env vars
 - Verify mock data in `lib/rpc-client.ts`
+
+## Updated Documentation Locations
+
+The service descriptions have been moved to standalone `service.md` files for each service. Refer to the following files for detailed descriptions:
+
+- Access Service: `cmd/access/service.md`
+- Broker Service: `cmd/broker/service.md`
+- Local Service: `cmd/local/service.md`
+- Meta Service: `cmd/meta/service.md`
+- Remote Service: `cmd/remote/service.md`

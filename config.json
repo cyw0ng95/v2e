@@ -4,6 +4,7 @@
   },
   "broker": {
     "logs_dir": "./logs",
+    "log_file": "./logs/broker.log",
     "processes": [
       {
         "id": "access",
@@ -14,24 +15,32 @@
         "max_restarts": -1
       },
       {
-        "id": "cve-remote",
-        "command": "./cve-remote",
+        "id": "remote",
+        "command": "./remote",
         "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
       {
-        "id": "cve-local",
-        "command": "./cve-local",
+        "id": "local",
+        "command": "./local",
         "args": [],
         "rpc": true,
         "restart": true,
         "max_restarts": -1
       },
       {
-        "id": "cve-meta",
-        "command": "./cve-meta",
+        "id": "meta",
+        "command": "./meta",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "sysmon",
+        "command": "./sysmon",
         "args": [],
         "rpc": true,
         "restart": true,
@@ -40,7 +49,12 @@
     ]
   },
   "logging": {
-    "level": "debug",
+    "level": "info",
     "dir": "./logs"
+  },
+  "access": {
+    "rpc_timeout_seconds": 30,
+    "shutdown_timeout_seconds": 10,
+    "static_dir": "website"
   }
 }
