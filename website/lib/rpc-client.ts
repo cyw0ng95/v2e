@@ -368,6 +368,35 @@ export class RPCClient {
         };
       }
 
+      case 'RPCListCAPECs': {
+        const lp = params as { offset?: number; limit?: number } | undefined;
+        const sample: any[] = [
+          { id: 'CAPEC-1', name: 'Example CAPEC One', summary: 'Example attack pattern one', description: 'Detailed description 1' },
+          { id: 'CAPEC-2', name: 'Example CAPEC Two', summary: 'Example attack pattern two', description: 'Detailed description 2' },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            capecs: sample.slice(0, lp?.limit || sample.length),
+            offset: lp?.offset || 0,
+            limit: lp?.limit || sample.length,
+            total: sample.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetCAPECByID': {
+        const req = params as { capecId?: string } | undefined;
+        const id = req?.capecId || 'CAPEC-1';
+        const item = { id, name: `CAPEC ${id}`, summary: 'Mocked CAPEC summary', description: 'Mocked CAPEC details' };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: item as unknown as TResponse,
+        };
+      }
+
       case 'RPCStartCWEViewJob':
         return {
           retcode: 0,
@@ -544,6 +573,18 @@ export class RPCClient {
       params,
       'local'
     );
+  }
+
+  async listCAPECs(offset?: number, limit?: number): Promise<RPCResponse<{ capecs: any[]; offset: number; limit: number; total: number }>> {
+    return this.call<{ offset?: number; limit?: number }, { capecs: any[]; offset: number; limit: number; total: number }>(
+      'RPCListCAPECs',
+      { offset: offset || 0, limit: limit || 50 },
+      'local'
+    );
+  }
+
+  async getCAPEC(capecId: string): Promise<RPCResponse<any>> {
+    return this.call<{ capecId: string }, any>('RPCGetCAPECByID', { capecId }, 'local');
   }
 
   async getCWE(cweId: string): Promise<RPCResponse<{ cwe: CWEItem }>> {

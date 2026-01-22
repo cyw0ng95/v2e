@@ -5,6 +5,9 @@
 
 set -e
 
+# Enable CGO for builds that require C libraries (e.g. libxml2)
+export CGO_ENABLED=1
+
 # Run Node.js process and broker once, terminate both on Ctrl-C
 run_node_and_broker_once() {
     # Set flag to skip website build
@@ -82,6 +85,9 @@ BUILD_DIR=".build"
 PACKAGE_DIR=".build/package"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERBOSE=false
+
+# Default Go build tags (can be overridden by setting GO_TAGS env var)
+GO_TAGS="${GO_TAGS:-libxml2}"
 
 # Version requirements
 MIN_GO_VERSION="1.21"
@@ -206,7 +212,7 @@ build_project() {
             echo "Running go build..."
         fi
         mkdir -p "$BUILD_DIR/v2e"
-        go build -o "$BUILD_DIR/v2e" ./...
+        go build -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
         if [ "$VERBOSE" = true ]; then
             echo "Build completed successfully"
             echo "Binary saved to: $BUILD_DIR/v2e"
@@ -232,11 +238,11 @@ run_tests() {
         if [ "$VERBOSE" = true ]; then
             echo "Running go test with verbose output..."
             # Run tests with coverage and verbose output, excluding fuzz tests
-            go test -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            go test -tags "$GO_TAGS" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         else
             echo "Running go test..."
             # Run tests with coverage, excluding fuzz tests
-            go test -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            go test -tags "$GO_TAGS" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         fi
         TEST_EXIT_CODE=$?
         
@@ -279,7 +285,7 @@ run_fuzz_tests() {
         fi
         
         # Find all fuzz tests
-        FUZZ_TESTS=$(go test -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
+        FUZZ_TESTS=$(go test -tags "$GO_TAGS" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
         
         if [ -z "$FUZZ_TESTS" ]; then
             echo "No fuzz tests found. Creating report..."
@@ -311,13 +317,13 @@ run_fuzz_tests() {
         
         # Iterate through packages and run fuzz tests
         for PKG in $(go list ./... | grep -E '(pkg/proc|cmd/broker|pkg/cve)'); do
-            PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
+            PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -tags "$GO_TAGS" -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
             
             if [ -n "$PKG_FUZZ_TESTS" ]; then
                 echo "Fuzzing package: $PKG"
                 for FUZZ_TEST in $PKG_FUZZ_TESTS; do
                     echo "  Running $FUZZ_TEST for $FUZZ_TIME..."
-                    if go test -fuzz="^${FUZZ_TEST}$" -fuzztime="$FUZZ_TIME" "$PKG" 2>&1 | tee -a "$BUILD_DIR/fuzz-raw.log"; then
+                    if go test -tags "$GO_TAGS" -fuzz="^${FUZZ_TEST}$" -fuzztime="$FUZZ_TIME" "$PKG" 2>&1 | tee -a "$BUILD_DIR/fuzz-raw.log"; then
                         FUZZ_RESULTS="$FUZZ_RESULTS\n  ✓ $PKG/$FUZZ_TEST: PASSED"
                         echo "    ✓ PASSED"
                     else
@@ -427,12 +433,12 @@ run_benchmarks() {
         if [ "$VERBOSE" = true ]; then
             echo "Running go benchmarks with verbose output..."
             # Run benchmarks with memory allocation stats
-            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
+            go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
         else
             echo "Running go benchmarks..."
             # Run benchmarks with memory allocation stats
             # Use tee to stream output to file (prevents blocking when run non-verbosely)
-            go test -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
+            go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
         fi
         BENCH_EXIT_CODE=$?
         
@@ -638,7 +644,7 @@ build_and_package() {
                 if [ "$VERBOSE" = true ]; then
                     echo "Building $cmd_name..."
                 fi
-                go build -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir"
+                go build -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir"
                 chmod +x "$PACKAGE_DIR/$cmd_name"
             fi
         done
@@ -655,6 +661,17 @@ build_and_package() {
         if [ -f "assets/cwe-raw.json" ]; then
             mkdir -p "$PACKAGE_DIR/assets"
             cp assets/cwe-raw.json "$PACKAGE_DIR/assets/"
+        fi
+
+        # Copy CAPEC XML and XSD assets
+        if [ -f "assets/capec_contents_latest.xml" ]; then
+            mkdir -p "$PACKAGE_DIR/assets"
+            cp assets/capec_contents_latest.xml "$PACKAGE_DIR/assets/"
+        fi
+
+        if [ -f "assets/capec_schema_latest.xsd" ]; then
+            mkdir -p "$PACKAGE_DIR/assets"
+            cp assets/capec_schema_latest.xsd "$PACKAGE_DIR/assets/"
         fi
         
         echo "Go binaries packaged successfully"

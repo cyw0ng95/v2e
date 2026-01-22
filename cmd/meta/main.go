@@ -327,6 +327,32 @@ func main() {
 		}
 	}()
 
+	// --- CAPEC Import Control ---
+	go func() {
+		time.Sleep(2 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		// First check whether local already has CAPEC catalog metadata
+		metaResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCAPECCatalogMeta", nil)
+		if err != nil {
+			logger.Error("Failed to query CAPEC catalog meta on local: %v", err)
+			// fall back to attempting import
+		} else if metaResp.Type == subprocess.MessageTypeResponse {
+			logger.Info("CAPEC catalog already present on local; skipping automatic import")
+			return
+		}
+		// If meta not present or query failed, attempt import
+		params := map[string]interface{}{"path": "assets/capec_contents_latest.xml", "xsd": "assets/capec_schema_latest.xsd"}
+		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
+		if err != nil {
+			logger.Error("Failed to import CAPEC on local: %v", err)
+		} else if resp.Type == subprocess.MessageTypeError {
+			logger.Error("CAPEC import error: %s", resp.Error)
+		} else {
+			logger.Info("CAPEC import triggered on local")
+		}
+	}()
+
 	// Run with default lifecycle management
 	subprocess.RunWithDefaults(sp, logger)
 }

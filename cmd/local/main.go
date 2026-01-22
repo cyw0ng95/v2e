@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -61,6 +62,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize CAPEC store (using CAPEC_DB_PATH env var)
+	capecDBPath := os.Getenv("CAPEC_DB_PATH")
+	if capecDBPath == "" {
+		capecDBPath = "capec.db"
+	}
+	capecStore, err := capec.NewLocalCAPECStore(capecDBPath)
+	if err != nil {
+		logger.Error("Failed to open CAPEC database: %v", err)
+		os.Exit(1)
+	}
+
 	// Import CWEs from JSON file at startup (if file exists)
 	// Removed duplicate importCWEsAtStartup definition; now only in cwe_handlers.go
 
@@ -77,6 +89,11 @@ func main() {
 	sp.RegisterHandler("RPCGetCWEByID", createGetCWEByIDHandler(cweStore, logger))
 	sp.RegisterHandler("RPCListCWEs", createListCWEsHandler(cweStore, logger))
 	sp.RegisterHandler("RPCImportCWEs", createImportCWEsHandler(cweStore, logger))
+	sp.RegisterHandler("RPCImportCAPECs", createImportCAPECsHandler(capecStore, logger))
+	sp.RegisterHandler("RPCForceImportCAPECs", createForceImportCAPECsHandler(capecStore, logger))
+	sp.RegisterHandler("RPCListCAPECs", createListCAPECsHandler(capecStore, logger))
+	sp.RegisterHandler("RPCGetCAPECByID", createGetCAPECByIDHandler(capecStore, logger))
+	sp.RegisterHandler("RPCGetCAPECCatalogMeta", createGetCAPECCatalogMetaHandler(capecStore, logger))
 
 	// Register CWE View handlers
 	RegisterCWEViewHandlers(sp, cweStore, logger)
