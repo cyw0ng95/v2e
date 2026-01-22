@@ -21,6 +21,32 @@ var (
 	ErrJobNotRunning = errors.New("job is not running")
 )
 
+// Pooled RPC parameter structs to reduce allocations in hot loops
+type fetchParams struct {
+	StartIndex     int `json:"start_index"`
+	ResultsPerPage int `json:"results_per_page"`
+}
+
+var fetchParamsPool = sync.Pool{
+	New: func() interface{} { return &fetchParams{} },
+}
+
+type saveCVEParams struct {
+	CVE cve.CVEItem `json:"cve"`
+}
+
+var saveCVEParamsPool = sync.Pool{
+	New: func() interface{} { return &saveCVEParams{} },
+}
+
+// rpcParamMapPool reuses small maps for RPC params to satisfy callers
+var rpcParamMapPool = sync.Pool{
+	New: func() interface{} {
+		m := make(map[string]interface{}, 1)
+		return &m
+	},
+}
+
 // RPCInvoker is an interface for making RPC calls to other services
 type RPCInvoker interface {
 	InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error)
@@ -207,10 +233,15 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			// Fetch batch from NVD via remote
 			c.logger.Debug("Fetching batch: start_index=%d, batch_size=%d", currentIndex, batchSize)
 
-			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchCVEs", map[string]interface{}{
-				"start_index":      currentIndex,
-				"results_per_page": batchSize,
-			})
+			// Get pooled fetch params to avoid allocating a map each iteration
+			fp := fetchParamsPool.Get().(*fetchParams)
+			fp.StartIndex = currentIndex
+			fp.ResultsPerPage = batchSize
+			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchCVEs", fp)
+			// reset and return to pool
+			fp.StartIndex = 0
+			fp.ResultsPerPage = 0
+			fetchParamsPool.Put(fp)
 
 			if err != nil {
 				c.logger.Error("Failed to fetch CVEs: %v", err)
@@ -277,9 +308,12 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			errorCount := int64(0)
 
 			for _, vuln := range response.Vulnerabilities {
-				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-					"cve": vuln.CVE,
-				})
+				mptr := rpcParamMapPool.Get().(*map[string]interface{})
+				(*mptr)["cve"] = vuln.CVE
+				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", *mptr)
+				// clear map and return to pool
+				delete(*mptr, "cve")
+				rpcParamMapPool.Put(mptr)
 
 				if err != nil {
 					c.logger.Error("Failed to store CVE %s: %v", vuln.CVE.ID, err)
