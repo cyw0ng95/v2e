@@ -220,9 +220,10 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 	}
 	// persist catalog metadata
 	if catalogVersion != "" {
-		meta := CAPECCatalogMeta{Version: catalogVersion, Source: xmlPath, ImportedAtUTC: time.Now().UTC().Unix()}
-		// upsert single-row meta
-		if err := s.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&meta).Error; err != nil {
+		// Use a fixed primary key to ensure a single-row metadata table.
+		meta := CAPECCatalogMeta{ID: 1, Version: catalogVersion, Source: xmlPath, ImportedAtUTC: time.Now().UTC().Unix()}
+		// upsert single-row meta by primary key
+		if err := s.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "id"}}, UpdateAll: true}).Create(&meta).Error; err != nil {
 			return err
 		}
 	}
