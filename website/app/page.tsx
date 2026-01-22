@@ -38,6 +38,15 @@ const CWETable = dynamic(() => import('@/components/cwe-table').then(mod => mod.
   ),
 });
 
+const CAPECTable = dynamic(() => import('@/components/capec-table').then(mod => mod.CAPECTable), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 const CWEViews = dynamic(() => import('@/components/cwe-views').then(mod => mod.CWEViews), {
   ssr: false,
   loading: () => (
@@ -60,7 +69,7 @@ export default function Home() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tab, setTab] = useState<'cwe' | 'cve' | 'sysmon'>('cwe'); // Default to CWE
+  const [tab, setTab] = useState<'cwe' | 'cve' | 'sysmon' | 'capec'>('cwe'); // Default to CWE
   // memoize offset to avoid unnecessary recalculation on unrelated state updates
   const offset = useMemo(() => page * pageSize, [page, pageSize]);
 
@@ -139,6 +148,7 @@ export default function Home() {
               <Tabs value={tab} onValueChange={setTab} className="w-full h-full flex flex-col">
                 <TabsList className="mb-4">
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
+                  <TabsTrigger value="capec">CAPEC</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
@@ -148,6 +158,16 @@ export default function Home() {
                   <div className="h-full flex flex-col">
                     <div className="flex-1 min-h-0 overflow-auto">
                       <CWETable />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="capec" className="h-full">
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <Suspense>
+                        <CAPECTable />
+                      </Suspense>
                     </div>
                   </div>
                 </TabsContent>

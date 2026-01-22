@@ -849,3 +849,20 @@ The service descriptions have been moved to standalone `service.md` files for ea
 - Local Service: `cmd/local/service.md`
 - Meta Service: `cmd/meta/service.md`
 - Remote Service: `cmd/remote/service.md`
+
+### Additional Performance Principles (added 2026-01-22)
+
+Principle: Pool short-lived RPC parameter objects
+- When building small parameter objects repeatedly in hot loops (e.g., RPC invocations), use `sync.Pool` to reuse small structs instead of allocating maps or new structs each iteration.
+- Implementation: use a typed struct for RPC params and a `sync.Pool{New: func() interface{} { return &T{} }}`; get from pool, set fields, call RPC, then reset fields and put back.
+- Impact: reduces allocations/op and GC pressure for tight loops that prepare RPC calls.
+
+Principle: Prefer typed structs over maps for RPC parameters
+- Maps allocate more and require runtime type information; use small typed structs with JSON tags when the RPC/serialization layer supports them.
+- Implementation: replace `map[string]interface{}` with `struct { Field int `json:"field"` }` for commonly used RPC calls.
+- Impact: reduces allocations, improves marshal/unmarshal performance, and is more type-safe.
+
+Principle: Clear pooled objects before returning to pool
+- Always reset or zero fields of pooled objects before `Put` to avoid leaking large data and to keep memory profiles predictable.
+- Implementation: set strings to "", numeric fields to 0, and nested structs to their zero value (e.g., `v = T{}`).
+- Impact: prevents inadvertent retention of large buffers and helps the allocator reuse smaller backing arrays.

@@ -376,6 +376,26 @@ export interface CWEItem {
   contentHistory?: ContentHistory[];
 }
 
+// ============================================================================
+// CAPEC Data Types
+// ============================================================================
+
+export interface CAPECRelatedWeakness {
+  cweId?: string;
+}
+
+export interface CAPECItem {
+  id: string; // e.g. "CAPEC-123"
+  name: string;
+  summary?: string;
+  description?: string;
+  status?: string;
+  likelihood?: string;
+  typicalSeverity?: string;
+  relatedWeaknesses?: CAPECRelatedWeakness[];
+  references?: Reference[];
+}
+
 export interface RelatedWeakness {
   nature: string;
   cweId: string;

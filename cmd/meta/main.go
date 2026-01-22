@@ -41,17 +41,35 @@ const (
 // RPCClient handles RPC communication with other services through the broker
 type RPCClient struct {
 	sp              *subprocess.Subprocess
-	pendingRequests map[string]chan *subprocess.Message
+	pendingRequests map[string]*requestEntry
 	mu              sync.RWMutex
 	correlationSeq  uint64
 	logger          *common.Logger
+}
+
+type requestEntry struct {
+	resp chan *subprocess.Message
+	once sync.Once
+}
+
+func (e *requestEntry) signal(m *subprocess.Message) {
+	e.once.Do(func() {
+		e.resp <- m
+		close(e.resp)
+	})
+}
+
+func (e *requestEntry) close() {
+	e.once.Do(func() {
+		close(e.resp)
+	})
 }
 
 // NewRPCClient creates a new RPC client for inter-service communication
 func NewRPCClient(sp *subprocess.Subprocess, logger *common.Logger) *RPCClient {
 	client := &RPCClient{
 		sp:              sp,
-		pendingRequests: make(map[string]chan *subprocess.Message),
+		pendingRequests: make(map[string]*requestEntry),
 		logger:          logger,
 	}
 
@@ -64,20 +82,16 @@ func NewRPCClient(sp *subprocess.Subprocess, logger *common.Logger) *RPCClient {
 
 // handleResponse handles response messages from other services
 func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	// Look up the pending request
+	// Look up the pending request entry and remove it while holding the lock
 	c.mu.Lock()
-	respChan, exists := c.pendingRequests[msg.CorrelationID]
-	if exists {
+	entry := c.pendingRequests[msg.CorrelationID]
+	if entry != nil {
 		delete(c.pendingRequests, msg.CorrelationID)
 	}
 	c.mu.Unlock()
 
-	if exists {
-		select {
-		case respChan <- msg:
-		case <-time.After(1 * time.Second):
-			c.logger.Warn("Timeout sending response to channel for correlation ID: %s", msg.CorrelationID)
-		}
+	if entry != nil {
+		entry.signal(msg)
 	} else {
 		c.logger.Warn("Received response for unknown correlation ID: %s", msg.CorrelationID)
 	}
@@ -99,20 +113,21 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 	correlationID := fmt.Sprintf("meta-rpc-%d-%d", time.Now().UnixNano(), c.correlationSeq)
 	c.mu.Unlock()
 
-	// Create response channel
-	respChan := make(chan *subprocess.Message, 1)
+	// Create response channel and entry
+	resp := make(chan *subprocess.Message, 1)
+	entry := &requestEntry{resp: resp}
 
 	// Register pending request
 	c.mu.Lock()
-	c.pendingRequests[correlationID] = respChan
+	c.pendingRequests[correlationID] = entry
 	c.mu.Unlock()
 
-	// Clean up on exit
+	// Clean up on exit: remove from map and close entry
 	defer func() {
 		c.mu.Lock()
 		delete(c.pendingRequests, correlationID)
 		c.mu.Unlock()
-		close(respChan)
+		entry.close()
 	}()
 
 	// Create request message
@@ -143,7 +158,7 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 
 	// Wait for response with timeout
 	select {
-	case response := <-respChan:
+	case response := <-resp:
 		c.logger.Debug("Received RPC response: correlationID=%s, type=%s", correlationID, response.Type)
 		return response, nil
 	case <-time.After(DefaultRPCTimeout):
@@ -309,6 +324,32 @@ func main() {
 			logger.Error("CWE import error: %s", resp.Error)
 		} else {
 			logger.Info("CWE import triggered on local")
+		}
+	}()
+
+	// --- CAPEC Import Control ---
+	go func() {
+		time.Sleep(2 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		// First check whether local already has CAPEC catalog metadata
+		metaResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCAPECCatalogMeta", nil)
+		if err != nil {
+			logger.Error("Failed to query CAPEC catalog meta on local: %v", err)
+			// fall back to attempting import
+		} else if metaResp.Type == subprocess.MessageTypeResponse {
+			logger.Info("CAPEC catalog already present on local; skipping automatic import")
+			return
+		}
+		// If meta not present or query failed, attempt import
+		params := map[string]interface{}{"path": "assets/capec_contents_latest.xml", "xsd": "assets/capec_schema_latest.xsd"}
+		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
+		if err != nil {
+			logger.Error("Failed to import CAPEC on local: %v", err)
+		} else if resp.Type == subprocess.MessageTypeError {
+			logger.Error("CAPEC import error: %s", resp.Error)
+		} else {
+			logger.Info("CAPEC import triggered on local")
 		}
 	}()
 

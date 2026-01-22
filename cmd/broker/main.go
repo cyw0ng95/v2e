@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -31,9 +32,18 @@ func main() {
 	// Set up logger with dual output (stdout + file) if log file is configured
 	var logOutput io.Writer
 	if config.Broker.LogFile != "" {
+		// Ensure parent directory exists so opening the log file won't fail
+		logDir := filepath.Dir(config.Broker.LogFile)
+		if logDir != "." && logDir != "" {
+			if err := os.MkdirAll(logDir, 0755); err != nil {
+				common.Error("Error creating log directory '%s': %v", logDir, err)
+				os.Exit(1)
+			}
+		}
+
 		logFile, err := os.OpenFile(config.Broker.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			common.Error("Error opening log file: %v", err)
+			common.Error("Error opening log file '%s': %v", config.Broker.LogFile, err)
 			os.Exit(1)
 		}
 		defer logFile.Close()

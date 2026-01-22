@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/go-resty/resty/v2"
 )
@@ -18,6 +20,8 @@ type Fetcher struct {
 	client  *resty.Client
 	baseURL string
 	apiKey  string
+	// bufferPool reuses temporary byte slices for response bodies
+	bufferPool *sync.Pool
 }
 
 // NewFetcher creates a new CVE fetcher
@@ -37,6 +41,12 @@ func NewFetcher(apiKey string) *Fetcher {
 		client:  client,
 		baseURL: cve.NVDAPIURL,
 		apiKey:  apiKey,
+		bufferPool: &sync.Pool{
+			New: func() interface{} {
+				b := make([]byte, 0, 32*1024) // 32KB initial capacity
+				return &b
+			},
+		},
 	}
 }
 
@@ -46,11 +56,7 @@ func (f *Fetcher) FetchCVEByID(cveID string) (*cve.CVEResponse, error) {
 		return nil, fmt.Errorf("CVE ID cannot be empty")
 	}
 
-	req := f.client.R().
-		SetResult(&cve.CVEResponse{}).
-		SetError(&map[string]interface{}{})
-
-	// Add API key if provided
+	req := f.client.R()
 	if f.apiKey != "" {
 		req.SetHeader("apiKey", f.apiKey)
 	}
@@ -61,19 +67,21 @@ func (f *Fetcher) FetchCVEByID(cveID string) (*cve.CVEResponse, error) {
 	}
 
 	if resp.IsError() {
-		// Check for rate limiting
 		if resp.StatusCode() == 429 {
 			return nil, ErrRateLimited
 		}
 		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
 	}
 
-	result, ok := resp.Result().(*cve.CVEResponse)
-	if !ok {
-		return nil, fmt.Errorf("failed to parse CVE response")
+	// Prefer using sonic for faster unmarshalling on hot paths
+	body := resp.Body()
+	var result cve.CVEResponse
+	api := sonic.ConfigFastest
+	if err := api.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal CVE response: %w", err)
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // FetchCVEs fetches CVEs with optional filters
@@ -86,12 +94,8 @@ func (f *Fetcher) FetchCVEs(startIndex, resultsPerPage int) (*cve.CVEResponse, e
 	}
 
 	req := f.client.R().
-		SetResult(&cve.CVEResponse{}).
-		SetError(&map[string]interface{}{}).
 		SetQueryParam("startIndex", fmt.Sprintf("%d", startIndex)).
 		SetQueryParam("resultsPerPage", fmt.Sprintf("%d", resultsPerPage))
-
-	// Add API key if provided
 	if f.apiKey != "" {
 		req.SetHeader("apiKey", f.apiKey)
 	}
@@ -102,19 +106,20 @@ func (f *Fetcher) FetchCVEs(startIndex, resultsPerPage int) (*cve.CVEResponse, e
 	}
 
 	if resp.IsError() {
-		// Check for rate limiting
 		if resp.StatusCode() == 429 {
 			return nil, ErrRateLimited
 		}
 		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
 	}
 
-	result, ok := resp.Result().(*cve.CVEResponse)
-	if !ok {
-		return nil, fmt.Errorf("failed to parse CVE response")
+	body := resp.Body()
+	var result cve.CVEResponse
+	api := sonic.ConfigFastest
+	if err := api.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal CVE response: %w", err)
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // FetchCVEsConcurrent fetches multiple CVE IDs concurrently using a worker pool

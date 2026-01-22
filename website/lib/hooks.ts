@@ -28,6 +28,11 @@ export const queryKeys = {
     ] as const,
     detail: (id: string) => ['cwes', 'detail', id] as const,
   },
+  capecs: {
+    all: ['capecs'] as const,
+    list: (offset: number, limit: number) => ['capecs', 'list', offset, limit] as const,
+    detail: (id: string) => ['capecs', 'detail', id] as const,
+  },
   session: {
     status: () => ['session', 'status'] as const,
   },
@@ -157,6 +162,39 @@ export function useCWEList(params?: ListCWEsRequest) {
       }
       return response.payload || { cwes: [], offset: 0, limit: 0, total: 0 };
     },
+  });
+}
+
+// ============================================================================
+// CAPEC Queries
+// ============================================================================
+
+export function useCAPECList(offset: number = 0, limit: number = 50) {
+  return useQuery({
+    queryKey: queryKeys.capecs.list(offset, limit),
+    queryFn: async () => {
+      const response = await rpcClient.listCAPECs(offset, limit);
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      return response.payload || { capecs: [], offset, limit, total: 0 };
+    },
+  });
+}
+
+export function useCAPEC(capecId?: string) {
+  return useQuery<any | null>({
+    queryKey: queryKeys.capecs.detail(capecId || ''),
+    queryFn: async () => {
+      if (!capecId) return null;
+      const response = await rpcClient.getCAPEC(capecId);
+      if (response.retcode !== 0) {
+        throw new Error(response.message);
+      }
+      const payload: any = response.payload ?? null;
+      return payload ?? null;
+    },
+    enabled: !!capecId,
   });
 }
 

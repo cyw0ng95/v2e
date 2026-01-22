@@ -138,10 +138,10 @@ func (s *Subprocess) handleMessage(msg *Message) {
 
 // HandleMessage is a public wrapper for the unexported handleMessage method
 func (s *Subprocess) HandleMessage(ctx context.Context, msg *Message) (*Message, error) {
-	// Use the existing handleMessage logic
+	// Use the existing handleMessage lookup logic but only hold the
+	// read-lock while performing the lookup. Release the lock before
+	// invoking the handler to avoid holding locks during handler execution.
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var handler Handler
 	var exists bool
 
@@ -156,6 +156,7 @@ func (s *Subprocess) HandleMessage(ctx context.Context, msg *Message) (*Message,
 			handler, exists = s.handlers[string(msg.Type)]
 		}
 	}
+	s.mu.RUnlock()
 
 	if !exists {
 		return nil, fmt.Errorf("no handler found for message: %s", msg.ID)

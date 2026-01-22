@@ -32,7 +32,7 @@ type AccessConfig struct {
 	RPCTimeoutSeconds int `json:"rpc_timeout_seconds,omitempty"`
 	// Shutdown timeout in seconds for graceful shutdown (default: 10)
 	ShutdownTimeoutSeconds int `json:"shutdown_timeout_seconds,omitempty"`
-	// StaticDir is the directory to serve static assets from (default: "website/out")
+	// StaticDir is the directory to serve static assets from (default: "website")
 	StaticDir string `json:"static_dir,omitempty"`
 }
 

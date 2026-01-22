@@ -18,15 +18,37 @@ const DefaultRPCTimeout = 30 * time.Second
 // RPCClient handles RPC communication with the broker
 type RPCClient struct {
 	sp              *subprocess.Subprocess
-	pendingRequests map[string]chan *subprocess.Message
+	pendingRequests map[string]*requestEntry
 	mu              sync.RWMutex
 	correlationSeq  uint64
+}
+
+type requestEntry struct {
+	resp chan *subprocess.Message
+	once sync.Once
+}
+
+func newRequestEntry() *requestEntry {
+	return &requestEntry{resp: make(chan *subprocess.Message, 1)}
+}
+
+func (e *requestEntry) signal(msg *subprocess.Message) {
+	e.once.Do(func() {
+		e.resp <- msg
+		close(e.resp)
+	})
+}
+
+func (e *requestEntry) close() {
+	e.once.Do(func() {
+		close(e.resp)
+	})
 }
 
 func NewRPCClient(sp *subprocess.Subprocess) *RPCClient {
 	client := &RPCClient{
 		sp:              sp,
-		pendingRequests: make(map[string]chan *subprocess.Message),
+		pendingRequests: make(map[string]*requestEntry),
 	}
 	sp.RegisterHandler(string(subprocess.MessageTypeResponse), client.handleResponse)
 	sp.RegisterHandler(string(subprocess.MessageTypeError), client.handleError)
@@ -35,16 +57,13 @@ func NewRPCClient(sp *subprocess.Subprocess) *RPCClient {
 
 func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 	c.mu.Lock()
-	respChan, exists := c.pendingRequests[msg.CorrelationID]
+	entry, exists := c.pendingRequests[msg.CorrelationID]
 	if exists {
 		delete(c.pendingRequests, msg.CorrelationID)
 	}
 	c.mu.Unlock()
-	if exists {
-		select {
-		case respChan <- msg:
-		case <-time.After(1 * time.Second):
-		}
+	if exists && entry != nil {
+		entry.signal(msg)
 	}
 	return nil, nil
 }
@@ -58,15 +77,15 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 	c.correlationSeq++
 	correlationID := fmt.Sprintf("sysmon-rpc-%d", c.correlationSeq)
 	c.mu.Unlock()
-	respChan := make(chan *subprocess.Message, 1)
+	entry := newRequestEntry()
 	c.mu.Lock()
-	c.pendingRequests[correlationID] = respChan
+	c.pendingRequests[correlationID] = entry
 	c.mu.Unlock()
 	defer func() {
 		c.mu.Lock()
 		delete(c.pendingRequests, correlationID)
 		c.mu.Unlock()
-		close(respChan)
+		entry.close()
 	}()
 	var payload []byte
 	if params != nil {
@@ -88,7 +107,7 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 		return nil, fmt.Errorf("failed to send RPC request: %w", err)
 	}
 	select {
-	case response := <-respChan:
+	case response := <-entry.resp:
 		return response, nil
 	case <-time.After(DefaultRPCTimeout):
 		return nil, fmt.Errorf("RPC timeout waiting for response from %s", target)
