@@ -32,3 +32,17 @@ RESTful API gateway service that provides external access to the v2e system. For
   - Invalid JSON: `retcode=400`, missing or malformed request body
   - RPC timeout: `retcode=500`, backend service did not respond in time
   - Backend error: `retcode=500`, backend service returned an error
+
+## Configuration
+- **RPC Timeout**: Configurable via `config.json` under `access.rpc_timeout_seconds` (default: 30 seconds)
+- **Shutdown Timeout**: Configurable via `config.json` under `access.shutdown_timeout_seconds` (default: 10 seconds)
+- **Static Directory**: Configurable via `config.json` under `access.static_dir` (default: "website")
+- **Server Address**: Configurable via `config.json` under `server.address` (default: "0.0.0.0:8080")
+
+## Notes
+- All RPC requests are forwarded through the broker for security and routing
+- Default RPC timeout is 30 seconds but configurable
+- Service runs as a subprocess managed by the broker
+- Uses stdin/stdout for RPC communication with broker
+- External clients access via HTTP on configured address (default: 0.0.0.0:8080)
+- Static files served from configured directory for frontend applications
