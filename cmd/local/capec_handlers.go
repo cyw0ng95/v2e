@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"html"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/capec"
@@ -61,6 +64,26 @@ func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			Payload:       []byte(`{"success":true}`),
 		}, nil
 	}
+}
+
+// xmlInnerToPlain strips all XML/HTML tags and returns plain text suitable for
+// direct rendering. It also removes xmlns declarations and unescapes entities.
+func xmlInnerToPlain(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return ""
+	}
+	// remove xmlns declarations
+	xmlnsRe := regexp.MustCompile(`\s+xmlns(:[a-z0-9_]+)?="[^"]*"`)
+	s = xmlnsRe.ReplaceAllString(s, "")
+	// strip all tags
+	tagRe := regexp.MustCompile(`(?s)<[^>]+>`) // dotall to match across lines
+	s = tagRe.ReplaceAllString(s, " ")
+	// unescape HTML entities
+	s = html.UnescapeString(s)
+	// collapse whitespace
+	wsRe := regexp.MustCompile(`\s+`)
+	s = wsRe.ReplaceAllString(s, " ")
+	return strings.TrimSpace(s)
 }
 
 // createForceImportCAPECsHandler creates a handler for RPCForceImportCAPECs
@@ -160,14 +183,14 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 		var examples []string
 		if ex, err := store.GetExamples(ctx, item.CAPECID); err == nil {
 			for _, e := range ex {
-				examples = append(examples, e.ExampleText)
+				examples = append(examples, xmlInnerToPlain(e.ExampleText))
 			}
 		}
 
 		var mitigations []string
 		if ms, err := store.GetMitigations(ctx, item.CAPECID); err == nil {
 			for _, m := range ms {
-				mitigations = append(mitigations, m.MitigationText)
+				mitigations = append(mitigations, xmlInnerToPlain(m.MitigationText))
 			}
 		}
 
@@ -179,11 +202,12 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 		}
 
 		// Build a client-friendly payload: use string ID "CAPEC-<n>" and simple keys
+		description := xmlInnerToPlain(item.Description)
 		payload := map[string]interface{}{
 			"id":               fmt.Sprintf("CAPEC-%d", item.CAPECID),
 			"name":             item.Name,
-			"summary":          item.Summary,
-			"description":      item.Description,
+			"summary":          xmlInnerToPlain(item.Summary),
+			"description":      description,
 			"status":           item.Status,
 			"likelihood":       item.Likelihood,
 			"typical_severity": item.TypicalSeverity,
@@ -306,14 +330,14 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 			var examples []string
 			if ex, err := store.GetExamples(ctx, it.CAPECID); err == nil {
 				for _, e := range ex {
-					examples = append(examples, e.ExampleText)
+					examples = append(examples, xmlInnerToPlain(e.ExampleText))
 				}
 			}
 
 			var mitigations []string
 			if ms, err := store.GetMitigations(ctx, it.CAPECID); err == nil {
 				for _, m := range ms {
-					mitigations = append(mitigations, m.MitigationText)
+					mitigations = append(mitigations, xmlInnerToPlain(m.MitigationText))
 				}
 			}
 
@@ -327,8 +351,8 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 			mapped = append(mapped, map[string]interface{}{
 				"id":               fmt.Sprintf("CAPEC-%d", it.CAPECID),
 				"name":             it.Name,
-				"summary":          it.Summary,
-				"description":      it.Description,
+				"summary":          xmlInnerToPlain(it.Summary),
+				"description":      xmlInnerToPlain(it.Description),
 				"status":           it.Status,
 				"likelihood":       it.Likelihood,
 				"typical_severity": it.TypicalSeverity,

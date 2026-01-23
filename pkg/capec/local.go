@@ -153,16 +153,17 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 					return err
 				}
 				// Upsert CAPEC item; ensure we populate Abstraction/Status and compute a
-				// summary fallback when Summary is empty.
+				// summary fallback when Summary is empty. Description is stored as
+				// the inner XML (may contain xhtml tags) so preserve ap.Description.XML.
 				summary := ap.Summary
 				if strings.TrimSpace(summary) == "" {
-					summary = truncateString(strings.TrimSpace(ap.Description), 200)
+					summary = truncateString(strings.TrimSpace(ap.Description.XML), 200)
 				}
 				item := CAPECItemModel{
 					CAPECID:         ap.ID,
 					Name:            ap.Name,
 					Summary:         summary,
-					Description:     ap.Description,
+					Description:     ap.Description.XML,
 					Status:          ap.Status,
 					Abstraction:     ap.Abstraction,
 					Likelihood:      ap.Likelihood,

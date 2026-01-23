@@ -3,14 +3,14 @@ package capec
 // Domain types for CAPEC XML parsing
 // These structs are minimal and map the commonly-needed fields.
 type CAPECAttackPattern struct {
-	ID              int    `xml:"ID,attr" json:"id"`
-	Name            string `xml:"Name,attr" json:"name"`
-	Abstraction     string `xml:"Abstraction,attr" json:"abstraction"`
-	Status          string `xml:"Status,attr" json:"status"`
-	Summary         string `xml:"Summary" json:"summary"`
-	Description     string `xml:"Description" json:"description"`
-	Likelihood      string `xml:"Likelihood_Of_Attack" json:"likelihood"`
-	TypicalSeverity string `xml:"Typical_Severity" json:"typical_severity"`
+	ID              int      `xml:"ID,attr" json:"id"`
+	Name            string   `xml:"Name,attr" json:"name"`
+	Abstraction     string   `xml:"Abstraction,attr" json:"abstraction"`
+	Status          string   `xml:"Status,attr" json:"status"`
+	Summary         string   `xml:"Summary" json:"summary"`
+	Description     InnerXML `xml:"Description" json:"description"`
+	Likelihood      string   `xml:"Likelihood_Of_Attack" json:"likelihood"`
+	TypicalSeverity string   `xml:"Typical_Severity" json:"typical_severity"`
 	// Related weaknesses are parsed from attributes
 	RelatedWeaknesses []RelatedWeakness `xml:"Related_Weaknesses>Related_Weakness" json:"related_weaknesses"`
 	Examples          []InnerXML        `xml:"Example_Instances>Example" json:"examples"`
