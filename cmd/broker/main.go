@@ -95,7 +95,9 @@ func main() {
 			case msg := <-broker.messages:
 				// Process messages directed at the broker
 				if err := broker.ProcessMessage(msg); err != nil {
-					common.Warn("Error processing broker message: %v", err)
+					common.Warn("Error processing broker message - Message ID: %s, Source: %s, Target: %s, Error: %v", msg.ID, msg.Source, msg.Target, err)
+				} else {
+					common.Debug("Successfully processed broker message - Message ID: %s, Source: %s, Target: %s", msg.ID, msg.Source, msg.Target)
 				}
 			case <-broker.Context().Done():
 				return

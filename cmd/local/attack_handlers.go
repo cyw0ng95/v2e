@@ -408,18 +408,19 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 // createListAttackTechniquesHandler handles listing ATT&CK techniques with pagination
 func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		common.Info("RPCListAttackTechniques handler invoked with message ID: %s", msg.ID)
+		logger.Debug("Processing ListAttackTechniques request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
 		var req struct {
 			Offset int `json:"offset"`
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn("Failed to parse ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+				logger.Debug("Processing ListAttackTechniques request failed due to malformed payload - Message ID: %s, Payload: %s", msg.ID, string(msg.Payload))
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
-					Error:         "failed to parse request",
+					Error:         "failed to parse request: " + err.Error(),
 					CorrelationID: msg.CorrelationID,
 					Target:        msg.Source,
 				}, nil
@@ -431,14 +432,15 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK techniques with offset=%d, limit=%d", req.Offset, req.Limit)
+		logger.Info("Processing ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Offset: %d, Limit: %d", msg.ID, msg.CorrelationID, req.Offset, req.Limit)
 		items, total, err := store.ListTechniquesPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Warn("Failed to list ATT&CK techniques: %v", err)
+			logger.Warn("Failed to list ATT&CK techniques from store - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Debug("Processing ListAttackTechniques request failed - Message ID: %s, Error details: %v", msg.ID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         "failed to list ATT&CK techniques",
+				Error:         "failed to list ATT&CK techniques: " + err.Error(),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -446,6 +448,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
 		for _, it := range items {
+			logger.Debug("Mapping ATT&CK technique - Message ID: %s, Technique ID: %s", msg.ID, it.ID)
 			mapped = append(mapped, map[string]interface{}{
 				"id":          it.ID,
 				"name":        it.Name,
@@ -468,16 +471,17 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 
 		jsonData, err := sonic.Marshal(resp)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK techniques list: %v", err)
+			logger.Error("Failed to marshal ListAttackTechniques response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK techniques list",
+				Error:         "failed to marshal ATT&CK techniques list: " + err.Error(),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
 		}
 
+		logger.Info("Successfully processed ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Returned: %d, Total: %d", msg.ID, msg.CorrelationID, len(items), total)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,

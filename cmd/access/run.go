@@ -57,8 +57,11 @@ func runAccess() {
 
 	// Start RPC client in background
 	go func() {
+		common.Info("[ACCESS] Starting RPC client for process: %s", processID)
 		if err := rpcClient.Run(context.Background()); err != nil {
-			common.Warn("RPC client error: %v", err)
+			common.Warn("[ACCESS] RPC client error for process %s: %v", processID, err)
+		} else {
+			common.Info("[ACCESS] RPC client stopped for process: %s", processID)
 		}
 	}()
 
