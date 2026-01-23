@@ -7,38 +7,18 @@ interface AttackQueryParams {
   search?: string;
 }
 
-// Custom hook for debouncing
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
 export function useAttackTechniques(params: AttackQueryParams = {}) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
-  
-  // Debounce the search term to prevent excessive API calls
-  const debouncedSearch = useDebounce(search, 300); // 300ms delay
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await rpcClient.listAttackTechniques(offset, limit, debouncedSearch);
+        const response = await rpcClient.listAttackTechniques(offset, limit);
         
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK techniques');
@@ -58,7 +38,7 @@ export function useAttackTechniques(params: AttackQueryParams = {}) {
 
     // Cleanup function
     return () => {};
-  }, [offset, limit, debouncedSearch]); // Use debounced search in dependency array
+  }, [offset, limit, search]);
 
   return { data, isLoading, error };
 }
@@ -69,15 +49,12 @@ export function useAttackTactics(params: AttackQueryParams = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
-  
-  // Debounce the search term to prevent excessive API calls
-  const debouncedSearch = useDebounce(search, 300); // 300ms delay
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await rpcClient.listAttackTactics(offset, limit, debouncedSearch);
+        const response = await rpcClient.listAttackTactics(offset, limit);
         
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK tactics');
@@ -97,7 +74,7 @@ export function useAttackTactics(params: AttackQueryParams = {}) {
 
     // Cleanup function
     return () => {};
-  }, [offset, limit, debouncedSearch]); // Use debounced search in dependency array
+  }, [offset, limit, search]);
 
   return { data, isLoading, error };
 }
@@ -108,15 +85,12 @@ export function useAttackMitigations(params: AttackQueryParams = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
-  
-  // Debounce the search term to prevent excessive API calls
-  const debouncedSearch = useDebounce(search, 300); // 300ms delay
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await rpcClient.listAttackMitigations(offset, limit, debouncedSearch);
+        const response = await rpcClient.listAttackMitigations(offset, limit);
         
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK mitigations');
@@ -136,7 +110,7 @@ export function useAttackMitigations(params: AttackQueryParams = {}) {
 
     // Cleanup function
     return () => {};
-  }, [offset, limit, debouncedSearch]); // Use debounced search in dependency array
+  }, [offset, limit, search]);
 
   return { data, isLoading, error };
 }
@@ -645,15 +619,12 @@ export function useAttackSoftware(params: AttackQueryParams = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
-  
-  // Debounce the search term to prevent excessive API calls
-  const debouncedSearch = useDebounce(search, 300); // 300ms delay
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await rpcClient.listAttackSoftware(offset, limit, debouncedSearch);
+        const response = await rpcClient.listAttackSoftware(offset, limit);
         
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK software');
@@ -673,7 +644,7 @@ export function useAttackSoftware(params: AttackQueryParams = {}) {
 
     // Cleanup function
     return () => {};
-  }, [offset, limit, debouncedSearch]); // Use debounced search in dependency array
+  }, [offset, limit, search]);
 
   return { data, isLoading, error };
 }
@@ -685,15 +656,12 @@ export function useAttackGroups(params: AttackQueryParams = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
-  
-  // Debounce the search term to prevent excessive API calls
-  const debouncedSearch = useDebounce(search, 300); // 300ms delay
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await rpcClient.listAttackGroups(offset, limit, debouncedSearch);
+        const response = await rpcClient.listAttackGroups(offset, limit);
         
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK groups');
@@ -713,7 +681,7 @@ export function useAttackGroups(params: AttackQueryParams = {}) {
 
     // Cleanup function
     return () => {};
-  }, [offset, limit, debouncedSearch]); // Use debounced search in dependency array
+  }, [offset, limit, search]);
 
   return { data, isLoading, error };
 }

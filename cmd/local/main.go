@@ -141,11 +141,6 @@ func main() {
 		logger.Error("Failed to open ATT&CK database: %v", err)
 		os.Exit(1)
 	}
-	defer func() {
-		if err := attackStore.CloseIndex(); err != nil {
-			logger.Warn("Failed to close ATT&CK index: %v", err)
-		}
-	}()
 
 	// Import CWEs from JSON file at startup (if file exists)
 	// Removed duplicate importCWEsAtStartup definition; now only in cwe_handlers.go

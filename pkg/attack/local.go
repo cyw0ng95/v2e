@@ -7,27 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blevesearch/bleve/v2"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-// IndexOperation represents an indexing operation
-type IndexOperation struct {
-	DocType string
-	DocID   string
-	Item    interface{}
-	Action  string // "index" or "delete"
-}
-
 // LocalAttackStore manages a local database of ATT&CK items
 type LocalAttackStore struct {
-	db            *gorm.DB
-	index         bleve.Index
-	indexQueue    chan IndexOperation
-	closeIndexing chan struct{}
+	db *gorm.DB
 }
 
 // NewLocalAttackStore creates or opens a local ATT&CK database at dbPath
@@ -62,106 +50,7 @@ func NewLocalAttackStore(dbPath string) (*LocalAttackStore, error) {
 		return nil, err
 	}
 
-	// Create Bleve index
-	indexPath := strings.TrimSuffix(dbPath, ".db") + "_index.bleve"
-	index, err := createBleveIndex(indexPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create bleve index: %v", err)
-	}
-
-	// Create indexing queue and start async indexer
-	store := &LocalAttackStore{
-		db:            db,
-		index:         index,
-		indexQueue:    make(chan IndexOperation, 100), // Buffered channel
-		closeIndexing: make(chan struct{}),
-	}
-
-	// Start the async indexer goroutine
-	go store.runAsyncIndexer()
-
-	return store, nil
-}
-
-// createBleveIndex creates a new Bleve index for ATT&CK data
-func createBleveIndex(indexPath string) (bleve.Index, error) {
-	// Check if index already exists
-	if _, err := os.Stat(indexPath); err == nil {
-		// Open existing index
-		return bleve.Open(indexPath)
-	}
-
-	// Create new index mapping
-	mapping := bleve.NewIndexMapping()
-
-	// Create the index
-	index, err := bleve.New(indexPath, mapping)
-	if err != nil {
-		return nil, err
-	}
-
-	return index, nil
-}
-
-// indexItem adds an item to the indexing queue (async)
-func (s *LocalAttackStore) indexItem(docType, docID string, item interface{}) error {
-	op := IndexOperation{
-		DocType: docType,
-		DocID:   docID,
-		Item:    item,
-		Action:  "index",
-	}
-
-	// Send to indexing queue (non-blocking unless queue is full)
-	select {
-	case s.indexQueue <- op:
-		return nil // Successfully queued
-	default:
-		// Queue is full, log warning but don't block
-		fmt.Printf("Warning: indexing queue is full, skipping document %s_%s\n", docType, docID)
-		return nil // Return nil to not affect the main operation
-	}
-}
-
-// runAsyncIndexer runs the async indexing process
-func (s *LocalAttackStore) runAsyncIndexer() {
-	for {
-		select {
-		case op := <-s.indexQueue:
-			docIDWithPrefix := op.DocType + "_" + op.DocID
-			var err error
-
-			switch op.Action {
-			case "delete":
-				err = s.index.Delete(docIDWithPrefix)
-			default: // "index" or any other action defaults to indexing
-				err = s.index.Index(docIDWithPrefix, op.Item)
-			}
-
-			if err != nil {
-				// In a production system, we might want to log this to a persistent log
-				// or have a retry mechanism for failed indexing operations
-				fmt.Printf("Warning: failed to %s document %s in index: %v\n", op.Action, docIDWithPrefix, err)
-			}
-		case <-s.closeIndexing:
-			// Close signal received, exit the goroutine
-			return
-		}
-	}
-}
-
-// closeIndex closes the Bleve index
-func (s *LocalAttackStore) CloseIndex() error {
-	// Signal the indexer to stop
-	close(s.closeIndexing)
-
-	// Wait a bit for pending operations to complete
-	time.Sleep(100 * time.Millisecond)
-
-	if s.index != nil {
-		return s.index.Close()
-	}
-	return nil
+	return &LocalAttackStore{db: db}, nil
 }
 
 // ImportFromXLSX reads ATT&CK data from an Excel file and imports it into the database
@@ -255,11 +144,6 @@ func (s *LocalAttackStore) ImportFromXLSX(xlsxPath string, force bool) error {
 							tx.Rollback()
 							return fmt.Errorf("failed to insert technique: %v", err)
 						}
-						// Index in Bleve
-						if err := s.indexItem("technique", technique.ID, technique); err != nil {
-							// Log the error but don't fail the whole import
-							fmt.Printf("Warning: failed to index technique %s: %v\n", technique.ID, err)
-						}
 						totalRecords++
 					}
 				}
@@ -280,11 +164,6 @@ func (s *LocalAttackStore) ImportFromXLSX(xlsxPath string, force bool) error {
 							tx.Rollback()
 							return fmt.Errorf("failed to insert tactic: %v", err)
 						}
-						// Index in Bleve
-						if err := s.indexItem("tactic", tactic.ID, tactic); err != nil {
-							// Log the error but don't fail the whole import
-							fmt.Printf("Warning: failed to index tactic %s: %v\n", tactic.ID, err)
-						}
 						totalRecords++
 					}
 				}
@@ -304,11 +183,6 @@ func (s *LocalAttackStore) ImportFromXLSX(xlsxPath string, force bool) error {
 						if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "id"}}, UpdateAll: true}).Create(mitigation).Error; err != nil {
 							tx.Rollback()
 							return fmt.Errorf("failed to insert mitigation: %v", err)
-						}
-						// Index in Bleve
-						if err := s.indexItem("mitigation", mitigation.ID, mitigation); err != nil {
-							// Log the error but don't fail the whole import
-							fmt.Printf("Warning: failed to index mitigation %s: %v\n", mitigation.ID, err)
 						}
 						totalRecords++
 					}
@@ -331,11 +205,6 @@ func (s *LocalAttackStore) ImportFromXLSX(xlsxPath string, force bool) error {
 							tx.Rollback()
 							return fmt.Errorf("failed to insert software: %v", err)
 						}
-						// Index in Bleve
-						if err := s.indexItem("software", software.ID, software); err != nil {
-							// Log the error but don't fail the whole import
-							fmt.Printf("Warning: failed to index software %s: %v\n", software.ID, err)
-						}
 						totalRecords++
 					}
 				}
@@ -355,11 +224,6 @@ func (s *LocalAttackStore) ImportFromXLSX(xlsxPath string, force bool) error {
 						if err := tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "id"}}, UpdateAll: true}).Create(group).Error; err != nil {
 							tx.Rollback()
 							return fmt.Errorf("failed to insert group: %v", err)
-						}
-						// Index in Bleve
-						if err := s.indexItem("group", group.ID, group); err != nil {
-							// Log the error but don't fail the whole import
-							fmt.Printf("Warning: failed to index group %s: %v\n", group.ID, err)
 						}
 						totalRecords++
 					}
@@ -546,239 +410,6 @@ func (s *LocalAttackStore) GetImportMetadata(ctx context.Context) (*AttackMetada
 		return nil, err
 	}
 	return &meta, nil
-}
-
-// SearchTechniques searches for ATT&CK techniques by text with enhanced intelligence
-func (s *LocalAttackStore) SearchTechniques(ctx context.Context, search string, offset, limit int) ([]AttackTechnique, int64, error) {
-	if search == "" {
-		// Fall back to pagination if no search term
-		return s.ListTechniquesPaginated(ctx, offset, limit)
-	}
-
-	// Create a more intelligent search query that handles various search patterns
-	query := createIntelligentSearchQuery(search, "technique")
-	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.From = offset
-	searchRequest.Size = limit
-	searchRequest.Fields = []string{"*"}
-	searchRequest.Highlight = bleve.NewHighlight()
-
-	// Enable relevance scoring and sorting
-	searchRequest.SortBy([]string{"-_score"}) // Sort by relevance score
-
-	searchResults, err := s.index.Search(searchRequest)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var techniques []AttackTechnique
-	for _, hit := range searchResults.Hits {
-		id := strings.TrimPrefix(hit.ID, "technique_")
-		technique, err := s.GetTechniqueByID(ctx, id)
-		if err != nil {
-			continue // Skip if technique not found in DB
-		}
-		techniques = append(techniques, *technique)
-	}
-
-	return techniques, int64(searchResults.Total), nil
-}
-
-// createIntelligentSearchQuery creates a more intelligent search query with multiple matching strategies
-func createIntelligentSearchQuery(searchTerm string, docType string) bleve.Query {
-	// If search term is an ID (starts with T, TA, M, S, G followed by digits), do exact match
-	if strings.HasPrefix(searchTerm, "T") && len(searchTerm) > 1 {
-		// Could be technique (T1234) or tactic (TA0001)
-		if len(searchTerm) > 2 && searchTerm[1] == 'A' {
-			// Tactic ID
-			return bleve.NewTermQuery(strings.ToLower(searchTerm))
-		} else {
-			// Technique ID
-			return bleve.NewTermQuery(strings.ToLower(searchTerm))
-		}
-	} else if strings.HasPrefix(searchTerm, "M") || strings.HasPrefix(searchTerm, "S") || strings.HasPrefix(searchTerm, "G") {
-		// Other ID types
-		return bleve.NewTermQuery(strings.ToLower(searchTerm))
-	}
-
-	// For text search, use a combination of strategies:
-	// 1. Phrase match for exact phrase
-	phraseQuery := bleve.NewMatchPhraseQuery(searchTerm)
-	
-	// 2. Fuzzy match for typo tolerance
-	fuzzyQuery := bleve.NewFuzzyQuery(searchTerm)
-	fuzzyQuery.SetFuzziness(1) // Allow 1 character difference
-	
-	// 3. Prefix match for partial matches
-	prefixQuery := bleve.NewPrefixQuery(searchTerm)
-	
-	// 4. Match query for individual terms
-	matchQuery := bleve.NewMatchQuery(searchTerm)
-
-	// Combine queries with boolean query - this gives us comprehensive matching
-	bq := bleve.NewBooleanQuery()
-	bq.AddShould(phraseQuery)
-	bq.AddShould(fuzzyQuery)
-	bq.AddShould(prefixQuery)
-	bq.AddShould(matchQuery)
-
-	// Also add field-specific boosting for better relevance
-	nameBoostQuery := bleve.NewMatchQuery(searchTerm)
-	nameBoostQuery.SetField("name")
-	nameBoostQuery.SetBoost(2.0) // Boost name field matches
-
-	descriptionBoostQuery := bleve.NewMatchQuery(searchTerm)
-	descriptionBoostQuery.SetField("description")
-	descriptionBoostQuery.SetBoost(1.5) // Boost description matches
-
-	bq.AddShould(nameBoostQuery)
-	bq.AddShould(descriptionBoostQuery)
-
-	return bq
-}
-
-// SearchTactics searches for ATT&CK tactics by text with enhanced intelligence
-func (s *LocalAttackStore) SearchTactics(ctx context.Context, search string, offset, limit int) ([]AttackTactic, int64, error) {
-	if search == "" {
-		// Fall back to pagination if no search term
-		return s.ListTacticsPaginated(ctx, offset, limit)
-	}
-
-	// Create a more intelligent search query that handles various search patterns
-	query := createIntelligentSearchQuery(search, "tactic")
-	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.From = offset
-	searchRequest.Size = limit
-	searchRequest.Fields = []string{"*"}
-	searchRequest.Highlight = bleve.NewHighlight()
-
-	// Enable relevance scoring and sorting
-	searchRequest.SortBy([]string{"-_score"}) // Sort by relevance score
-
-	searchResults, err := s.index.Search(searchRequest)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var tactics []AttackTactic
-	for _, hit := range searchResults.Hits {
-		id := strings.TrimPrefix(hit.ID, "tactic_")
-		tactic, err := s.GetTacticByID(ctx, id)
-		if err != nil {
-			continue // Skip if tactic not found in DB
-		}
-		tactics = append(tactics, *tactic)
-	}
-
-	return tactics, int64(searchResults.Total), nil
-}
-
-// SearchMitigations searches for ATT&CK mitigations by text with enhanced intelligence
-func (s *LocalAttackStore) SearchMitigations(ctx context.Context, search string, offset, limit int) ([]AttackMitigation, int64, error) {
-	if search == "" {
-		// Fall back to pagination if no search term
-		return s.ListMitigationsPaginated(ctx, offset, limit)
-	}
-
-	// Create a more intelligent search query that handles various search patterns
-	query := createIntelligentSearchQuery(search, "mitigation")
-	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.From = offset
-	searchRequest.Size = limit
-	searchRequest.Fields = []string{"*"}
-	searchRequest.Highlight = bleve.NewHighlight()
-
-	// Enable relevance scoring and sorting
-	searchRequest.SortBy([]string{"-_score"}) // Sort by relevance score
-
-	searchResults, err := s.index.Search(searchRequest)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var mitigations []AttackMitigation
-	for _, hit := range searchResults.Hits {
-		id := strings.TrimPrefix(hit.ID, "mitigation_")
-		mitigation, err := s.GetMitigationByID(ctx, id)
-		if err != nil {
-			continue // Skip if mitigation not found in DB
-		}
-		mitigations = append(mitigations, *mitigation)
-	}
-
-	return mitigations, int64(searchResults.Total), nil
-}
-
-// SearchSoftware searches for ATT&CK software by text with enhanced intelligence
-func (s *LocalAttackStore) SearchSoftware(ctx context.Context, search string, offset, limit int) ([]AttackSoftware, int64, error) {
-	if search == "" {
-		// Fall back to pagination if no search term
-		return s.ListSoftwarePaginated(ctx, offset, limit)
-	}
-
-	// Create a more intelligent search query that handles various search patterns
-	query := createIntelligentSearchQuery(search, "software")
-	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.From = offset
-	searchRequest.Size = limit
-	searchRequest.Fields = []string{"*"}
-	searchRequest.Highlight = bleve.NewHighlight()
-
-	// Enable relevance scoring and sorting
-	searchRequest.SortBy([]string{"-_score"}) // Sort by relevance score
-
-	searchResults, err := s.index.Search(searchRequest)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var software []AttackSoftware
-	for _, hit := range searchResults.Hits {
-		id := strings.TrimPrefix(hit.ID, "software_")
-		sw, err := s.GetSoftwareByID(ctx, id)
-		if err != nil {
-			continue // Skip if software not found in DB
-		}
-		software = append(software, *sw)
-	}
-
-	return software, int64(searchResults.Total), nil
-}
-
-// SearchGroups searches for ATT&CK groups by text with enhanced intelligence
-func (s *LocalAttackStore) SearchGroups(ctx context.Context, search string, offset, limit int) ([]AttackGroup, int64, error) {
-	if search == "" {
-		// Fall back to pagination if no search term
-		return s.ListGroupsPaginated(ctx, offset, limit)
-	}
-
-	// Create a more intelligent search query that handles various search patterns
-	query := createIntelligentSearchQuery(search, "group")
-	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.From = offset
-	searchRequest.Size = limit
-	searchRequest.Fields = []string{"*"}
-	searchRequest.Highlight = bleve.NewHighlight()
-
-	// Enable relevance scoring and sorting
-	searchRequest.SortBy([]string{"-_score"}) // Sort by relevance score
-
-	searchResults, err := s.index.Search(searchRequest)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var groups []AttackGroup
-	for _, hit := range searchResults.Hits {
-		id := strings.TrimPrefix(hit.ID, "group_")
-		group, err := s.GetGroupByID(ctx, id)
-		if err != nil {
-			continue // Skip if group not found in DB
-		}
-		groups = append(groups, *group)
-	}
-
-	return groups, int64(searchResults.Total), nil
 }
 
 // Helper functions for parsing Excel data
