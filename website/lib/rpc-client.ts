@@ -591,6 +591,55 @@ export class RPCClient {
     return this.call<{ cweId: string }, { cwe: CWEItem }>('RPCGetCWEByID', { cweId }, 'local');
   }
 
+  // ATT&CK Methods
+  async importATTACK(filePath: string, force: boolean = false): Promise<RPCResponse<any>> {
+    return this.call<{ path: string, force: boolean }, any>('RPCImportATTACKs', { path: filePath, force }, 'local');
+  }
+
+  async getAttackTechnique(id: string): Promise<RPCResponse<any>> {
+    return this.call<{ id: string }, any>('RPCGetAttackTechniqueByID', { id }, 'local');
+  }
+
+  async getAttackTactic(id: string): Promise<RPCResponse<any>> {
+    return this.call<{ id: string }, any>('RPCGetAttackTacticByID', { id }, 'local');
+  }
+
+  async getAttackMitigation(id: string): Promise<RPCResponse<any>> {
+    return this.call<{ id: string }, any>('RPCGetAttackMitigationByID', { id }, 'local');
+  }
+
+  async getAttackSoftware(id: string): Promise<RPCResponse<any>> {
+    return this.call<{ id: string }, any>('RPCGetAttackSoftwareByID', { id }, 'local');
+  }
+
+  async getAttackGroup(id: string): Promise<RPCResponse<any>> {
+    return this.call<{ id: string }, any>('RPCGetAttackGroupByID', { id }, 'local');
+  }
+
+  async listAttackTechniques(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number }, any>('RPCListAttackTechniques', { offset, limit }, 'local');
+  }
+
+  async listAttackTactics(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number }, any>('RPCListAttackTactics', { offset, limit }, 'local');
+  }
+
+  async listAttackMitigations(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number }, any>('RPCListAttackMitigations', { offset, limit }, 'local');
+  }
+
+  async listAttackSoftware(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number }, any>('RPCListAttackSoftware', { offset, limit }, 'local');
+  }
+
+  async listAttackGroups(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number }, any>('RPCListAttackGroups', { offset, limit }, 'local');
+  }
+
+  async getAttackImportMetadata(): Promise<RPCResponse<any>> {
+    return this.call<undefined, any>('RPCGetAttackImportMetadata', undefined, 'local');
+  }
+
   // ==========================================================================
   // System Metrics
   // ==========================================================================

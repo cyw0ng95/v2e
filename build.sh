@@ -536,6 +536,31 @@ build_and_package() {
             cp assets/capec_schema_latest.xsd "$PACKAGE_DIR/assets/"
         fi
         
+        # Copy ATT&CK XLSX files for import
+        if [ -d "assets" ]; then
+            mkdir -p "$PACKAGE_DIR/assets"
+            # Copy all XLSX files from assets directory
+            for xlsx_file in assets/*.xlsx; do
+                if [ -f "$xlsx_file" ]; then
+                    cp "$xlsx_file" "$PACKAGE_DIR/assets/"
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Copied XLSX file: $(basename "$xlsx_file")"
+                    fi
+                fi
+            done
+            # Copy all XLSX files from assets/attack directory
+            if [ -d "assets/attack" ]; then
+                for xlsx_file in assets/attack/*.xlsx; do
+                    if [ -f "$xlsx_file" ]; then
+                        cp "$xlsx_file" "$PACKAGE_DIR/assets/"
+                        if [ "$VERBOSE" = true ]; then
+                            echo "Copied XLSX file: $(basename "$xlsx_file")"
+                        fi
+                    fi
+                done
+            fi
+        fi
+        
         echo "Go binaries packaged successfully"
     else
         echo "No go.mod found. Skipping Go build."
