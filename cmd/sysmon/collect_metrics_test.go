@@ -11,21 +11,21 @@ import (
 
 // MockProcFS is a mock implementation of the procfs functions for testing
 type MockProcFS struct {
-	cpuUsage      float64
-	cpuUsageErr   error
-	memoryUsage   float64
+	cpuUsage       float64
+	cpuUsageErr    error
+	memoryUsage    float64
 	memoryUsageErr error
-	loadAvg       map[string]interface{}
-	loadAvgErr    error
-	uptime        float64
-	uptimeErr     error
-	diskUsed      uint64
-	diskTotal     uint64
-	diskUsageErr  error
-	swapUsage     float64
-	swapUsageErr  error
-	netMap        map[string]map[string]uint64
-	netErr        error
+	loadAvg        map[string]interface{}
+	loadAvgErr     error
+	uptime         float64
+	uptimeErr      error
+	diskUsed       uint64
+	diskTotal      uint64
+	diskUsageErr   error
+	swapUsage      float64
+	swapUsageErr   error
+	netMap         map[string]map[string]uint64
+	netErr         error
 }
 
 func (m *MockProcFS) ReadCPUUsage() (float64, error) {
@@ -245,8 +245,6 @@ func TestCollectMetrics_NetErrorIgnored(t *testing.T) {
 	assert.False(t, hasNetTx)
 }
 
-
-
 // Mock RPC client for testing
 type MockSysmonRPCClient struct {
 	invokeRPCFunc func(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error)
@@ -269,30 +267,28 @@ func (m *MockSysmonRPCClient) handleError(ctx context.Context, msg *subprocess.M
 	return m.handleResponse(ctx, msg)
 }
 
-
-
 func TestRPCClient_HandleResponse(t *testing.T) {
 	sp := subprocess.New("test")
 	client := NewRPCClient(sp)
-	
+
 	// Create a request entry manually
 	entry := newRequestEntry()
 	correlationID := "test-correlation"
-	
+
 	// Add the entry to pending requests
 	client.mu.Lock()
 	client.pendingRequests[correlationID] = entry
 	client.mu.Unlock()
-	
+
 	// Create a test message
 	msg := &subprocess.Message{
 		CorrelationID: correlationID,
 	}
-	
+
 	// Handle the response
 	_, err := client.handleResponse(context.Background(), msg)
 	assert.NoError(t, err)
-	
+
 	// Entry should be removed from pending requests
 	client.mu.Lock()
 	_, exists := client.pendingRequests[correlationID]
@@ -303,26 +299,26 @@ func TestRPCClient_HandleResponse(t *testing.T) {
 func TestRPCClient_HandleError(t *testing.T) {
 	sp := subprocess.New("test")
 	client := NewRPCClient(sp)
-	
+
 	// Create a request entry manually
 	entry := newRequestEntry()
 	correlationID := "test-correlation"
-	
+
 	// Add the entry to pending requests
 	client.mu.Lock()
 	client.pendingRequests[correlationID] = entry
 	client.mu.Unlock()
-	
+
 	// Create a test error message
 	msg := &subprocess.Message{
 		Type:          subprocess.MessageTypeError,
 		CorrelationID: correlationID,
 	}
-	
+
 	// Handle the error
 	_, err := client.handleError(context.Background(), msg)
 	assert.NoError(t, err)
-	
+
 	// Entry should be removed from pending requests
 	client.mu.Lock()
 	_, exists := client.pendingRequests[correlationID]

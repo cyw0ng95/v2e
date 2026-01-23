@@ -762,8 +762,8 @@ func TestCreateStartSessionHandler_ValidSession(t *testing.T) {
 
 	// Create request with valid session ID
 	reqPayload, _ := sonic.Marshal(map[string]interface{}{
-		"session_id": "test-session",
-		"start_index": 0,
+		"session_id":        "test-session",
+		"start_index":       0,
 		"results_per_batch": 10,
 	})
 	msg := &subprocess.Message{

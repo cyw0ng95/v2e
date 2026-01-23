@@ -10,9 +10,9 @@ import (
 
 // OptimizedMessagePool provides enhanced pooling for Message objects
 type OptimizedMessagePool struct {
-	pool     sync.Pool
-	hits     int64 // atomic counter for cache hits
-	misses   int64 // atomic counter for cache misses
+	pool   sync.Pool
+	hits   int64 // atomic counter for cache hits
+	misses int64 // atomic counter for cache misses
 }
 
 // Global optimized message pool
@@ -28,7 +28,7 @@ var optimizedPool = &OptimizedMessagePool{
 func (omp *OptimizedMessagePool) Get() *Message {
 	msg := omp.pool.Get().(*Message)
 	atomic.AddInt64(&omp.hits, 1)
-	
+
 	// Reset fields efficiently
 	msg.reset()
 	return msg
@@ -73,7 +73,6 @@ var (
 		SortMapKeys:    true,
 		ValidateString: true,
 	}.Froze()
-
 )
 
 // OptimizedNewRequestMessage creates a new request message with enhanced performance
@@ -135,7 +134,7 @@ func (m *Message) OptimizedUnmarshalPayload(v interface{}) error {
 	if m.Payload == nil {
 		return fmt.Errorf("no payload to unmarshal")
 	}
-	
+
 	// Use optimized unmarshal configuration
 	return fastUnmarshalConfig.Unmarshal(m.Payload, v)
 }
@@ -148,7 +147,7 @@ func (m *Message) OptimizedMarshal() ([]byte, error) {
 // OptimizedUnmarshal deserializes a message from JSON with enhanced performance
 func OptimizedUnmarshal(data []byte) (*Message, error) {
 	msg := GetOptimizedMessage()
-	
+
 	// Use optimized unmarshal configuration
 	if err := fastUnmarshalConfig.Unmarshal(data, msg); err != nil {
 		PutOptimizedMessage(msg)
@@ -162,10 +161,10 @@ func OptimizedUnmarshalReuse(data []byte, msg *Message) error {
 	if msg == nil {
 		return fmt.Errorf("message cannot be nil")
 	}
-	
+
 	// Reset message first
 	msg.reset()
-	
+
 	// Use optimized unmarshal configuration
 	return fastUnmarshalConfig.Unmarshal(data, msg)
 }
@@ -173,13 +172,13 @@ func OptimizedUnmarshalReuse(data []byte, msg *Message) error {
 // OptimizedUnmarshalDecoder uses a pooled decoder for maximum performance
 func OptimizedUnmarshalDecoder(data []byte) (*Message, error) {
 	msg := GetOptimizedMessage()
-	
+
 	// Use the standard unmarshal approach
 	if err := fastUnmarshalConfig.Unmarshal(data, msg); err != nil {
 		PutOptimizedMessage(msg)
 		return nil, fmt.Errorf("failed to decode message: %w", err)
 	}
-	
+
 	return msg, nil
 }
 

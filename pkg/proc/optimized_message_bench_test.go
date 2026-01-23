@@ -64,7 +64,7 @@ func BenchmarkOptimizedMessageMarshal(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = msg.OptimizedMarshal()
 	}
-	
+
 	// Clean up
 	PutOptimizedMessage(msg)
 }
@@ -122,7 +122,7 @@ func BenchmarkOptimizedMessageMarshalUnmarshalRoundTrip(b *testing.B) {
 		decoded, _ := OptimizedUnmarshal(data)
 		var result TestData
 		_ = decoded.OptimizedUnmarshalPayload(&result)
-		
+
 		// Clean up
 		PutOptimizedMessage(msg)
 		PutOptimizedMessage(decoded)
@@ -151,7 +151,7 @@ func BenchmarkOptimizedMessageMarshalLargePayload(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = msg.OptimizedMarshal()
 	}
-	
+
 	// Clean up
 	PutOptimizedMessage(msg)
 }
@@ -185,7 +185,7 @@ func BenchmarkOptimizedMessageWithRouting(b *testing.B) {
 		msg.Target = "process-b"
 		msg.CorrelationID = "corr-123"
 		_, _ = msg.OptimizedMarshal()
-		
+
 		// Clean up
 		PutOptimizedMessage(msg)
 	}
@@ -250,7 +250,7 @@ func BenchmarkComparisonOriginalVsOptimizedMarshal(b *testing.B) {
 			_, _ = optMsg.OptimizedMarshal()
 		}
 	})
-	
+
 	// Clean up
 	PutMessage(origMsg)
 	PutOptimizedMessage(optMsg)

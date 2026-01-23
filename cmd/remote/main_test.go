@@ -85,7 +85,6 @@ func TestRPCGetCVEByID_MissingField(t *testing.T) {
 	t.Logf("Expected error for missing cve_id field: %s", resp.Error)
 }
 
-
 func TestRPCGetCVEByID_EmptyString(t *testing.T) {
 	// Create fetcher
 	fetcher := remote.NewFetcher("")
@@ -126,10 +125,10 @@ func TestRPCGetCVEByID_EmptyString(t *testing.T) {
 
 func TestMalformedPayloadScenarios(t *testing.T) {
 	// Test various malformed payloads for all handlers
-	
+
 	// Test 1: Invalid JSON structure
 	invalidJSON := []byte("{malformed json")
-	
+
 	// Test RPCGetCVEByID with invalid JSON
 	fetcher := remote.NewFetcher("")
 	handler1 := createGetCVEByIDHandler(fetcher)
@@ -147,7 +146,7 @@ func TestMalformedPayloadScenarios(t *testing.T) {
 		t.Errorf("Expected error response for malformed JSON, got %s", resp1.Type)
 	}
 	t.Logf("RPCGetCVEByID correctly handled malformed JSON: %s", resp1.Error)
-		// Test 2: Valid JSON but wrong field types
+	// Test 2: Valid JSON but wrong field types
 	wrongTypePayload, _ := sonic.Marshal(map[string]int{
 		"cve_id": 12345, // Should be string
 	})
@@ -163,4 +162,3 @@ func TestMalformedPayloadScenarios(t *testing.T) {
 	// This might succeed or fail depending on how sonic handles type conversion
 	t.Logf("RPCGetCVEByID handled wrong field type: %s", resp4.Type)
 }
-

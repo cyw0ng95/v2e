@@ -813,7 +813,7 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug("RPCGetAttackImportMetadata handler invoked")
-		
+
 		meta, err := store.GetImportMetadata(ctx)
 		if err != nil {
 			logger.Warn("Failed to get ATT&CK import metadata: %v", err)
@@ -828,10 +828,10 @@ func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger
 
 		// Build a client-friendly payload
 		payload := map[string]interface{}{
-			"id":            meta.ID,
-			"imported_at":   meta.ImportedAt,
-			"source_file":   meta.SourceFile,
-			"total_records": meta.TotalRecords,
+			"id":             meta.ID,
+			"imported_at":    meta.ImportedAt,
+			"source_file":    meta.SourceFile,
+			"total_records":  meta.TotalRecords,
 			"import_version": meta.ImportVersion,
 		}
 		jsonData, err := sonic.Marshal(payload)

@@ -119,13 +119,13 @@ type PendingRequest struct {
 
 // Broker manages subprocesses and message passing
 type Broker struct {
-	processes       map[string]*Process
-	messages        chan *proc.Message
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
-	logger          *common.Logger
+	processes map[string]*Process
+	messages  chan *proc.Message
+	mu        sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+	logger    *common.Logger
 	// config holds optional loaded configuration used by Broker for spawning
 	config          *common.Config
 	stats           MessageStats
@@ -209,9 +209,9 @@ func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error)
 			if b.config.Capec.StrictXSDValidation {
 				cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
 			}
-            if b.config.Capec.StrictXSDValidation {
-                cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
-            }
+			if b.config.Capec.StrictXSDValidation {
+				cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
+			}
 		case "meta":
 			if b.config.Meta.SessionDBPath != "" {
 				cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", b.config.Meta.SessionDBPath))

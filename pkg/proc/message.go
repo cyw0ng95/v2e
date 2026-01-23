@@ -52,7 +52,6 @@ const (
 
 // MaxMessageSize is adjustable at runtime via configuration (default 10MB)
 var MaxMessageSize = 10 * 1024 * 1024 // 10MB
- 
 
 // Message represents a message that can be passed between processes
 type Message struct {
