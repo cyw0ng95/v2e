@@ -129,18 +129,20 @@ export default function MessageStatsCharts({ points, openPanel, setOpenPanel }: 
               </select>
             </div>
             <div style={{ width: "100%", height: 200 }} className="mb-4">
-              <ResponsiveContainer>
-                <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="ts" tickFormatter={tsLabel} />
-                  <YAxis />
-                  <Tooltip labelFormatter={(v) => tsLabel(Number(v))} />
-                  <Legend />
-                  <Line type="monotone" dataKey={`total_${totalMetric}`} stroke={colors[0]} dot={false} name={totalMetric} />
-                  <Line type="monotone" dataKey="total_request_count" stroke={colors[2]} dot={false} name="request_count" />
-                  <Line type="monotone" dataKey="total_response_count" stroke={colors[3]} dot={false} name="response_count" />
-                </LineChart>
-              </ResponsiveContainer>
+              {openPanel === "global" && (
+                <ResponsiveContainer>
+                  <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="ts" tickFormatter={tsLabel} />
+                    <YAxis />
+                    <Tooltip labelFormatter={(v) => tsLabel(Number(v))} />
+                    <Legend />
+                    <Line type="monotone" dataKey={`total_${totalMetric}`} stroke={colors[0]} dot={false} name={totalMetric} />
+                    <Line type="monotone" dataKey="total_request_count" stroke={colors[2]} dot={false} name="request_count" />
+                    <Line type="monotone" dataKey="total_response_count" stroke={colors[3]} dot={false} name="response_count" />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -173,19 +175,21 @@ export default function MessageStatsCharts({ points, openPanel, setOpenPanel }: 
               ))}
             </div>
             <div style={{ width: "100%", height: 260 }}>
-              <ResponsiveContainer>
-                <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="ts" tickFormatter={tsLabel} />
-                  <YAxis />
-                  <Tooltip labelFormatter={(v) => tsLabel(Number(v))} />
-                  <Legend />
-                  {selectedProcs.map((p, idx) => {
-                    const key = `p_${p}_` + procMetric;
-                    return <Line key={p} type="monotone" dataKey={key} stroke={colors[idx % colors.length]} dot={false} name={`${p}:${procMetric.replace("total_", "")}`} />;
-                  })}
-                </LineChart>
-              </ResponsiveContainer>
+              {openPanel === "proc" && (
+                <ResponsiveContainer>
+                  <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="ts" tickFormatter={tsLabel} />
+                    <YAxis />
+                    <Tooltip labelFormatter={(v) => tsLabel(Number(v))} />
+                    <Legend />
+                    {selectedProcs.map((p, idx) => {
+                      const key = `p_${p}_` + procMetric;
+                      return <Line key={p} type="monotone" dataKey={key} stroke={colors[idx % colors.length]} dot={false} name={`${p}:${procMetric.replace("total_", "")}`} />;
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </AccordionContent>
         </AccordionItem>

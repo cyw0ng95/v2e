@@ -28,7 +28,7 @@ export function AccordionTrigger({ children, onClick, open }: { children: React.
 }
 
 export function AccordionContent({ children, open }: { children: React.ReactNode; open?: boolean }) {
-  return <div className={`px-3 py-2 ${open ? "block" : "hidden"}`}>{children}</div>;
+  return open ? <div className="px-3 py-2">{children}</div> : null;
 }
 
 export default Accordion;
