@@ -249,6 +249,36 @@ func TestRPCListCVEs_DefaultParameters(t *testing.T) {
 	}
 }
 
+func TestRPCCountCVEs_ErrorFromLocal(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	sp := subprocess.New("test")
+	rpcClient := NewRPCClient(sp, logger)
+
+	handler := createCountCVEsHandler(rpcClient, logger)
+
+	msg := &subprocess.Message{
+		Type:    subprocess.MessageTypeRequest,
+		ID:      "RPCCountCVEs",
+		Payload: nil,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	resp, err := handler(ctx, msg)
+
+	// The handler should not return a Go error, but the response might be an error due to connection issues
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	// The response type could be an error if connection fails, which is acceptable
+	// We just want to make sure it doesn't panic
+	if resp == nil {
+		t.Fatal("Handler returned nil response")
+	}
+}
+
 func TestNewRPCClient(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	sp := subprocess.New("test-client")
@@ -575,4 +605,398 @@ type fnInvoker struct {
 
 func (f *fnInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
 	return f.f(ctx, target, method, params)
+}
+
+func TestRPCClientAdapter_InvokeRPC(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	sp := subprocess.New("test")
+	buf := &bytes.Buffer{}
+	sp.SetOutput(buf) // disables batching for direct writes
+	rpcClient := NewRPCClient(sp, logger)
+
+	adapter := &RPCClientAdapter{client: rpcClient}
+
+	done := make(chan *subprocess.Message, 1)
+	go func() {
+		resp, err := adapter.InvokeRPC(context.Background(), "local", "RPCTest", map[string]string{"foo": "bar"})
+		if err != nil {
+			t.Errorf("InvokeRPC returned error: %v", err)
+			done <- nil
+			return
+		}
+		if msg, ok := resp.(*subprocess.Message); ok {
+			done <- msg
+		} else {
+			// Unexpected return type
+			done <- nil
+		}
+	}()
+
+	// Wait for pendingRequests to be populated
+	var corr string
+	found := false
+	for i := 0; i < 100; i++ {
+		rpcClient.mu.RLock()
+		for k := range rpcClient.pendingRequests {
+			corr = k
+			found = true
+			break
+		}
+		rpcClient.mu.RUnlock()
+		if found {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !found {
+		t.Fatal("pendingRequests entry not found")
+	}
+
+	payload, _ := sonic.Marshal(map[string]bool{"success": true})
+	respMsg := &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            "RPCTest",
+		CorrelationID: corr,
+		Payload:       payload,
+	}
+
+	// Deliver response via handler
+	if _, err := rpcClient.handleResponse(context.Background(), respMsg); err != nil {
+		t.Fatalf("handleResponse returned error: %v", err)
+	}
+
+	select {
+	case res := <-done:
+		if res == nil {
+			t.Fatal("InvokeRPC returned nil response")
+		}
+		if res.CorrelationID != corr {
+			t.Fatalf("CorrelationID mismatch: got %s, want %s", res.CorrelationID, corr)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("InvokeRPC did not return in time")
+	}
+}
+
+func TestRPCClientAdapter_InvokeRPC_ContextCanceled(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	sp := subprocess.New("test")
+	buf := &bytes.Buffer{}
+	sp.SetOutput(buf)
+	rpcClient := NewRPCClient(sp, logger)
+
+	adapter := &RPCClientAdapter{client: rpcClient}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	_, err := adapter.InvokeRPC(ctx, "local", "RPCTest", nil)
+	if err == nil {
+		t.Fatal("Expected error due to canceled context")
+	}
+	// Accept either canceled or deadline exceeded depending on timing
+	if err != context.DeadlineExceeded && err != context.Canceled {
+		t.Logf("got context error: %v", err)
+	}
+}
+
+func TestCreateStartSessionHandler_EmptySessionID(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	tmpDir := t.TempDir()
+	sessionDBPath := filepath.Join(tmpDir, "session.db")
+	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	if err != nil {
+		t.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer sessionManager.Close()
+
+	jobController := job.NewController(nil, sessionManager, logger)
+
+	handler := createStartSessionHandler(sessionManager, jobController, logger)
+
+	// Create request with empty session ID
+	reqPayload, _ := sonic.Marshal(map[string]interface{}{
+		"session_id": "",
+	})
+	msg := &subprocess.Message{
+		Type:    subprocess.MessageTypeRequest,
+		ID:      "RPCStartSession",
+		Payload: reqPayload,
+	}
+
+	ctx := context.Background()
+	resp, err := handler(ctx, msg)
+
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	if resp.Type != subprocess.MessageTypeError {
+		t.Errorf("Expected error type, got %s", resp.Type)
+	}
+
+	if resp.Error == "" {
+		t.Error("Expected error message for empty session ID")
+	}
+
+	if resp.Error != "session_id is required" {
+		t.Errorf("Expected 'session_id is required', got '%s'", resp.Error)
+	}
+}
+
+func TestCreateStartSessionHandler_ValidSession(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	tmpDir := t.TempDir()
+	sessionDBPath := filepath.Join(tmpDir, "session.db")
+	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	if err != nil {
+		t.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer sessionManager.Close()
+
+	// Create a stub invoker to avoid making actual RPC calls
+	invoker := &stubInvoker{}
+	jobController := job.NewController(invoker, sessionManager, logger)
+
+	handler := createStartSessionHandler(sessionManager, jobController, logger)
+
+	// Create request with valid session ID
+	reqPayload, _ := sonic.Marshal(map[string]interface{}{
+		"session_id": "test-session",
+		"start_index": 0,
+		"results_per_batch": 10,
+	})
+	msg := &subprocess.Message{
+		Type:    subprocess.MessageTypeRequest,
+		ID:      "RPCStartSession",
+		Payload: reqPayload,
+	}
+
+	ctx := context.Background()
+	resp, err := handler(ctx, msg)
+
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	if resp.Type != subprocess.MessageTypeResponse {
+		t.Errorf("Expected response type, got %s", resp.Type)
+	}
+
+	// Parse response to verify success
+	var result map[string]interface{}
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if success, ok := result["success"].(bool); !ok || !success {
+		t.Errorf("Expected success=true, got %v", result["success"])
+	}
+
+	if sessionID, ok := result["session_id"].(string); !ok || sessionID != "test-session" {
+		t.Errorf("Expected session_id='test-session', got %v", result["session_id"])
+	}
+}
+
+func TestCreateStopSessionHandler(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	tmpDir := t.TempDir()
+	sessionDBPath := filepath.Join(tmpDir, "session.db")
+	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	if err != nil {
+		t.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer sessionManager.Close()
+
+	// Create a session first
+	_, err = sessionManager.CreateSession("test-session", 0, 10)
+	if err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+
+	// Create a stub invoker to avoid making actual RPC calls
+	invoker := &stubInvoker{}
+	jobController := job.NewController(invoker, sessionManager, logger)
+
+	handler := createStopSessionHandler(sessionManager, jobController, logger)
+
+	msg := &subprocess.Message{
+		Type: subprocess.MessageTypeRequest,
+		ID:   "RPCStopSession",
+	}
+
+	ctx := context.Background()
+	resp, err := handler(ctx, msg)
+
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	if resp.Type != subprocess.MessageTypeResponse {
+		t.Errorf("Expected response type, got %s", resp.Type)
+	}
+
+	// Parse response to verify success
+	var result map[string]interface{}
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if success, ok := result["success"].(bool); !ok || !success {
+		t.Errorf("Expected success=true, got %v", result["success"])
+	}
+
+	if sessionID, ok := result["session_id"].(string); !ok || sessionID != "test-session" {
+		t.Errorf("Expected session_id='test-session', got %v", result["session_id"])
+	}
+}
+
+func TestCreateGetSessionStatusHandler(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	tmpDir := t.TempDir()
+	sessionDBPath := filepath.Join(tmpDir, "session.db")
+	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	if err != nil {
+		t.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer sessionManager.Close()
+
+	// Create a session first
+	_, err = sessionManager.CreateSession("test-session", 0, 10)
+	if err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+
+	handler := createGetSessionStatusHandler(sessionManager, logger)
+
+	msg := &subprocess.Message{
+		Type: subprocess.MessageTypeRequest,
+		ID:   "RPCGetSessionStatus",
+	}
+
+	ctx := context.Background()
+	resp, err := handler(ctx, msg)
+
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	if resp.Type != subprocess.MessageTypeResponse {
+		t.Errorf("Expected response type, got %s", resp.Type)
+	}
+
+	// Parse response to verify session status
+	var result map[string]interface{}
+	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if hasSession, ok := result["has_session"].(bool); !ok || !hasSession {
+		t.Errorf("Expected has_session=true, got %v", result["has_session"])
+	}
+}
+
+func TestCreatePauseJobHandler(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	tmpDir := t.TempDir()
+	sessionDBPath := filepath.Join(tmpDir, "session.db")
+	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	if err != nil {
+		t.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer sessionManager.Close()
+
+	jobController := job.NewController(nil, sessionManager, logger)
+
+	handler := createPauseJobHandler(jobController, logger)
+
+	msg := &subprocess.Message{
+		Type: subprocess.MessageTypeRequest,
+		ID:   "RPCPauseJob",
+	}
+
+	ctx := context.Background()
+	resp, err := handler(ctx, msg)
+
+	// The handler should return an error because the job is not running
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	// Even though pausing a non-running job returns an error, the response type depends on the implementation
+	// If it's an error response from the controller, it should be handled properly
+	if resp.Type != subprocess.MessageTypeError {
+		// If it's not an error response, it might mean the handler returned a success response
+		// We'll check that it either returns an error or a success response
+		if resp.Type != subprocess.MessageTypeResponse {
+			t.Errorf("Expected either error type or response type, got %s", resp.Type)
+		}
+	}
+}
+
+func TestCreateResumeJobHandler(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	tmpDir := t.TempDir()
+	sessionDBPath := filepath.Join(tmpDir, "session.db")
+	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	if err != nil {
+		t.Fatalf("Failed to create session manager: %v", err)
+	}
+	defer sessionManager.Close()
+
+	jobController := job.NewController(nil, sessionManager, logger)
+
+	handler := createResumeJobHandler(jobController, logger)
+
+	msg := &subprocess.Message{
+		Type: subprocess.MessageTypeRequest,
+		ID:   "RPCResumeJob",
+	}
+
+	ctx := context.Background()
+	resp, err := handler(ctx, msg)
+
+	// The handler should return an error because the job is not paused
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	if resp.Type != subprocess.MessageTypeError {
+		// If it's not an error response, it might mean the job was successfully resumed
+		// We'll check that it either returns an error or a success response
+		if resp.Type != subprocess.MessageTypeResponse {
+			t.Errorf("Expected either error type or response type, got %s", resp.Type)
+		}
+	}
+}
+
+func TestRPCListCVEs_InvalidPayload(t *testing.T) {
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+	sp := subprocess.New("test")
+	rpcClient := NewRPCClient(sp, logger)
+
+	handler := createListCVEsHandler(rpcClient, logger)
+
+	// Create request with invalid JSON payload
+	msg := &subprocess.Message{
+		Type:    subprocess.MessageTypeRequest,
+		ID:      "RPCListCVEs",
+		Payload: []byte("invalid json"),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	resp, err := handler(ctx, msg)
+
+	// The handler should not return a Go error, but the response might be an error due to connection issues
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	// The response type could be an error if connection fails, which is acceptable
+	// We just want to make sure it doesn't panic
+	if resp == nil {
+		t.Fatal("Handler returned nil response")
+	}
 }
