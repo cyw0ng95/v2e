@@ -22,6 +22,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { AttackDetailDialog } from './attack-detail-dialog';
 
 interface AttackTableProps {
   type?: 'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'; // Default to techniques
@@ -30,6 +31,8 @@ interface AttackTableProps {
 export function AttackTable({ type = 'techniques' }: AttackTableProps) {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   // Fixed page size: show 20 items per page
   const [pageSize, setPageSize] = useState(20);
 
@@ -115,6 +118,12 @@ export function AttackTable({ type = 'techniques' }: AttackTableProps) {
   // Calculate total pages
   const totalPages = Math.ceil(total / pageSize);
 
+  // Handler for opening the detail dialog
+  const handleViewDetail = (item: any) => {
+    setSelectedItem(item);
+    setIsDetailDialogOpen(true);
+  };
+
   // Determine table headers based on type
   const renderTableHeaders = () => {
     switch(type) {
@@ -167,7 +176,7 @@ export function AttackTable({ type = 'techniques' }: AttackTableProps) {
             <TableCell>{attack.domain}</TableCell>
             <TableCell className="max-w-xs truncate">{attack.description}</TableCell>
             <TableCell>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => handleViewDetail(attack)}>
                 View Detail
               </Button>
             </TableCell>
@@ -183,7 +192,7 @@ export function AttackTable({ type = 'techniques' }: AttackTableProps) {
             <TableCell>{attack.domain}</TableCell>
             <TableCell className="max-w-xs truncate">{attack.description}</TableCell>
             <TableCell>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => handleViewDetail(attack)}>
                 View Detail
               </Button>
             </TableCell>
@@ -200,7 +209,7 @@ export function AttackTable({ type = 'techniques' }: AttackTableProps) {
             <TableCell>{attack.platform}</TableCell>
             <TableCell className="max-w-xs truncate">{attack.description}</TableCell>
             <TableCell>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => handleViewDetail(attack)}>
                 View Detail
               </Button>
             </TableCell>
@@ -210,77 +219,87 @@ export function AttackTable({ type = 'techniques' }: AttackTableProps) {
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle>{type.charAt(0).toUpperCase() + type.slice(1)} Database</CardTitle>
-        <div className="mt-3">
-          <Input
-            className="w-full"
-            placeholder={`Search ${type} ID or name`}
-            value={search}
-            onChange={e => {
-              setSearch(e.target.value);
-              setPage(0); // Reset to first page when searching
-            }}
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 min-h-0 overflow-auto">
-        {isLoading ? (
-          <Skeleton className="h-32 w-full" />
-        ) : (
-          <>
-            <Table className="min-w-full">
-              <TableHeader>
-                {renderTableHeaders()}
-              </TableHeader>
-              <TableBody>
-                {attackList.length > 0 ? (
-                  attackList.map((attack: any, idx: number) => (
-                    <TableRow key={attack.id || idx} className="hover:bg-muted/30">
-                      {renderTableCells(attack)}
+    <>
+      <Card className="h-full flex flex-col">
+        <CardHeader>
+          <CardTitle>{type.charAt(0).toUpperCase() + type.slice(1)} Database</CardTitle>
+          <div className="mt-3">
+            <Input
+              className="w-full"
+              placeholder={`Search ${type} ID or name`}
+              value={search}
+              onChange={e => {
+                setSearch(e.target.value);
+                setPage(0); // Reset to first page when searching
+              }}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0 overflow-auto">
+          {isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <>
+              <Table className="min-w-full">
+                <TableHeader>
+                  {renderTableHeaders()}
+                </TableHeader>
+                <TableBody>
+                  {attackList.length > 0 ? (
+                    attackList.map((attack: any, idx: number) => (
+                      <TableRow key={attack.id || idx} className="hover:bg-muted/30">
+                        {renderTableCells(attack)}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={type === 'software' ? 6 : type === 'groups' ? 5 : 6} className="text-center text-muted-foreground py-8">
+                        No {type} found
+                      </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={type === 'software' ? 6 : type === 'groups' ? 5 : 6} className="text-center text-muted-foreground py-8">
-                      No {type} found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
 
-            {/* Pagination Controls */}
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {(page * pageSize) + 1}-{Math.min((page + 1) * pageSize, total)} of {total} {type}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(Math.max(0, page - 1))}
-                  disabled={page === 0}
-                >
-                  Previous
-                </Button>
-                <div className="text-sm mx-2">
-                  Page {page + 1} of {totalPages}
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(page * pageSize) + 1}-{Math.min((page + 1) * pageSize, total)} of {total} {type}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-                  disabled={page >= totalPages - 1}
-                >
-                  Next
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(Math.max(0, page - 1))}
+                    disabled={page === 0}
+                  >
+                    Previous
+                  </Button>
+                  <div className="text-sm mx-2">
+                    Page {page + 1} of {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                    disabled={page >= totalPages - 1}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Detail Dialog */}
+      <AttackDetailDialog 
+        open={isDetailDialogOpen}
+        onClose={() => setIsDetailDialogOpen(false)}
+        item={selectedItem}
+        type={type}
+      />
+    </>
   );
 }

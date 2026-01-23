@@ -22,7 +22,12 @@ import {
   useAttackTactics, 
   useAttackMitigations, 
   useAttackSoftware, 
-  useAttackGroups 
+  useAttackGroups,
+  useAttackTechnique,
+  useAttackTactic,
+  useAttackMitigation,
+  useAttackSoftwareById,
+  useAttackGroupById
 } from '@/lib/hooks';
 
 interface AttackDetailDialogProps {
@@ -39,58 +44,100 @@ interface RelatedItem {
 }
 
 export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDialogProps) {
-  const [relatedItems, setRelatedItems] = useState<RelatedItem[]>([]);
+  // Track the current item being displayed (could be the initial item or a related item)
+  const [currentItem, setCurrentItem] = useState<any>(item);
+  const [currentType, setCurrentType] = useState<'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'>(type);
   
-  // For demonstration purposes, we'll create mock related items
-  // In a real implementation, these would be fetched from the backend
-  useEffect(() => {
-    if (item && open) {
-      // Generate mock related items based on the current item
-      const mockRelatedItems: RelatedItem[] = [];
-      
-      // Add some related items based on the current type
-      switch(type) {
-        case 'techniques':
-          // Add some related tactics, mitigations, etc.
-          mockRelatedItems.push(
-            { id: 'TA0001', name: 'Initial Access', type: 'tactics' },
-            { id: 'M1036', name: 'Credential Access Prevention', type: 'mitigations' },
-            { id: 'S0001', name: 'Some Malware', type: 'software' }
-          );
-          break;
-        case 'tactics':
-          // Add some related techniques
-          mockRelatedItems.push(
-            { id: 'T1001', name: 'Some Technique', type: 'techniques' },
-            { id: 'T1002', name: 'Another Technique', type: 'techniques' }
-          );
-          break;
-        case 'mitigations':
-          // Add some related techniques
-          mockRelatedItems.push(
-            { id: 'T1003', name: 'Some Technique', type: 'techniques' },
-            { id: 'T1004', name: 'Another Technique', type: 'techniques' }
-          );
-          break;
-        case 'software':
-          // Add some related techniques
-          mockRelatedItems.push(
-            { id: 'T1005', name: 'Some Technique', type: 'techniques' },
-            { id: 'G0001', name: 'Some Group', type: 'groups' }
-          );
-          break;
-        case 'groups':
-          // Add some related software and techniques
-          mockRelatedItems.push(
-            { id: 'S0002', name: 'Some Software', type: 'software' },
-            { id: 'T1006', name: 'Some Technique', type: 'techniques' }
-          );
-          break;
-      }
-      
-      setRelatedItems(mockRelatedItems);
+  // For demonstration, we'll use a simple approach to define relationships
+  // In a real implementation, these would be stored in the database
+  const getRelatedItemsByType = (itemType: string) => {
+    if (!currentItem) return [];
+    
+    // This is a simplified example - in a real implementation, 
+    // relationships would be stored in the database
+    switch(currentType) {
+      case 'techniques':
+        switch(itemType) {
+          case 'tactics':
+            // Return the tactic this technique belongs to (if known)
+            return currentItem.tactic ? [{ id: currentItem.tactic, name: currentItem.tacticName || currentItem.tactic, type: 'tactics' }] : [];
+          case 'mitigations':
+            // Return some related mitigations (simplified)
+            return [
+              { id: 'M1036', name: 'Credential Access Prevention', type: 'mitigations' },
+              { id: 'M1053', name: 'Run Command', type: 'mitigations' },
+            ].slice(0, 2);
+          case 'software':
+            // Return related software (simplified)
+            return [
+              { id: 'S0001', name: 'Compiled HTML File', type: 'software' },
+              { id: 'S0002', name: 'RegSvr32', type: 'software' },
+            ].slice(0, 2);
+          case 'groups':
+            // Return related groups (simplified)
+            return [
+              { id: 'G0001', name: 'APT1', type: 'groups' },
+              { id: 'G0006', name: 'APT28', type: 'groups' },
+            ].slice(0, 2);
+          case 'techniques':
+            // Return related techniques (simplified)
+            return [
+              { id: 'T1001', name: 'Data Obfuscation', type: 'techniques' },
+              { id: 'T1071', name: 'Application Layer Protocol', type: 'techniques' },
+            ].slice(0, 2);
+          default:
+            return [];
+        }
+      case 'tactics':
+        // For tactics, show related techniques
+        if (itemType === 'techniques') {
+          return [
+            { id: 'T1003', name: 'OS Credential Dumping', type: 'techniques' },
+            { id: 'T1005', name: 'Data from Local System', type: 'techniques' },
+          ];
+        }
+        return [];
+      case 'mitigations':
+        // For mitigations, show related techniques
+        if (itemType === 'techniques') {
+          return [
+            { id: 'T1003', name: 'OS Credential Dumping', type: 'techniques' },
+            { id: 'T1053', name: 'Create or Modify System Process', type: 'techniques' },
+          ];
+        }
+        return [];
+      case 'software':
+        // For software, show related techniques and groups
+        if (itemType === 'techniques') {
+          return [
+            { id: 'T1003', name: 'OS Credential Dumping', type: 'techniques' },
+            { id: 'T1071', name: 'Application Layer Protocol', type: 'techniques' },
+          ];
+        } else if (itemType === 'groups') {
+          return [
+            { id: 'G0001', name: 'APT1', type: 'groups' },
+            { id: 'G0006', name: 'APT28', type: 'groups' },
+          ];
+        }
+        return [];
+      case 'groups':
+        // For groups, show related software and techniques
+        if (itemType === 'software') {
+          return [
+            { id: 'S0001', name: 'Compiled HTML File', type: 'software' },
+            { id: 'S0002', name: 'RegSvr32', type: 'software' },
+          ];
+        } else if (itemType === 'techniques') {
+          return [
+            { id: 'T1003', name: 'OS Credential Dumping', type: 'techniques' },
+            { id: 'T1071', name: 'Application Layer Protocol', type: 'techniques' },
+          ];
+        }
+        return [];
+      default:
+        return [];
     }
-  }, [item, open, type]);
+  };
 
   const getReadableType = (type: string) => {
     switch(type) {
@@ -114,9 +161,23 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
     }
   };
 
-  const getRelatedItemsByType = (itemType: string) => {
-    return relatedItems.filter(ri => ri.type === itemType);
+  // Handle viewing a related item - update current item and type
+  const handleViewItem = (relatedItem: RelatedItem) => {
+    // In a real implementation, we would fetch the actual item details here
+    console.log(`Viewing ${relatedItem.type} ${relatedItem.id}`);
+    
+    // For now, we'll just update the current item and type to simulate navigation
+    setCurrentItem({...relatedItem, name: relatedItem.name, id: relatedItem.id});
+    setCurrentType(relatedItem.type as 'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups');
   };
+
+  // Reset to the original item when dialog reopens
+  useEffect(() => {
+    if (open) {
+      setCurrentItem(item);
+      setCurrentType(type);
+    }
+  }, [open, item, type]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -124,13 +185,13 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
         <DialogHeader>
           <DialogTitle>
             <div className="flex items-center gap-2">
-              <Badge variant={getTypeColor(type)}>
-                {getReadableType(type)}
+              <Badge variant={getTypeColor(currentType)}>
+                {getReadableType(currentType)}
               </Badge>
-              <span>{item?.name || item?.id || 'Unknown Item'}</span>
-              {item?.id && (
+              <span>{currentItem?.name || currentItem?.id || 'Unknown Item'}</span>
+              {currentItem?.id && (
                 <Badge variant="outline" className="font-mono">
-                  {item.id}
+                  {currentItem.id}
                 </Badge>
               )}
             </div>
@@ -142,56 +203,56 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {item?.id && (
+              {currentItem?.id && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">ID</h4>
-                  <p className="font-mono">{item.id}</p>
+                  <p className="font-mono">{currentItem.id}</p>
                 </div>
               )}
-              {item?.name && (
+              {currentItem?.name && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Name</h4>
-                  <p>{item.name}</p>
+                  <p>{currentItem.name}</p>
                 </div>
               )}
-              {item?.domain && (
+              {currentItem?.domain && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Domain</h4>
-                  <p>{item.domain}</p>
+                  <p>{currentItem.domain}</p>
                 </div>
               )}
-              {item?.platform && (
+              {currentItem?.platform && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Platform</h4>
-                  <p>{item.platform}</p>
+                  <p>{currentItem.platform}</p>
                 </div>
               )}
-              {item?.type && (
+              {currentItem?.type && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Type</h4>
-                  <p>{item.type}</p>
+                  <p>{currentItem.type}</p>
                 </div>
               )}
-              {item?.created && (
+              {currentItem?.created && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Created</h4>
-                  <p>{item.created}</p>
+                  <p>{currentItem.created}</p>
                 </div>
               )}
-              {item?.modified && (
+              {currentItem?.modified && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Modified</h4>
-                  <p>{item.modified}</p>
+                  <p>{currentItem.modified}</p>
                 </div>
               )}
             </div>
           </div>
           
           {/* Description */}
-          {item?.description && (
+          {currentItem?.description && (
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Description</h3>
-              <p className="whitespace-pre-line">{item.description}</p>
+              <p className="whitespace-pre-line">{currentItem.description}</p>
             </div>
           )}
           
@@ -222,7 +283,11 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
                             </TableCell>
                             <TableCell>{relatedItem.name}</TableCell>
                             <TableCell>
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewItem(relatedItem)}
+                              >
                                 View
                               </Button>
                             </TableCell>

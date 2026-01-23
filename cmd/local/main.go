@@ -172,6 +172,11 @@ func main() {
 
 	// Register ATT&CK handlers
 	sp.RegisterHandler("RPCImportATTACKs", createImportATTACKsHandler(attackStore, logger))
+	sp.RegisterHandler("RPCGetAttackTechnique", createGetAttackTechniqueHandler(attackStore, logger))
+	sp.RegisterHandler("RPCGetAttackTactic", createGetAttackTacticHandler(attackStore, logger))
+	sp.RegisterHandler("RPCGetAttackMitigation", createGetAttackMitigationHandler(attackStore, logger))
+	sp.RegisterHandler("RPCGetAttackSoftware", createGetAttackSoftwareHandler(attackStore, logger))
+	sp.RegisterHandler("RPCGetAttackGroup", createGetAttackGroupHandler(attackStore, logger))
 	sp.RegisterHandler("RPCGetAttackTechniqueByID", createGetAttackTechniqueByIDHandler(attackStore, logger))
 	sp.RegisterHandler("RPCGetAttackTacticByID", createGetAttackTacticByIDHandler(attackStore, logger))
 	sp.RegisterHandler("RPCGetAttackMitigationByID", createGetAttackMitigationByIDHandler(attackStore, logger))
@@ -180,6 +185,8 @@ func main() {
 	sp.RegisterHandler("RPCListAttackTechniques", createListAttackTechniquesHandler(attackStore, logger))
 	sp.RegisterHandler("RPCListAttackTactics", createListAttackTacticsHandler(attackStore, logger))
 	sp.RegisterHandler("RPCListAttackMitigations", createListAttackMitigationsHandler(attackStore, logger))
+	sp.RegisterHandler("RPCListAttackSoftware", createListAttackSoftwareHandler(attackStore, logger))
+	sp.RegisterHandler("RPCListAttackGroups", createListAttackGroupsHandler(attackStore, logger))
 	sp.RegisterHandler("RPCGetAttackImportMetadata", createGetAttackImportMetadataHandler(attackStore, logger))
 
 	logger.Info("CVE local service started")

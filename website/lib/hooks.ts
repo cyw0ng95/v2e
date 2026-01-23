@@ -722,3 +722,199 @@ export function useCWEList(params: { offset?: number; limit?: number; search?: s
 
   return { data, isLoading, error };
 }
+
+// Individual ATT&CK item hooks
+export function useAttackTechnique(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackTechnique(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack technique ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack technique:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackTactic(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackTactic(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack tactic ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack tactic:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackMitigation(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackMitigation(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack mitigation ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack mitigation:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackSoftwareById(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackSoftware(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack software ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack software:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackGroupById(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackGroup(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack group ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack group:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}

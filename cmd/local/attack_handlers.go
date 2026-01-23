@@ -854,3 +854,28 @@ func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger
 		}, nil
 	}
 }
+
+// createGetAttackTechniqueHandler handles getting an ATT&CK technique by ID (alias for GetAttackTechniqueByID)
+func createGetAttackTechniqueHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
+	return createGetAttackTechniqueByIDHandler(store, logger)
+}
+
+// createGetAttackTacticHandler handles getting an ATT&CK tactic by ID (alias for GetAttackTacticByID)
+func createGetAttackTacticHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
+	return createGetAttackTacticByIDHandler(store, logger)
+}
+
+// createGetAttackMitigationHandler handles getting an ATT&CK mitigation by ID (alias for GetAttackMitigationByID)
+func createGetAttackMitigationHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
+	return createGetAttackMitigationByIDHandler(store, logger)
+}
+
+// createGetAttackSoftwareHandler handles getting an ATT&CK software by ID (alias for GetAttackSoftwareByID)
+func createGetAttackSoftwareHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
+	return createGetAttackSoftwareByIDHandler(store, logger)
+}
+
+// createGetAttackGroupHandler handles getting an ATT&CK group by ID (alias for GetAttackGroupByID)
+func createGetAttackGroupHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
+	return createGetAttackGroupByIDHandler(store, logger)
+}
