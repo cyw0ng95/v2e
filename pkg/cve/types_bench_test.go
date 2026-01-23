@@ -192,11 +192,13 @@ func BenchmarkCVEResponseJSONMarshal(b *testing.B) {
 		Version:        "2.0",
 		Timestamp:      NewNVDTime(time.Now()),
 	}
-	
+
 	// Add 10 vulnerabilities to the response
 	for i := 0; i < 10; i++ {
 		cveItem := createTestCVEItem("CVE-2024-000" + string(rune('1'+i)))
-		response.Vulnerabilities = append(response.Vulnerabilities, struct{ CVE CVEItem }{CVE: *cveItem})
+		response.Vulnerabilities = append(response.Vulnerabilities, struct {
+			CVE CVEItem `json:"cve"`
+		}{CVE: *cveItem})
 	}
 
 	b.ReportAllocs()
@@ -219,7 +221,7 @@ func BenchmarkCVEResponseJSONUnmarshal(b *testing.B) {
 		Version:        "2.0",
 		Timestamp:      NewNVDTime(time.Now()),
 	}
-	
+
 	// Add 10 vulnerabilities to the response
 	for i := 0; i < 10; i++ {
 		cveItem := createTestCVEItem("CVE-2024-000" + string(rune('1'+i)))
@@ -227,7 +229,7 @@ func BenchmarkCVEResponseJSONUnmarshal(b *testing.B) {
 			CVE CVEItem `json:"cve"`
 		}{CVE: *cveItem})
 	}
-	
+
 	data, _ := json.Marshal(response)
 
 	b.ReportAllocs()
