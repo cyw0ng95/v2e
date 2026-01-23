@@ -4,20 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components/ui/dialog';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
   useAttackTechniques, 
   useAttackTactics, 
   useAttackMitigations, 
@@ -30,12 +16,7 @@ import {
   useAttackGroupById
 } from '@/lib/hooks';
 
-interface AttackDetailDialogProps {
-  open: boolean;
-  onClose: () => void;
-  item: any;
-  type: 'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups';
-}
+// Dialog-based component removed; only inline detail content is exported now.
 
 interface RelatedItem {
   id: string;
@@ -47,10 +28,20 @@ export function AttackDetailContent({ item, type, onBack }: { item: any; type: s
   const [currentItem, setCurrentItem] = useState<any>(item || {});
   const [navigationHistory, setNavigationHistory] = useState<Array<any>>([]);
 
+  // Always call individual hooks to keep hook order stable
+  const tech = useAttackTechnique(currentItem?.id || '');
+  const tac = useAttackTactic(currentItem?.id || '');
+  const mit = useAttackMitigation(currentItem?.id || '');
+  const soft = useAttackSoftwareById(currentItem?.id || '');
+  const grp = useAttackGroupById(currentItem?.id || '');
+
   useEffect(() => {
     setCurrentItem(item || {});
     setNavigationHistory([]);
   }, [item]);
+
+  // Prefer fetched detailed data when available
+  const detailed = tech.data || tac.data || mit.data || soft.data || grp.data || currentItem;
 
   const getReadableType = (t: string) => {
     switch(t) {
@@ -65,7 +56,7 @@ export function AttackDetailContent({ item, type, onBack }: { item: any; type: s
 
   const getRelatedItemsByType = (current: any, itemType: string) => {
     if (!current) return [];
-    const ct = (current.type || 'techniques');
+    const ct = (current.type || type || 'techniques');
     switch(ct) {
       case 'techniques':
         switch(itemType) {
@@ -158,72 +149,89 @@ export function AttackDetailContent({ item, type, onBack }: { item: any; type: s
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-h-[80vh] overflow-y-auto pr-2 space-y-6 p-2 sm:p-4">
       <div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline">{currentItem.id}</Badge>
-          <h2 className="text-lg font-semibold">{currentItem.name || 'Detail'}</h2>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Badge variant="outline">{detailed?.id || currentItem.id}</Badge>
+          <h2 className="text-lg font-semibold">{detailed?.name || currentItem.name || 'Detail'}</h2>
         </div>
         <div className="mt-3">
           <h3 className="text-lg font-semibold">Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-            {currentItem.id && (
+            {detailed?.id && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">ID</h4>
-                <p className="font-mono">{currentItem.id}</p>
+                <p className="font-mono">{detailed.id}</p>
               </div>
             )}
-            {currentItem.name && (
+            {detailed?.name && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Name</h4>
-                <p>{currentItem.name}</p>
+                <p>{detailed.name}</p>
               </div>
             )}
-            {currentItem.domain && (
+            {detailed?.domain && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Domain</h4>
-                <p>{currentItem.domain}</p>
+                <p>{detailed.domain}</p>
               </div>
             )}
-            {currentItem.platform && (
+            {detailed?.platform && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Platform</h4>
-                <p>{currentItem.platform}</p>
+                <p>{Array.isArray(detailed.platform) ? detailed.platform.join(', ') : detailed.platform}</p>
               </div>
             )}
-            {currentItem.type && (
+            {detailed?.type && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Type</h4>
-                <p>{currentItem.type}</p>
+                <p>{detailed.type}</p>
               </div>
             )}
-            {currentItem.created && (
+            {detailed?.created && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Created</h4>
-                <p>{currentItem.created}</p>
+                <p>{detailed.created}</p>
               </div>
             )}
-            {currentItem.modified && (
+            {detailed?.modified && (
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Modified</h4>
-                <p>{currentItem.modified}</p>
+                <p>{detailed.modified}</p>
+              </div>
+            )}
+            {detailed?.objective && (
+              <div className="md:col-span-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Objective</h4>
+                <p className="text-sm text-muted-foreground">{detailed.objective}</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {currentItem.description && (
+      {detailed?.description && (
         <div>
           <h3 className="text-lg font-semibold">Description</h3>
-          <p className="whitespace-pre-line">{currentItem.description}</p>
+          <p className="whitespace-pre-line">{detailed.description}</p>
+        </div>
+      )}
+
+      {detailed?.references && Array.isArray(detailed.references) && (
+        <div>
+          <h3 className="text-lg font-semibold">References</h3>
+          <ul className="list-disc pl-5">
+            {detailed.references.map((r: any, i: number) => (
+              <li key={i} className="text-sm">{r}</li>
+            ))}
+          </ul>
         </div>
       )}
 
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Related Items</h3>
         {['techniques', 'tactics', 'mitigations', 'software', 'groups'].map((itemType) => {
-          const items = getRelatedItemsByType(currentItem, itemType);
+          const items = getRelatedItemsByType(detailed || currentItem, itemType);
           if (items.length === 0) return null;
 
           return (
@@ -250,22 +258,4 @@ export function AttackDetailContent({ item, type, onBack }: { item: any; type: s
   );
 }
 
-export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDialogProps) {
-  // Local state for dialog navigation (kept minimal for dialog usage)
-  const [currentItem, setCurrentItem] = useState<any>(item);
-
-  useEffect(() => {
-    if (open) setCurrentItem(item);
-  }, [open, item]);
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-none max-h-[90vh] p-6 overflow-hidden">
-        <DialogHeader>
-          <DialogTitle />
-        </DialogHeader>
-        <AttackDetailContent item={currentItem} type={type} />
-      </DialogContent>
-    </Dialog>
-  );
-}
+// Dialog-based component removed — inline `AttackDetailContent` is canonical.
