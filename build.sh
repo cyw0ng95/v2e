@@ -163,10 +163,8 @@ Usage: $0 [OPTIONS]
 
 Options:
     -t          Run unit tests and return result for GitHub CI
-    -i          Run integration tests (requires Python and pytest)
     -f          Run fuzz tests on key interfaces (5 seconds per test)
     -m          Run performance benchmarks and generate report
-    -M          Run RPC performance benchmarks via integration tests (integrated metrics)
     -p          Build and package binaries with assets
     -r          Run Node.js process and broker (for development)
     -v          Enable verbose output
@@ -176,7 +174,6 @@ Examples:
     $0          # Build the project
     $0 -t       # Run unit tests for CI
     $0 -f       # Run fuzz tests (5 seconds per test)
-    $0 -i       # Run integration tests for CI
     $0 -m       # Run performance benchmarks
     $0 -M       # Run RPC performance benchmarks
     $0 -p       # Build and package binaries
@@ -388,37 +385,7 @@ run_fuzz_tests() {
     fi
 }
 
-# Run integration tests
-run_integration_tests() {
-    echo "Running integration tests for GitHub CI..."
-    
-    # Check if pytest.ini exists
-    if [ -f "pytest.ini" ]; then
-        if [ "$VERBOSE" = true ]; then
-            echo "Running pytest integration tests with verbose output..."
-            # Run integration tests with verbose output (skip slow and benchmark tests for CI)
-            pytest tests/ -vv -m "not slow and not benchmark" --tb=long
-        else
-            echo "Running pytest integration tests..."
-            # Run integration tests (skip slow and benchmark tests for CI)
-            pytest tests/ -v -m "not slow and not benchmark" --tb=short
-        fi
-        TEST_EXIT_CODE=$?
-        
-        # Return test exit code for CI
-        if [ $TEST_EXIT_CODE -eq 0 ]; then
-            echo "All integration tests passed!"
-            return 0
-        else
-            echo "Integration tests failed!"
-            return $TEST_EXIT_CODE
-        fi
-    else
-        echo "No pytest.ini found. No integration tests to run."
-        echo "Integration tests passed (no tests found)"
-        return 0
-    fi
-}
+ 
 
 # Run performance benchmarks
 run_benchmarks() {
@@ -510,111 +477,6 @@ run_benchmarks() {
         return 0
     fi
 }
-
-# Run RPC performance benchmarks via integration tests
-run_rpc_benchmarks() {
-    echo "Running RPC performance benchmarks via integration tests..."
-    setup_build_dir
-    
-    # Check if pytest.ini exists
-    if [ -f "pytest.ini" ]; then
-        BENCHMARK_REPORT="$BUILD_DIR/rpc-benchmark-report.txt"
-        BENCHMARK_LOG="$BUILD_DIR/rpc-benchmark.log"
-        
-        # Check if we should skip building (e.g., when using pre-built binaries from CI)
-        if [ "${SKIP_BUILD:-false}" != "true" ]; then
-            # First, ensure binaries are built
-            echo "Building binaries for benchmark tests..."
-            BUILD_LOG="$BUILD_DIR/benchmark-build.log"
-            build_and_package > "$BUILD_LOG" 2>&1 || {
-                echo "Failed to build binaries. Check $BUILD_LOG for details."
-                return 1
-            }
-        else
-            echo "Skipping build step (using pre-built binaries)..."
-        fi
-        
-        if [ "$VERBOSE" = true ]; then
-            echo "Running RPC benchmarks with verbose output..."
-            # Run benchmark tests with verbose output and capture to log
-            pytest tests/ -v -s -m benchmark --tb=long 2>&1 | tee "$BENCHMARK_LOG"
-        else
-            echo "Running RPC benchmarks..."
-            # Run benchmark tests with verbose output (to capture performance metrics) but save to log only
-            pytest tests/ -v -s -m benchmark --tb=short > "$BENCHMARK_LOG" 2>&1
-        fi
-        BENCH_EXIT_CODE=$?
-        
-        # Generate human-readable report
-        if [ -f "$BENCHMARK_LOG" ]; then
-            echo "Generating RPC benchmark report..."
-            {
-                echo "======================================================================"
-                echo "           v2e RPC Performance Benchmark Report"
-                echo "======================================================================"
-                echo ""
-                echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
-                echo "Host: $(uname -n)"
-                echo "OS: $(uname -s) $(uname -r)"
-                echo "Arch: $(uname -m)"
-                echo ""
-                echo "======================================================================"
-                echo "                    Benchmark Configuration"
-                echo "======================================================================"
-                echo ""
-                echo "Test Type:        Integration-style RPC benchmarks"
-                echo "Iterations:       100 per endpoint"
-                echo "Warmup:           None (as per requirements)"
-                echo "Architecture:     Broker-first (broker + subprocesses)"
-                echo ""
-                echo "======================================================================"
-                echo "                       Benchmark Results"
-                echo "======================================================================"
-                echo ""
-                cat "$BENCHMARK_LOG"
-                echo ""
-                echo "======================================================================"
-                echo "                           Notes"
-                echo "======================================================================"
-                echo ""
-                echo "These benchmarks measure RPC endpoint performance through the"
-                echo "broker-first architecture:"
-                echo "  1. One broker + subprocesses instance for all tests"
-                echo "  2. 100 iterations per RPC endpoint (no warmup)"
-                echo "  3. Metrics: min, max, mean, median, P95, P99 latency"
-                echo ""
-                echo "All RPC calls flow through:"
-                echo "  External Request → Access REST API → Broker → Backend Services"
-                echo ""
-                echo "======================================================================"
-                echo "Report saved to: $BENCHMARK_REPORT"
-                echo "Raw log saved to: $BENCHMARK_LOG"
-                echo "======================================================================"
-            } > "$BENCHMARK_REPORT"
-            
-            if [ "$VERBOSE" = true ]; then
-                echo ""
-                echo "RPC benchmark report generated: $BENCHMARK_REPORT"
-            else
-                echo "RPC benchmark report generated: $BENCHMARK_REPORT"
-            fi
-        fi
-        
-        # Return benchmark exit code for CI
-        if [ $BENCH_EXIT_CODE -eq 0 ]; then
-            echo "All RPC benchmarks completed successfully!"
-            return 0
-        else
-            echo "RPC benchmarks failed!"
-            return $BENCH_EXIT_CODE
-        fi
-    else
-        echo "No pytest.ini found. No RPC benchmarks to run."
-        echo "RPC benchmarks passed (no benchmarks found)"
-        return 0
-    fi
-}
-
 
 # Build and package binaries with assets
 build_and_package() {
@@ -745,20 +607,16 @@ main() {
     
     # Parse command line arguments
     RUN_TESTS=false
-    RUN_INTEGRATION_TESTS=false
     RUN_FUZZ_TESTS=false
     RUN_BENCHMARKS=false
-    RUN_RPC_BENCHMARKS=false
     BUILD_PACKAGE=false
     RUN_NODE_AND_BROKER=false
 
-    while getopts "tifmMphrv" opt; do
+    while getopts "tfmphrv" opt; do
         case "$opt" in
             t) RUN_TESTS=true ;;
-            i) RUN_INTEGRATION_TESTS=true ;;
             f) RUN_FUZZ_TESTS=true ;;
             m) RUN_BENCHMARKS=true ;;
-            M) RUN_RPC_BENCHMARKS=true ;;
             p) BUILD_PACKAGE=true ;;
             h) show_help; exit 0 ;;
             r) RUN_NODE_AND_BROKER=true ;;
@@ -771,17 +629,11 @@ main() {
     if [ "$RUN_TESTS" = true ]; then
         run_tests
         exit $?
-    elif [ "$RUN_INTEGRATION_TESTS" = true ]; then
-        run_integration_tests
-        exit $?
     elif [ "$RUN_FUZZ_TESTS" = true ]; then
         run_fuzz_tests
         exit $?
     elif [ "$RUN_BENCHMARKS" = true ]; then
         run_benchmarks
-        exit $?
-    elif [ "$RUN_RPC_BENCHMARKS" = true ]; then
-        run_rpc_benchmarks
         exit $?
     elif [ "$BUILD_PACKAGE" = true ]; then
         build_and_package

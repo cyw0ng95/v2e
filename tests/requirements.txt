@@ -1,4 +1,0 @@
-pytest>=8.0.0
-pytest-timeout>=2.2.0
-pytest-benchmark>=5.0.0
-requests>=2.32.5
