@@ -8,13 +8,13 @@ import { LucideEye } from 'lucide-react';
 import { AttackTable } from './attack-table';
 
 export function AttackViews() {
-  const [activeTab, setActiveTab] = useState<'techniques' | 'tactics' | 'mitigations'>('techniques');
+  const [activeTab, setActiveTab] = useState<'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'>('techniques');
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle>ATT&CK Framework</CardTitle>
-        <div className="flex space-x-2 mt-4">
+        <div className="flex flex-wrap gap-2 mt-4">
           <Button
             variant={activeTab === 'techniques' ? 'default' : 'outline'}
             onClick={() => setActiveTab('techniques')}
@@ -32,6 +32,18 @@ export function AttackViews() {
             onClick={() => setActiveTab('mitigations')}
           >
             Mitigations
+          </Button>
+          <Button
+            variant={activeTab === 'software' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('software')}
+          >
+            Software
+          </Button>
+          <Button
+            variant={activeTab === 'groups' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('groups')}
+          >
+            Groups
           </Button>
         </div>
       </CardHeader>

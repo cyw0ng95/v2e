@@ -47,6 +47,8 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
   // Track the current item being displayed (could be the initial item or a related item)
   const [currentItem, setCurrentItem] = useState<any>(item);
   const [currentType, setCurrentType] = useState<'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'>(type);
+  // Track navigation history for back button functionality
+  const [navigationHistory, setNavigationHistory] = useState<Array<{item: any, type: string}>>([]);
   
   // For demonstration, we'll use a simple approach to define relationships
   // In a real implementation, these would be stored in the database
@@ -161,8 +163,23 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
     }
   };
 
+  // Navigate back to the previous item in history
+  const handleBack = () => {
+    if (navigationHistory.length > 0) {
+      const previousState = navigationHistory[navigationHistory.length - 1];
+      const newHistory = [...navigationHistory.slice(0, -1)];
+      
+      setCurrentItem(previousState.item);
+      setCurrentType(previousState.type as 'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups');
+      setNavigationHistory(newHistory);
+    }
+  };
+
   // Handle viewing a related item - update current item and type
   const handleViewItem = (relatedItem: RelatedItem) => {
+    // Save current state to history before navigating
+    setNavigationHistory([...navigationHistory, { item: currentItem, type: currentType }]);
+    
     // In a real implementation, we would fetch the actual item details here
     console.log(`Viewing ${relatedItem.type} ${relatedItem.id}`);
     
@@ -176,29 +193,44 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
     if (open) {
       setCurrentItem(item);
       setCurrentType(type);
+      setNavigationHistory([]);
     }
   }, [open, item, type]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[90vw] h-[80vh] max-w-none p-6 overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge variant={getTypeColor(currentType)}>
-                {getReadableType(currentType)}
-              </Badge>
-              <span>{currentItem?.name || currentItem?.id || 'Unknown Item'}</span>
-              {currentItem?.id && (
-                <Badge variant="outline" className="font-mono">
-                  {currentItem.id}
-                </Badge>
+              {navigationHistory.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleBack}
+                  className="mr-2"
+                >
+                  ← Back
+                </Button>
               )}
+              <DialogTitle>
+                <div className="flex items-center gap-2">
+                  <Badge variant={getTypeColor(currentType)}>
+                    {getReadableType(currentType)}
+                  </Badge>
+                  <span>{currentItem?.name || currentItem?.id || 'Unknown Item'}</span>
+                  {currentItem?.id && (
+                    <Badge variant="outline" className="font-mono">
+                      {currentItem.id}
+                    </Badge>
+                  )}
+                </div>
+              </DialogTitle>
             </div>
-          </DialogTitle>
+          </div>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 h-[calc(100%-3rem)] overflow-y-auto pr-2">
           {/* Basic Information */}
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">Information</h3>
@@ -257,7 +289,7 @@ export function AttackDetailDialog({ open, onClose, item, type }: AttackDetailDi
           )}
           
           {/* Related Items */}
-          <div className="space-y-2">
+          <div className="space-y-2 flex-grow overflow-y-auto">
             <h3 className="text-lg font-semibold">Related Items</h3>
             <div className="space-y-4">
               {['techniques', 'tactics', 'mitigations', 'software', 'groups'].map((itemType) => {
