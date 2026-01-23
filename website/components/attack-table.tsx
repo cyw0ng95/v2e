@@ -22,7 +22,6 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { AttackDetailDialog } from './attack-detail-dialog';
 
 interface AttackTableProps {
   type?: 'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'; // Default to techniques
@@ -32,8 +31,7 @@ interface AttackTableProps {
 export function AttackTable({ type = 'techniques', onViewDetail }: AttackTableProps) {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  // detail handled by parent via `onViewDetail` (no modal fallback)
   // Fixed page size: show 20 items per page
   const [pageSize, setPageSize] = useState(20);
 
@@ -126,8 +124,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
       return;
     }
 
-    setSelectedItem(item);
-    setIsDetailDialogOpen(true);
+    console.warn('AttackTable: onViewDetail not provided; no action taken.');
   };
 
   // Determine table headers based on type
@@ -299,15 +296,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
         </CardContent>
       </Card>
       
-      {/* Detail Dialog (fallback) */}
-      {!onViewDetail && (
-        <AttackDetailDialog 
-          open={isDetailDialogOpen}
-          onClose={() => setIsDetailDialogOpen(false)}
-          item={selectedItem}
-          type={type}
-        />
-      )}
+      {/* No modal fallback: detail views are handled by parent via `onViewDetail`. */}
     </>
   );
 }
