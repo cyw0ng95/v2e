@@ -405,13 +405,14 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 	}
 }
 
-// createListAttackTechniquesHandler handles listing ATT&CK techniques with pagination
+// createListAttackTechniquesHandler handles listing ATT&CK techniques with pagination and search
 func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug("Processing ListAttackTechniques request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
 		var req struct {
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
+			Offset int    `json:"offset"`
+			Limit  int    `json:"limit"`
+			Search string `json:"search"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -432,8 +433,20 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		logger.Info("Processing ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Offset: %d, Limit: %d", msg.ID, msg.CorrelationID, req.Offset, req.Limit)
-		items, total, err := store.ListTechniquesPaginated(ctx, req.Offset, req.Limit)
+		logger.Info("Processing ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Offset: %d, Limit: %d, Search: %s", msg.ID, msg.CorrelationID, req.Offset, req.Limit, req.Search)
+
+		var items []attack.AttackTechnique
+		var total int64
+		var err error
+
+		if req.Search != "" {
+			// Use search functionality
+			items, total, err = store.SearchTechniques(ctx, req.Search, req.Offset, req.Limit)
+		} else {
+			// Use pagination functionality
+			items, total, err = store.ListTechniquesPaginated(ctx, req.Offset, req.Limit)
+		}
+
 		if err != nil {
 			logger.Warn("Failed to list ATT&CK techniques from store - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			logger.Debug("Processing ListAttackTechniques request failed - Message ID: %s, Error details: %v", msg.ID, err)
@@ -467,6 +480,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 			"offset":     req.Offset,
 			"limit":      req.Limit,
 			"total":      total,
+			"search":     req.Search, // Include search term in response
 		}
 
 		jsonData, err := sonic.Marshal(resp)
@@ -492,13 +506,14 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 	}
 }
 
-// createListAttackTacticsHandler handles listing ATT&CK tactics with pagination
+// createListAttackTacticsHandler handles listing ATT&CK tactics with pagination and search
 func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		common.Info("RPCListAttackTactics handler invoked with message ID: %s", msg.ID)
 		var req struct {
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
+			Offset int    `json:"offset"`
+			Limit  int    `json:"limit"`
+			Search string `json:"search"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -518,8 +533,20 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK tactics with offset=%d, limit=%d", req.Offset, req.Limit)
-		items, total, err := store.ListTacticsPaginated(ctx, req.Offset, req.Limit)
+		common.Info("Listing ATT&CK tactics with offset=%d, limit=%d, search=%s", req.Offset, req.Limit, req.Search)
+
+		var items []attack.AttackTactic
+		var total int64
+		var err error
+
+		if req.Search != "" {
+			// Use search functionality
+			items, total, err = store.SearchTactics(ctx, req.Search, req.Offset, req.Limit)
+		} else {
+			// Use pagination functionality
+			items, total, err = store.ListTacticsPaginated(ctx, req.Offset, req.Limit)
+		}
+
 		if err != nil {
 			logger.Warn("Failed to list ATT&CK tactics: %v", err)
 			return &subprocess.Message{
@@ -548,6 +575,7 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 			"offset":  req.Offset,
 			"limit":   req.Limit,
 			"total":   total,
+			"search":  req.Search, // Include search term in response
 		}
 
 		jsonData, err := sonic.Marshal(resp)
@@ -572,13 +600,14 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 	}
 }
 
-// createListAttackMitigationsHandler handles listing ATT&CK mitigations with pagination
+// createListAttackMitigationsHandler handles listing ATT&CK mitigations with pagination and search
 func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		common.Info("RPCListAttackMitigations handler invoked with message ID: %s", msg.ID)
 		var req struct {
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
+			Offset int    `json:"offset"`
+			Limit  int    `json:"limit"`
+			Search string `json:"search"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -598,8 +627,20 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK mitigations with offset=%d, limit=%d", req.Offset, req.Limit)
-		items, total, err := store.ListMitigationsPaginated(ctx, req.Offset, req.Limit)
+		common.Info("Listing ATT&CK mitigations with offset=%d, limit=%d, search=%s", req.Offset, req.Limit, req.Search)
+
+		var items []attack.AttackMitigation
+		var total int64
+		var err error
+
+		if req.Search != "" {
+			// Use search functionality
+			items, total, err = store.SearchMitigations(ctx, req.Search, req.Offset, req.Limit)
+		} else {
+			// Use pagination functionality
+			items, total, err = store.ListMitigationsPaginated(ctx, req.Offset, req.Limit)
+		}
+
 		if err != nil {
 			logger.Warn("Failed to list ATT&CK mitigations: %v", err)
 			return &subprocess.Message{
@@ -628,6 +669,7 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 			"offset":      req.Offset,
 			"limit":       req.Limit,
 			"total":       total,
+			"search":      req.Search, // Include search term in response
 		}
 
 		jsonData, err := sonic.Marshal(resp)
@@ -652,13 +694,14 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 	}
 }
 
-// createListAttackSoftwareHandler handles listing ATT&CK software with pagination
+// createListAttackSoftwareHandler handles listing ATT&CK software with pagination and search
 func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		common.Info("RPCListAttackSoftware handler invoked with message ID: %s", msg.ID)
 		var req struct {
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
+			Offset int    `json:"offset"`
+			Limit  int    `json:"limit"`
+			Search string `json:"search"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -678,8 +721,20 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK software with offset=%d, limit=%d", req.Offset, req.Limit)
-		items, total, err := store.ListSoftwarePaginated(ctx, req.Offset, req.Limit)
+		common.Info("Listing ATT&CK software with offset=%d, limit=%d, search=%s", req.Offset, req.Limit, req.Search)
+		
+		var items []attack.AttackSoftware
+		var total int64
+		var err error
+		
+		if req.Search != "" {
+			// Use search functionality
+			items, total, err = store.SearchSoftware(ctx, req.Search, req.Offset, req.Limit)
+		} else {
+			// Use pagination functionality
+			items, total, err = store.ListSoftwarePaginated(ctx, req.Offset, req.Limit)
+		}
+		
 		if err != nil {
 			logger.Warn("Failed to list ATT&CK software: %v", err)
 			return &subprocess.Message{
@@ -709,6 +764,7 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 			"offset":   req.Offset,
 			"limit":    req.Limit,
 			"total":    total,
+			"search":   req.Search, // Include search term in response
 		}
 
 		jsonData, err := sonic.Marshal(resp)
@@ -733,13 +789,14 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 	}
 }
 
-// createListAttackGroupsHandler handles listing ATT&CK groups with pagination
+// createListAttackGroupsHandler handles listing ATT&CK groups with pagination and search
 func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		common.Info("RPCListAttackGroups handler invoked with message ID: %s", msg.ID)
 		var req struct {
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
+			Offset int    `json:"offset"`
+			Limit  int    `json:"limit"`
+			Search string `json:"search"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -759,8 +816,20 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK groups with offset=%d, limit=%d", req.Offset, req.Limit)
-		items, total, err := store.ListGroupsPaginated(ctx, req.Offset, req.Limit)
+		common.Info("Listing ATT&CK groups with offset=%d, limit=%d, search=%s", req.Offset, req.Limit, req.Search)
+		
+		var items []attack.AttackGroup
+		var total int64
+		var err error
+		
+		if req.Search != "" {
+			// Use search functionality
+			items, total, err = store.SearchGroups(ctx, req.Search, req.Offset, req.Limit)
+		} else {
+			// Use pagination functionality
+			items, total, err = store.ListGroupsPaginated(ctx, req.Offset, req.Limit)
+		}
+		
 		if err != nil {
 			logger.Warn("Failed to list ATT&CK groups: %v", err)
 			return &subprocess.Message{
@@ -789,6 +858,7 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 			"offset": req.Offset,
 			"limit":  req.Limit,
 			"total":  total,
+			"search": req.Search, // Include search term in response
 		}
 
 		jsonData, err := sonic.Marshal(resp)

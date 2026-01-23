@@ -616,24 +616,24 @@ export class RPCClient {
     return this.call<{ id: string }, any>('RPCGetAttackGroupByID', { id }, 'local');
   }
 
-  async listAttackTechniques(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
-    return this.call<{ offset: number, limit: number }, any>('RPCListAttackTechniques', { offset, limit }, 'local');
+  async listAttackTechniques(offset: number = 0, limit: number = 100, search: string = ''): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number, search: string }, any>('RPCListAttackTechniques', { offset, limit, search }, 'local');
   }
 
-  async listAttackTactics(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
-    return this.call<{ offset: number, limit: number }, any>('RPCListAttackTactics', { offset, limit }, 'local');
+  async listAttackTactics(offset: number = 0, limit: number = 100, search: string = ''): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number, search: string }, any>('RPCListAttackTactics', { offset, limit, search }, 'local');
   }
 
-  async listAttackMitigations(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
-    return this.call<{ offset: number, limit: number }, any>('RPCListAttackMitigations', { offset, limit }, 'local');
+  async listAttackMitigations(offset: number = 0, limit: number = 100, search: string = ''): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number, search: string }, any>('RPCListAttackMitigations', { offset, limit, search }, 'local');
   }
 
-  async listAttackSoftware(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
-    return this.call<{ offset: number, limit: number }, any>('RPCListAttackSoftware', { offset, limit }, 'local');
+  async listAttackSoftware(offset: number = 0, limit: number = 100, search: string = ''): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number, search: string }, any>('RPCListAttackSoftware', { offset, limit, search }, 'local');
   }
 
-  async listAttackGroups(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
-    return this.call<{ offset: number, limit: number }, any>('RPCListAttackGroups', { offset, limit }, 'local');
+  async listAttackGroups(offset: number = 0, limit: number = 100, search: string = ''): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number, search: string }, any>('RPCListAttackGroups', { offset, limit, search }, 'local');
   }
 
   async getAttackImportMetadata(): Promise<RPCResponse<any>> {

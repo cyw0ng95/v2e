@@ -37,19 +37,17 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
   // Fixed page size: show 20 items per page
   const [pageSize, setPageSize] = useState(20);
 
-  // Use different hooks based on type
-  const { data: techniquesData, isLoading: techniquesLoading } = useAttackTechniques({ offset: page * pageSize, limit: pageSize, search });
-  const { data: tacticsData, isLoading: tacticsLoading } = useAttackTactics({ offset: page * pageSize, limit: pageSize, search });
-  const { data: mitigationsData, isLoading: mitigationsLoading } = useAttackMitigations({ offset: page * pageSize, limit: pageSize, search });
-  const { data: softwareData, isLoading: softwareLoading } = useAttackSoftware({ offset: page * pageSize, limit: pageSize, search });
-  const { data: groupsData, isLoading: groupsLoading } = useAttackGroups({ offset: page * pageSize, limit: pageSize, search });
+  // Use only the hook that corresponds to the selected type to reduce RPC calls
+  const currentHookResult = 
+    type === 'tactics' ? useAttackTactics({ offset: page * pageSize, limit: pageSize, search }) :
+    type === 'mitigations' ? useAttackMitigations({ offset: page * pageSize, limit: pageSize, search }) :
+    type === 'software' ? useAttackSoftware({ offset: page * pageSize, limit: pageSize, search }) :
+    type === 'groups' ? useAttackGroups({ offset: page * pageSize, limit: pageSize, search }) :
+    useAttackTechniques({ offset: page * pageSize, limit: pageSize, search }); // Default to techniques
 
-  const isLoading = 
-    (type === 'techniques' && techniquesLoading) ||
-    (type === 'tactics' && tacticsLoading) ||
-    (type === 'mitigations' && mitigationsLoading) ||
-    (type === 'software' && softwareLoading) ||
-    (type === 'groups' && groupsLoading);
+  const { data, isLoading: currentTypeLoading } = currentHookResult;
+
+  const isLoading = currentTypeLoading;
 
   // Map backend ATT&CK items to a plain object for table display based on type
   let attackList = [];
@@ -57,30 +55,30 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
 
   switch(type) {
     case 'tactics':
-      attackList = Array.isArray(tacticsData?.tactics)
-        ? tacticsData.tactics.map((item: any) => ({
+      attackList = Array.isArray(data?.tactics)
+        ? data.tactics.map((item: any) => ({
             id: item.id || item.ID || item.attackId || item.AttackId || '',
             name: item.name || item.Name || '',
             description: item.description || item.Description || '',
             domain: item.domain || item.Domain || '',
           }))
         : [];
-      total = tacticsData?.total || 0;
+      total = data?.total || 0;
       break;
     case 'mitigations':
-      attackList = Array.isArray(mitigationsData?.mitigations)
-        ? mitigationsData.mitigations.map((item: any) => ({
+      attackList = Array.isArray(data?.mitigations)
+        ? data.mitigations.map((item: any) => ({
             id: item.id || item.ID || item.attackId || item.AttackId || '',
             name: item.name || item.Name || '',
             description: item.description || item.Description || '',
             domain: item.domain || item.Domain || '',
           }))
         : [];
-      total = mitigationsData?.total || 0;
+      total = data?.total || 0;
       break;
     case 'software':
-      attackList = Array.isArray(softwareData?.software)
-        ? softwareData.software.map((item: any) => ({
+      attackList = Array.isArray(data?.software)
+        ? data.software.map((item: any) => ({
             id: item.id || item.ID || item.attackId || item.AttackId || '',
             name: item.name || item.Name || '',
             description: item.description || item.Description || '',
@@ -88,23 +86,23 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
             domain: item.domain || item.Domain || '',
           }))
         : [];
-      total = softwareData?.total || 0;
+      total = data?.total || 0;
       break;
     case 'groups':
-      attackList = Array.isArray(groupsData?.groups)
-        ? groupsData.groups.map((item: any) => ({
+      attackList = Array.isArray(data?.groups)
+        ? data.groups.map((item: any) => ({
             id: item.id || item.ID || item.attackId || item.AttackId || '',
             name: item.name || item.Name || '',
             description: item.description || item.Description || '',
             domain: item.domain || item.Domain || '',
           }))
         : [];
-      total = groupsData?.total || 0;
+      total = data?.total || 0;
       break;
     case 'techniques':
     default:
-      attackList = Array.isArray(techniquesData?.techniques)
-        ? techniquesData.techniques.map((item: any) => ({
+      attackList = Array.isArray(data?.techniques)
+        ? data.techniques.map((item: any) => ({
             id: item.id || item.ID || item.attackId || item.AttackId || '',
             name: item.name || item.Name || '',
             description: item.description || item.Description || '',
@@ -112,7 +110,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
             platform: item.platform || item.Platform || '',
           }))
         : [];
-      total = techniquesData?.total || 0;
+      total = data?.total || 0;
       break;
   }
 
