@@ -18,7 +18,8 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			CVE cve.CVEItem `json:"cve"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
+			logger.Debug("Processing SaveCVEByID request failed due to malformed payload: %s", string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -28,7 +29,8 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			}, nil
 		}
 		if req.CVE.ID == "" {
-			logger.Error("cve.id is required")
+			logger.Warn("cve.id is required")
+			logger.Debug("Processing SaveCVEByID request failed: CVE ID missing in payload")
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -38,7 +40,8 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			}, nil
 		}
 		if err := db.SaveCVE(&req.CVE); err != nil {
-			logger.Error("Failed to save CVE: %v", err)
+			logger.Warn("Failed to save CVE: %v", err)
+			logger.Debug("Processing SaveCVEByID request failed for CVE ID %s: %v", req.CVE.ID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -48,6 +51,7 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			}, nil
 		}
 		logger.Info("Saved CVE %s to local database", req.CVE.ID)
+		logger.Debug("Processing SaveCVEByID request completed successfully for CVE ID %s", req.CVE.ID)
 		result := map[string]interface{}{
 			"success": true,
 			"cve_id":  req.CVE.ID,
@@ -81,7 +85,8 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			CVEID string `json:"cve_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
+			logger.Debug("Processing IsCVEStoredByID request failed due to malformed payload: %s", string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -102,7 +107,7 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 		}
 		_, err := db.GetCVE(req.CVEID)
 		stored := err == nil
-		logger.Debug("CVE %s stored status: %v", req.CVEID, stored)
+		logger.Debug("Processing IsCVEStoredByID request completed successfully for CVE ID %s, stored: %v", req.CVEID, stored)
 		result := map[string]interface{}{
 			"cve_id": req.CVEID,
 			"stored": stored,
@@ -136,7 +141,8 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 			CVEID string `json:"cve_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
+			logger.Debug("Processing GetCVEByID request failed due to malformed payload: %s", string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -146,7 +152,8 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 			}, nil
 		}
 		if req.CVEID == "" {
-			logger.Error("cve_id is required")
+			logger.Warn("cve_id is required")
+			logger.Debug("Processing GetCVEByID request failed: CVE ID missing in payload")
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -157,7 +164,8 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 		}
 		cveItem, err := db.GetCVE(req.CVEID)
 		if err != nil {
-			logger.Error("Failed to get CVE from database: %v", err)
+			logger.Warn("Failed to get CVE from database: %v", err)
+			logger.Debug("Processing GetCVEByID request failed for CVE ID %s: %v", req.CVEID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -167,6 +175,7 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 			}, nil
 		}
 		logger.Info("Retrieved CVE %s from local database", req.CVEID)
+		logger.Debug("Processing GetCVEByID request completed successfully for CVE ID %s", req.CVEID)
 		respMsg := &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,
@@ -196,7 +205,8 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 			CVEID string `json:"cve_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
+			logger.Debug("Processing DeleteCVEByID request failed due to malformed payload: %s", string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -206,7 +216,8 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 			}, nil
 		}
 		if req.CVEID == "" {
-			logger.Error("cve_id is required")
+			logger.Warn("cve_id is required")
+			logger.Debug("Processing DeleteCVEByID request failed: CVE ID missing in payload")
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -216,7 +227,8 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 			}, nil
 		}
 		if err := db.DeleteCVE(req.CVEID); err != nil {
-			logger.Error("Failed to delete CVE from database: %v", err)
+			logger.Warn("Failed to delete CVE from database: %v", err)
+			logger.Debug("Processing DeleteCVEByID request failed for CVE ID %s: %v", req.CVEID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -226,6 +238,7 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 			}, nil
 		}
 		logger.Info("Deleted CVE %s from local database", req.CVEID)
+		logger.Debug("Processing DeleteCVEByID request completed successfully for CVE ID %s", req.CVEID)
 		result := map[string]interface{}{
 			"success": true,
 			"cve_id":  req.CVEID,
@@ -264,10 +277,11 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 		if msg.Payload != nil {
 			_ = subprocess.UnmarshalPayload(msg, &req)
 		}
-		logger.Debug("Listing CVEs with offset=%d, limit=%d", req.Offset, req.Limit)
+		logger.Debug("Processing ListCVEs request: offset=%d, limit=%d", req.Offset, req.Limit)
 		cves, err := db.ListCVEs(req.Offset, req.Limit)
 		if err != nil {
-			logger.Error("Failed to list CVEs from database: %v", err)
+			logger.Warn("Failed to list CVEs from database: %v", err)
+			logger.Debug("Processing ListCVEs request failed: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -278,7 +292,8 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 		}
 		total, err := db.Count()
 		if err != nil {
-			logger.Error("Failed to get CVE count from database: %v", err)
+			logger.Warn("Failed to get CVE count from database: %v", err)
+			logger.Debug("Processing ListCVEs request failed to get count: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -288,6 +303,7 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 			}, nil
 		}
 		logger.Info("Listed %d CVEs (total: %d, offset: %d, limit: %d)", len(cves), total, req.Offset, req.Limit)
+		logger.Debug("Processing ListCVEs request completed successfully: returned %d CVEs, total %d", len(cves), total)
 		result := map[string]interface{}{
 			"cves":  cves,
 			"total": total,
@@ -317,10 +333,11 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 // createCountCVEsHandler creates a handler for RPCCountCVEs
 func createCountCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("Counting CVEs in database")
+		logger.Debug("Processing CountCVEs request")
 		count, err := db.Count()
 		if err != nil {
-			logger.Error("Failed to count CVEs in database: %v", err)
+			logger.Warn("Failed to count CVEs in database: %v", err)
+			logger.Debug("Processing CountCVEs request failed: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -330,6 +347,7 @@ func createCountCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Hand
 			}, nil
 		}
 		logger.Info("CVE count: %d", count)
+		logger.Debug("Processing CountCVEs request completed successfully: count %d", count)
 		result := map[string]interface{}{
 			"count": count,
 		}

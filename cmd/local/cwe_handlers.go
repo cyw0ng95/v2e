@@ -17,7 +17,8 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 			CWEID string `json:"cwe_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
+			logger.Debug("Processing GetCWEByID request failed due to malformed payload: %s", string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -38,7 +39,8 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 		logger.Debug("GetCWEByID request: cwe_id=%s", req.CWEID)
 		item, err := store.GetByID(ctx, req.CWEID)
 		if err != nil {
-			logger.Error("Failed to get CWE: %v (cwe_id=%s)", err, req.CWEID)
+			logger.Warn("Failed to get CWE: %v (cwe_id=%s)", err, req.CWEID)
+			logger.Debug("Processing GetCWEByID request failed for CWE ID %s: %v", req.CWEID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -48,6 +50,7 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 			}, nil
 		}
 		logger.Debug("Found CWE: %+v", item)
+		logger.Debug("Processing GetCWEByID request completed successfully for CWE ID %s", req.CWEID)
 		jsonData, err := sonic.Marshal(item)
 		if err != nil {
 			logger.Error("Failed to marshal CWE: %v (cwe_id=%s)", err, req.CWEID)
@@ -81,7 +84,8 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Error("Failed to parse request: %v", err)
+				logger.Warn("Failed to parse request: %v", err)
+				logger.Debug("Processing ListCWEs request failed due to malformed payload: %s", string(msg.Payload))
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
@@ -101,7 +105,8 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 		common.Info("Listing CWEs with offset=%d, limit=%d", req.Offset, req.Limit)
 		items, total, err := store.ListCWEsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Error("Failed to list CWEs: %v", err)
+			logger.Warn("Failed to list CWEs: %v", err)
+			logger.Debug("Processing ListCWEs request failed: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -110,6 +115,7 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Debug("Processing ListCWEs request completed successfully: returned %d CWEs, total %d", len(items), total)
 		resp := map[string]interface{}{
 			"cwes":   items,
 			"offset": req.Offset,
@@ -145,7 +151,8 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 			Path string `json:"path"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
+			logger.Debug("Processing ImportCWEs request failed due to malformed payload: %s", string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -166,9 +173,10 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 		}
 		err := store.ImportFromJSON(req.Path)
 		if err != nil {
-			logger.Error("Failed to import CWE from raw JSON: %v (path: %s)", err, req.Path)
+			logger.Warn("Failed to import CWE from raw JSON: %v (path: %s)", err, req.Path)
+			logger.Debug("Processing ImportCWEs request failed for path %s: %v", req.Path, err)
 			if _, statErr := os.Stat(req.Path); statErr != nil {
-				logger.Error("CWE import file stat error: %v (path: %s)", statErr, req.Path)
+				logger.Warn("CWE import file stat error: %v (path: %s)", statErr, req.Path)
 			}
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -178,6 +186,7 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Debug("Processing ImportCWEs request completed successfully for path %s", req.Path)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,
