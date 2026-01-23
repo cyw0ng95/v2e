@@ -3,6 +3,7 @@ package proc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -216,6 +217,49 @@ func BenchmarkComparisonOriginalVsOptimized(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_, _ = OptimizedNewRequestMessage("req-1", payload)
+		}
+	})
+	
+	// Additional sub-benchmarks for message creation with different payload sizes
+	b.Run("Original-SmallPayload", func(b *testing.B) {
+		smallPayload := struct{ Value string }{Value: "small"}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = NewRequestMessage("req-1", smallPayload)
+		}
+	})
+	
+	b.Run("Optimized-SmallPayload", func(b *testing.B) {
+		smallPayload := struct{ Value string }{Value: "small"}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = OptimizedNewRequestMessage("req-1", smallPayload)
+		}
+	})
+	
+	b.Run("Original-LargePayload", func(b *testing.B) {
+		largePayload := make(map[string]interface{})
+		for j := 0; j < 100; j++ {
+			largePayload[fmt.Sprintf("key%d", j)] = fmt.Sprintf("value%d", j)
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = NewRequestMessage("req-1", largePayload)
+		}
+	})
+	
+	b.Run("Optimized-LargePayload", func(b *testing.B) {
+		largePayload := make(map[string]interface{})
+		for j := 0; j < 100; j++ {
+			largePayload[fmt.Sprintf("key%d", j)] = fmt.Sprintf("value%d", j)
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = OptimizedNewRequestMessage("req-1", largePayload)
 		}
 	})
 }
