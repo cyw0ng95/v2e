@@ -7,9 +7,12 @@ import (
 	"testing"
 
 	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/attack"
+	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
+	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -558,4 +561,82 @@ func TestRPCListCVEs(t *testing.T) {
 			t.Errorf("Expected total=%d, got %d", testCVECount, total)
 		}
 	})
+}
+
+func TestImportATTACKDataAtStartup(t *testing.T) {
+	// Create a temporary database for testing
+	attackDBPath := "/tmp/test_attack_store_startup.db"
+	defer os.Remove(attackDBPath)
+
+	attackStore, err := attack.NewLocalAttackStore(attackDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create attack store: %v", err)
+	}
+
+	// Create logger
+	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
+
+	// Test the function with a non-existent directory
+	// This should not crash and should log appropriately
+	importATTACKDataAtStartup(attackStore, logger)
+
+	// The function should complete without panicking
+	t.Log("importATTACKDataAtStartup completed without crashing")
+}
+
+func TestMainFunctionInitialization(t *testing.T) {
+	// This test ensures that the main function can initialize all components properly
+	// without actually running the main loop
+
+	// Test that we can create all the necessary components without error
+	dbPath := "/tmp/test_init_cve.db"
+	cweDBPath := "/tmp/test_init_cwe.db"
+	capecDBPath := "/tmp/test_init_capec.db"
+	attackDBPath := "/tmp/test_init_attack.db"
+	
+	defer os.Remove(dbPath)
+	defer os.Remove(cweDBPath)
+	defer os.Remove(capecDBPath)
+	defer os.Remove(attackDBPath)
+
+	// Test CVE DB creation
+	db, err := local.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create CVE database: %v", err)
+	}
+	defer db.Close()
+
+	// Test CWE store creation
+	cweStore, err := cwe.NewLocalCWEStore(cweDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create CWE store: %v", err)
+	}
+
+	// Test CAPEC store creation
+	capecStore, err := capec.NewLocalCAPECStore(capecDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create CAPEC store: %v", err)
+	}
+
+	// Test ATT&CK store creation
+	attackStore, err := attack.NewLocalAttackStore(attackDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create ATT&CK store: %v", err)
+	}
+
+	// Verify all stores are created properly
+	if db == nil {
+		t.Fatal("CVE database is nil")
+	}
+	if cweStore == nil {
+		t.Fatal("CWE store is nil")
+	}
+	if capecStore == nil {
+		t.Fatal("CAPEC store is nil")
+	}
+	if attackStore == nil {
+		t.Fatal("ATT&CK store is nil")
+	}
+
+	t.Log("All stores initialized successfully")
 }
