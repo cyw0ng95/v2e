@@ -16,7 +16,7 @@ func runAccess() {
 	// Load configuration
 	config, err := common.LoadConfig("config.json")
 	if err != nil {
-		common.Error("Error loading config: %v", err)
+		common.Warn("Warning loading config: %v", err)
 		os.Exit(1)
 	}
 
@@ -34,6 +34,10 @@ func runAccess() {
 	staticDir := "website"
 	if config.Access.StaticDir != "" {
 		staticDir = config.Access.StaticDir
+	}
+	// Allow broker to override static dir via environment when running as subprocess
+	if envStatic := os.Getenv("ACCESS_STATIC_DIR"); envStatic != "" {
+		staticDir = envStatic
 	}
 
 	// Set default address if not configured
@@ -53,8 +57,11 @@ func runAccess() {
 
 	// Start RPC client in background
 	go func() {
+		common.Info("[ACCESS] Starting RPC client for process: %s", processID)
 		if err := rpcClient.Run(context.Background()); err != nil {
-			common.Error("RPC client error: %v", err)
+			common.Warn("[ACCESS] RPC client error for process %s: %v", processID, err)
+		} else {
+			common.Info("[ACCESS] RPC client stopped for process: %s", processID)
 		}
 	}()
 
@@ -88,7 +95,7 @@ func runAccess() {
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		common.Error("[ACCESS] Server forced to shutdown: %v", err)
+		common.Warn("[ACCESS] Server forced to shutdown: %v", err)
 		os.Exit(1)
 	}
 

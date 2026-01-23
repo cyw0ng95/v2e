@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"html"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/capec"
@@ -21,7 +24,7 @@ func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			Force bool   `json:"force,omitempty"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -41,9 +44,9 @@ func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			}, nil
 		}
 		if err := store.ImportFromXML(req.Path, req.XSD, req.Force); err != nil {
-			logger.Error("Failed to import CAPEC from XML: %v (path: %s xsd: %s)", err, req.Path, req.XSD)
+			logger.Warn("Failed to import CAPEC from XML: %v (path: %s xsd: %s)", err, req.Path, req.XSD)
 			if _, statErr := os.Stat(req.Path); statErr != nil {
-				logger.Error("CAPEC import file stat error: %v (path: %s)", statErr, req.Path)
+				logger.Warn("CAPEC import file stat error: %v (path: %s)", statErr, req.Path)
 			}
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -63,6 +66,26 @@ func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logg
 	}
 }
 
+// xmlInnerToPlain strips all XML/HTML tags and returns plain text suitable for
+// direct rendering. It also removes xmlns declarations and unescapes entities.
+func xmlInnerToPlain(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return ""
+	}
+	// remove xmlns declarations
+	xmlnsRe := regexp.MustCompile(`\s+xmlns(:[a-z0-9_]+)?="[^"]*"`)
+	s = xmlnsRe.ReplaceAllString(s, "")
+	// strip all tags
+	tagRe := regexp.MustCompile(`(?s)<[^>]+>`) // dotall to match across lines
+	s = tagRe.ReplaceAllString(s, " ")
+	// unescape HTML entities
+	s = html.UnescapeString(s)
+	// collapse whitespace
+	wsRe := regexp.MustCompile(`\s+`)
+	s = wsRe.ReplaceAllString(s, " ")
+	return strings.TrimSpace(s)
+}
+
 // createForceImportCAPECsHandler creates a handler for RPCForceImportCAPECs
 func createForceImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
@@ -72,7 +95,7 @@ func createForceImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common
 			XSD  string `json:"xsd"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -91,7 +114,7 @@ func createForceImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common
 			}, nil
 		}
 		if err := store.ImportFromXML(req.Path, req.XSD, true); err != nil {
-			logger.Error("Failed to import CAPEC from XML (force): %v (path: %s xsd: %s)", err, req.Path, req.XSD)
+			logger.Warn("Failed to import CAPEC from XML (force): %v (path: %s xsd: %s)", err, req.Path, req.XSD)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -117,7 +140,7 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			CAPECID string `json:"capec_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -138,7 +161,7 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 		logger.Debug("GetCAPECByID request: capec_id=%s", req.CAPECID)
 		item, err := store.GetByID(ctx, req.CAPECID)
 		if err != nil {
-			logger.Error("Failed to get CAPEC: %v (capec_id=%s)", err, req.CAPECID)
+			logger.Warn("Failed to get CAPEC: %v (capec_id=%s)", err, req.CAPECID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -160,14 +183,14 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 		var examples []string
 		if ex, err := store.GetExamples(ctx, item.CAPECID); err == nil {
 			for _, e := range ex {
-				examples = append(examples, e.ExampleText)
+				examples = append(examples, xmlInnerToPlain(e.ExampleText))
 			}
 		}
 
 		var mitigations []string
 		if ms, err := store.GetMitigations(ctx, item.CAPECID); err == nil {
 			for _, m := range ms {
-				mitigations = append(mitigations, m.MitigationText)
+				mitigations = append(mitigations, xmlInnerToPlain(m.MitigationText))
 			}
 		}
 
@@ -179,11 +202,12 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 		}
 
 		// Build a client-friendly payload: use string ID "CAPEC-<n>" and simple keys
+		description := xmlInnerToPlain(item.Description)
 		payload := map[string]interface{}{
 			"id":               fmt.Sprintf("CAPEC-%d", item.CAPECID),
 			"name":             item.Name,
-			"summary":          item.Summary,
-			"description":      item.Description,
+			"summary":          xmlInnerToPlain(item.Summary),
+			"description":      description,
 			"status":           item.Status,
 			"likelihood":       item.Likelihood,
 			"typical_severity": item.TypicalSeverity,
@@ -257,18 +281,19 @@ func createGetCAPECCatalogMetaHandler(store *capec.LocalCAPECStore, logger *comm
 // createListCAPECsHandler creates a handler for RPCListCAPECs
 func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		common.Info("RPCListCAPECs handler invoked with message ID: %s", msg.ID)
+		logger.Debug("Processing ListCAPECs request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
 		var req struct {
 			Offset int `json:"offset"`
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Error("Failed to parse request: %v", err)
+				logger.Warn("Failed to parse ListCAPECs request - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+				logger.Debug("Processing ListCAPECs request failed due to malformed payload - Message ID: %s, Payload: %s", msg.ID, string(msg.Payload))
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
-					Error:         "failed to parse request",
+					Error:         fmt.Sprintf("failed to parse request: %v", err),
 					CorrelationID: msg.CorrelationID,
 					Target:        msg.Source,
 				}, nil
@@ -280,14 +305,15 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing CAPECs with offset=%d, limit=%d", req.Offset, req.Limit)
+		logger.Info("Processing ListCAPECs request - Message ID: %s, Correlation ID: %s, Offset: %d, Limit: %d", msg.ID, msg.CorrelationID, req.Offset, req.Limit)
 		items, total, err := store.ListCAPECsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Error("Failed to list CAPECs: %v", err)
+			logger.Warn("Failed to list CAPECs from store - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Debug("Processing ListCAPECs request failed - Message ID: %s, Error details: %v", msg.ID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         "failed to list CAPECs",
+				Error:         fmt.Sprintf("failed to list CAPECs: %v", err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -295,26 +321,33 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
 		for _, it := range items {
+			logger.Debug("Mapping CAPEC item - Message ID: %s, CAPEC ID: %d", msg.ID, it.CAPECID)
 			// attempt to load related entries; ignore errors to keep listing robust
 			var weaknesses []string
 			if rw, err := store.GetRelatedWeaknesses(ctx, it.CAPECID); err == nil {
 				for _, w := range rw {
 					weaknesses = append(weaknesses, w.CWEID)
 				}
+			} else {
+				logger.Debug("No related weaknesses found for CAPEC %d - Message ID: %s, Error: %v", it.CAPECID, msg.ID, err)
 			}
 
 			var examples []string
 			if ex, err := store.GetExamples(ctx, it.CAPECID); err == nil {
 				for _, e := range ex {
-					examples = append(examples, e.ExampleText)
+					examples = append(examples, xmlInnerToPlain(e.ExampleText))
 				}
+			} else {
+				logger.Debug("No examples found for CAPEC %d - Message ID: %s, Error: %v", it.CAPECID, msg.ID, err)
 			}
 
 			var mitigations []string
 			if ms, err := store.GetMitigations(ctx, it.CAPECID); err == nil {
 				for _, m := range ms {
-					mitigations = append(mitigations, m.MitigationText)
+					mitigations = append(mitigations, xmlInnerToPlain(m.MitigationText))
 				}
+			} else {
+				logger.Debug("No mitigations found for CAPEC %d - Message ID: %s, Error: %v", it.CAPECID, msg.ID, err)
 			}
 
 			var references []map[string]string
@@ -322,13 +355,15 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 				for _, r := range refs {
 					references = append(references, map[string]string{"reference": r.ExternalReference, "url": r.URL})
 				}
+			} else {
+				logger.Debug("No references found for CAPEC %d - Message ID: %s, Error: %v", it.CAPECID, msg.ID, err)
 			}
 
 			mapped = append(mapped, map[string]interface{}{
 				"id":               fmt.Sprintf("CAPEC-%d", it.CAPECID),
 				"name":             it.Name,
-				"summary":          it.Summary,
-				"description":      it.Description,
+				"summary":          xmlInnerToPlain(it.Summary),
+				"description":      xmlInnerToPlain(it.Description),
 				"status":           it.Status,
 				"likelihood":       it.Likelihood,
 				"typical_severity": it.TypicalSeverity,
@@ -347,15 +382,16 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 		}
 		jsonData, err := sonic.Marshal(resp)
 		if err != nil {
-			logger.Error("Failed to marshal CAPECs: %v", err)
+			logger.Error("Failed to marshal ListCAPECs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         "failed to marshal CAPECs",
+				Error:         fmt.Sprintf("failed to marshal CAPECs: %v", err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Info("Successfully processed ListCAPECs request - Message ID: %s, Correlation ID: %s, Returned: %d, Total: %d", msg.ID, msg.CorrelationID, len(items), total)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,

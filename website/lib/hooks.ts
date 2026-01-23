@@ -1,454 +1,920 @@
-/**
- * React Query hooks for v2e API
- */
-
-import { useQuery, useMutation, useQueryClient, UseQueryResult } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { rpcClient } from './rpc-client';
-import { SysMetrics } from './types';
 
-// ============================================================================
-// Query Keys
-// ============================================================================
-
-export const queryKeys = {
-  cves: {
-    all: ['cves'] as const,
-    list: (offset: number, limit: number) => ['cves', 'list', offset, limit] as const,
-    count: () => ['cves', 'count'] as const,
-    detail: (id: string) => ['cves', 'detail', id] as const,
-  },
-  cwes: {
-    all: ['cwes'] as const,
-    list: (params?: { offset?: number; limit?: number; search?: string }) => [
-      'cwes',
-      'list',
-      params?.offset ?? 0,
-      params?.limit ?? 100,
-      params?.search ?? ''
-    ] as const,
-    detail: (id: string) => ['cwes', 'detail', id] as const,
-  },
-  capecs: {
-    all: ['capecs'] as const,
-    list: (offset: number, limit: number) => ['capecs', 'list', offset, limit] as const,
-    detail: (id: string) => ['capecs', 'detail', id] as const,
-  },
-  session: {
-    status: () => ['session', 'status'] as const,
-  },
-  cweJob: {
-    status: () => ['cwe', 'job', 'status'] as const,
-  },
-  health: () => ['health'] as const,
-};
-
-// ============================================================================
-// CVE Queries
-// ============================================================================
-
-export function useCVE(cveId: string) {
-  return useQuery({
-    queryKey: queryKeys.cves.detail(cveId),
-    queryFn: async () => {
-      const response = await rpcClient.getCVE(cveId);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-    enabled: !!cveId,
-  });
+interface AttackQueryParams {
+  offset?: number;
+  limit?: number;
+  search?: string;
 }
 
-export function useCVEList(offset: number = 0, limit: number = 10) {
-  return useQuery({
-    queryKey: queryKeys.cves.list(offset, limit),
-    queryFn: async () => {
-      const response = await rpcClient.listCVEs(offset, limit);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-  });
-}
+export function useAttackTechniques(params: AttackQueryParams = {}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-export function useCVECount() {
-  return useQuery({
-    queryKey: queryKeys.cves.count(),
-    queryFn: async () => {
-      const response = await rpcClient.countCVEs();
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-  });
-}
+  const { offset = 0, limit = 100, search = '' } = params;
 
-// ============================================================================
-// CVE Mutations
-// ============================================================================
-
-export function useCreateCVE() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (cveId: string) => {
-      const response = await rpcClient.createCVE(cveId);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-    onSuccess: () => {
-      // Invalidate CVE list to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.cves.all });
-    },
-  });
-}
-
-export function useUpdateCVE() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (cveId: string) => {
-      const response = await rpcClient.updateCVE(cveId);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-    onSuccess: (_, cveId) => {
-      // Invalidate specific CVE and list
-      queryClient.invalidateQueries({ queryKey: queryKeys.cves.detail(cveId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.cves.all });
-    },
-  });
-}
-
-export function useDeleteCVE() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (cveId: string) => {
-      const response = await rpcClient.deleteCVE(cveId);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-    onSuccess: () => {
-      // Invalidate CVE list to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.cves.all });
-    },
-  });
-}
-
-// ============================================================================
-// CWE Queries
-// ============================================================================
-
-import type { CWEItem, ListCWEsRequest, ListCWEsResponse } from './types';
-import type { CWEView, ListCWEViewsRequest, ListCWEViewsResponse, GetCWEViewResponse } from './types';
-
-export function useCWEList(params?: ListCWEsRequest) {
-  return useQuery<ListCWEsResponse>({
-    queryKey: queryKeys.cwes.list(params),
-    queryFn: async () => {
-      const response = await rpcClient.listCWEs(params);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload || { cwes: [], offset: 0, limit: 0, total: 0 };
-    },
-  });
-}
-
-// ============================================================================
-// CAPEC Queries
-// ============================================================================
-
-export function useCAPECList(offset: number = 0, limit: number = 50) {
-  return useQuery({
-    queryKey: queryKeys.capecs.list(offset, limit),
-    queryFn: async () => {
-      const response = await rpcClient.listCAPECs(offset, limit);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload || { capecs: [], offset, limit, total: 0 };
-    },
-  });
-}
-
-export function useCAPEC(capecId?: string) {
-  return useQuery<any | null>({
-    queryKey: queryKeys.capecs.detail(capecId || ''),
-    queryFn: async () => {
-      if (!capecId) return null;
-      const response = await rpcClient.getCAPEC(capecId);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      const payload: any = response.payload ?? null;
-      return payload ?? null;
-    },
-    enabled: !!capecId,
-  });
-}
-
-export function useCWE(cweId: string) {
-  return useQuery({
-    queryKey: queryKeys.cwes.detail(cweId),
-    queryFn: async () => {
-      const response = await rpcClient.getCWE(cweId);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      // Backend may return the CWE either as `payload.cwe` or as the CWE object directly.
-      const payload: any = response.payload ?? null;
-      const cwe = payload?.cwe ?? payload;
-      // Ensure we never return `undefined` (React Query requires a non-undefined return)
-      return cwe ?? null;
-    },
-    enabled: !!cweId,
-  });
-}
-
-// ============================================================================
-// CWE View Queries
-// ============================================================================
-
-export function useCWEViews(params?: ListCWEViewsRequest) {
-  return useQuery<ListCWEViewsResponse>({
-    queryKey: ['cweViews', params?.offset ?? 0, params?.limit ?? 100],
-    queryFn: async () => {
-      const response = await rpcClient.listCWEViews(params?.offset, params?.limit);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload || { views: [], offset: params?.offset || 0, limit: params?.limit || 100, total: 0 };
-    },
-  });
-}
-
-export function useCWEView(id?: string) {
-  return useQuery<CWEView | null>({
-    queryKey: ['cweView', id],
-    queryFn: async () => {
-      if (!id) return null;
-      const response = await rpcClient.getCWEViewByID(id);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-        // Backend may return the view either as payload.view OR as the payload object itself.
-        const payload: any = response.payload ?? null;
-        let view: CWEView | null = null;
-        if (!payload) {
-          view = null;
-        } else if (payload.view) {
-          view = payload.view as CWEView;
-        } else {
-          // payload might be the view object directly (with keys like id/ID)
-          view = payload as CWEView;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listAttackTechniques(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ATT&CK techniques');
         }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching ATT&CK techniques:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-        return view ?? null;
-    },
-    enabled: !!id,
-  });
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit, search]);
+
+  return { data, isLoading, error };
 }
 
-// ============================================================================
-// Session Queries
-// ============================================================================
+export function useAttackTactics(params: AttackQueryParams = {}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
+  const { offset = 0, limit = 100, search = '' } = params;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listAttackTactics(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ATT&CK tactics');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching ATT&CK tactics:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit, search]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackMitigations(params: AttackQueryParams = {}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { offset = 0, limit = 100, search = '' } = params;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listAttackMitigations(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ATT&CK mitigations');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching ATT&CK mitigations:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit, search]);
+
+  return { data, isLoading, error };
+}
+
+// CAPEC Hooks
+export function useCAPEC(capecId?: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!capecId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getCAPEC(capecId);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch CAPEC');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching CAPEC:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [capecId]);
+
+  return { data, isLoading, error };
+}
+
+export function useCAPECList(offset: number = 0, limit: number = 100) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listCAPECs(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch CAPEC list');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching CAPEC list:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit]);
+
+  return { data, isLoading, error };
+}
+
+// Session Management Hooks
 export function useSessionStatus() {
-  return useQuery({
-    queryKey: queryKeys.session.status(),
-    queryFn: async () => {
-      const response = await rpcClient.getSessionStatus();
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-    refetchInterval: 5000, // Refetch every 5 seconds to track progress
-  });
-}
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-export function useCWEJobStatus() {
-  return useQuery({
-    queryKey: queryKeys.cweJob.status(),
-    queryFn: async () => {
-      const response = await rpcClient.getSessionStatus();
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSessionStatus();
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch session status');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching session status:', err);
+      } finally {
+        setIsLoading(false);
       }
-      return response.payload;
-    },
-    refetchInterval: 5000,
-  });
-}
+    };
 
-// ============================================================================
-// Session Mutations
-// ============================================================================
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, []);
+
+  return { data, isLoading, error };
+}
 
 export function useStartSession() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (params: {
-      sessionId: string;
-      startIndex?: number;
-      resultsPerBatch?: number;
-    }) => {
-      const response = await rpcClient.startSession(
-        params.sessionId,
-        params.startIndex,
-        params.resultsPerBatch
-      );
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params: { sessionId: string; startIndex?: number; resultsPerBatch?: number }, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
+      const { sessionId, startIndex, resultsPerBatch } = params;
+      const response = await rpcClient.startSession(sessionId, startIndex, resultsPerBatch);
+      
       if (response.retcode !== 0) {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Failed to start session');
       }
-      return response.payload;
-    },
-    onSuccess: () => {
-      // Invalidate session status to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.session.status() });
-    },
-  });
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error starting session:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
 }
 
 export function useStopSession() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async () => {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (_: undefined, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
       const response = await rpcClient.stopSession();
+      
       if (response.retcode !== 0) {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Failed to stop session');
       }
-      return response.payload;
-    },
-    onSuccess: () => {
-      // Invalidate session status and CVE list
-      queryClient.invalidateQueries({ queryKey: queryKeys.session.status() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.cves.all });
-    },
-  });
-}
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error stopping session:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
 
-export function useStartCWEViewJob() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (params: {
-      sessionId?: string;
-      startIndex?: number;
-      resultsPerBatch?: number;
-    }) => {
-      const response = await rpcClient.startCWEViewJob(
-        params.sessionId,
-        params.startIndex,
-        params.resultsPerBatch
-      );
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.cweJob.status() });
-    },
-  });
-}
-
-export function useStopCWEViewJob() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (sessionId?: string) => {
-      const response = await rpcClient.stopCWEViewJob(sessionId);
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
-      }
-      return response.payload;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.cweJob.status() });
-    },
-  });
+  return { mutate, isPending, error };
 }
 
 export function usePauseJob() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async () => {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (_: undefined, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
       const response = await rpcClient.pauseJob();
+      
       if (response.retcode !== 0) {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Failed to pause job');
       }
-      return response.payload;
-    },
-    onSuccess: () => {
-      // Invalidate session status
-      queryClient.invalidateQueries({ queryKey: queryKeys.session.status() });
-    },
-  });
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error pausing job:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
 }
 
 export function useResumeJob() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async () => {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (_: undefined, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
       const response = await rpcClient.resumeJob();
+      
       if (response.retcode !== 0) {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Failed to resume job');
       }
-      return response.payload;
-    },
-    onSuccess: () => {
-      // Invalidate session status
-      queryClient.invalidateQueries({ queryKey: queryKeys.session.status() });
-    },
-  });
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error resuming job:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
 }
 
-// ============================================================================
-// Health Check
-// ============================================================================
+// CWE Views Hooks
+export function useCWEViews(offset: number = 0, limit: number = 100) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-export function useHealth() {
-  return useQuery({
-    queryKey: queryKeys.health(),
-    queryFn: async () => {
-      const response = await rpcClient.health();
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listCWEViews(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch CWE views');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching CWE views:', err);
+      } finally {
+        setIsLoading(false);
       }
-      return response.payload;
-    },
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit]);
+
+  const refetch = async () => {
+    try {
+      setIsLoading(true);
+      const response = await rpcClient.listCWEViews(offset, limit);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to fetch CWE views');
+      }
+      
+      setData(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      console.error('Error fetching CWE views:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { data, isLoading, error, refetch };
 }
 
-// ============================================================================
-// System Metrics
-// ============================================================================
+export function useCWEJobStatus() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-export function useSysMetrics(): UseQueryResult<SysMetrics, Error> {
-  return useQuery<SysMetrics, Error>({
-    queryKey: ['sysMetrics'],
-    queryFn: async () => {
-      const response = await rpcClient.getSysMetrics();
-      if (response.retcode !== 0) {
-        throw new Error(response.message);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // We'll use the session status for now as a placeholder for job status
+        const response = await rpcClient.getSessionStatus();
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch CWE job status');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching CWE job status:', err);
+      } finally {
+        setIsLoading(false);
       }
-      // Ensure payload is typed
-      return response.payload as SysMetrics;
-    },
-  });
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+export function useStartCWEViewJob() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params: { sessionId?: string; startIndex?: number; resultsPerBatch?: number } = {}, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
+      const { sessionId, startIndex, resultsPerBatch } = params;
+      const response = await rpcClient.startCWEViewJob(sessionId, startIndex, resultsPerBatch);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start CWE view job');
+      }
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error starting CWE view job:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+export function useStopCWEViewJob() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params: { sessionId?: string } = {}, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
+      const { sessionId } = params;
+      const response = await rpcClient.stopCWEViewJob(sessionId);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to stop CWE view job');
+      }
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error stopping CWE view job:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+// System Metrics Hook
+export function useSysMetrics() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSysMetrics();
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch system metrics');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching system metrics:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+// CVE Hooks
+export function useCVEList(offset: number = 0, limit: number = 100) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listCVEs(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch CVE list');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching CVE list:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit]);
+
+  return { data, isLoading, error };
+}
+
+export function useCVECount() {
+  const [data, setData] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.countCVEs();
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch CVE count');
+        }
+        
+        setData(response.payload?.count || 0);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching CVE count:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+// ATT&CK Software Hook
+export function useAttackSoftware(params: AttackQueryParams = {}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { offset = 0, limit = 100, search = '' } = params;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listAttackSoftware(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ATT&CK software');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching ATT&CK software:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit, search]);
+
+  return { data, isLoading, error };
+}
+
+// ATT&CK Groups Hook
+export function useAttackGroups(params: AttackQueryParams = {}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { offset = 0, limit = 100, search = '' } = params;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listAttackGroups(offset, limit);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ATT&CK groups');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Failed to fetch ATT&CK groups:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit, search]);
+
+  return { data, isLoading, error };
+}
+
+// CWE Hooks
+export function useCWEList(params: { offset?: number; limit?: number; search?: string } = {}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { offset = 0, limit = 100, search = '' } = params;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listCWEs({ offset, limit, search });
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch CWE list');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching CWE list:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit, search]);
+
+  return { data, isLoading, error };
+}
+
+// Individual ATT&CK item hooks
+export function useAttackTechnique(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackTechnique(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack technique ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack technique:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackTactic(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackTactic(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack tactic ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack tactic:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackMitigation(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackMitigation(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack mitigation ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack mitigation:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackSoftwareById(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackSoftware(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack software ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack software:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useAttackGroupById(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getAttackGroup(id);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || `Failed to fetch attack group ${id}`);
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching attack group:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
 }

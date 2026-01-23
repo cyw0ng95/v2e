@@ -119,13 +119,15 @@ type PendingRequest struct {
 
 // Broker manages subprocesses and message passing
 type Broker struct {
-	processes       map[string]*Process
-	messages        chan *proc.Message
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
-	logger          *common.Logger
+	processes map[string]*Process
+	messages  chan *proc.Message
+	mu        sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+	logger    *common.Logger
+	// config holds optional loaded configuration used by Broker for spawning
+	config          *common.Config
 	stats           MessageStats
 	perProcessStats map[string]PerProcessStats
 	statsMu         sync.RWMutex
@@ -145,11 +147,19 @@ func NewBroker() *Broker {
 		ctx:             ctx,
 		cancel:          cancel,
 		logger:          common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		config:          nil,
 		rpcEndpoints:    make(map[string][]string),
 		pendingRequests: make(map[string]*PendingRequest),
 		correlationSeq:  0,
 		perProcessStats: make(map[string]PerProcessStats),
 	}
+}
+
+// SetConfig sets the broker-level configuration used when spawning processes
+func (b *Broker) SetConfig(cfg *common.Config) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.config = cfg
 }
 
 // SetLogger sets the logger for the broker
@@ -178,6 +188,50 @@ func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error)
 	// Create process context
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
+
+	// If global config is available, inject known service-specific environment
+	// variables so subprocesses can read their service configuration via env.
+	if b.config != nil {
+		if cmd.Env == nil {
+			cmd.Env = os.Environ()
+		}
+		switch id {
+		case "local":
+			if b.config.Local.CVEDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", b.config.Local.CVEDBPath))
+			}
+			if b.config.Local.CWEDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", b.config.Local.CWEDBPath))
+			}
+			if b.config.Local.CAPECDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", b.config.Local.CAPECDBPath))
+			}
+			if b.config.Capec.StrictXSDValidation {
+				cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
+			}
+			if b.config.Capec.StrictXSDValidation {
+				cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
+			}
+		case "meta":
+			if b.config.Meta.SessionDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", b.config.Meta.SessionDBPath))
+			}
+		case "remote":
+			if b.config.Remote.NVDAPIKey != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", b.config.Remote.NVDAPIKey))
+			}
+			if b.config.Remote.ViewFetchURL != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", b.config.Remote.ViewFetchURL))
+			}
+			if b.config.Remote.ViewFetchURL != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", b.config.Remote.ViewFetchURL))
+			}
+		case "access":
+			if b.config.Access.StaticDir != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", b.config.Access.StaticDir))
+			}
+		}
+	}
 
 	// Create process info
 	info := &ProcessInfo{
@@ -254,11 +308,56 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 	// fd 4 = output to parent (writeToParent)
 	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
 
-	// Set environment variable to tell subprocess to use custom FDs
+	// Determine RPC fd numbers to advertise to subprocess (config overrides)
+	inputFD := 3
+	outputFD := 4
+	if b.config != nil {
+		if b.config.Proc.RPCInputFD != 0 {
+			inputFD = b.config.Proc.RPCInputFD
+		} else if b.config.Broker.RPCInputFD != 0 {
+			inputFD = b.config.Broker.RPCInputFD
+		}
+		if b.config.Proc.RPCOutputFD != 0 {
+			outputFD = b.config.Proc.RPCOutputFD
+		} else if b.config.Broker.RPCOutputFD != 0 {
+			outputFD = b.config.Broker.RPCOutputFD
+		}
+	}
+
+	// Prepare environment for subprocess including RPC fd hints and service-specific values
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
-	cmd.Env = append(cmd.Env, "RPC_INPUT_FD=3", "RPC_OUTPUT_FD=4", fmt.Sprintf("PROCESS_ID=%s", id))
+	// Inject service specific envs from config
+	if b.config != nil {
+		switch id {
+		case "local":
+			if b.config.Local.CVEDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", b.config.Local.CVEDBPath))
+			}
+			if b.config.Local.CWEDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", b.config.Local.CWEDBPath))
+			}
+			if b.config.Local.CAPECDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", b.config.Local.CAPECDBPath))
+			}
+		case "meta":
+			if b.config.Meta.SessionDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", b.config.Meta.SessionDBPath))
+			}
+		case "remote":
+			if b.config.Remote.NVDAPIKey != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", b.config.Remote.NVDAPIKey))
+			}
+		case "access":
+			if b.config.Access.StaticDir != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", b.config.Access.StaticDir))
+			}
+		}
+	}
+
+	// Finally append RPC FD and process id info
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RPC_INPUT_FD=%d", inputFD), fmt.Sprintf("RPC_OUTPUT_FD=%d", outputFD), fmt.Sprintf("PROCESS_ID=%s", id))
 
 	// Create process info
 	info := &ProcessInfo{
@@ -296,7 +395,7 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 	info.PID = cmd.Process.Pid
 	b.processes[id] = proc
 
-	b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s (using fd 3,4)", id, info.PID, command)
+	b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s (advertised fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
 
 	// Create a copy of the process info before starting the reaper goroutine
 	// to avoid data races when the caller accesses the returned info
@@ -326,6 +425,37 @@ func (b *Broker) SpawnWithRestart(id, command string, maxRestarts int, args ...s
 	// Create process context
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
+
+	// Inject service-specific env args from config if present (non-RPC path)
+	if b.config != nil {
+		if cmd.Env == nil {
+			cmd.Env = os.Environ()
+		}
+		switch id {
+		case "local":
+			if b.config.Local.CVEDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", b.config.Local.CVEDBPath))
+			}
+			if b.config.Local.CWEDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", b.config.Local.CWEDBPath))
+			}
+			if b.config.Local.CAPECDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", b.config.Local.CAPECDBPath))
+			}
+		case "meta":
+			if b.config.Meta.SessionDBPath != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", b.config.Meta.SessionDBPath))
+			}
+		case "remote":
+			if b.config.Remote.NVDAPIKey != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", b.config.Remote.NVDAPIKey))
+			}
+		case "access":
+			if b.config.Access.StaticDir != "" {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", b.config.Access.StaticDir))
+			}
+		}
+	}
 
 	// Create process info
 	info := &ProcessInfo{
@@ -408,11 +538,27 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	// fd 4 = output to parent (writeToParent)
 	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
 
-	// Set environment variable to tell subprocess to use custom FDs
+	// Determine RPC fd numbers to advertise to subprocess (config overrides)
+	inputFD := 3
+	outputFD := 4
+	if b.config != nil {
+		if b.config.Proc.RPCInputFD != 0 {
+			inputFD = b.config.Proc.RPCInputFD
+		} else if b.config.Broker.RPCInputFD != 0 {
+			inputFD = b.config.Broker.RPCInputFD
+		}
+		if b.config.Proc.RPCOutputFD != 0 {
+			outputFD = b.config.Proc.RPCOutputFD
+		} else if b.config.Broker.RPCOutputFD != 0 {
+			outputFD = b.config.Broker.RPCOutputFD
+		}
+	}
+
+	// Set environment variable to tell subprocess which FDs to use for RPC
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
-	cmd.Env = append(cmd.Env, "RPC_INPUT_FD=3", "RPC_OUTPUT_FD=4", fmt.Sprintf("PROCESS_ID=%s", id))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RPC_INPUT_FD=%d", inputFD), fmt.Sprintf("RPC_OUTPUT_FD=%d", outputFD), fmt.Sprintf("PROCESS_ID=%s", id))
 
 	// Create process info
 	info := &ProcessInfo{
@@ -458,7 +604,7 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	info.PID = cmd.Process.Pid
 	b.processes[id] = proc
 
-	b.logger.Info("Spawned RPC process with restart: id=%s pid=%d command=%s max_restarts=%d (using fd 3,4)", id, info.PID, command, maxRestarts)
+	b.logger.Info("Spawned RPC process with restart: id=%s pid=%d command=%s max_restarts=%d (advertised fds=%d,%d)", id, info.PID, command, maxRestarts, inputFD, outputFD)
 
 	// Create a copy of the process info before starting goroutines
 	infoCopy := *info
@@ -654,7 +800,7 @@ func (b *Broker) reapProcess(p *Process) {
 		}
 
 		if restartErr != nil {
-			b.logger.Error("Failed to restart process %s: %v", processID, restartErr)
+			b.logger.Warn("Failed to restart process %s: %v", processID, restartErr)
 		} else {
 			// Update restart count in the new process
 			b.mu.RLock()
@@ -1274,7 +1420,7 @@ func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
 		}
 
 		if err != nil {
-			b.logger.Error("Failed to spawn process %s: %v", procConfig.ID, err)
+			b.logger.Warn("Failed to spawn process %s: %v", procConfig.ID, err)
 			continue
 		}
 

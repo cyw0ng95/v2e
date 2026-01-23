@@ -109,15 +109,44 @@ func BenchmarkMessageMarshalUnmarshalRoundTrip(b *testing.B) {
 		Value: 123,
 	}
 
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	b.Run("FullCycle", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			msg, _ := NewRequestMessage("req-1", original)
+			data, _ := msg.Marshal()
+			decoded, _ := Unmarshal(data)
+			var result TestData
+			_ = decoded.UnmarshalPayload(&result)
+		}
+	})
+	
+	b.Run("CreateOnly", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = NewRequestMessage("req-1", original)
+		}
+	})
+	
+	b.Run("MarshalOnly", func(b *testing.B) {
+		msg, _ := NewRequestMessage("req-1", original)
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = msg.Marshal()
+		}
+	})
+	
+	b.Run("UnmarshalOnly", func(b *testing.B) {
 		msg, _ := NewRequestMessage("req-1", original)
 		data, _ := msg.Marshal()
-		decoded, _ := Unmarshal(data)
-		var result TestData
-		_ = decoded.UnmarshalPayload(&result)
-	}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = Unmarshal(data)
+		}
+	})
 }
 
 // BenchmarkMessageMarshalLargePayload benchmarks marshaling with a large payload

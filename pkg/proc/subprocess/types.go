@@ -8,13 +8,26 @@ import (
 	"io"
 	"os"
 	"sync"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
-const (
-	// MaxMessageSize is the maximum size of a message that can be sent between processes
-	// This is set to 10MB to accommodate large CVE data from NVD API
-	MaxMessageSize = 10 * 1024 * 1024 // 10MB
-)
+// MaxMessageSize is the maximum size of a message that can be sent between processes
+// This is set to 10MB to accommodate large CVE data from NVD API
+var MaxMessageSize = 10 * 1024 * 1024 // 10MB
+
+func init() {
+	// Load config and allow overriding MaxMessageSize if configured
+	cfg, err := common.LoadConfig("")
+	if err != nil {
+		return
+	}
+	if cfg != nil {
+		if cfg.Proc.MaxMessageSizeBytes > 0 {
+			MaxMessageSize = cfg.Proc.MaxMessageSizeBytes
+		}
+	}
+}
 
 // bufferPool is a sync.Pool for scanner buffers to reduce allocations
 var bufferPool = sync.Pool{

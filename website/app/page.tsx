@@ -65,11 +65,29 @@ const SysMonitor = dynamic(() => import('@/components/sysmon-table').then(mod =>
   ),
 });
 
+const AttackTable = dynamic(() => import('@/components/attack-table').then(mod => mod.AttackTable), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
+const AttackViews = dynamic(() => import('@/components/attack-views').then(mod => mod.AttackViews), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 export default function Home() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tab, setTab] = useState<'cwe' | 'cve' | 'sysmon' | 'capec'>('cwe'); // Default to CWE
+  const [tab, setTab] = useState<'cwe' | 'cve' | 'sysmon' | 'capec' | 'attack'>('cwe'); // Default to CWE
   // memoize offset to avoid unnecessary recalculation on unrelated state updates
   const offset = useMemo(() => page * pageSize, [page, pageSize]);
 
@@ -96,7 +114,7 @@ export default function Home() {
                   <Database className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{cveCount?.count?.toLocaleString() || '0'}</div>
+                  <div className="text-xl font-bold">{cveCount?.toLocaleString() || '0'}</div>
                   <p className="text-xs text-muted-foreground">Local DB</p>
                 </CardContent>
               </Card>
@@ -149,6 +167,7 @@ export default function Home() {
                 <TabsList className="mb-4">
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
                   <TabsTrigger value="capec">CAPEC</TabsTrigger>
+                  <TabsTrigger value="attack">ATT&CK</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
@@ -167,6 +186,16 @@ export default function Home() {
                     <div className="flex-1 min-h-0 overflow-auto">
                       <Suspense>
                         <CAPECTable />
+                      </Suspense>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="attack" className="h-full">
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <Suspense>
+                        <AttackViews />
                       </Suspense>
                     </div>
                   </div>

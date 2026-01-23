@@ -396,6 +396,65 @@ export interface CAPECItem {
   references?: Reference[];
 }
 
+// ATT&CK Types
+export interface AttackTechnique {
+  id: string; // e.g. "T1001"
+  name: string;
+  description?: string;
+  domain?: string;
+  platform?: string;
+  created?: string;
+  modified?: string;
+  revoked?: boolean;
+  deprecated?: boolean;
+}
+
+export interface AttackTactic {
+  id: string; // e.g. "TA0001"
+  name: string;
+  description?: string;
+  domain?: string;
+  created?: string;
+  modified?: string;
+}
+
+export interface AttackMitigation {
+  id: string; // e.g. "M1001"
+  name: string;
+  description?: string;
+  domain?: string;
+  created?: string;
+  modified?: string;
+}
+
+export interface AttackSoftware {
+  id: string; // e.g. "S0001"
+  name: string;
+  description?: string;
+  type?: string; // e.g. "malware", "tool"
+  domain?: string;
+  created?: string;
+  modified?: string;
+}
+
+export interface AttackGroup {
+  id: string; // e.g. "G0001"
+  name: string;
+  description?: string;
+  domain?: string;
+  created?: string;
+  modified?: string;
+}
+
+export interface AttackListResponse {
+  techniques?: AttackTechnique[];
+  tactics?: AttackTactic[];
+  mitigations?: AttackMitigation[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
 export interface RelatedWeakness {
   nature: string;
   cweId: string;

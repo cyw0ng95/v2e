@@ -76,7 +76,10 @@ func createFetchViewsHandler() subprocess.Handler {
 		}
 
 		// Download GitHub zip archive
-		zipURL := "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip"
+		zipURL := os.Getenv("VIEW_FETCH_URL")
+		if zipURL == "" {
+			zipURL = "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip"
+		}
 		resp, err := http.Get(zipURL)
 		if err != nil {
 			return &subprocess.Message{
