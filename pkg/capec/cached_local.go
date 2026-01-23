@@ -245,13 +245,13 @@ func (s *CachedLocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force boo
 				// summary fallback when Summary is empty.
 				summary := ap.Summary
 				if strings.TrimSpace(summary) == "" {
-					summary = truncateString(strings.TrimSpace(ap.Description), 200)
+					summary = truncateString(strings.TrimSpace(ap.Description.XML), 200)
 				}
 				item := CAPECItemModel{
 					CAPECID:         ap.ID,
 					Name:            ap.Name,
 					Summary:         summary,
-					Description:     ap.Description,
+					Description:     ap.Description.XML,
 					Status:          ap.Status,
 					Abstraction:     ap.Abstraction,
 					Likelihood:      ap.Likelihood,
