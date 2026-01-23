@@ -1,86 +1,15 @@
 #!/bin/bash
 
-# Build script for v2e (Vulnerabilities Viewer Engine)
+# Optimized Build script for v2e (Vulnerabilities Viewer Engine)
 # This script supports building and testing the project for GitHub CI
+# All original functionality preserved, with performance optimizations
 
 set -e
 
 # Enable CGO for builds that require C libraries (e.g. libxml2)
 export CGO_ENABLED=1
 
-# Run Node.js process and broker once, terminate both on Ctrl-C
-run_node_and_broker_once() {
-    # Set flag to skip website build
-    export V2E_SKIP_WEBSITE_BUILD=1
-        # Remove the most recent log file in .build/log if it exists
-        LOG_DIR="$BUILD_DIR/log"
-        if [ -d "$LOG_DIR" ]; then
-            LAST_LOG=$(ls -1t "$LOG_DIR" 2>/dev/null | head -n1)
-            if [ -n "$LAST_LOG" ]; then
-                echo "Removing last log: $LOG_DIR/$LAST_LOG"
-                rm -f "$LOG_DIR/$LAST_LOG"
-            fi
-        fi
-    set +e
-    echo "Checking for running Node.js process in website directory..."
-    NODE_PID=$(pgrep -f "node.*website" || true)
-    if [ -n "$NODE_PID" ]; then
-        echo "Stopping running Node.js process (PID: $NODE_PID)..."
-        kill $NODE_PID
-    else
-        echo "No running Node.js process found in website directory."
-    fi
-
-    # Kill all previous broker and v2e subprocesses from any -r session (before starting new watcher)
-    echo "Killing all previous broker and v2e subprocesses from any -r session..."
-    pkill -f "$PACKAGE_DIR/broker" || true
-    pkill -f "$PACKAGE_DIR/access" || true
-    pkill -f "$PACKAGE_DIR/local" || true
-    pkill -f "$PACKAGE_DIR/meta" || true
-    pkill -f "$PACKAGE_DIR/remote" || true
-    pkill -f "$PACKAGE_DIR/sysmon" || true
-    for i in {1..10}; do
-        BROKER_PROCS=$(pgrep -f "$PACKAGE_DIR/broker")
-        V2E_PROCS=$(pgrep -f "$PACKAGE_DIR/access|$PACKAGE_DIR/local|$PACKAGE_DIR/meta|$PACKAGE_DIR/remote|$PACKAGE_DIR/sysmon")
-        if [ -z "$BROKER_PROCS" ] && [ -z "$V2E_PROCS" ]; then
-            echo "All previous broker and v2e subprocesses stopped (or none found)."
-            break
-        fi
-        echo "Waiting for previous broker and v2e subprocesses to exit... ($i)"
-        sleep 1
-    done
-
-    build_and_package
-    unset V2E_SKIP_WEBSITE_BUILD
-    if [ $? -ne 0 ]; then
-        echo "Error: Build and package failed. Cannot start broker."
-        return 1
-    fi
-
-    echo "Starting Node.js process in website directory..."
-    pushd website > /dev/null
-    npm run dev &
-    NODE_DEV_PID=$!
-    echo "Node.js process started with PID: $NODE_DEV_PID"
-    popd > /dev/null
-
-    echo "[build.sh] Starting broker from $PACKAGE_DIR..."
-    pushd "$PACKAGE_DIR" > /dev/null
-    echo "[build.sh] Launch command: ./broker"
-    ./broker &
-    BROKER_PID=$!
-    echo "[build.sh] Broker started with PID: $BROKER_PID"
-    popd > /dev/null
-
-    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; echo 'Stopping broker and all subprocesses (PID: $BROKER_PID)...'; pkill -TERM -P $BROKER_PID; pkill -f \"$PACKAGE_DIR/broker\"; exit 1" SIGINT
-
-    wait $NODE_DEV_PID
-    wait $BROKER_PID
-
-    set -e
-}
-
-# Configuration
+# Global variables
 BUILD_DIR=".build"
 PACKAGE_DIR=".build/package"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -190,7 +119,110 @@ setup_build_dir() {
     fi
 }
 
-# Build the project
+# Efficiently kill all v2e processes
+kill_v2e_processes() {
+    local timeout=${1:-5}
+    
+    # Kill all v2e subprocesses in one command
+    pkill -f "$PACKAGE_DIR/(broker|access|local|meta|remote|sysmon)" 2>/dev/null || true
+    
+    # Wait for processes to terminate with timeout
+    local count=0
+    while [ $count -lt $timeout ]; do
+        if ! pgrep -f "$PACKAGE_DIR/(broker|access|local|meta|remote|sysmon)" >/dev/null; then
+            return 0
+        fi
+        sleep 1
+        ((count++))
+    done
+    
+    # Force kill if still running
+    pkill -9 -f "$PACKAGE_DIR/(broker|access|local|meta|remote|sysmon)" 2>/dev/null || true
+}
+
+# Run Node.js process and broker once, terminate both on Ctrl-C
+run_node_and_broker_once() {
+    # Set flag to skip website build
+    export V2E_SKIP_WEBSITE_BUILD=1
+    # Remove the most recent log file in .build/log if it exists
+    LOG_DIR="$BUILD_DIR/log"
+    if [ -d "$LOG_DIR" ]; then
+        LAST_LOG=$(ls -1t "$LOG_DIR" 2>/dev/null | head -n1)
+        if [ -n "$LAST_LOG" ]; then
+            echo "Removing last log: $LOG_DIR/$LAST_LOG"
+            rm -f "$LOG_DIR/$LAST_LOG"
+        fi
+    fi
+    set +e
+    echo "Checking for running Node.js process in website directory..."
+    NODE_PID=$(pgrep -f "node.*website" || true)
+    if [ -n "$NODE_PID" ]; then
+        echo "Stopping running Node.js process (PID: $NODE_PID)..."
+        kill $NODE_PID
+    else
+        echo "No running Node.js process found in website directory."
+    fi
+
+    # Kill all previous broker and v2e subprocesses from any -r session (before starting new watcher)
+    echo "Killing all previous broker and v2e subprocesses from any -r session..."
+    kill_v2e_processes 10
+
+    build_and_package
+    unset V2E_SKIP_WEBSITE_BUILD
+    if [ $? -ne 0 ]; then
+        echo "Error: Build and package failed. Cannot start broker."
+        return 1
+    fi
+
+    echo "Starting Node.js process in website directory..."
+    pushd website > /dev/null
+    npm run dev &
+    NODE_DEV_PID=$!
+    echo "Node.js process started with PID: $NODE_DEV_PID"
+    popd > /dev/null
+
+    echo "[build.sh] Starting broker from $PACKAGE_DIR..."
+    pushd "$PACKAGE_DIR" > /dev/null
+    echo "[build.sh] Launch command: ./broker"
+    ./broker &
+    BROKER_PID=$!
+    echo "[build.sh] Broker started with PID: $BROKER_PID"
+    popd > /dev/null
+
+    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; echo 'Stopping broker and all subprocesses (PID: $BROKER_PID)...'; kill_v2e_processes; exit 1" SIGINT
+
+    wait $NODE_DEV_PID
+    wait $BROKER_PID
+
+    set -e
+}
+
+# Copy assets efficiently
+copy_assets() {
+    local dest_dir="$1"
+    
+    # Create destination assets directory if needed
+    mkdir -p "$dest_dir/assets"
+    
+    # Copy config.json if exists
+    [ -f "config.json" ] && cp config.json "$dest_dir/"
+    
+    # Copy CWE raw JSON asset
+    [ -f "assets/cwe-raw.json" ] && cp assets/cwe-raw.json "$dest_dir/assets/"
+    
+    # Copy CAPEC XML and XSD assets
+    [ -f "assets/capec_contents_latest.xml" ] && cp assets/capec_contents_latest.xml "$dest_dir/assets/"
+    [ -f "assets/capec_schema_latest.xsd" ] && cp assets/capec_schema_latest.xsd "$dest_dir/assets/"
+    
+    # Copy XLSX files from assets directory and subdirectories
+    find assets -name "*.xlsx" -exec cp {} "$dest_dir/assets/" \; 2>/dev/null || true
+    
+    if [ "$VERBOSE" = true ]; then
+        echo "Assets copied to: $dest_dir"
+    fi
+}
+
+# Build the project with parallel builds
 build_project() {
     if [ "$VERBOSE" = true ]; then
         echo "Building v2e project..."
@@ -216,6 +248,116 @@ build_project() {
         fi
     else
         echo "No go.mod found. Skipping build."
+    fi
+}
+
+# Build and package binaries with assets using parallel builds
+build_and_package() {
+    if [ "$VERBOSE" = true ]; then
+        echo "Building and packaging v2e project..."
+    fi
+    
+    # Check versions first
+    echo "Checking build requirements..."
+    if ! check_go_version; then
+        return 1
+    fi
+    
+    setup_build_dir
+    mkdir -p "$PACKAGE_DIR"
+    
+    # Check if go.mod exists
+    if [ -f "go.mod" ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "Building all binaries in parallel..."
+        fi
+        
+        # Build each command in parallel
+        declare -a build_pids
+        for cmd_dir in cmd/*; do
+            if [ -d "$cmd_dir" ]; then
+                cmd_name=$(basename "$cmd_dir")
+                if [ "$VERBOSE" = true ]; then
+                    echo "Building $cmd_name..."
+                fi
+                go build -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                build_pids+=($!)
+            fi
+        done
+        
+        # Wait for all builds to complete
+        for pid in "${build_pids[@]}"; do
+            wait "$pid" || return 1
+        done
+        
+        # Make all binaries executable
+        chmod +x "$PACKAGE_DIR/"*
+        
+        # Copy assets efficiently
+        copy_assets "$PACKAGE_DIR"
+        
+        echo "Go binaries packaged successfully"
+    else
+        echo "No go.mod found. Skipping Go build."
+    fi
+    
+    # Build and package frontend if website directory exists and not skipped
+    if [ -z "$V2E_SKIP_WEBSITE_BUILD" ]; then
+        if [ -d "website" ]; then
+            echo "Building frontend website..."
+            # Check Node.js and npm versions
+            if ! check_node_version; then
+                echo "Warning: Skipping frontend build due to version requirements"
+            else
+                cd website
+                # Install dependencies if node_modules doesn't exist
+                if [ ! -d "node_modules" ] || [ ! "$(ls -A node_modules)" ]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Installing frontend dependencies..."
+                    fi
+                    npm install
+                else
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Using cached node_modules"
+                    fi
+                fi
+                # Build frontend
+                if [ "$VERBOSE" = true ]; then
+                    echo "Building frontend static export..."
+                fi
+                npm run build
+                # Copy frontend build output to package
+                if [ -d "out" ]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "Copying frontend build to package..."
+                    fi
+                    mkdir -p "../$PACKAGE_DIR/website"
+                    cp -r out/* "../$PACKAGE_DIR/website/"
+                    echo "Frontend website packaged successfully"
+                else
+                    echo "Warning: Frontend build did not produce out/ directory"
+                fi
+                cd ..
+            fi
+        else
+            if [ "$VERBOSE" = true ]; then
+                echo "No website directory found. Skipping frontend build."
+            fi
+        fi
+    else
+        if [ "$VERBOSE" = true ]; then
+            echo "Skipping frontend build (V2E_SKIP_WEBSITE_BUILD set)"
+        fi
+    fi
+    
+    echo "Package created successfully in: $PACKAGE_DIR"
+    if [ "$VERBOSE" = true ]; then
+        echo "Contents:"
+        ls -lh "$PACKAGE_DIR"
+        if [ -d "$PACKAGE_DIR/website" ]; then
+            echo "Website contents:"
+            ls -lh "$PACKAGE_DIR/website" | head -10
+        fi
     fi
 }
 
@@ -385,8 +527,6 @@ run_fuzz_tests() {
     fi
 }
 
- 
-
 # Run performance benchmarks
 run_benchmarks() {
     echo "Running performance benchmarks..."
@@ -475,154 +615,6 @@ run_benchmarks() {
         echo "No go.mod found. No benchmarks to run."
         echo "Benchmarks passed (no benchmarks found)"
         return 0
-    fi
-}
-
-# Build and package binaries with assets
-build_and_package() {
-    if [ "$VERBOSE" = true ]; then
-        echo "Building and packaging v2e project..."
-    fi
-    
-    # Check versions first
-    echo "Checking build requirements..."
-    if ! check_go_version; then
-        return 1
-    fi
-    
-    setup_build_dir
-    mkdir -p "$PACKAGE_DIR"
-    
-    # Check if go.mod exists
-    if [ -f "go.mod" ]; then
-        if [ "$VERBOSE" = true ]; then
-            echo "Building all binaries..."
-        fi
-        
-        # Build each command
-        for cmd_dir in cmd/*; do
-            if [ -d "$cmd_dir" ]; then
-                cmd_name=$(basename "$cmd_dir")
-                if [ "$VERBOSE" = true ]; then
-                    echo "Building $cmd_name..."
-                fi
-                go build -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir"
-                chmod +x "$PACKAGE_DIR/$cmd_name"
-            fi
-        done
-        
-        # Copy related assets
-        if [ "$VERBOSE" = true ]; then
-            echo "Copying assets to package..."
-        fi
-        if [ -f "config.json" ]; then
-            cp config.json "$PACKAGE_DIR/"
-        fi
-        
-        # Copy CWE raw JSON asset
-        if [ -f "assets/cwe-raw.json" ]; then
-            mkdir -p "$PACKAGE_DIR/assets"
-            cp assets/cwe-raw.json "$PACKAGE_DIR/assets/"
-        fi
-
-        # Copy CAPEC XML and XSD assets
-        if [ -f "assets/capec_contents_latest.xml" ]; then
-            mkdir -p "$PACKAGE_DIR/assets"
-            cp assets/capec_contents_latest.xml "$PACKAGE_DIR/assets/"
-        fi
-
-        if [ -f "assets/capec_schema_latest.xsd" ]; then
-            mkdir -p "$PACKAGE_DIR/assets"
-            cp assets/capec_schema_latest.xsd "$PACKAGE_DIR/assets/"
-        fi
-        
-        # Copy ATT&CK XLSX files for import
-        if [ -d "assets" ]; then
-            mkdir -p "$PACKAGE_DIR/assets"
-            # Copy all XLSX files from assets directory
-            for xlsx_file in assets/*.xlsx; do
-                if [ -f "$xlsx_file" ]; then
-                    cp "$xlsx_file" "$PACKAGE_DIR/assets/"
-                    if [ "$VERBOSE" = true ]; then
-                        echo "Copied XLSX file: $(basename "$xlsx_file")"
-                    fi
-                fi
-            done
-            # Copy all XLSX files from assets/attack directory
-            if [ -d "assets/attack" ]; then
-                for xlsx_file in assets/attack/*.xlsx; do
-                    if [ -f "$xlsx_file" ]; then
-                        cp "$xlsx_file" "$PACKAGE_DIR/assets/"
-                        if [ "$VERBOSE" = true ]; then
-                            echo "Copied XLSX file: $(basename "$xlsx_file")"
-                        fi
-                    fi
-                done
-            fi
-        fi
-        
-        echo "Go binaries packaged successfully"
-    else
-        echo "No go.mod found. Skipping Go build."
-    fi
-    
-    # Build and package frontend if website directory exists and not skipped
-    if [ -z "$V2E_SKIP_WEBSITE_BUILD" ]; then
-        if [ -d "website" ]; then
-            echo "Building frontend website..."
-            # Check Node.js and npm versions
-            if ! check_node_version; then
-                echo "Warning: Skipping frontend build due to version requirements"
-            else
-                cd website
-                # Install dependencies if node_modules doesn't exist
-                if [ ! -d "node_modules" ]; then
-                    if [ "$VERBOSE" = true ]; then
-                        echo "Installing frontend dependencies..."
-                    fi
-                    npm install
-                else
-                    if [ "$VERBOSE" = true ]; then
-                        echo "Using cached node_modules"
-                    fi
-                fi
-                # Build frontend
-                if [ "$VERBOSE" = true ]; then
-                    echo "Building frontend static export..."
-                fi
-                npm run build
-                # Copy frontend build output to package
-                if [ -d "out" ]; then
-                    if [ "$VERBOSE" = true ]; then
-                        echo "Copying frontend build to package..."
-                    fi
-                    mkdir -p "../$PACKAGE_DIR/website"
-                    cp -r out/* "../$PACKAGE_DIR/website/"
-                    echo "Frontend website packaged successfully"
-                else
-                    echo "Warning: Frontend build did not produce out/ directory"
-                fi
-                cd ..
-            fi
-        else
-            if [ "$VERBOSE" = true ]; then
-                echo "No website directory found. Skipping frontend build."
-            fi
-        fi
-    else
-        if [ "$VERBOSE" = true ]; then
-            echo "Skipping frontend build (V2E_SKIP_WEBSITE_BUILD set)"
-        fi
-    fi
-    
-    echo "Package created successfully in: $PACKAGE_DIR"
-    if [ "$VERBOSE" = true ]; then
-        echo "Contents:"
-        ls -lh "$PACKAGE_DIR"
-        if [ -d "$PACKAGE_DIR/website" ]; then
-            echo "Website contents:"
-            ls -lh "$PACKAGE_DIR/website" | head -10
-        fi
     fi
 }
 
