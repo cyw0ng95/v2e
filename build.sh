@@ -9,6 +9,36 @@ set -e
 # Enable CGO for builds that require C libraries (e.g. libxml2)
 export CGO_ENABLED=1
 
+# Logging functions
+log_timestamp() {
+    date '+%H:%M:%S.%3N'
+}
+
+log_format() {
+    local level="$1"
+    local message="$2"
+    local entity="${3:-build}"
+    echo "-- $(log_timestamp)/${level}/${entity} -- ${message}"
+}
+
+log_info() {
+    log_format "INFO" "$1" "${2:-build}"
+}
+
+log_warn() {
+    log_format "WARN" "$1" "${2:-build}"
+}
+
+log_error() {
+    log_format "ERROR" "$1" "${2:-build}"
+}
+
+log_debug() {
+    if [ "$VERBOSE" = true ]; then
+        log_format "DEBUG" "$1" "${2:-build}"
+    fi
+}
+
 # Global variables
 BUILD_DIR=".build"
 PACKAGE_DIR=".build/package"
@@ -32,20 +62,20 @@ version_ge() {
 # Check Go version
 check_go_version() {
     if ! command -v go &> /dev/null; then
-        echo "Error: Go is not installed"
-        echo "Please install Go ${MIN_GO_VERSION} or later"
+        log_error "Go is not installed"
+        log_error "Please install Go ${MIN_GO_VERSION} or later"
         return 1
     fi
     
     GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
     if ! version_ge "$GO_VERSION" "$MIN_GO_VERSION"; then
-        echo "Error: Go version $GO_VERSION is too old"
-        echo "Please upgrade to Go ${MIN_GO_VERSION} or later"
+        log_error "Go version $GO_VERSION is too old"
+        log_error "Please upgrade to Go ${MIN_GO_VERSION} or later"
         return 1
     fi
     
     if [ "$VERBOSE" = true ]; then
-        echo "✓ Go version: $GO_VERSION (>= ${MIN_GO_VERSION})"
+        log_debug "✓ Go version: $GO_VERSION (>= ${MIN_GO_VERSION})"
     fi
     return 0
 }
@@ -53,34 +83,34 @@ check_go_version() {
 # Check Node.js and npm versions
 check_node_version() {
     if ! command -v node &> /dev/null; then
-        echo "Error: Node.js is not installed"
-        echo "Please install Node.js ${MIN_NODE_VERSION} or later"
+        log_error "Node.js is not installed"
+        log_error "Please install Node.js ${MIN_NODE_VERSION} or later"
         return 1
     fi
     
     NODE_VERSION=$(node --version | sed 's/v//')
     if ! version_ge "$NODE_VERSION" "$MIN_NODE_VERSION"; then
-        echo "Error: Node.js version $NODE_VERSION is too old"
-        echo "Please upgrade to Node.js ${MIN_NODE_VERSION} or later"
+        log_error "Node.js version $NODE_VERSION is too old"
+        log_error "Please upgrade to Node.js ${MIN_NODE_VERSION} or later"
         return 1
     fi
     
     if ! command -v npm &> /dev/null; then
-        echo "Error: npm is not installed"
-        echo "Please install npm ${MIN_NPM_VERSION} or later"
+        log_error "npm is not installed"
+        log_error "Please install npm ${MIN_NPM_VERSION} or later"
         return 1
     fi
     
     NPM_VERSION=$(npm --version)
     if ! version_ge "$NPM_VERSION" "$MIN_NPM_VERSION"; then
-        echo "Error: npm version $NPM_VERSION is too old"
-        echo "Please upgrade to npm ${MIN_NPM_VERSION} or later"
+        log_error "npm version $NPM_VERSION is too old"
+        log_error "Please upgrade to npm ${MIN_NPM_VERSION} or later"
         return 1
     fi
     
     if [ "$VERBOSE" = true ]; then
-        echo "✓ Node.js version: $NODE_VERSION (>= ${MIN_NODE_VERSION})"
-        echo "✓ npm version: $NPM_VERSION (>= ${MIN_NPM_VERSION})"
+        log_debug "✓ Node.js version: $NODE_VERSION (>= ${MIN_NODE_VERSION})"
+        log_debug "✓ npm version: $NPM_VERSION (>= ${MIN_NPM_VERSION})"
     fi
     return 0
 }
@@ -115,7 +145,7 @@ EOF
 setup_build_dir() {
     mkdir -p "$BUILD_DIR"
     if [ "$VERBOSE" = true ]; then
-        echo "Build directory: $BUILD_DIR"
+        log_debug "Build directory: $BUILD_DIR"
     fi
 }
 
@@ -149,47 +179,47 @@ run_node_and_broker_once() {
     if [ -d "$LOG_DIR" ]; then
         LAST_LOG=$(ls -1t "$LOG_DIR" 2>/dev/null | head -n1)
         if [ -n "$LAST_LOG" ]; then
-            echo "Removing last log: $LOG_DIR/$LAST_LOG"
+            log_info "Removing last log: $LOG_DIR/$LAST_LOG"
             rm -f "$LOG_DIR/$LAST_LOG"
         fi
     fi
     set +e
-    echo "Checking for running Node.js process in website directory..."
+    log_info "Checking for running Node.js process in website directory..."
     NODE_PID=$(pgrep -f "node.*website" || true)
     if [ -n "$NODE_PID" ]; then
-        echo "Stopping running Node.js process (PID: $NODE_PID)..."
+        log_info "Stopping running Node.js process (PID: $NODE_PID)..."
         kill $NODE_PID
     else
-        echo "No running Node.js process found in website directory."
+        log_info "No running Node.js process found in website directory."
     fi
 
     # Kill all previous broker and v2e subprocesses from any -r session (before starting new watcher)
-    echo "Killing all previous broker and v2e subprocesses from any -r session..."
+    log_info "Killing all previous broker and v2e subprocesses from any -r session..."
     kill_v2e_processes 10
 
     build_and_package
     unset V2E_SKIP_WEBSITE_BUILD
     if [ $? -ne 0 ]; then
-        echo "Error: Build and package failed. Cannot start broker."
+        log_error "Build and package failed. Cannot start broker."
         return 1
     fi
 
-    echo "Starting Node.js process in website directory..."
+    log_info "Starting Node.js process in website directory..."
     pushd website > /dev/null
     npm run dev &
     NODE_DEV_PID=$!
-    echo "Node.js process started with PID: $NODE_DEV_PID"
+    log_info "Node.js process started with PID: $NODE_DEV_PID"
     popd > /dev/null
 
-    echo "[build.sh] Starting broker from $PACKAGE_DIR..."
+    log_info "[build.sh] Starting broker from $PACKAGE_DIR..."
     pushd "$PACKAGE_DIR" > /dev/null
-    echo "[build.sh] Launch command: ./broker"
+    log_info "[build.sh] Launch command: ./broker"
     ./broker &
     BROKER_PID=$!
-    echo "[build.sh] Broker started with PID: $BROKER_PID"
+    log_info "[build.sh] Broker started with PID: $BROKER_PID"
     popd > /dev/null
 
-    trap "echo 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; echo 'Stopping broker and all subprocesses (PID: $BROKER_PID)...'; kill_v2e_processes; exit 1" SIGINT
+    trap "log_info 'Caught Ctrl-C, stopping Node.js process (PID: $NODE_DEV_PID)...'; kill $NODE_DEV_PID; log_info 'Stopping broker and all subprocesses (PID: $BROKER_PID)...'; kill_v2e_processes; exit 1" SIGINT
 
     wait $NODE_DEV_PID
     wait $BROKER_PID
@@ -218,14 +248,14 @@ copy_assets() {
     find assets -name "*.xlsx" -exec cp {} "$dest_dir/assets/" \; 2>/dev/null || true
     
     if [ "$VERBOSE" = true ]; then
-        echo "Assets copied to: $dest_dir"
+        log_debug "Assets copied to: $dest_dir"
     fi
 }
 
 # Build the project with parallel builds
 build_project() {
     if [ "$VERBOSE" = true ]; then
-        echo "Building v2e project..."
+        log_debug "Building v2e project..."
     fi
     
     # Check Go version
@@ -238,27 +268,27 @@ build_project() {
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         if [ "$VERBOSE" = true ]; then
-            echo "Running go build..."
+            log_debug "Running go build..."
         fi
         mkdir -p "$BUILD_DIR/v2e"
         go build -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
         if [ "$VERBOSE" = true ]; then
-            echo "Build completed successfully"
-            echo "Binary saved to: $BUILD_DIR/v2e"
+            log_debug "Build completed successfully"
+            log_debug "Binary saved to: $BUILD_DIR/v2e"
         fi
     else
-        echo "No go.mod found. Skipping build."
+        log_info "No go.mod found. Skipping build."
     fi
 }
 
 # Build and package binaries with assets using parallel builds
 build_and_package() {
     if [ "$VERBOSE" = true ]; then
-        echo "Building and packaging v2e project..."
+        log_debug "Building and packaging v2e project..."
     fi
     
     # Check versions first
-    echo "Checking build requirements..."
+    log_info "Checking build requirements..."
     if ! check_go_version; then
         return 1
     fi
@@ -269,7 +299,7 @@ build_and_package() {
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         if [ "$VERBOSE" = true ]; then
-            echo "Building all binaries in parallel..."
+            log_debug "Building all binaries in parallel..."
         fi
         
         # Build each command in parallel
@@ -278,7 +308,7 @@ build_and_package() {
             if [ -d "$cmd_dir" ]; then
                 cmd_name=$(basename "$cmd_dir")
                 if [ "$VERBOSE" = true ]; then
-                    echo "Building $cmd_name..."
+                    log_debug "Building $cmd_name..."
                 fi
                 go build -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
                 build_pids+=($!)
@@ -296,66 +326,66 @@ build_and_package() {
         # Copy assets efficiently
         copy_assets "$PACKAGE_DIR"
         
-        echo "Go binaries packaged successfully"
+        log_info "Go binaries packaged successfully"
     else
-        echo "No go.mod found. Skipping Go build."
+        log_info "No go.mod found. Skipping Go build."
     fi
     
     # Build and package frontend if website directory exists and not skipped
     if [ -z "$V2E_SKIP_WEBSITE_BUILD" ]; then
         if [ -d "website" ]; then
-            echo "Building frontend website..."
+            log_info "Building frontend website..."
             # Check Node.js and npm versions
             if ! check_node_version; then
-                echo "Warning: Skipping frontend build due to version requirements"
+                log_warn "Skipping frontend build due to version requirements"
             else
                 cd website
                 # Install dependencies if node_modules doesn't exist
                 if [ ! -d "node_modules" ] || [ ! "$(ls -A node_modules)" ]; then
                     if [ "$VERBOSE" = true ]; then
-                        echo "Installing frontend dependencies..."
+                        log_debug "Installing frontend dependencies..."
                     fi
                     npm install
                 else
                     if [ "$VERBOSE" = true ]; then
-                        echo "Using cached node_modules"
+                        log_debug "Using cached node_modules"
                     fi
                 fi
                 # Build frontend
                 if [ "$VERBOSE" = true ]; then
-                    echo "Building frontend static export..."
+                    log_debug "Building frontend static export..."
                 fi
                 npm run build
                 # Copy frontend build output to package
                 if [ -d "out" ]; then
                     if [ "$VERBOSE" = true ]; then
-                        echo "Copying frontend build to package..."
+                        log_debug "Copying frontend build to package..."
                     fi
                     mkdir -p "../$PACKAGE_DIR/website"
                     cp -r out/* "../$PACKAGE_DIR/website/"
-                    echo "Frontend website packaged successfully"
+                    log_info "Frontend website packaged successfully"
                 else
-                    echo "Warning: Frontend build did not produce out/ directory"
+                    log_warn "Frontend build did not produce out/ directory"
                 fi
                 cd ..
             fi
         else
             if [ "$VERBOSE" = true ]; then
-                echo "No website directory found. Skipping frontend build."
+                log_debug "No website directory found. Skipping frontend build."
             fi
         fi
     else
         if [ "$VERBOSE" = true ]; then
-            echo "Skipping frontend build (V2E_SKIP_WEBSITE_BUILD set)"
+            log_debug "Skipping frontend build (V2E_SKIP_WEBSITE_BUILD set)"
         fi
     fi
     
-    echo "Package created successfully in: $PACKAGE_DIR"
+    log_info "Package created successfully in: $PACKAGE_DIR"
     if [ "$VERBOSE" = true ]; then
-        echo "Contents:"
+        log_debug "Contents:"
         ls -lh "$PACKAGE_DIR"
         if [ -d "$PACKAGE_DIR/website" ]; then
-            echo "Website contents:"
+            log_debug "Website contents:"
             ls -lh "$PACKAGE_DIR/website" | head -10
         fi
     fi
@@ -363,7 +393,7 @@ build_and_package() {
 
 # Run unit tests
 run_tests() {
-    echo "Running unit tests for GitHub CI..."
+    log_info "Running unit tests for GitHub CI..."
     
     # Check Go version
     if ! check_go_version; then
@@ -375,11 +405,11 @@ run_tests() {
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         if [ "$VERBOSE" = true ]; then
-            echo "Running go test with verbose output..."
+            log_info "Running go test with verbose output..."
             # Run tests with coverage and verbose output, excluding fuzz tests
             go test -tags "$GO_TAGS" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         else
-            echo "Running go test..."
+            log_info "Running go test..."
             # Run tests with coverage, excluding fuzz tests
             go test -tags "$GO_TAGS" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         fi
@@ -389,28 +419,28 @@ run_tests() {
         if [ -f "$BUILD_DIR/coverage.out" ]; then
             go tool cover -html="$BUILD_DIR/coverage.out" -o "$BUILD_DIR/coverage.html"
             if [ "$VERBOSE" = true ]; then
-                echo "Coverage report saved to: $BUILD_DIR/coverage.html"
+                log_debug "Coverage report saved to: $BUILD_DIR/coverage.html"
             fi
         fi
         
         # Return test exit code for CI
         if [ $TEST_EXIT_CODE -eq 0 ]; then
-            echo "All unit tests passed!"
+            log_info "All unit tests passed!"
             return 0
         else
-            echo "Unit tests failed!"
+            log_error "Unit tests failed!"
             return $TEST_EXIT_CODE
         fi
     else
-        echo "No go.mod found. No tests to run."
-        echo "Tests passed (no tests found)"
+        log_info "No go.mod found. No tests to run."
+        log_info "Tests passed (no tests found)"
         return 0
     fi
 }
 
 # Run fuzz tests on key interfaces
 run_fuzz_tests() {
-    echo "Running fuzz tests on key interfaces..."
+    log_info "Running fuzz tests on key interfaces..."
     setup_build_dir
     
     # Fuzz test configuration
@@ -420,14 +450,14 @@ run_fuzz_tests() {
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         if [ "$VERBOSE" = true ]; then
-            echo "Running Go fuzz tests for $FUZZ_TIME..."
+            log_info "Running Go fuzz tests for $FUZZ_TIME..."
         fi
         
         # Find all fuzz tests
         FUZZ_TESTS=$(go test -tags "$GO_TAGS" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
         
         if [ -z "$FUZZ_TESTS" ]; then
-            echo "No fuzz tests found. Creating report..."
+            log_info "No fuzz tests found. Creating report..."
             {
                 echo "======================================================================"
                 echo "           v2e Fuzz Testing Report"
@@ -441,12 +471,12 @@ run_fuzz_tests() {
                 echo ""
                 echo "======================================================================"
             } > "$FUZZ_REPORT"
-            echo "Fuzz test report: $FUZZ_REPORT"
-            echo "Fuzz tests passed (no fuzz tests found)"
+            log_info "Fuzz test report: $FUZZ_REPORT"
+            log_info "Fuzz tests passed (no fuzz tests found)"
             return 0
         fi
         
-        echo "Found fuzz tests:"
+        log_info "Found fuzz tests:"
         echo "$FUZZ_TESTS"
         echo ""
         
@@ -459,16 +489,16 @@ run_fuzz_tests() {
             PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -tags "$GO_TAGS" -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
             
             if [ -n "$PKG_FUZZ_TESTS" ]; then
-                echo "Fuzzing package: $PKG"
+                log_info "Fuzzing package: $PKG"
                 for FUZZ_TEST in $PKG_FUZZ_TESTS; do
-                    echo "  Running $FUZZ_TEST for $FUZZ_TIME..."
+                    log_info "  Running $FUZZ_TEST for $FUZZ_TIME..."
                     if go test -tags "$GO_TAGS" -fuzz="^${FUZZ_TEST}$" -fuzztime="$FUZZ_TIME" "$PKG" 2>&1 | tee -a "$BUILD_DIR/fuzz-raw.log"; then
                         FUZZ_RESULTS="$FUZZ_RESULTS\n  ✓ $PKG/$FUZZ_TEST: PASSED"
-                        echo "    ✓ PASSED"
+                        log_info "    ✓ PASSED"
                     else
                         FUZZ_EXIT_CODE=1
                         FUZZ_RESULTS="$FUZZ_RESULTS\n  ✗ $PKG/$FUZZ_TEST: FAILED"
-                        echo "    ✗ FAILED"
+                        log_error "    ✗ FAILED"
                     fi
                 done
             fi
@@ -510,26 +540,26 @@ run_fuzz_tests() {
             cat "$FUZZ_REPORT"
         fi
         
-        echo "Fuzz test report: $FUZZ_REPORT"
+        log_info "Fuzz test report: $FUZZ_REPORT"
         
         # Return exit code
         if [ $FUZZ_EXIT_CODE -eq 0 ]; then
-            echo "All fuzz tests passed!"
+            log_info "All fuzz tests passed!"
             return 0
         else
-            echo "Fuzz tests failed!"
+            log_error "Fuzz tests failed!"
             return $FUZZ_EXIT_CODE
         fi
     else
-        echo "No go.mod found. No fuzz tests to run."
-        echo "Fuzz tests passed (no tests found)"
+        log_info "No go.mod found. No fuzz tests to run."
+        log_info "Fuzz tests passed (no tests found)"
         return 0
     fi
 }
 
 # Run performance benchmarks
 run_benchmarks() {
-    echo "Running performance benchmarks..."
+    log_info "Running performance benchmarks..."
     setup_build_dir
     
     # Check if go.mod exists
@@ -538,11 +568,11 @@ run_benchmarks() {
         BENCHMARK_REPORT="$BUILD_DIR/benchmark-report.txt"
         
         if [ "$VERBOSE" = true ]; then
-            echo "Running go benchmarks with verbose output..."
+            log_info "Running go benchmarks with verbose output..."
             # Run benchmarks with memory allocation stats
             go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
         else
-            echo "Running go benchmarks..."
+            log_info "Running go benchmarks..."
             # Run benchmarks with memory allocation stats
             # Use tee to stream output to file (prevents blocking when run non-verbosely)
             go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
@@ -551,7 +581,7 @@ run_benchmarks() {
         
         # Generate human-readable report
         if [ -f "$BENCHMARK_OUTPUT" ]; then
-            echo "Generating benchmark report..."
+            log_info "Generating benchmark report..."
             {
                 echo "======================================================================"
                 echo "                 v2e Performance Benchmark Report"
@@ -599,21 +629,21 @@ run_benchmarks() {
                 echo ""
                 cat "$BENCHMARK_REPORT"
             else
-                echo "Benchmark report generated: $BENCHMARK_REPORT"
+                log_info "Benchmark report generated: $BENCHMARK_REPORT"
             fi
         fi
         
         # Return benchmark exit code for CI
         if [ $BENCH_EXIT_CODE -eq 0 ]; then
-            echo "All benchmarks completed successfully!"
+            log_info "All benchmarks completed successfully!"
             return 0
         else
-            echo "Benchmarks failed!"
+            log_error "Benchmarks failed!"
             return $BENCH_EXIT_CODE
         fi
     else
-        echo "No go.mod found. No benchmarks to run."
-        echo "Benchmarks passed (no benchmarks found)"
+        log_info "No go.mod found. No benchmarks to run."
+        log_info "Benchmarks passed (no benchmarks found)"
         return 0
     fi
 }
