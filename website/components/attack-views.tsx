@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LucideEye } from 'lucide-react';
 import { AttackTable } from './attack-table';
+import { AttackDetailContent } from './attack-detail-dialog';
 
 export function AttackViews() {
-  const [activeTab, setActiveTab] = useState<'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'>('techniques');
+  const [activeTab, setActiveTab] = useState<'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups' | 'detail'>('techniques');
+  const [previousTab, setPreviousTab] = useState<'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'>('techniques');
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   return (
     <Card className="w-full">
@@ -48,7 +51,28 @@ export function AttackViews() {
         </div>
       </CardHeader>
       <CardContent>
-        <AttackTable type={activeTab} />
+        {activeTab !== 'detail' ? (
+          <AttackTable
+            type={activeTab}
+            onViewDetail={(item) => {
+              setPreviousTab(activeTab as any);
+              setSelectedItem(item);
+              setActiveTab('detail');
+            }}
+          />
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setActiveTab(previousTab)}>
+                  ← Back
+                </Button>
+                <h3 className="text-lg font-semibold">Detail</h3>
+              </div>
+            </div>
+            <AttackDetailContent item={selectedItem} type={previousTab} onBack={() => setActiveTab(previousTab)} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

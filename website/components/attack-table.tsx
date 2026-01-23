@@ -26,9 +26,10 @@ import { AttackDetailDialog } from './attack-detail-dialog';
 
 interface AttackTableProps {
   type?: 'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'; // Default to techniques
+  onViewDetail?: (item: any, type?: string) => void;
 }
 
-export function AttackTable({ type = 'techniques' }: AttackTableProps) {
+export function AttackTable({ type = 'techniques', onViewDetail }: AttackTableProps) {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -120,6 +121,11 @@ export function AttackTable({ type = 'techniques' }: AttackTableProps) {
 
   // Handler for opening the detail dialog
   const handleViewDetail = (item: any) => {
+    if (onViewDetail) {
+      onViewDetail(item, type);
+      return;
+    }
+
     setSelectedItem(item);
     setIsDetailDialogOpen(true);
   };
@@ -293,13 +299,15 @@ export function AttackTable({ type = 'techniques' }: AttackTableProps) {
         </CardContent>
       </Card>
       
-      {/* Detail Dialog */}
-      <AttackDetailDialog 
-        open={isDetailDialogOpen}
-        onClose={() => setIsDetailDialogOpen(false)}
-        item={selectedItem}
-        type={type}
-      />
+      {/* Detail Dialog (fallback) */}
+      {!onViewDetail && (
+        <AttackDetailDialog 
+          open={isDetailDialogOpen}
+          onClose={() => setIsDetailDialogOpen(false)}
+          item={selectedItem}
+          type={type}
+        />
+      )}
     </>
   );
 }
