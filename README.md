@@ -1,6 +1,6 @@
 # v2e
 
-A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive CVE (Common Vulnerabilities and Exposures) management platform with integrated CWE (Common Weakness Enumeration) and CAPEC (Common Attack Pattern Enumeration and Classification) data handling.
+A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive CVE (Common Vulnerabilities and Exposures) management platform with integrated CWE (Common Weakness Enumeration), CAPEC (Common Attack Pattern Enumeration and Classification), and ATT&CK (Adversarial Tactics, Techniques, and Common Knowledge) framework data handling.
 
 ## Executive Summary
 
@@ -10,6 +10,7 @@ Key architectural principles:
 - **Centralized Process Management**: The broker is the sole orchestrator of all subprocess services
 - **Enforced Communication Pattern**: All inter-service communication occurs through broker routing
 - **RPC-Based Messaging**: Services communicate via structured JSON RPC messages over stdin/stdout
+- **Comprehensive Data Handling**: Integrated CVE, CWE, CAPEC, and ATT&CK data management
 - **Frontend Integration**: A Next.js-based web application provides user interface access
 - **Performance Monitoring**: Built-in metrics collection and system monitoring capabilities
 
@@ -65,10 +66,13 @@ graph TB
   - Provides workflow control mechanisms
 
 - **Local Service** ([cmd/local](file:///home/cyw0ng/projects/v2e-qoder/cmd/local)): The data persistence layer that:
-  - Manages local SQLite databases for CVE, CWE, and CAPEC data
+  - Manages local SQLite databases for CVE, CWE, CAPEC, and ATT&CK data
   - Provides CRUD operations for vulnerability information
   - Handles data indexing and querying
   - Implements caching mechanisms for improved performance
+  - Imports ATT&CK data from XLSX files and provides access to techniques, tactics, mitigations, software, and groups
+  - Supports CAPEC XML schema validation and catalog metadata retrieval
+  - Offers CWE view management with storage and retrieval capabilities
 
 - **Remote Service** ([cmd/remote](file:///home/cyw0ng/projects/v2e-qoder/cmd/remote)): The data acquisition layer that:
   - Fetches vulnerability data from external APIs (NVD, etc.)
@@ -90,6 +94,7 @@ The system uses a sophisticated RPC-over-stdin/stdout communication mechanism:
 - **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching
 - **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs
 - **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process
+- **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables for flexible I/O routing
 
 The communication pattern follows this flow:
 1. External requests → Access REST API → Broker → Backend Services
@@ -111,12 +116,13 @@ The frontend includes dedicated sections for:
 - CVE Database browsing and management
 - CWE Database and view management
 - CAPEC data visualization
+- ATT&CK framework data (techniques, tactics, mitigations, software, groups)
 - System monitoring and performance metrics
 - Session control for data fetching jobs
 
 ## Quickstart
 
-Prerequisites: Go 1.24+, Node.js 18+, and basic shell tools.
+Prerequisites: Go 1.21+, Node.js 20+, npm 10+, and basic shell tools.
 
 Build all commands:
 
@@ -140,6 +146,25 @@ Run with the broker (recommended):
 ```bash
 # Start the broker which spawns configured subprocesses
 ./broker config.json
+```
+
+Alternatively, use the build script for different workflows:
+
+```bash
+# Run unit tests
+./build.sh -t
+
+# Run fuzz tests
+./build.sh -f
+
+# Run performance benchmarks
+./build.sh -m
+
+# Build and package binaries with assets
+./build.sh -p
+
+# Run development mode with auto-reload
+./build.sh -r
 ```
 
 ## Development Workflow
@@ -172,18 +197,25 @@ Run unit tests:
 ./build.sh -t
 ```
 
-Run integration tests:
+Run fuzz tests:
 
 ```bash
-# Run Python integration tests
-./build.sh -i
+# Run fuzz tests on key interfaces
+./build.sh -f
 ```
 
 Run performance benchmarks:
 
 ```bash
 # Execute performance benchmarks
-./build.sh -b
+./build.sh -m
+```
+
+Build and package:
+
+```bash
+# Build and package binaries with assets
+./build.sh -p
 ```
 
 ## Configuration Guide
@@ -218,7 +250,7 @@ Performance monitoring capabilities include:
 - **cmd/** - Service implementations
   - broker/ - Process manager and RPC router
   - access/ - REST gateway (subprocess)
-  - local/ - Local data storage service (CVE/CWE/CAPEC)
+  - local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK)
   - remote/ - Remote data fetching service
   - meta/ - Orchestration and job control
   - sysmon/ - System monitoring service
@@ -227,9 +259,12 @@ Performance monitoring capabilities include:
   - cve - CVE domain types and helpers
   - cwe - CWE domain types and helpers
   - capec - CAPEC domain types and helpers
+  - attack - ATT&CK framework domain types and helpers
   - common - Config and logging utilities
 - **tests/** - Integration tests (pytest)
 - **website/** - Next.js frontend application
+- **assets/** - Data assets (CWE raw JSON, CAPEC XML/XSD, ATT&CK XLSX files)
+- **.build/** - Build artifacts and packaged distribution
 
 ## Notes and Conventions
 
