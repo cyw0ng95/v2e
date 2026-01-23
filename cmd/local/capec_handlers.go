@@ -24,7 +24,7 @@ func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			Force bool   `json:"force,omitempty"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -44,9 +44,9 @@ func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			}, nil
 		}
 		if err := store.ImportFromXML(req.Path, req.XSD, req.Force); err != nil {
-			logger.Error("Failed to import CAPEC from XML: %v (path: %s xsd: %s)", err, req.Path, req.XSD)
+			logger.Warn("Failed to import CAPEC from XML: %v (path: %s xsd: %s)", err, req.Path, req.XSD)
 			if _, statErr := os.Stat(req.Path); statErr != nil {
-				logger.Error("CAPEC import file stat error: %v (path: %s)", statErr, req.Path)
+				logger.Warn("CAPEC import file stat error: %v (path: %s)", statErr, req.Path)
 			}
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -95,7 +95,7 @@ func createForceImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common
 			XSD  string `json:"xsd"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -114,7 +114,7 @@ func createForceImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common
 			}, nil
 		}
 		if err := store.ImportFromXML(req.Path, req.XSD, true); err != nil {
-			logger.Error("Failed to import CAPEC from XML (force): %v (path: %s xsd: %s)", err, req.Path, req.XSD)
+			logger.Warn("Failed to import CAPEC from XML (force): %v (path: %s xsd: %s)", err, req.Path, req.XSD)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -140,7 +140,7 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			CAPECID string `json:"capec_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -161,7 +161,7 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 		logger.Debug("GetCAPECByID request: capec_id=%s", req.CAPECID)
 		item, err := store.GetByID(ctx, req.CAPECID)
 		if err != nil {
-			logger.Error("Failed to get CAPEC: %v (capec_id=%s)", err, req.CAPECID)
+			logger.Warn("Failed to get CAPEC: %v (capec_id=%s)", err, req.CAPECID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -288,7 +288,7 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Error("Failed to parse request: %v", err)
+				logger.Warn("Failed to parse request: %v", err)
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
@@ -307,7 +307,7 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 		common.Info("Listing CAPECs with offset=%d, limit=%d", req.Offset, req.Limit)
 		items, total, err := store.ListCAPECsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Error("Failed to list CAPECs: %v", err)
+			logger.Warn("Failed to list CAPECs: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

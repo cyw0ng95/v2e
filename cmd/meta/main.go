@@ -162,7 +162,8 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 		c.logger.Debug("Received RPC response: correlationID=%s, type=%s", correlationID, response.Type)
 		return response, nil
 	case <-time.After(DefaultRPCTimeout):
-		c.logger.Error("RPC timeout waiting for response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
+		c.logger.Warn("RPC timeout waiting for response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
+		c.logger.Debug("RPC invocation timed out: method=%s, target=%s, correlationID=%s", method, target, correlationID)
 		return nil, fmt.Errorf("RPC timeout waiting for response from %s", target)
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -194,9 +195,11 @@ func recoverSession(jobController *job.Controller, sessionManager *session.Manag
 			logger.Info("No existing session to recover")
 			return
 		}
-		logger.Error("Failed to check for existing session: %v", err)
+		logger.Warn("Failed to check for existing session: %v", err)
+		logger.Debug("Session recovery check failed: %v", err)
 		return
 	}
+	logger.Debug("Session recovery check completed: found session ID %s with state %s", sess.ID, sess.State)
 
 	logger.Info("Found existing session: id=%s, state=%s, fetched=%d, stored=%d",
 		sess.ID, sess.State, sess.FetchedCount, sess.StoredCount)
@@ -215,7 +218,8 @@ func recoverSession(jobController *job.Controller, sessionManager *session.Manag
 				logger.Info("Job is already running - recovery not needed")
 				return
 			}
-			logger.Error("Failed to recover running session: %v", err)
+			logger.Warn("Failed to recover running session: %v", err)
+			logger.Debug("Session recovery failed for session ID %s: %v", sess.ID, err)
 			// Don't change state on recovery failure - keep it as "running"
 			// This way, next restart will try again
 			logger.Warn("Session will remain in 'running' state for next recovery attempt")
@@ -319,11 +323,14 @@ func main() {
 		params := map[string]interface{}{"path": "assets/cwe-raw.json"}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", params)
 		if err != nil {
-			logger.Error("Failed to import CWE on local: %v", err)
+			logger.Warn("Failed to import CWE on local: %v", err)
+			logger.Debug("CWE import process failed: %v", err)
 		} else if resp.Type == subprocess.MessageTypeError {
-			logger.Error("CWE import error: %s", resp.Error)
+			logger.Warn("CWE import error: %s", resp.Error)
+			logger.Debug("CWE import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CWE import triggered on local")
+			logger.Debug("CWE import process started successfully with path: %s", params["path"])
 		}
 	}()
 
@@ -345,11 +352,14 @@ func main() {
 		params := map[string]interface{}{"path": "assets/capec_contents_latest.xml", "xsd": "assets/capec_schema_latest.xsd"}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
 		if err != nil {
-			logger.Error("Failed to import CAPEC on local: %v", err)
+			logger.Warn("Failed to import CAPEC on local: %v", err)
+			logger.Debug("CAPEC import process failed: %v", err)
 		} else if resp.Type == subprocess.MessageTypeError {
-			logger.Error("CAPEC import error: %s", resp.Error)
+			logger.Warn("CAPEC import error: %s", resp.Error)
+			logger.Debug("CAPEC import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CAPEC import triggered on local")
+			logger.Debug("CAPEC import process started successfully with path: %s", params["path"])
 		}
 	}()
 
@@ -385,7 +395,8 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			CVEID string `json:"cve_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Error("Failed to parse request: %v", err)
+			logger.Warn("Failed to parse request: %v", err)
+			logger.Debug("Processing GetCVE request failed due to malformed payload: %s", string(msg.Payload))
 			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
@@ -402,13 +413,15 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			"cve_id": req.CVEID,
 		})
 		if err != nil {
-			logger.Error("Failed to check local storage: %v", err)
+			logger.Warn("Failed to check local storage: %v", err)
+			logger.Debug("GetCVE local storage check failed for CVE ID %s: %v", req.CVEID, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to check local storage: %v", err)), nil
 		}
 
 		// Check if the response is an error
 		if isErr, errMsg := isErrorResponse(checkResp); isErr {
-			logger.Error("Error checking local storage: %s", errMsg)
+			logger.Warn("Error checking local storage: %s", errMsg)
+			logger.Debug("GetCVE local storage check returned error for CVE ID %s: %s", req.CVEID, errMsg)
 			return createErrorResponse(msg, fmt.Sprintf("failed to check local storage: %s", errMsg)), nil
 		}
 
@@ -419,6 +432,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		}
 		if err := subprocess.UnmarshalPayload(checkResp, &checkResult); err != nil {
 			logger.Error("Failed to parse check response: %v", err)
+			logger.Debug("GetCVE failed to parse local storage check response for CVE ID %s: %v", req.CVEID, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to parse check response: %v", err)), nil
 		}
 
@@ -431,18 +445,21 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 				"cve_id": req.CVEID,
 			})
 			if err != nil {
-				logger.Error("Failed to get CVE from local storage: %v", err)
+				logger.Warn("Failed to get CVE from local storage: %v", err)
+				logger.Debug("GetCVE failed to retrieve CVE from local storage for CVE ID %s: %v", req.CVEID, err)
 				return createErrorResponse(msg, fmt.Sprintf("failed to get CVE from local storage: %v", err)), nil
 			}
 
 			// Check if the response is an error
 			if isErr, errMsg := isErrorResponse(getResp); isErr {
-				logger.Error("Error getting CVE from local storage: %s", errMsg)
+				logger.Warn("Error getting CVE from local storage: %s", errMsg)
+				logger.Debug("GetCVE local storage retrieval returned error for CVE ID %s: %s", req.CVEID, errMsg)
 				return createErrorResponse(msg, fmt.Sprintf("failed to get CVE from local storage: %s", errMsg)), nil
 			}
 
 			if err := subprocess.UnmarshalPayload(getResp, &cveData); err != nil {
 				logger.Error("Failed to parse local CVE data: %v", err)
+				logger.Debug("GetCVE failed to parse local CVE data for CVE ID %s: %v", req.CVEID, err)
 				return createErrorResponse(msg, fmt.Sprintf("failed to parse local CVE data: %v", err)), nil
 			}
 		} else {
@@ -452,13 +469,15 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 				"cve_id": req.CVEID,
 			})
 			if err != nil {
-				logger.Error("Failed to fetch CVE from remote: %v", err)
+				logger.Warn("Failed to fetch CVE from remote: %v", err)
+				logger.Debug("GetCVE failed to fetch CVE from remote for CVE ID %s: %v", req.CVEID, err)
 				return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %v", err)), nil
 			}
 
 			// Check if the response is an error
 			if isErr, errMsg := isErrorResponse(remoteResp); isErr {
-				logger.Error("Error fetching CVE from remote: %s", errMsg)
+				logger.Warn("Error fetching CVE from remote: %s", errMsg)
+				logger.Debug("GetCVE remote fetch returned error for CVE ID %s: %s", req.CVEID, errMsg)
 				return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %s", errMsg)), nil
 			}
 
@@ -466,12 +485,14 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			var remoteResult cve.CVEResponse
 			if err := subprocess.UnmarshalPayload(remoteResp, &remoteResult); err != nil {
 				logger.Error("Failed to parse remote CVE response: %v", err)
+				logger.Debug("GetCVE failed to parse remote CVE response for CVE ID %s: %v", req.CVEID, err)
 				return createErrorResponse(msg, fmt.Sprintf("failed to parse remote CVE response: %v", err)), nil
 			}
 
 			// Extract CVE data from response
 			if len(remoteResult.Vulnerabilities) == 0 {
-				logger.Error("CVE %s not found in NVD", req.CVEID)
+				logger.Warn("CVE %s not found in NVD", req.CVEID)
+				logger.Debug("GetCVE remote fetch found no vulnerabilities for CVE ID %s", req.CVEID)
 				return createErrorResponse(msg, fmt.Sprintf("CVE %s not found", req.CVEID)), nil
 			}
 
@@ -484,6 +505,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			})
 			if err != nil {
 				logger.Warn("Failed to save CVE to local storage (continuing anyway): %v", err)
+				logger.Debug("GetCVE save to local storage failed for CVE ID %s: %v", req.CVEID, err)
 				// Continue even if save fails - we still have the data
 			}
 		}
@@ -500,11 +522,13 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		jsonData, err := sonic.Marshal(cveData)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
+			logger.Debug("GetCVE failed to marshal response for CVE ID %s: %v", req.CVEID, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
 
 		logger.Info("RPCGetCVE: Successfully retrieved CVE %s", req.CVEID)
+		logger.Debug("GetCVE request completed successfully for CVE ID %s", req.CVEID)
 		return respMsg, nil
 	}
 }

@@ -16,7 +16,7 @@ func runAccess() {
 	// Load configuration
 	config, err := common.LoadConfig("config.json")
 	if err != nil {
-		common.Error("Error loading config: %v", err)
+		common.Warn("Warning loading config: %v", err)
 		os.Exit(1)
 	}
 
@@ -58,7 +58,7 @@ func runAccess() {
 	// Start RPC client in background
 	go func() {
 		if err := rpcClient.Run(context.Background()); err != nil {
-			common.Error("RPC client error: %v", err)
+			common.Warn("RPC client error: %v", err)
 		}
 	}()
 
@@ -92,7 +92,7 @@ func runAccess() {
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		common.Error("[ACCESS] Server forced to shutdown: %v", err)
+		common.Warn("[ACCESS] Server forced to shutdown: %v", err)
 		os.Exit(1)
 	}
 

@@ -800,7 +800,7 @@ func (b *Broker) reapProcess(p *Process) {
 		}
 
 		if restartErr != nil {
-			b.logger.Error("Failed to restart process %s: %v", processID, restartErr)
+			b.logger.Warn("Failed to restart process %s: %v", processID, restartErr)
 		} else {
 			// Update restart count in the new process
 			b.mu.RLock()
@@ -1420,7 +1420,7 @@ func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
 		}
 
 		if err != nil {
-			b.logger.Error("Failed to spawn process %s: %v", procConfig.ID, err)
+			b.logger.Warn("Failed to spawn process %s: %v", procConfig.ID, err)
 			continue
 		}
 
