@@ -7,6 +7,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/bytedance/sonic/decoder"
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // fastDecoder is a configured sonic decoder for zero-copy parsing
@@ -16,6 +17,20 @@ func init() {
 	// Use fastest configuration for zero-copy parsing
 	fastDecoder.UseInt64()
 	fastDecoder.UseNumber()
+}
+
+func init() {
+	// Load config and allow overriding MaxMessageSize if configured
+	cfg, err := common.LoadConfig("")
+	if err != nil {
+		// If config cannot be loaded, keep default
+		return
+	}
+	if cfg != nil {
+		if cfg.Proc.MaxMessageSizeBytes > 0 {
+			MaxMessageSize = cfg.Proc.MaxMessageSizeBytes
+		}
+	}
 }
 
 // MessageType represents the type of message being sent
@@ -32,9 +47,12 @@ const (
 	MessageTypeError MessageType = "error"
 
 	// MaxMessageSize is the maximum size of a message that can be sent between processes
-	// This is set to 10MB to accommodate large CVE data from NVD API
-	MaxMessageSize = 10 * 1024 * 1024 // 10MB
+	// Default to 10MB to accommodate large CVE data from NVD API; can be overridden by config
 )
+
+// MaxMessageSize is adjustable at runtime via configuration (default 10MB)
+var MaxMessageSize = 10 * 1024 * 1024 // 10MB
+ 
 
 // Message represents a message that can be passed between processes
 type Message struct {

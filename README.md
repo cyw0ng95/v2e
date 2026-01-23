@@ -30,8 +30,6 @@ Run tests:
 ```bash
 # Unit tests
 ./build.sh -t
-# Integration tests
-./build.sh -i
 ```
 
 ## Live Development Workflow
@@ -66,7 +64,7 @@ Project layout (high level)
   - proc/subprocess - subprocess framework (stdin/stdout RPC)
   - cve              - domain types and helpers
   - common           - config and logging utilities
-- tests/            - integration tests (pytest)
+- tests/            - pytest tests
 - website/          - static frontend (Next.js export)
 
 Notes and conventions

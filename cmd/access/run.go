@@ -35,6 +35,10 @@ func runAccess() {
 	if config.Access.StaticDir != "" {
 		staticDir = config.Access.StaticDir
 	}
+	// Allow broker to override static dir via environment when running as subprocess
+	if envStatic := os.Getenv("ACCESS_STATIC_DIR"); envStatic != "" {
+		staticDir = envStatic
+	}
 
 	// Set default address if not configured
 	address := "0.0.0.0:8080"

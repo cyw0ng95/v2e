@@ -20,10 +20,75 @@ type Config struct {
 	Client ClientConfig `json:"client,omitempty"`
 	// Broker configuration
 	Broker BrokerConfig `json:"broker,omitempty"`
+	// Proc configuration for subprocess framework
+	Proc ProcConfig `json:"proc,omitempty"`
+	// Local service configuration
+	Local LocalConfig `json:"local,omitempty"`
+	// Meta service configuration
+	Meta MetaConfig `json:"meta,omitempty"`
+	// Remote service configuration
+	Remote RemoteConfig `json:"remote,omitempty"`
+	// Asset paths
+	Assets AssetsConfig `json:"assets,omitempty"`
+	// CAPEC related toggles
+	Capec CapecConfig `json:"capec,omitempty"`
+	// Website/frontend settings
+	Website WebsiteConfig `json:"website,omitempty"`
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty"`
 	// Access service configuration
 	Access AccessConfig `json:"access,omitempty"`
+}
+
+// ProcConfig holds process-level configuration (subprocess framework)
+type ProcConfig struct {
+	// MaxMessageSizeBytes is the maximum size for RPC messages
+	MaxMessageSizeBytes int `json:"max_message_size_bytes,omitempty"`
+	// RPCInputFD is the file descriptor number used for RPC input
+	RPCInputFD int `json:"rpc_input_fd,omitempty"`
+	// RPCOutputFD is the file descriptor number used for RPC output
+	RPCOutputFD int `json:"rpc_output_fd,omitempty"`
+}
+
+// LocalConfig holds local service settings such as DB paths
+type LocalConfig struct {
+	CVEDBPath   string `json:"cve_db_path,omitempty"`
+	CWEDBPath   string `json:"cwe_db_path,omitempty"`
+	CAPECDBPath string `json:"capec_db_path,omitempty"`
+}
+
+// MetaConfig holds meta service settings
+type MetaConfig struct {
+	SessionDBPath string `json:"session_db_path,omitempty"`
+}
+
+// RemoteConfig holds remote service settings
+type RemoteConfig struct {
+	NVDAPIKey    string `json:"nvd_api_key,omitempty"`
+	ViewFetchURL string `json:"view_fetch_url,omitempty"`
+}
+
+// AssetsConfig holds default asset paths used by importers
+type AssetsConfig struct {
+	CWERawPath   string `json:"cwe_raw_path,omitempty"`
+	CAPECXMLPath string `json:"capec_xml_path,omitempty"`
+	CAPECXSDPath string `json:"capec_xsd_path,omitempty"`
+}
+
+// CapecConfig holds CAPEC-specific toggles
+type CapecConfig struct {
+	StrictXSDValidation bool `json:"strict_xsd_validation,omitempty"`
+}
+
+// WebsiteConfig holds frontend-related configuration
+type WebsiteConfig struct {
+	APIBaseURL  string `json:"api_base_url,omitempty"`
+	UseMockData bool   `json:"use_mock_data,omitempty"`
+}
+
+// Extend Config struct with new top-level sections
+func init() {
+	// noop: types declared for JSON unmarshalling
 }
 
 // AccessConfig holds configuration for the access (HTTP) service
@@ -58,6 +123,9 @@ type BrokerConfig struct {
 	LogsDir string `json:"logs_dir,omitempty"`
 	// Authentication settings for RPC endpoints
 	Authentication AuthenticationConfig `json:"authentication,omitempty"`
+	// Optional RPC file descriptor overrides for broker-managed processes
+	RPCInputFD  int `json:"rpc_input_fd,omitempty"`
+	RPCOutputFD int `json:"rpc_output_fd,omitempty"`
 }
 
 // ProcessConfig represents a process to be managed by the broker

@@ -72,6 +72,8 @@ func main() {
 
 	// Create broker instance
 	broker := NewBroker()
+	// Provide loaded config to broker so it can use configured settings when spawning
+	broker.SetConfig(config)
 	defer broker.Shutdown()
 
 	// Set up broker logger with dual output and correct level
