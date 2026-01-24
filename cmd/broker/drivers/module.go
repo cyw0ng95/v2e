@@ -31,10 +31,10 @@ func (d *FDTransportDriver) CreateTransport(config interface{}) (transport.Trans
 	if !ok {
 		return nil, nil // Return nil for now - this is just a placeholder
 	}
-	
+
 	inputFD := cfg["input_fd"]
 	outputFD := cfg["output_fd"]
-	
+
 	transport := transport.NewFDPipeTransport(inputFD, outputFD)
 	return transport, nil
 }

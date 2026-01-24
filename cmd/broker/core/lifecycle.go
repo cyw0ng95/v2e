@@ -236,9 +236,19 @@ func (b *Broker) Kill(id string) error {
 		return fmt.Errorf("process '%s' is not running", id)
 	}
 
-	if proc.cmd.Process != nil {
+	if proc.cmd == nil {
+		// Test process or non-OS-backed process: mark as exited and return
+		proc.mu.Lock()
+		proc.info.Status = ProcessStatusExited
+		proc.mu.Unlock()
+		return nil
+	}
+
+	if proc.cmd != nil && proc.cmd.Process != nil {
 		if err := proc.cmd.Process.Signal(syscall.SIGTERM); err != nil {
-			proc.cancel()
+			if proc.cancel != nil {
+				proc.cancel()
+			}
 		}
 	}
 
@@ -248,7 +258,7 @@ func (b *Broker) Kill(id string) error {
 		return nil
 	case <-time.After(5 * time.Second):
 		b.logger.Warn("Process did not terminate gracefully, sending SIGKILL: id=%s", id)
-		if proc.cmd.Process != nil {
+		if proc.cmd != nil && proc.cmd.Process != nil {
 			if err := proc.cmd.Process.Kill(); err != nil {
 				return fmt.Errorf("failed to force kill process: %w", err)
 			}
