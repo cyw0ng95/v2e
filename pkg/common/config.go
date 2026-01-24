@@ -126,6 +126,8 @@ type BrokerConfig struct {
 	// Optional RPC file descriptor overrides for broker-managed processes
 	RPCInputFD  int `json:"rpc_input_fd,omitempty"`
 	RPCOutputFD int `json:"rpc_output_fd,omitempty"`
+	// Transport configuration
+	Transport TransportConfigOptions `json:"transport,omitempty"`
 	// Optimizer runtime tuning (optional)
 	OptimizerBufferCap       int    `json:"optimizer_buffer_cap,omitempty"`
 	OptimizerNumWorkers      int    `json:"optimizer_num_workers,omitempty"`
@@ -135,6 +137,24 @@ type BrokerConfig struct {
 	// Batching controls
 	OptimizerBatchSize       int `json:"optimizer_batch_size,omitempty"`
 	OptimizerFlushIntervalMs int `json:"optimizer_flush_interval_ms,omitempty"`
+}
+
+// TransportConfigOptions holds configuration for transport mechanisms
+type TransportConfigOptions struct {
+	// Type specifies the default transport type ("fd", "uds", or "auto")
+	Type string `json:"type,omitempty"`
+	// UDSBasePath specifies the base path for UDS socket files
+	UDSBasePath string `json:"uds_base_path,omitempty"`
+	// UDSReconnectAttempts specifies the number of reconnection attempts for UDS
+	UDSReconnectAttempts int `json:"uds_reconnect_attempts,omitempty"`
+	// UDSReconnectDelayMs specifies the delay between reconnection attempts in milliseconds
+	UDSReconnectDelayMs int `json:"uds_reconnect_delay_ms,omitempty"`
+	// EnableUDS enables Unix Domain Socket transport
+	EnableUDS bool `json:"enable_uds,omitempty"`
+	// EnableFD enables File Descriptor transport
+	EnableFD bool `json:"enable_fd,omitempty"`
+	// DualMode enables both UDS and FD transports for migration
+	DualMode bool `json:"dual_mode,omitempty"`
 }
 
 // ProcessConfig represents a process to be managed by the broker
