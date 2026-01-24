@@ -44,9 +44,13 @@ func (omp *OptimizedMessagePool) Put(msg *Message) {
 
 // reset efficiently resets message fields to zero values
 func (m *Message) reset() {
+	// Zero out all fields to prepare for reuse
 	m.Type = ""
 	m.ID = ""
-	m.Payload = nil
+	// Reuse payload buffer by clearing it instead of setting to nil to reduce allocations
+	if m.Payload != nil {
+		m.Payload = m.Payload[:0] // Reset slice length without deallocating capacity
+	}
 	m.Error = ""
 	m.Source = ""
 	m.Target = ""

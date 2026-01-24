@@ -142,32 +142,73 @@ func (m *Manager) GetSession() (*Session, error) {
 // UpdateState updates the session state
 // Add debug logging to track state updates
 func (m *Manager) UpdateState(state SessionState) error {
-	session, err := m.GetSession()
-	if err != nil {
-		m.logger.Error("Failed to retrieve session for state update: %v", err)
-		return err
-	}
+	return m.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(m.bucketName)
+		if b == nil {
+			return ErrNoSession
+		}
 
-	session.State = state
-	session.UpdatedAt = time.Now()
-	m.logger.Debug("Updating session state to: %s", state)
+		// Get the first (and only) session
+		c := b.Cursor()
+		k, v := c.First()
+		if k == nil {
+			return ErrNoSession
+		}
 
-	return m.saveSession(session)
+		session := &Session{}
+		err := json.Unmarshal(v, session)
+		if err != nil {
+			return err
+		}
+
+		session.State = state
+		session.UpdatedAt = time.Now()
+		m.logger.Debug("Updating session state to: %s", state)
+
+		// Marshal and save back in same transaction
+		data, err := json.Marshal(session)
+		if err != nil {
+			return err
+		}
+
+		return b.Put(k, data)
+	})
 }
 
 // UpdateProgress updates the session progress counters
 func (m *Manager) UpdateProgress(fetched, stored, errors int64) error {
-	session, err := m.GetSession()
-	if err != nil {
-		return err
-	}
+	return m.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(m.bucketName)
+		if b == nil {
+			return ErrNoSession
+		}
 
-	session.FetchedCount += fetched
-	session.StoredCount += stored
-	session.ErrorCount += errors
-	session.UpdatedAt = time.Now()
+		// Get the first (and only) session
+		c := b.Cursor()
+		k, v := c.First()
+		if k == nil {
+			return ErrNoSession
+		}
 
-	return m.saveSession(session)
+		session := &Session{}
+		err := json.Unmarshal(v, session)
+		if err != nil {
+			return err
+		}
+
+		session.FetchedCount += fetched
+		session.StoredCount += stored
+		session.ErrorCount += errors
+		session.UpdatedAt = time.Now()
+
+		// Marshal and save back in same transaction
+		data, err := json.Marshal(session)
+		if err != nil {
+			return err
+		}
+
+		return b.Put(k, data)
+	})
 }
 
 // DeleteSession deletes the current session
