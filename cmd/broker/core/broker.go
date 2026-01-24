@@ -33,6 +33,8 @@ type Broker struct {
 	optimizer OptimizerInterface
 	// transportManager manages communication transports for processes
 	transportManager *transport.TransportManager
+	// migrationMode indicates if the broker is in migration mode
+	migrationMode bool
 }
 
 // NewBroker creates a new Broker instance.
@@ -128,6 +130,30 @@ func (b *Broker) SetOptimizer(o OptimizerInterface) {
 	}
 }
 
+// Context returns the broker's context.
+func (b *Broker) Context() context.Context {
+	return b.ctx
+}
+
+// ConfigureTransportFromConfig configures the transport based on the configuration
+func (b *Broker) ConfigureTransportFromConfig() {
+	if b.config == nil || b.config.Broker.Transport.Type == "" {
+		// Default to FD transport for backward compatibility
+		return
+	}
+	
+	// Set UDS base path if configured
+	if b.config.Broker.Transport.UDSBasePath != "" {
+		b.transportManager.SetUdsBasePath(b.config.Broker.Transport.UDSBasePath)
+	}
+	
+	// Enable migration mode if dual mode is enabled
+	if b.config.Broker.Transport.DualMode {
+		b.migrationMode = true
+		b.logger.Info("Enabled dual-mode transport for migration")
+	}
+}
+
 // OptimizerInterface is a lightweight interface used by Broker to avoid
 // importing the concrete optimizer implementation and creating an import cycle.
 type OptimizerInterface interface {
@@ -135,9 +161,4 @@ type OptimizerInterface interface {
 	Stop()
 	Metrics() map[string]interface{}
 	SetLogger(l *common.Logger)
-}
-
-// Context returns the broker's context.
-func (b *Broker) Context() context.Context {
-	return b.ctx
 }

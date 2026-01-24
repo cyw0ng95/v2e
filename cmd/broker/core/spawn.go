@@ -194,12 +194,31 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 
 	// Create and register transport for the process
 	if b.transportManager != nil {
-		transport := transport.NewFDPipeTransport(inputFD, outputFD)
-		if err := transport.Connect(); err == nil {
-			b.transportManager.RegisterTransport(id, transport)
-			b.logger.Debug("Registered transport for process %s", id)
+		// Determine transport type based on configuration
+		if b.config != nil && b.config.Broker.Transport.EnableUDS {
+			// Register UDS transport
+			if err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
+				b.logger.Debug("Registered UDS transport for process %s", id)
+			} else {
+				b.logger.Warn("Failed to connect UDS transport for process %s: %v, falling back to FD transport", id, err)
+				// Fall back to FD transport
+				fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
+				if err := fdTransport.Connect(); err == nil {
+					b.transportManager.RegisterTransport(id, fdTransport)
+					b.logger.Debug("Registered FD transport for process %s", id)
+				} else {
+					b.logger.Warn("Failed to connect FD transport for process %s: %v", id, err)
+				}
+			}
 		} else {
-			b.logger.Warn("Failed to connect transport for process %s: %v", id, err)
+			// Use FD transport by default for backward compatibility
+			fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
+			if err := fdTransport.Connect(); err == nil {
+				b.transportManager.RegisterTransport(id, fdTransport)
+				b.logger.Debug("Registered FD transport for process %s", id)
+			} else {
+				b.logger.Warn("Failed to connect FD transport for process %s: %v", id, err)
+			}
 		}
 	}
 
@@ -383,12 +402,31 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 
 	// Create and register transport for the process
 	if b.transportManager != nil {
-		transport := transport.NewFDPipeTransport(inputFD, outputFD)
-		if err := transport.Connect(); err == nil {
-			b.transportManager.RegisterTransport(id, transport)
-			b.logger.Debug("Registered transport for process %s", id)
+		// Determine transport type based on configuration
+		if b.config != nil && b.config.Broker.Transport.EnableUDS {
+			// Register UDS transport
+			if err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
+				b.logger.Debug("Registered UDS transport for process %s", id)
+			} else {
+				b.logger.Warn("Failed to connect UDS transport for process %s: %v, falling back to FD transport", id, err)
+				// Fall back to FD transport
+				fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
+				if err := fdTransport.Connect(); err == nil {
+					b.transportManager.RegisterTransport(id, fdTransport)
+					b.logger.Debug("Registered FD transport for process %s", id)
+				} else {
+					b.logger.Warn("Failed to connect FD transport for process %s: %v", id, err)
+				}
+			}
 		} else {
-			b.logger.Warn("Failed to connect transport for process %s: %v", id, err)
+			// Use FD transport by default for backward compatibility
+			fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
+			if err := fdTransport.Connect(); err == nil {
+				b.transportManager.RegisterTransport(id, fdTransport)
+				b.logger.Debug("Registered FD transport for process %s", id)
+			} else {
+				b.logger.Warn("Failed to connect FD transport for process %s: %v", id, err)
+			}
 		}
 	}
 
