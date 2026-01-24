@@ -364,9 +364,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 
 		// Step 1: Check if CVE exists locally
 		logger.Info("RPCGetCVE: Checking if CVE %s exists in local storage", req.CVEID)
-		checkResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCIsCVEStoredByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		checkResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCIsCVEStoredByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Warn("Failed to check local storage: %v", err)
 			logger.Debug("GetCVE local storage check failed for CVE ID %s: %v", req.CVEID, err)
@@ -396,9 +394,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		if checkResult.Stored {
 			// Step 2a: CVE is stored locally, retrieve it
 			logger.Info("RPCGetCVE: CVE %s found locally, retrieving from local storage", req.CVEID)
-			getResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCVEByID", map[string]interface{}{
-				"cve_id": req.CVEID,
-			})
+			getResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 			if err != nil {
 				logger.Warn("Failed to get CVE from local storage: %v", err)
 				logger.Debug("GetCVE failed to retrieve CVE from local storage for CVE ID %s: %v", req.CVEID, err)
@@ -420,9 +416,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		} else {
 			// Step 2b: CVE not found locally, fetch from remote
 			logger.Info("RPCGetCVE: CVE %s not found locally, fetching from remote NVD API", req.CVEID)
-			remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
-				"cve_id": req.CVEID,
-			})
+			remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 			if err != nil {
 				logger.Warn("Failed to fetch CVE from remote: %v", err)
 				logger.Debug("GetCVE failed to fetch CVE from remote for CVE ID %s: %v", req.CVEID, err)
@@ -455,9 +449,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 
 			// Step 3: Save fetched CVE to local storage
 			logger.Info("RPCGetCVE: Saving CVE %s to local storage", req.CVEID)
-			_, err = rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-				"cve": cveData,
-			})
+			_, err = rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", &rpc.SaveCVEByIDParams{CVE: *cveData})
 			if err != nil {
 				logger.Warn("Failed to save CVE to local storage (continuing anyway): %v", err)
 				logger.Debug("GetCVE save to local storage failed for CVE ID %s: %v", req.CVEID, err)
