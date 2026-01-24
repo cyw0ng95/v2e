@@ -9,25 +9,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-// JobRun represents a single job execution instance with full state
-type JobRun struct {
-	ID              string                    `json:"id"`
-	State           JobState                  `json:"state"`
-	DataType        DataType                  `json:"data_type"`
-	StartIndex      int                       `json:"start_index"`
-	ResultsPerBatch int                       `json:"results_per_batch"`
-	CreatedAt       time.Time                 `json:"created_at"`
-	UpdatedAt       time.Time                 `json:"updated_at"`
-	// Overall progress
-	FetchedCount int64 `json:"fetched_count"`
-	StoredCount  int64 `json:"stored_count"`
-	ErrorCount   int64 `json:"error_count"`
-	ErrorMessage string `json:"error_message,omitempty"`
-	// Type-specific progress
-	Progress map[DataType]DataProgress `json:"progress"`
-	// Configuration parameters
-	Params map[string]interface{} `json:"params,omitempty"`
-}
+// JobRun is defined in models.go; reuse that definition here.
 
 // RunStore manages persistent storage of job runs using BoltDB
 type RunStore struct {

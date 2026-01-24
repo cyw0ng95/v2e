@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,12 +15,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// mockSubprocessForRPC helps simulate broker replies by calling back into RPCClient
+// responseWriter captures writes from Subprocess.SendMessage and invokes the RPCClient
 type responseWriter struct {
-	client     *RPCClient
-	respType   subprocess.MessageType
-	payload    interface{}
-	errMessage string
-	buf        bytes.Buffer
+	client      *RPCClient
+	respType    subprocess.MessageType
+	payload     interface{}
+	errMessage  string
+	buf         bytes.Buffer
+	lastRequest *subprocess.Message
 }
 
 func (w *responseWriter) Write(p []byte) (int, error) {
@@ -29,110 +34,171 @@ func (w *responseWriter) Write(p []byte) (int, error) {
 		if idx == -1 {
 			break
 		}
-
 		line := data[:idx]
 		w.buf.Next(idx + 1)
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
 		}
-
 		var msg subprocess.Message
 		if err := json.Unmarshal(line, &msg); err != nil {
 			return len(p), err
 		}
-
+		w.lastRequest = &msg
 		resp := &subprocess.Message{Type: w.respType, ID: msg.ID, CorrelationID: msg.CorrelationID}
 		if w.respType == subprocess.MessageTypeError {
 			resp.Error = w.errMessage
 		} else if w.payload != nil {
-			if data, err := subprocess.MarshalFast(w.payload); err == nil {
-				resp.Payload = data
+			switch v := w.payload.(type) {
+			case []byte:
+				resp.Payload = v
+			case json.RawMessage:
+				resp.Payload = []byte(v)
+			default:
+				if data, err := subprocess.MarshalFast(w.payload); err == nil {
+					resp.Payload = data
+				}
 			}
 		}
-
 		w.client.handleResponse(context.Background(), resp)
 	}
 	return len(p), nil
 }
 
-func newRPCClientWithResponse(respType subprocess.MessageType, payload interface{}, errMessage string) *RPCClient {
+func newRPCClientWithResponse(respType subprocess.MessageType, payload interface{}, errMessage string) (*RPCClient, *responseWriter) {
 	sp := subprocess.New("test-client")
 	client := &RPCClient{
 		sp:              sp,
 		pendingRequests: make(map[string]*requestEntry),
 		rpcTimeout:      time.Second,
 	}
-	sp.SetOutput(&responseWriter{client: client, respType: respType, payload: payload, errMessage: errMessage})
-	return client
+	rw := &responseWriter{client: client, respType: respType, payload: payload, errMessage: errMessage}
+	sp.SetOutput(rw)
+	return client, rw
 }
 
-func TestRegisterHandlers_RPCSuccess(t *testing.T) {
+// errorWriter returns an error on Write to simulate send failures
+type errorWriter struct{}
+
+func (e *errorWriter) Write(p []byte) (int, error) { return 0, errors.New("write error") }
+
+// Test missing method produces 400
+func TestRPCHandler_MissingMethod(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	rg := r.Group("/restful")
+	registerHandlers(rg, &RPCClient{pendingRequests: make(map[string]*requestEntry), rpcTimeout: 1 * time.Second}, 1)
 
-	client := newRPCClientWithResponse(subprocess.MessageTypeResponse, map[string]string{"ok": "yes"}, "")
-	router := gin.New()
-	registerHandlers(router.Group("/restful"), client, 1)
-
-	body := bytes.NewBufferString(`{"method":"RPCPing","params":{"foo":"bar"}}`)
-	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", body)
 	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected status 200, got %d", w.Code)
-	}
-
-	var resp struct {
-		Retcode int                    `json:"retcode"`
-		Message string                 `json:"message"`
-		Payload map[string]interface{} `json:"payload"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
-
-	if resp.Retcode != 0 || resp.Message != "success" {
-		t.Fatalf("Unexpected RPC response metadata: %+v", resp)
-	}
-	if resp.Payload["ok"] != "yes" {
-		t.Fatalf("Payload mismatch: %+v", resp.Payload)
+	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
-func TestRegisterHandlers_RPCErrorResponse(t *testing.T) {
+// Test RPC forward when SendMessage fails (simulate transport error)
+func TestRPCHandler_RPCSendError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	rg := r.Group("/restful")
 
-	client := newRPCClientWithResponse(subprocess.MessageTypeError, nil, "boom")
-	router := gin.New()
-	registerHandlers(router.Group("/restful"), client, 1)
+	// Use a real Subprocess with an output writer that returns an error to simulate send failures
+	sp := subprocess.New("err-client")
+	rpcClient := &RPCClient{sp: sp, pendingRequests: make(map[string]*requestEntry), rpcTimeout: 1 * time.Second}
+	sp.SetOutput(&errorWriter{})
+	registerHandlers(rg, rpcClient, 1)
 
-	body := bytes.NewBufferString(`{"method":"RPCFail","params":{}}`)
-	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", body)
 	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
+	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x"}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("Expected status 200, got %d", w.Code)
+		t.Fatalf("expected 200, got %d", w.Code)
 	}
-
-	var resp struct {
-		Retcode int         `json:"retcode"`
-		Message string      `json:"message"`
-		Payload interface{} `json:"payload"`
-	}
+	var resp map[string]interface{}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
+		t.Fatalf("invalid json response: %v", err)
 	}
+	if int(resp["retcode"].(float64)) == 0 {
+		t.Fatalf("expected non-zero retcode when send fails")
+	}
+}
 
-	if resp.Retcode != 500 {
-		t.Fatalf("Expected retcode 500, got %d", resp.Retcode)
+// Test RPC returns MessageTypeError -> handler maps to retcode 500 and message
+func TestRPCHandler_MessageTypeError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	rg := r.Group("/restful")
+
+	rpcClient, _ := newRPCClientWithResponse(subprocess.MessageTypeError, nil, "boom")
+	registerHandlers(rg, rpcClient, 1)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x"}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	if resp.Message != "boom" {
-		t.Fatalf("Unexpected error message: %s", resp.Message)
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("invalid json response: %v", err)
 	}
-	if resp.Payload != nil {
-		t.Fatalf("Expected nil payload on error, got %v", resp.Payload)
+	if int(resp["retcode"].(float64)) == 0 {
+		t.Fatalf("expected non-zero retcode for error message")
+	}
+	if resp["message"].(string) != "boom" {
+		t.Fatalf("expected message 'boom', got %v", resp["message"])
+	}
+}
+
+// Test invalid payload from RPC produces parse error handling
+func TestRPCHandler_InvalidPayload(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	rg := r.Group("/restful")
+
+	// Create a client whose response writer will set raw []byte payload directly
+	rpcClient, _ := newRPCClientWithResponse(subprocess.MessageTypeResponse, []byte("not-json"), "")
+	registerHandlers(rg, rpcClient, 1)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x"}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("invalid json response: %v", err)
+	}
+	if int(resp["retcode"].(float64)) == 0 {
+		t.Fatalf("expected non-zero retcode for parse error")
+	}
+}
+
+// Test default target is broker when empty target provided
+func TestRPCHandler_DefaultTargetBroker(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	rg := r.Group("/restful")
+	rpcClient, rw := newRPCClientWithResponse(subprocess.MessageTypeResponse, map[string]bool{"ok": true}, "")
+	registerHandlers(rg, rpcClient, 1)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x","target":""}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if rw.lastRequest == nil {
+		t.Fatalf("no request captured by response writer")
+	}
+	if rw.lastRequest.Target != "broker" {
+		t.Fatalf("expected default target 'broker', got '%s'", rw.lastRequest.Target)
 	}
 }

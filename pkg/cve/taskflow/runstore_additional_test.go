@@ -15,7 +15,7 @@ func TestRunStore_GetActiveRun_None(t *testing.T) {
 
 func TestRunStore_UpdateProgress_Increments(t *testing.T) {
 	rs := NewTempRunStore(t)
-	_, _ = rs.CreateRun("r1", 0, 1)
+	_, _ = rs.CreateRun("r1", 0, 1, DataTypeCVE)
 	if err := rs.UpdateProgress("r1", 2, 3, 4); err != nil {
 		t.Fatalf("UpdateProgress failed: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestRunStore_UpdateProgress_Increments(t *testing.T) {
 
 func TestRunStore_DeleteRun_RemovesEntry(t *testing.T) {
 	rs := NewTempRunStore(t)
-	_, _ = rs.CreateRun("r2", 0, 1)
+	_, _ = rs.CreateRun("r2", 0, 1, DataTypeCVE)
 	if err := rs.DeleteRun("r2"); err != nil {
 		t.Fatalf("DeleteRun failed: %v", err)
 	}
@@ -38,10 +38,10 @@ func TestRunStore_DeleteRun_RemovesEntry(t *testing.T) {
 
 func TestRunStore_GetLatestRun_PicksMostRecent(t *testing.T) {
 	rs := NewTempRunStore(t)
-	_, _ = rs.CreateRun("old", 0, 1)
+	_, _ = rs.CreateRun("old", 0, 1, DataTypeCVE)
 	// update state to bump UpdatedAt
 	_ = rs.UpdateState("old", StateRunning)
-	_, _ = rs.CreateRun("new", 0, 1)
+	_, _ = rs.CreateRun("new", 0, 1, DataTypeCVE)
 	latest, err := rs.GetLatestRun()
 	if err != nil {
 		t.Fatalf("GetLatestRun failed: %v", err)
