@@ -247,7 +247,14 @@ func (o *Optimizer) worker(id int) {
 		var batch []*proc.Message
 		select {
 		case msg := <-o.optimizedMessages:
+			// Record arrival time for latency tracking
+			arrivalTime := time.Now()
 			batch = append(batch, msg)
+			
+			// Record message arrival in monitor
+			if o.monitor != nil {
+				o.monitor.RecordMessage()
+			}
 		case <-o.ctx.Done():
 			return
 		}
@@ -259,7 +266,14 @@ func (o *Optimizer) worker(id int) {
 			for len(batch) < o.batchSize {
 				select {
 				case msg := <-o.optimizedMessages:
+					// Record arrival time for latency tracking
+					arrivalTime := time.Now()
 					batch = append(batch, msg)
+					
+					// Record message arrival in monitor
+					if o.monitor != nil {
+						o.monitor.RecordMessage()
+					}
 					if len(batch) >= o.batchSize {
 						break collectLoop
 					}
@@ -280,6 +294,7 @@ func (o *Optimizer) worker(id int) {
 		}
 
 		// process batch
+		startTime := time.Now()
 		for _, msg := range batch {
 			if msg.Target == "broker" {
 				_ = o.router.ProcessBrokerMessage(msg)
@@ -287,6 +302,16 @@ func (o *Optimizer) worker(id int) {
 				_ = o.router.Route(msg, msg.Source)
 			}
 			o.updateAtomic(msg, true)
+		}
+		processingDuration := time.Since(startTime)
+		
+		// Record processing time in monitor if available
+		if o.monitor != nil {
+			// Calculate average latency per message
+			if len(batch) > 0 {
+				avgProcessingTime := processingDuration / time.Duration(len(batch))
+				o.monitor.AddLatencySample(avgProcessingTime)
+			}
 		}
 	}
 }
@@ -317,6 +342,12 @@ func (o *Optimizer) updateAtomic(msg *proc.Message, sent bool) {
 // Offer allows non-blocking enqueue to optimized queue.
 // Offer attempts a non-blocking enqueue and returns whether the message was accepted.
 func (o *Optimizer) Offer(msg *proc.Message) bool {
+	// Update queue depth in monitor
+	if o.monitor != nil {
+		queueDepth := int64(cap(o.optimizedMessages)) - int64(len(o.optimizedMessages))
+		o.monitor.UpdateMessageQueueDepth(queueDepth)
+	}
+
 	switch o.offerPolicy {
 	case "block":
 		// blocking send

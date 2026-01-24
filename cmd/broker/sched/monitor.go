@@ -23,6 +23,14 @@ type SystemMonitor struct {
 	lastThroughputSample int64
 	lastThroughputTime time.Time
 	
+	// Latency tracking
+	latencySamples []time.Duration
+	latencyMu      sync.RWMutex
+	
+	// Process resource tracking
+	processMetrics map[string]*ProcessResourceMetrics
+	processMetricsMu sync.RWMutex
+	
 	running int32
 }
 
@@ -35,6 +43,8 @@ func NewSystemMonitor(interval time.Duration) *SystemMonitor {
 		cancel:   cancel,
 		interval: interval,
 		lastThroughputTime: time.Now(),
+		latencySamples: make([]time.Duration, 0),
+		processMetrics: make(map[string]*ProcessResourceMetrics),
 	}
 }
 
@@ -92,33 +102,28 @@ func (sm *SystemMonitor) CollectMetrics() LoadMetrics {
 	
 	timeDiff := now.Sub(sm.lastThroughputTime).Seconds()
 	if timeDiff > 0 {
-		calculatedThroughput := float64(currentThroughput-lastSample) / timeDiff
+		calculatedThroughput = float64(currentThroughput-lastSample) / timeDiff
 		
 		// Update for next calculation
 		atomic.StoreInt64(&sm.lastThroughputSample, currentThroughput)
 		sm.lastThroughputTime = now
-		
-		return LoadMetrics{
-			CPUUtilization:      cpuUtil,
-			MemoryUtilization:   memUtil,
-			MessageQueueDepth:   queueDepth,
-			MessageThroughput:   calculatedThroughput,
-			AverageLatency:      0, // Would need to track request/response pairs
-			ActiveConnections:   0, // Would need to track active connections
-			SystemLoadAvg:       sm.getSystemLoadAverage(),
-			ProcessResourceUsage: make(map[string]ProcessResourceMetrics),
-		}
 	}
+	
+	// Calculate average latency from samples
+	avgLatency := sm.calculateAverageLatency()
+	
+	// Get process resource usage
+	processUsage := sm.getProcessResourceUsage()
 	
 	return LoadMetrics{
 		CPUUtilization:      cpuUtil,
 		MemoryUtilization:   memUtil,
 		MessageQueueDepth:   queueDepth,
-		MessageThroughput:   0,
-		AverageLatency:      0,
-		ActiveConnections:   0,
+		MessageThroughput:   calculatedThroughput,
+		AverageLatency:      avgLatency,
+		ActiveConnections:   len(processUsage), // Approximation
 		SystemLoadAvg:       sm.getSystemLoadAverage(),
-		ProcessResourceUsage: make(map[string]ProcessResourceMetrics),
+		ProcessResourceUsage: processUsage,
 	}
 }
 
@@ -163,6 +168,57 @@ func (sm *SystemMonitor) RecordMessage() {
 // GetThroughput returns the current throughput measurement
 func (sm *SystemMonitor) GetThroughput() float64 {
 	return float64(atomic.LoadInt64(&sm.messageThroughput))
+}
+
+// AddLatencySample adds a latency sample for average calculation
+func (sm *SystemMonitor) AddLatencySample(duration time.Duration) {
+	sm.latencyMu.Lock()
+	defer sm.latencyMu.Unlock()
+	
+	// Keep only the last N samples to prevent unbounded growth
+	const maxSamples = 100
+	if len(sm.latencySamples) >= maxSamples {
+		sm.latencySamples = sm.latencySamples[1:] // Remove oldest sample
+	}
+	sm.latencySamples = append(sm.latencySamples, duration)
+}
+
+// calculateAverageLatency calculates the average latency from samples
+func (sm *SystemMonitor) calculateAverageLatency() time.Duration {
+	sm.latencyMu.RLock()
+	defer sm.latencyMu.RUnlock()
+	
+	if len(sm.latencySamples) == 0 {
+		return 0
+	}
+	
+	var total time.Duration
+	for _, sample := range sm.latencySamples {
+		total += sample
+	}
+	return total / time.Duration(len(sm.latencySamples))
+}
+
+// UpdateProcessMetrics updates metrics for a specific process
+func (sm *SystemMonitor) UpdateProcessMetrics(processID string, metrics ProcessResourceMetrics) {
+	sm.processMetricsMu.Lock()
+	defer sm.processMetricsMu.Unlock()
+	
+	sm.processMetrics[processID] = &metrics
+}
+
+// getProcessResourceUsage returns a copy of process resource usage metrics
+func (sm *SystemMonitor) getProcessResourceUsage() map[string]ProcessResourceMetrics {
+	sm.processMetricsMu.RLock()
+	defer sm.processMetricsMu.RUnlock()
+	
+	result := make(map[string]ProcessResourceMetrics)
+	for id, metrics := range sm.processMetrics {
+		if metrics != nil {
+			result[id] = *metrics
+		}
+	}
+	return result
 }
 
 // Monitorable represents an interface for components that can be monitored

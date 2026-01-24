@@ -87,22 +87,72 @@ func (ao *AdaptiveOptimizer) Observe(metrics LoadMetrics) error {
 
 // AdjustConfiguration adjusts optimization parameters based on current metrics
 func (ao *AdaptiveOptimizer) AdjustConfiguration() error {
-	// Placeholder implementation - in a real system, this would contain
-	// logic to adjust parameters based on observed metrics
-	
-	// Example: Increase worker count if CPU utilization is low but message queue is deep
+	// Adjust worker count based on CPU utilization and message queue depth
 	if ao.currentMetrics.CPUUtilization < 0.7 && ao.currentMetrics.MessageQueueDepth > 100 {
+		// If CPU is underutilized but queue is growing, add workers
 		ao.parameters.WorkerCount += 2
-		if ao.parameters.WorkerCount > 16 { // Cap at 16 workers
-			ao.parameters.WorkerCount = 16
+	} else if ao.currentMetrics.CPUUtilization > 0.9 {
+		// If CPU is overloaded, reduce workers if possible
+		if ao.parameters.WorkerCount > 2 {
+			ao.parameters.WorkerCount -= 1
 		}
 	}
 	
-	// Example: Increase buffer capacity if throughput is high
-	if ao.currentMetrics.MessageThroughput > 1000 { // 1000 messages/sec
+	// Cap worker count to reasonable limits
+	if ao.parameters.WorkerCount > 16 {
+		ao.parameters.WorkerCount = 16
+	} else if ao.parameters.WorkerCount < 1 {
+		ao.parameters.WorkerCount = 1
+	}
+	
+	// Adjust buffer capacity based on throughput and queue depth
+	if ao.currentMetrics.MessageThroughput > 1500 { // High throughput
 		ao.parameters.BufferCapacity = 2000
-	} else {
+	} else if ao.currentMetrics.MessageThroughput > 800 { // Medium throughput
+		ao.parameters.BufferCapacity = 1500
+	} else if ao.currentMetrics.MessageThroughput > 300 { // Low throughput
 		ao.parameters.BufferCapacity = 1000
+	} else { // Very low throughput
+		ao.parameters.BufferCapacity = 500
+	}
+	
+	// Adjust batch size based on throughput and latency
+	if ao.currentMetrics.MessageThroughput > 1000 && ao.currentMetrics.AverageLatency < 5*time.Millisecond {
+		// High throughput with low latency - increase batching
+		ao.parameters.BatchSize = 10
+	} else if ao.currentMetrics.MessageThroughput > 500 {
+		// Moderate throughput - moderate batching
+		ao.parameters.BatchSize = 5
+	} else {
+		// Low throughput - small batches for responsiveness
+		ao.parameters.BatchSize = 1
+	}
+	
+	// Adjust flush interval based on latency requirements
+	if ao.currentMetrics.AverageLatency > 20*time.Millisecond {
+		// High latency - flush more frequently
+		ao.parameters.FlushInterval = 2 * time.Millisecond
+	} else if ao.currentMetrics.AverageLatency > 10*time.Millisecond {
+		// Medium latency - moderate flush interval
+		ao.parameters.FlushInterval = 5 * time.Millisecond
+	} else {
+		// Low latency - can batch more aggressively
+		ao.parameters.FlushInterval = 15 * time.Millisecond
+	}
+	
+	// Adjust offer policy based on system load
+	if ao.currentMetrics.CPUUtilization > 0.95 || ao.currentMetrics.MemoryUtilization > 90 {
+		// Under high load, use blocking policy to slow down ingestion
+		ao.parameters.OfferPolicy = "block"
+		ao.parameters.OfferTimeout = 10 * time.Millisecond
+	} else if ao.currentMetrics.MessageQueueDepth > 500 {
+		// High queue depth - use drop policy to prevent overload
+		ao.parameters.OfferPolicy = "drop_oldest"
+		ao.parameters.OfferTimeout = 5 * time.Millisecond
+	} else {
+		// Normal conditions - use timeout policy
+		ao.parameters.OfferPolicy = "timeout"
+		ao.parameters.OfferTimeout = 100 * time.Millisecond
 	}
 	
 	return nil
