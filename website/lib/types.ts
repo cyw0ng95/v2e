@@ -292,6 +292,7 @@ export interface SessionStatus {
   hasSession: boolean;
   sessionId?: string;
   state?: string;
+  dataType?: string;
   startIndex?: number;
   resultsPerBatch?: number;
   createdAt?: string;
@@ -299,6 +300,18 @@ export interface SessionStatus {
   fetchedCount?: number;
   storedCount?: number;
   errorCount?: number;
+  errorMessage?: string;
+  progress?: Record<string, DataProgress>;
+  params?: Record<string, unknown>;
+}
+
+export interface DataProgress {
+  totalCount: number;
+  processedCount: number;
+  errorCount: number;
+  startTime: string;
+  lastUpdate: string;
+  errorMessage?: string;
 }
 
 export interface PauseJobResponse {

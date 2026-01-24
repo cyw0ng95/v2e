@@ -257,6 +257,135 @@ export function useStartSession() {
   return { mutate, isPending, error };
 }
 
+export function useStartTypedSession() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params: { sessionId: string; dataType: string; startIndex?: number; resultsPerBatch?: number; params?: Record<string, unknown> }, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
+      const { sessionId, dataType, startIndex, resultsPerBatch, params: extraParams } = params;
+      const response = await rpcClient.startTypedSession(sessionId, dataType, startIndex, resultsPerBatch, extraParams);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start typed session');
+      }
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error starting typed session:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+export function useStartCWEImport() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
+      const response = await rpcClient.startCWEImport(params);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start CWE import');
+      }
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error starting CWE import:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+export function useStartCAPECImport() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
+      const response = await rpcClient.startCAPECImport(params);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start CAPEC import');
+      }
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error starting CAPEC import:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+export function useStartATTACKImport() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+      
+      const response = await rpcClient.startATTACKImport(params);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start ATT&CK import');
+      }
+      
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      console.error('Error starting ATT&CK import:', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
 export function useStopSession() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);

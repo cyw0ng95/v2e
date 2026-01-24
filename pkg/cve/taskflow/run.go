@@ -11,16 +11,22 @@ import (
 
 // JobRun represents a single job execution instance with full state
 type JobRun struct {
-	ID              string    `json:"id"`
-	State           JobState  `json:"state"`
-	StartIndex      int       `json:"start_index"`
-	ResultsPerBatch int       `json:"results_per_batch"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	FetchedCount    int64     `json:"fetched_count"`
-	StoredCount     int64     `json:"stored_count"`
-	ErrorCount      int64     `json:"error_count"`
-	ErrorMessage    string    `json:"error_message,omitempty"`
+	ID              string                    `json:"id"`
+	State           JobState                  `json:"state"`
+	DataType        DataType                  `json:"data_type"`
+	StartIndex      int                       `json:"start_index"`
+	ResultsPerBatch int                       `json:"results_per_batch"`
+	CreatedAt       time.Time                 `json:"created_at"`
+	UpdatedAt       time.Time                 `json:"updated_at"`
+	// Overall progress
+	FetchedCount int64 `json:"fetched_count"`
+	StoredCount  int64 `json:"stored_count"`
+	ErrorCount   int64 `json:"error_count"`
+	ErrorMessage string `json:"error_message,omitempty"`
+	// Type-specific progress
+	Progress map[DataType]DataProgress `json:"progress"`
+	// Configuration parameters
+	Params map[string]interface{} `json:"params,omitempty"`
 }
 
 // RunStore manages persistent storage of job runs using BoltDB
@@ -57,10 +63,11 @@ func NewRunStore(dbPath string, logger *common.Logger) (*RunStore, error) {
 }
 
 // CreateRun creates a new job run
-func (s *RunStore) CreateRun(runID string, startIndex, resultsPerBatch int) (*JobRun, error) {
+func (s *RunStore) CreateRun(runID string, startIndex, resultsPerBatch int, dataType DataType) (*JobRun, error) {
 	run := &JobRun{
 		ID:              runID,
 		State:           StateQueued,
+		DataType:        dataType,
 		StartIndex:      startIndex,
 		ResultsPerBatch: resultsPerBatch,
 		CreatedAt:       time.Now(),
@@ -68,6 +75,8 @@ func (s *RunStore) CreateRun(runID string, startIndex, resultsPerBatch int) (*Jo
 		FetchedCount:    0,
 		StoredCount:     0,
 		ErrorCount:      0,
+		Progress:        make(map[DataType]DataProgress),
+		Params:          make(map[string]interface{}),
 	}
 
 	if err := s.saveRun(run); err != nil {
