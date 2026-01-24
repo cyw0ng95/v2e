@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"sync"
 	"testing"
@@ -13,7 +14,23 @@ import (
 // BenchmarkBrokerSendMessage benchmarks the basic message sending performance
 func BenchmarkBrokerSendMessage(b *testing.B) {
 	broker := NewBroker()
-	defer broker.Shutdown()
+	defer func() {
+		_ = broker.Shutdown()
+	}()
+
+	// Start a background goroutine to drain the broker messages channel
+	stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-broker.messages:
+				// discard
+			}
+		}
+	}()
+	defer close(stop)
 
 	// Create a sample message
 	msg, _ := proc.NewRequestMessage("test-request", map[string]interface{}{
@@ -31,6 +48,19 @@ func BenchmarkBrokerSendMessage(b *testing.B) {
 func BenchmarkBrokerSendMessageConcurrent(b *testing.B) {
 	broker := NewBroker()
 	defer broker.Shutdown()
+
+	// Drain messages to avoid blocking when channel fills
+	stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-broker.messages:
+			}
+		}
+	}()
+	defer close(stop)
 
 	// Create a sample message
 	msg, _ := proc.NewRequestMessage("test-request", map[string]interface{}{
@@ -128,37 +158,23 @@ func BenchmarkBrokerMessageRoundTrip(b *testing.B) {
 	}
 }
 
-// BenchmarkBrokerInvokeRPC benchmarks the RPC invocation performance
-func BenchmarkBrokerInvokeRPC(b *testing.B) {
-	broker := NewBroker()
-	defer broker.Shutdown()
-
-	// Start a simple RPC process
-	info, err := broker.SpawnRPC("test-service", "sleep", "30")
-	if err != nil {
-		b.Skipf("Could not start test service: %v", err)
-		return
-	}
-	defer broker.Kill(info.ID)
-
-	// Wait for process to start
-	time.Sleep(100 * time.Millisecond)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Try to invoke RPC (this will likely timeout since sleep doesn't respond to RPC)
-		_, err := broker.InvokeRPC("caller", "test-service", "NonExistentRPC", nil, 10*time.Millisecond)
-		// We expect timeouts, so ignore them
-		if err != nil && err.Error() != "timeout waiting for response from test-service" {
-			b.Logf("Unexpected error: %v", err)
-		}
-	}
-}
-
 // BenchmarkBrokerLargeMessage benchmarks handling of large messages
 func BenchmarkBrokerLargeMessage(b *testing.B) {
 	broker := NewBroker()
 	defer broker.Shutdown()
+
+	// Drain messages to avoid blocking
+	stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-broker.messages:
+			}
+		}
+	}()
+	defer close(stop)
 
 	// Create a large payload
 	largeData := make([]byte, 1024*10) // 10KB
@@ -180,6 +196,19 @@ func BenchmarkBrokerLargeMessage(b *testing.B) {
 func BenchmarkBrokerManyConcurrentOperations(b *testing.B) {
 	broker := NewBroker()
 	defer broker.Shutdown()
+
+	// Drain messages to avoid blocking when many messages are sent
+	stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-broker.messages:
+			}
+		}
+	}()
+	defer close(stop)
 
 	// Number of concurrent goroutines
 	numGoroutines := 10
@@ -207,51 +236,65 @@ func BenchmarkBrokerManyConcurrentOperations(b *testing.B) {
 	wg.Wait()
 }
 
-// BenchmarkPerformanceOptimizerSendMessage benchmarks the optimized message sending
-func BenchmarkPerformanceOptimizerSendMessage(b *testing.B) {
+func BenchmarkGenerateCorrelationID(b *testing.B) {
 	broker := NewBroker()
 	defer broker.Shutdown()
 
-	optimizer := NewPerformanceOptimizer(broker)
-	defer optimizer.Stop()
-
-	// Create a sample message
-	msg, _ := proc.NewRequestMessage("test-request", map[string]interface{}{
-		"data": "test-data",
-		"id":   123,
-	})
-
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = optimizer.SendMessageOptimized(msg)
+		_ = broker.GenerateCorrelationID()
 	}
 }
 
-// BenchmarkBrokerMessageRouting benchmarks message routing performance
-func BenchmarkBrokerMessageRouting(b *testing.B) {
+// BenchmarkGetMessageCount micro-benchmark for GetMessageCount
+func BenchmarkGetMessageCount(b *testing.B) {
 	broker := NewBroker()
 	defer broker.Shutdown()
 
-	// Create a target process
-	targetInfo, err := broker.Spawn("target-process", "sleep", "30")
-	if err != nil {
-		b.Skipf("Could not start target process: %v", err)
-		return
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = broker.GetMessageCount()
 	}
-	defer broker.Kill(targetInfo.ID)
+}
 
-	// Wait for process to start
-	time.Sleep(100 * time.Millisecond)
+// BenchmarkGetAllEndpoints micro-benchmark for GetAllEndpoints
+func BenchmarkGetAllEndpoints(b *testing.B) {
+	broker := NewBroker()
+	defer broker.Shutdown()
 
-	// Create a message to route
-	msg, _ := proc.NewRequestMessage("routing-test", nil)
-	msg.Target = "target-process"
+	// Register many endpoints
+	for i := 0; i < 100; i++ {
+		broker.RegisterEndpoint("proc1", fmt.Sprintf("ep-%d", i))
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := broker.RouteMessage(msg, "source-process")
-		if err != nil {
-			// Expected since target process doesn't read from stdin
+		_ = broker.GetAllEndpoints()
+	}
+}
+
+// BenchmarkSendMessageNoAlloc sends the same pre-allocated message repeatedly
+func BenchmarkSendMessageNoAlloc(b *testing.B) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	// Drainer
+	stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-broker.messages:
+			}
 		}
+	}()
+	defer close(stop)
+
+	msg, _ := proc.NewRequestMessage("bench-noalloc", nil)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = broker.SendMessage(msg)
 	}
 }
