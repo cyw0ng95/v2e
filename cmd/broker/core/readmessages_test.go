@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -21,11 +21,10 @@ func TestReadProcessMessages_ParsesAndRoutes(t *testing.T) {
 	defer w.Close()
 
 	// Insert fake process with stdout set to read end
-	InsertFakeProcess(b, "fake-proc", nil, r, ProcessStatusRunning)
+	fakeProc := InsertFakeProcess(b, "fake-proc", nil, r, ProcessStatusRunning)
 
 	// Start reader goroutine (mirror how SpawnRPC runs it)
-	b.wg.Add(1)
-	go b.readProcessMessages(b.processes["fake-proc"])
+	b.StartProcessReaderForTest(fakeProc)
 
 	// Craft a message and write it to the write end
 	msg, _ := proc.NewEventMessage("evt-1", map[string]interface{}{"x": 42})

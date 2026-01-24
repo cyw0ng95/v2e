@@ -94,16 +94,15 @@ func main() {
 	// This processes RPC requests directed at the broker
 	go func() {
 		for {
-			select {
-			case msg := <-broker.messages:
-				// Process messages directed at the broker
-				if err := broker.ProcessMessage(msg); err != nil {
-					common.Warn("Error processing broker message - Message ID: %s, Source: %s, Target: %s, Error: %v", msg.ID, msg.Source, msg.Target, err)
-				} else {
-					common.Debug("Successfully processed broker message - Message ID: %s, Source: %s, Target: %s", msg.ID, msg.Source, msg.Target)
-				}
-			case <-broker.Context().Done():
+			msg, err := broker.ReceiveMessage(broker.Context())
+			if err != nil {
 				return
+			}
+			// Process messages directed at the broker
+			if err := broker.ProcessMessage(msg); err != nil {
+				common.Warn("Error processing broker message - Message ID: %s, Source: %s, Target: %s, Error: %v", msg.ID, msg.Source, msg.Target, err)
+			} else {
+				common.Debug("Successfully processed broker message - Message ID: %s, Source: %s, Target: %s", msg.ID, msg.Source, msg.Target)
 			}
 		}
 	}()

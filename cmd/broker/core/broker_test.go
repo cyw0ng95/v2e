@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"bytes"
@@ -39,10 +39,10 @@ func TestNewBroker(t *testing.T) {
 		t.Fatal("NewBroker returned nil")
 	}
 
-	if broker.processes == nil {
-		t.Error("Expected processes map to be initialized")
+	if broker.ProcessCount() != 0 {
+		t.Error("Expected no processes on new broker")
 	}
-	if broker.messages == nil {
+	if broker.MessageChannel() == nil {
 		t.Error("Expected messages channel to be initialized")
 	}
 

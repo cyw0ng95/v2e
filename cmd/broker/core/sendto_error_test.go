@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"testing"
@@ -16,22 +16,20 @@ func TestSendToProcess_ErrorCases(t *testing.T) {
 	}
 
 	// Case: process exists but is not running
-	pInfo := &ProcessInfo{ID: "p-exited", Status: ProcessStatusExited}
-	p := &Process{info: pInfo, done: make(chan struct{})}
-	b.mu.Lock()
-	b.processes[pInfo.ID] = p
-	b.mu.Unlock()
+	p := NewTestProcess("p-exited", ProcessStatusExited, nil, nil)
+	b.InsertProcessForTest(p)
+	pid := p.Info().ID
 
 	m2, _ := proc.NewEventMessage("evt-exited", nil)
-	if err := b.SendToProcess(pInfo.ID, m2); err == nil {
+	if err := b.SendToProcess(pid, m2); err == nil {
 		t.Fatalf("expected error when sending to non-running process")
 	}
 
 	// Case: running but no stdin (does not support RPC)
-	p.info.Status = ProcessStatusRunning
-	p.stdin = nil
+	p.SetStatus(ProcessStatusRunning)
+	p.SetStdin(nil)
 	m3, _ := proc.NewEventMessage("evt-nostdin", nil)
-	if err := b.SendToProcess(pInfo.ID, m3); err == nil {
+	if err := b.SendToProcess(pid, m3); err == nil {
 		t.Fatalf("expected error when sending to process without stdin")
 	}
 }

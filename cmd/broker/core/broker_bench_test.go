@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func BenchmarkBrokerSendMessage(b *testing.B) {
 			select {
 			case <-stop:
 				return
-			case <-broker.messages:
+			case <-broker.MessageChannel():
 				// discard
 			}
 		}
@@ -56,7 +56,7 @@ func BenchmarkBrokerSendMessageConcurrent(b *testing.B) {
 			select {
 			case <-stop:
 				return
-			case <-broker.messages:
+			case <-broker.MessageChannel():
 			}
 		}
 	}()
@@ -170,7 +170,7 @@ func BenchmarkBrokerLargeMessage(b *testing.B) {
 			select {
 			case <-stop:
 				return
-			case <-broker.messages:
+			case <-broker.MessageChannel():
 			}
 		}
 	}()
@@ -204,7 +204,7 @@ func BenchmarkBrokerManyConcurrentOperations(b *testing.B) {
 			select {
 			case <-stop:
 				return
-			case <-broker.messages:
+			case <-broker.MessageChannel():
 			}
 		}
 	}()
@@ -285,7 +285,7 @@ func BenchmarkSendMessageNoAlloc(b *testing.B) {
 			select {
 			case <-stop:
 				return
-			case <-broker.messages:
+			case <-broker.MessageChannel():
 			}
 		}
 	}()
@@ -338,13 +338,11 @@ func BenchmarkRouteResponseToPending(b *testing.B) {
 
 		// Create buffered channel and register pending request
 		ch := make(chan *proc.Message, 1)
-		broker.pendingMu.Lock()
-		broker.pendingRequests[corr] = &PendingRequest{
+		broker.AddPendingRequest(corr, &PendingRequest{
 			SourceProcess: "bench-source",
 			ResponseChan:  ch,
 			Timestamp:     time.Now(),
-		}
-		broker.pendingMu.Unlock()
+		})
 
 		// Build response message matching the correlation ID
 		resp, _ := proc.NewResponseMessage("RPCMethod", nil)
