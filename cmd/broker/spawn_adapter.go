@@ -4,13 +4,21 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/broker"
 )
 
+// spawnBroker captures the subset of broker behavior used by SpawnAdapter.
+type spawnBroker interface {
+	Spawn(id, command string, args ...string) (*ProcessInfo, error)
+	SpawnRPC(id, command string, args ...string) (*ProcessInfo, error)
+	SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error)
+	SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error)
+}
+
 // SpawnAdapter delegates to the existing in-process Broker spawn methods.
 // This adapter is intentionally simple and non-invasive.
 type SpawnAdapter struct {
-	b *Broker
+	b spawnBroker
 }
 
-func NewSpawnAdapter(b *Broker) *SpawnAdapter { return &SpawnAdapter{b: b} }
+func NewSpawnAdapter(b spawnBroker) *SpawnAdapter { return &SpawnAdapter{b: b} }
 
 func toResult(info *ProcessInfo) *broker.SpawnResult {
 	if info == nil {

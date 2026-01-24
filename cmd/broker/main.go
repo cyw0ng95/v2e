@@ -13,15 +13,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cyw0ng95/v2e/cmd/broker/core"
 	"github.com/cyw0ng95/v2e/cmd/broker/perf"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
+// brokerRouteBridge captures the minimal broker surface needed by perf.Optimizer.
+type brokerRouteBridge interface {
+	RouteMessage(msg *proc.Message, sourceProcess string) error
+	ProcessMessage(msg *proc.Message) error
+}
+
 // brokerRouter adapts the core Broker to the routing.Router interface used by perf.Optimizer.
 type brokerRouter struct {
-	b *core.Broker
+	b brokerRouteBridge
 }
 
 func (r *brokerRouter) Route(msg *proc.Message, sourceProcess string) error {
