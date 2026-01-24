@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
@@ -15,7 +14,7 @@ import (
 
 func makeMsgWithPayload(t *testing.T, payload interface{}) *subprocess.Message {
 	t.Helper()
-	data, err := sonic.Marshal(payload)
+	data, err := subprocess.MarshalFast(payload)
 	if err != nil {
 		t.Fatalf("marshal payload: %v", err)
 	}
