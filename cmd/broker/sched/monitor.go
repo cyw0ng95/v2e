@@ -4,10 +4,9 @@ package sched
 import (
 	"context"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
 // SystemMonitor collects system-level metrics
@@ -99,6 +98,7 @@ func (sm *SystemMonitor) CollectMetrics() LoadMetrics {
 	now := time.Now()
 	lastSample := atomic.LoadInt64(&sm.lastThroughputSample)
 	currentThroughput := atomic.LoadInt64(&sm.messageThroughput)
+	var calculatedThroughput float64
 	
 	timeDiff := now.Sub(sm.lastThroughputTime).Seconds()
 	if timeDiff > 0 {

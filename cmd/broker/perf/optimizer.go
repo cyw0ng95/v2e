@@ -64,7 +64,7 @@ type Optimizer struct {
 	lastAdaptation time.Time
 }
 
-// EnableAdaptiveOptimization starts the adaptive optimization system
+
 func (o *Optimizer) EnableAdaptiveOptimization() {
 	// Set up callback to receive metrics from the monitor
 	o.monitor.SetCallback(func(metrics sched.LoadMetrics) {
@@ -93,7 +93,7 @@ func (o *Optimizer) EnableAdaptiveOptimization() {
 	o.monitor.Start()
 }
 
-// applyAdaptedParameters applies the adapted parameters to the optimizer
+
 func (o *Optimizer) applyAdaptedParameters() {
 	metrics := o.adaptiveOpt.GetMetrics()
 	
@@ -133,7 +133,7 @@ func (o *Optimizer) applyAdaptedParameters() {
 	}
 }
 
-// adjustWorkerCount adjusts the number of worker goroutines
+
 func (o *Optimizer) adjustWorkerCount(newCount int) {
 	currentCount := o.numWorkers
 	
@@ -247,8 +247,6 @@ func (o *Optimizer) worker(id int) {
 		var batch []*proc.Message
 		select {
 		case msg := <-o.optimizedMessages:
-			// Record arrival time for latency tracking
-			arrivalTime := time.Now()
 			batch = append(batch, msg)
 			
 			// Record message arrival in monitor
@@ -266,8 +264,6 @@ func (o *Optimizer) worker(id int) {
 			for len(batch) < o.batchSize {
 				select {
 				case msg := <-o.optimizedMessages:
-					// Record arrival time for latency tracking
-					arrivalTime := time.Now()
 					batch = append(batch, msg)
 					
 					// Record message arrival in monitor
@@ -433,98 +429,19 @@ func (o *Optimizer) Metrics() map[string]interface{} {
 }
 
 func (o *Optimizer) Stop() {
-	o.statsSyncTicker.Stop()
+	// Stop the monitor if it exists
+	if o.monitor != nil {
+		o.monitor.Stop()
+	}
+
+	// Cancel the context to stop the main processing loop
 	o.cancel()
+
+	// Wait for all workers to finish
 	o.workerWG.Wait()
-}
 
-// EnableAdaptiveOptimization starts the adaptive optimization system
-func (o *Optimizer) EnableAdaptiveOptimization() {
-	// Set up callback to receive metrics from the monitor
-	o.monitor.SetCallback(func(metrics sched.LoadMetrics) {
-		// Update adaptive optimizer with new metrics
-		err := o.adaptiveOpt.Observe(metrics)
-		if err != nil && o.logger != nil {
-			o.logger.Warn("Error observing metrics: %v", err)
-		}
-		
-		// Check if it's time to adapt parameters
-		o.adaptationMu.Lock()
-		if time.Since(o.lastAdaptation) >= o.adaptationFreq {
-			err := o.adaptiveOpt.AdjustConfiguration()
-			if err != nil && o.logger != nil {
-				o.logger.Warn("Error adjusting configuration: %v", err)
-			}
-			o.lastAdaptation = time.Now()
-			
-			// Apply the adjusted parameters to the optimizer
-			o.applyAdaptedParameters()
-		}
-		o.adaptationMu.Unlock()
-	})
-	
-	// Start the monitor
-	o.monitor.Start()
-}
-
-// applyAdaptedParameters applies the adapted parameters to the optimizer
-func (o *Optimizer) applyAdaptedParameters() {
-	metrics := o.adaptiveOpt.GetMetrics()
-	
-	if bufferCap, ok := metrics["buffer_capacity"].(int); ok {
-		if bufferCap != o.bufferCap {
-			// Note: We can't easily change channel capacity at runtime
-			// This would require recreating the channel, which is complex
-			if o.logger != nil {
-				o.logger.Info("Buffer capacity change suggested: %d -> %d", o.bufferCap, bufferCap)
-			}
-		}
-	}
-	
-	if workerCount, ok := metrics["worker_count"].(int); ok {
-		if workerCount != o.numWorkers {
-			if o.logger != nil {
-				o.logger.Info("Adjusting worker count: %d -> %d", o.numWorkers, workerCount)
-			}
-			
-			// Adjust worker count by adding or removing workers
-			o.adjustWorkerCount(workerCount)
-		}
-	}
-	
-	if batchSize, ok := metrics["batch_size"].(int); ok {
-		o.batchSize = batchSize
-		if o.logger != nil {
-			o.logger.Info("Adjusted batch size to: %d", batchSize)
-		}
-	}
-	
-	if flushInterval, ok := metrics["flush_interval"].(time.Duration); ok {
-		o.flushInterval = flushInterval
-		if o.logger != nil {
-			o.logger.Info("Adjusted flush interval to: %v", flushInterval)
-		}
-	}
-}
-
-// adjustWorkerCount adjusts the number of worker goroutines
-func (o *Optimizer) adjustWorkerCount(newCount int) {
-	currentCount := o.numWorkers
-	
-	if newCount > currentCount {
-		// Add more workers
-		for i := currentCount; i < newCount; i++ {
-			o.workerWG.Add(1)
-			go o.worker(i)
-		}
-		o.numWorkers = newCount
-	} else if newCount < currentCount {
-		// Reducing workers is complex and potentially unsafe
-		// For now, we'll just log that we'd like to reduce
-		if o.logger != nil {
-			o.logger.Info("Would like to reduce worker count: %d -> %d, but reducing workers is not implemented", currentCount, newCount)
-		}
-		// In a production system, you'd need a more sophisticated approach
-		// to safely shut down worker goroutines
+	// Stop the stats sync ticker
+	if o.statsSyncTicker != nil {
+		o.statsSyncTicker.Stop()
 	}
 }
