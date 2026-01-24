@@ -222,8 +222,8 @@ func BenchmarkCWEItemSonicGet(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		// Parse using Sonic's get functionality
-		node, err := sonic.Get(data, "id")
+		// Parse using Sonic's get functionality (JSON tag for ID is "ID")
+		node, err := sonic.Get(data, "ID")
 		if err != nil {
 			b.Fatalf("Failed to get id with sonic: %v", err)
 		}

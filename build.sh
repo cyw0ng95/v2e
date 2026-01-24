@@ -561,84 +561,151 @@ run_fuzz_tests() {
 run_benchmarks() {
     log_info "Running performance benchmarks..."
     setup_build_dir
-    
+
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         BENCHMARK_OUTPUT="$BUILD_DIR/benchmark-raw.txt"
         BENCHMARK_REPORT="$BUILD_DIR/benchmark-report.txt"
-        
-        if [ "$VERBOSE" = true ]; then
-            log_info "Running go benchmarks with verbose output..."
-            # Run benchmarks with memory allocation stats
-            go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
+        BENCH_BENCHSTAT="$BUILD_DIR/benchmark-benchstat.txt"
+        BENCH_AGG_TSV="$BUILD_DIR/benchmark-agg.tsv"
+        BENCH_BASELINE="$BUILD_DIR/benchmark-baseline.txt"
+
+        # Detect benchstat if present
+        BENCHSTAT_BIN="$(command -v benchstat || true)"
+
+        # Prepare/rotate raw output
+        : > "$BENCHMARK_OUTPUT"
+
+        # Gather packages and run per-package benchmarks so we can attribute results
+        PKGS=$(go list ./... 2>/dev/null || true)
+        BENCH_EXIT_CODE=0
+
+        if [ -z "$PKGS" ]; then
+            log_info "No packages found to benchmark."
         else
-            log_info "Running go benchmarks..."
-            # Run benchmarks with memory allocation stats
-            # Use tee to stream output to file (prevents blocking when run non-verbosely)
-            go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s ./... | tee "$BENCHMARK_OUTPUT"
+            for PKG in $PKGS; do
+                log_info "Benchmarking package: $PKG"
+                if [ "$VERBOSE" = true ]; then
+                    # Stream output to console and prefix with package
+                    (go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") | tee -a "$BENCHMARK_OUTPUT"
+                    rc=${PIPESTATUS[0]}
+                else
+                    (go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") >> "$BENCHMARK_OUTPUT" 2>&1
+                    rc=${PIPESTATUS[0]}
+                fi
+                if [ $rc -ne 0 ]; then
+                    log_warn "Benchmarks for package $PKG returned code $rc"
+                    BENCH_EXIT_CODE=$rc
+                fi
+            done
         fi
-        BENCH_EXIT_CODE=$?
-        
-        # Generate human-readable report
-        if [ -f "$BENCHMARK_OUTPUT" ]; then
-            log_info "Generating benchmark report..."
-            {
-                echo "======================================================================"
-                echo "                 v2e Performance Benchmark Report"
-                echo "======================================================================"
-                echo ""
-                echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
-                echo "Host: $(uname -n)"
-                echo "OS: $(uname -s) $(uname -r)"
-                echo "Arch: $(uname -m)"
-                echo ""
-                echo "======================================================================"
-                echo "                        Benchmark Results"
-                echo "======================================================================"
-                echo ""
-                cat "$BENCHMARK_OUTPUT"
-                echo ""
-                echo "======================================================================"
-                echo "                          Summary"
-                echo "======================================================================"
-                echo ""
-                echo "Total benchmark functions run:"
-                grep -c "^Benchmark" "$BENCHMARK_OUTPUT" || echo "0"
-                echo ""
-                echo "Slowest operations (top 10):"
-                grep "^Benchmark" "$BENCHMARK_OUTPUT" | \
-                    awk '{print $3, $4, $1}' | \
-                    sort -rn | \
-                    head -10 | \
-                    awk '{printf "  %-50s %10s %s\n", $3, $1, $2}' || echo "  No data"
-                echo ""
-                echo "Highest memory allocations (top 10):"
-                grep "^Benchmark" "$BENCHMARK_OUTPUT" | \
-                    awk '{print $5, $6, $1}' | \
-                    sort -rn | \
-                    head -10 | \
-                    awk '{printf "  %-50s %10s %s\n", $3, $1, $2}' || echo "  No data"
-                echo ""
-                echo "======================================================================"
-                echo "Report saved to: $BENCHMARK_REPORT"
-                echo "Raw output saved to: $BENCHMARK_OUTPUT"
-                echo "======================================================================"
-            } > "$BENCHMARK_REPORT"
-            
-            if [ "$VERBOSE" = true ]; then
-                echo ""
-                cat "$BENCHMARK_REPORT"
+
+        # Try to produce a nice table via benchstat if available
+        BENCHSTAT_RAN=false
+        if [ -n "$BENCHSTAT_BIN" ]; then
+            log_info "benchstat detected at $BENCHSTAT_BIN; attempting to generate formatted output..."
+            set +e
+            if [ -f "$BENCH_BASELINE" ]; then
+                $BENCHSTAT_BIN "$BENCH_BASELINE" "$BENCHMARK_OUTPUT" > "$BENCH_BENCHSTAT" 2>/dev/null
+                rc=$?
             else
-                log_info "Benchmark report generated: $BENCHMARK_REPORT"
+                # benchstat sometimes accepts a single file for formatting; try it
+                $BENCHSTAT_BIN "$BENCHMARK_OUTPUT" > "$BENCH_BENCHSTAT" 2>/dev/null
+                rc=$?
             fi
+            set -e
+            if [ $rc -eq 0 ] && [ -s "$BENCH_BENCHSTAT" ]; then
+                log_info "benchstat output written to: $BENCH_BENCHSTAT"
+                BENCHSTAT_RAN=true
+            else
+                log_warn "benchstat invocation failed or produced no output; falling back to AWK aggregator"
+                rm -f "$BENCH_BENCHSTAT" || true
+            fi
+        else
+            log_warn "benchstat not found. To enable richer tables install it: go install golang.org/x/perf/cmd/benchstat@latest"
         fi
-        
-        # Return benchmark exit code for CI
+
+        # Always produce an aggregated TSV (AWK) as a fallback or companion artifact
+        log_info "Generating aggregated TSV of benchmark results..."
+        awk 'BEGIN{OFS="\t"; print "package","benchmark","ns/op","B/op","allocs/op"}
+        {
+            line=$0
+            pkg=""
+            if (match(line,/^\[([^]]+)\] /,m)) { pkg=m[1]; sub(/^\[[^]]+\] /, "", line) }
+            # Only consider lines that begin with Benchmark (after prefix removal)
+            if (line ~ /^Benchmark/) {
+                n=split(line, f, /[ \t]+/)
+                bname=f[1]
+                ns=""; b=""; a=""
+                for(i=1;i<=n;i++){
+                    if (f[i]=="ns/op") ns=f[i-1]
+                    if (f[i]=="B/op") b=f[i-1]
+                    if (f[i]=="allocs/op") a=f[i-1]
+                }
+                # Only print rows that have a numeric ns/op value
+                if (ns != "") print pkg, bname, ns, b, a
+            }
+        }' "$BENCHMARK_OUTPUT" > "$BENCH_AGG_TSV" || true
+
+        # Compose final human-readable report
+        log_info "Generating benchmark report..."
+        {
+            echo "======================================================================"
+            echo "                 v2e Performance Benchmark Report"
+            echo "======================================================================"
+            echo ""
+            echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "Host: $(uname -n)"
+            echo "OS: $(uname -s) $(uname -r)"
+            echo "Arch: $(uname -m)"
+            echo ""
+            echo "======================================================================"
+            echo "                        Aggregated Results"
+            echo "======================================================================"
+            echo ""
+            if [ -f "$BENCH_BENCHSTAT" ]; then
+                echo "# benchstat output"
+                cat "$BENCH_BENCHSTAT"
+                echo ""
+            fi
+            if [ -f "$BENCH_AGG_TSV" ]; then
+                echo "# Aggregated TSV (package,benchmark,ns/op,B/op,allocs/op)"
+                head -n 1 "$BENCH_AGG_TSV"
+                tail -n +2 "$BENCH_AGG_TSV" | sort -t$'\t' -k1,1 -k2,2 | awk -F"\t" 'BEGIN{printf("% -30s % -40s %10s %10s %10s\n","PACKAGE","BENCHMARK","NS/OP","B/OP","ALLOCS/OP"); printf("%s\n","-----------------------------------------------------------------------------------------------")}{printf("% -30s % -40s %10s %10s %10s\n", $1, $2, $3, $4, $5)}'
+                echo ""
+            else
+                echo "No aggregated TSV available."
+                echo ""
+            fi
+            echo "======================================================================"
+            echo "                          Notes"
+            echo "======================================================================"
+            echo ""
+            echo "Raw benchmark logs are available in: $BENCHMARK_OUTPUT"
+            echo "The report includes an aggregated TSV and (if available) benchstat formatted output."
+            echo ""
+            echo "Report saved to: $BENCHMARK_REPORT"
+            echo "Raw output saved to: $BENCHMARK_OUTPUT"
+            echo "Aggregated TSV: $BENCH_AGG_TSV"
+            if [ -f "$BENCH_BENCHSTAT" ]; then
+                echo "Benchstat output: $BENCH_BENCHSTAT"
+            fi
+            echo "======================================================================"
+        } > "$BENCHMARK_REPORT"
+
+        if [ "$VERBOSE" = true ]; then
+            echo ""
+            cat "$BENCHMARK_REPORT"
+        else
+            log_info "Benchmark report generated: $BENCHMARK_REPORT"
+        fi
+
+        # Return benchmark exit code for CI (benchstat/awk failures do not change test exit)
         if [ $BENCH_EXIT_CODE -eq 0 ]; then
             log_info "All benchmarks completed successfully!"
             return 0
         else
-            log_error "Benchmarks failed!"
+            log_error "One or more package benchmark runs failed (exit code: $BENCH_EXIT_CODE)"
             return $BENCH_EXIT_CODE
         fi
     else
