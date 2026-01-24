@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -49,9 +50,15 @@ func (b *Broker) GetMessageCount() int64 {
 // GenerateCorrelationID generates a unique correlation ID for request-response matching.
 func (b *Broker) GenerateCorrelationID() string {
 	seq := atomic.AddUint64(&b.correlationSeq, 1)
-	// Use a more efficient correlation ID generation without string formatting
-	// This reduces allocation and improves performance
-	return "corr-" + strconv.FormatInt(time.Now().UnixNano(), 10) + "-" + strconv.FormatUint(seq, 10)
+	// Pre-allocate a string builder to reduce allocations
+	var sb strings.Builder
+	// Use a more efficient correlation ID generation without string concatenation
+	sb.Grow(32) // Pre-allocate space for the correlation ID
+	sb.WriteString("corr-")
+	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	sb.WriteByte('-')
+	sb.WriteString(strconv.FormatUint(seq, 10))
+	return sb.String()
 }
 
 // RouteMessage routes a message to its target process or handles it locally.

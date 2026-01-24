@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -51,6 +52,10 @@ type Manager struct {
 	db         *bolt.DB
 	bucketName []byte
 	logger     *common.Logger // Added logger field for logging
+	cacheMu    sync.RWMutex
+	sessionCache *Session // Cache the active session to avoid DB reads
+	lastUpdate   time.Time // Track last cache update time
+	cacheTimeout time.Duration // Timeout for cache invalidation
 }
 
 // NewManager creates a new session manager
@@ -73,9 +78,10 @@ func NewManager(dbPath string, logger *common.Logger) (*Manager, error) {
 	}
 
 	return &Manager{
-		db:         db,
-		bucketName: bucketName,
-		logger:     logger, // Initialize logger
+		db:           db,
+		bucketName:   bucketName,
+		logger:       logger, // Initialize logger
+		cacheTimeout: 5 * time.Second, // Cache timeout of 5 seconds
 	}, nil
 }
 
@@ -108,11 +114,27 @@ func (m *Manager) CreateSession(sessionID string, startIndex, resultsPerBatch in
 		return nil, err
 	}
 
+	// Update cache with the new session
+	m.cacheMu.Lock()
+	m.sessionCache = session
+	m.lastUpdate = time.Now()
+	m.cacheMu.Unlock()
+	
 	return session, nil
 }
 
 // GetSession retrieves the current session
 func (m *Manager) GetSession() (*Session, error) {
+	// Check cache first
+	m.cacheMu.RLock()
+	if m.sessionCache != nil && time.Since(m.lastUpdate) < m.cacheTimeout {
+		cachedSession := *m.sessionCache // Return a copy to prevent external modification
+		m.cacheMu.RUnlock()
+		return &cachedSession, nil
+	}
+	m.cacheMu.RUnlock()
+
+	// Cache miss, fetch from database
 	var session *Session
 
 	err := m.db.View(func(tx *bolt.Tx) error {
@@ -136,13 +158,21 @@ func (m *Manager) GetSession() (*Session, error) {
 		return nil, err
 	}
 
+	// Update cache
+	m.cacheMu.Lock()
+	m.sessionCache = session
+	m.lastUpdate = time.Now()
+	m.cacheMu.Unlock()
+
 	return session, nil
 }
 
 // UpdateState updates the session state
 // Add debug logging to track state updates
 func (m *Manager) UpdateState(state SessionState) error {
-	return m.db.Update(func(tx *bolt.Tx) error {
+	var updatedSession *Session
+	
+	err := m.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(m.bucketName)
 		if b == nil {
 			return ErrNoSession
@@ -171,13 +201,33 @@ func (m *Manager) UpdateState(state SessionState) error {
 			return err
 		}
 
-		return b.Put(k, data)
+		if err := b.Put(k, data); err != nil {
+			return err
+		}
+		
+		// Store the updated session for cache update
+		updatedSession = session
+		return nil
 	})
+	
+	if err != nil {
+		return err
+	}
+	
+	// Update cache with the new session state
+	m.cacheMu.Lock()
+	m.sessionCache = updatedSession
+	m.lastUpdate = time.Now()
+	m.cacheMu.Unlock()
+	
+	return nil
 }
 
 // UpdateProgress updates the session progress counters
 func (m *Manager) UpdateProgress(fetched, stored, errors int64) error {
-	return m.db.Update(func(tx *bolt.Tx) error {
+	var updatedSession *Session
+	
+	err := m.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(m.bucketName)
 		if b == nil {
 			return ErrNoSession
@@ -207,13 +257,31 @@ func (m *Manager) UpdateProgress(fetched, stored, errors int64) error {
 			return err
 		}
 
-		return b.Put(k, data)
+		if err := b.Put(k, data); err != nil {
+			return err
+		}
+		
+		// Store the updated session for cache update
+		updatedSession = session
+		return nil
 	})
+	
+	if err != nil {
+		return err
+	}
+	
+	// Update cache with the new session state
+	m.cacheMu.Lock()
+	m.sessionCache = updatedSession
+	m.lastUpdate = time.Now()
+	m.cacheMu.Unlock()
+	
+	return nil
 }
 
 // DeleteSession deletes the current session
 func (m *Manager) DeleteSession() error {
-	return m.db.Update(func(tx *bolt.Tx) error {
+	err := m.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(m.bucketName)
 		if b == nil {
 			return ErrNoSession
@@ -228,6 +296,16 @@ func (m *Manager) DeleteSession() error {
 
 		return b.Delete(k)
 	})
+	
+	if err == nil {
+		// Clear cache after successful deletion
+		m.cacheMu.Lock()
+		m.sessionCache = nil
+		m.lastUpdate = time.Time{}
+		m.cacheMu.Unlock()
+	}
+	
+	return err
 }
 
 // saveSession saves the session to the database
@@ -237,7 +315,7 @@ func (m *Manager) saveSession(session *Session) error {
 		return err
 	}
 
-	return m.db.Update(func(tx *bolt.Tx) error {
+	err2 := m.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(m.bucketName)
 		if b == nil {
 			return errors.New("bucket not found")
@@ -246,6 +324,16 @@ func (m *Manager) saveSession(session *Session) error {
 		// Use session ID as key
 		return b.Put([]byte(session.ID), data)
 	})
+	
+	if err2 == nil {
+		// Update cache after successful save
+		m.cacheMu.Lock()
+		m.sessionCache = session
+		m.lastUpdate = time.Now()
+		m.cacheMu.Unlock()
+	}
+	
+	return err2
 }
 
 // Close closes the database connection
