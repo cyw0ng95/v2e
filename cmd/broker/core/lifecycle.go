@@ -72,6 +72,17 @@ func (b *Broker) readProcessMessages(p *Process) {
 
 // SendToProcess sends a message to a specific process via stdin.
 func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
+	// First try to use transport if available
+	if b.transportManager != nil {
+		if err := b.transportManager.SendToProcess(processID, msg); err == nil {
+			b.bus.Record(msg, true)
+			b.logger.Debug("Sent message to process %s via transport: type=%s id=%s", processID, msg.Type, msg.ID)
+			return nil
+		}
+		// If transport fails, fall back to the original stdin method
+	}
+
+	// Fallback to original stdin-based implementation for backward compatibility
 	b.mu.RLock()
 	p, exists := b.processes[processID]
 	b.mu.RUnlock()
@@ -139,6 +150,12 @@ func (b *Broker) reapProcess(p *Process) {
 	}
 
 	b.logger.Info("Process exited: id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+
+	// Unregister transport for the process if it exists
+	if b.transportManager != nil {
+		b.transportManager.UnregisterTransport(p.info.ID)
+		b.logger.Debug("Unregistered transport for process %s", p.info.ID)
+	}
 
 	event, _ := proc.NewEventMessage(p.info.ID, map[string]interface{}{
 		"event":     "process_exited",
@@ -304,6 +321,13 @@ func (b *Broker) Shutdown() error {
 	b.wg.Wait()
 
 	b.bus.Close()
+
+	// Clean up transport manager
+	if b.transportManager != nil {
+		// Close all transports
+		// Note: In a real implementation, we'd iterate through all transports and close them
+		// For now, we just let the process cleanup handle it
+	}
 
 	b.logger.Info("Broker shutdown complete")
 	return nil

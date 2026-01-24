@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/cyw0ng95/v2e/cmd/broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
@@ -191,6 +192,17 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 
 	infoCopy := *info
 
+	// Create and register transport for the process
+	if b.transportManager != nil {
+		transport := transport.NewFDPipeTransport(inputFD, outputFD)
+		if err := transport.Connect(); err == nil {
+			b.transportManager.RegisterTransport(id, transport)
+			b.logger.Debug("Registered transport for process %s", id)
+		} else {
+			b.logger.Warn("Failed to connect transport for process %s: %v", id, err)
+		}
+	}
+
 	b.wg.Add(1)
 	go b.readProcessMessages(proc)
 
@@ -368,6 +380,17 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	b.logger.Info("Spawned RPC process with restart: id=%s pid=%d command=%s max_restarts=%d (advertised fds=%d,%d)", id, info.PID, command, maxRestarts, inputFD, outputFD)
 
 	infoCopy := *info
+
+	// Create and register transport for the process
+	if b.transportManager != nil {
+		transport := transport.NewFDPipeTransport(inputFD, outputFD)
+		if err := transport.Connect(); err == nil {
+			b.transportManager.RegisterTransport(id, transport)
+			b.logger.Debug("Registered transport for process %s", id)
+		} else {
+			b.logger.Warn("Failed to connect transport for process %s: %v", id, err)
+		}
+	}
 
 	b.wg.Add(1)
 	go b.readProcessMessages(proc)

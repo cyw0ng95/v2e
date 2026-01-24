@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/mq"
+	"github.com/cyw0ng95/v2e/cmd/broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/broker"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
@@ -30,6 +31,8 @@ type Broker struct {
 	spawner         broker.Spawner
 	// optimizer optionally handles message routing asynchronously
 	optimizer OptimizerInterface
+	// transportManager manages communication transports for processes
+	transportManager *TransportManager
 }
 
 // NewBroker creates a new Broker instance.
@@ -37,16 +40,17 @@ func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := mq.NewBus(ctx, 100)
 	return &Broker{
-		processes:       make(map[string]*Process),
-		messages:        bus.Channel(),
-		ctx:             ctx,
-		cancel:          cancel,
-		logger:          common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
-		config:          nil,
-		bus:             bus,
-		rpcEndpoints:    make(map[string][]string),
-		pendingRequests: make(map[string]*PendingRequest),
-		correlationSeq:  0,
+		processes:        make(map[string]*Process),
+		messages:         bus.Channel(),
+		ctx:              ctx,
+		cancel:           cancel,
+		logger:           common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		config:           nil,
+		bus:              bus,
+		rpcEndpoints:     make(map[string][]string),
+		pendingRequests:  make(map[string]*PendingRequest),
+		correlationSeq:   0,
+		transportManager: transport.NewTransportManager(),
 	}
 }
 
