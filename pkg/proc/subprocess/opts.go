@@ -10,6 +10,16 @@ import (
 // sonicFast is a shared instance of sonic configured for fastest parsing/marshalling.
 var sonicFast = sonic.ConfigFastest
 
+// MarshalFast marshals a value using the shared fastest sonic configuration.
+func MarshalFast(v interface{}) ([]byte, error) {
+	return sonicFast.Marshal(v)
+}
+
+// UnmarshalFast unmarshals data using the shared fastest sonic configuration.
+func UnmarshalFast(data []byte, v interface{}) error {
+	return sonicFast.Unmarshal(data, v)
+}
+
 // batchJoinPool provides temporary buffers for joining batched messages
 // to avoid allocating large temporary slices on each flush.
 var batchJoinPool = sync.Pool{

@@ -356,8 +356,13 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 		}
 	}
 
-	// Finally append RPC FD and process id info
-	cmd.Env = append(cmd.Env, fmt.Sprintf("RPC_INPUT_FD=%d", inputFD), fmt.Sprintf("RPC_OUTPUT_FD=%d", outputFD), fmt.Sprintf("PROCESS_ID=%s", id))
+	// Append minimal process info. Do NOT export RPC fd numbers via environment
+	// (the broker provides RPC communication via ExtraFiles at fixed fd positions).
+	cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
+	// Optionally advertise MaxMessageSize to subprocesses when configured
+	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
+	}
 
 	// Create process info
 	info := &ProcessInfo{
@@ -554,11 +559,15 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 		}
 	}
 
-	// Set environment variable to tell subprocess which FDs to use for RPC
+	// Append minimal process info. Do NOT export RPC fd numbers via environment
+	// (the broker provides RPC communication via ExtraFiles at fixed fd positions).
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("RPC_INPUT_FD=%d", inputFD), fmt.Sprintf("RPC_OUTPUT_FD=%d", outputFD), fmt.Sprintf("PROCESS_ID=%s", id))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
+	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
+	}
 
 	// Create process info
 	info := &ProcessInfo{

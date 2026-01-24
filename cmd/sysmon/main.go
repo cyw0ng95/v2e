@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/common/procfs"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -89,7 +88,7 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 	}()
 	var payload []byte
 	if params != nil {
-		data, err := sonic.Marshal(params)
+		data, err := subprocess.MarshalFast(params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal params: %w", err)
 		}
@@ -166,7 +165,7 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 				logger.Info("[sysmon] Failed to fetch message stats from broker: %v", rpcErr)
 			} else if resp != nil && len(resp.Payload) > 0 {
 				var msgStats map[string]interface{}
-				if err := sonic.Unmarshal(resp.Payload, &msgStats); err != nil {
+				if err := subprocess.UnmarshalFast(resp.Payload, &msgStats); err != nil {
 					logger.Info("[sysmon] Failed to unmarshal broker message stats: %v", err)
 				} else {
 					metrics["message_stats"] = msgStats
@@ -174,7 +173,7 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 			}
 		}
 		logger.Info("[sysmon] Collected metrics: cpu_usage=%.2f, memory_usage=%.2f, load_avg=%v, uptime=%.0fs", metrics["cpu_usage"], metrics["memory_usage"], metrics["load_avg"], metrics["uptime"])
-		payload, err := sonic.Marshal(metrics)
+		payload, err := subprocess.MarshalFast(metrics)
 		if err != nil {
 			logger.Error("[sysmon] Failed to marshal metrics: %v", err)
 			return &subprocess.Message{

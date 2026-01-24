@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -32,7 +31,7 @@ func init() {
 // bufferPool is a sync.Pool for scanner buffers to reduce allocations
 var bufferPool = sync.Pool{
 	New: func() interface{} {
-		buf := make([]byte, MaxMessageSize)
+		buf := make([]byte, 0, MaxMessageSize)
 		return &buf
 	},
 }
@@ -127,35 +126,36 @@ func New(id string) *Subprocess {
 		outChan:  make(chan []byte, defaultOutChanBufSize), // Optimized buffer size (Principle 12)
 	}
 
-	// Check if custom FDs are specified via environment variables
-	// If RPC_INPUT_FD and RPC_OUTPUT_FD are set, use them for RPC communication
-	// This allows the broker to pass custom file descriptors (fd 3, 4) instead of stdin/stdout (fd 0, 1)
-	inputFDStr := os.Getenv("RPC_INPUT_FD")
-	outputFDStr := os.Getenv("RPC_OUTPUT_FD")
+	// Use fixed ExtraFile positions for RPC I/O: fd 3 (input from broker) and fd 4 (output to broker).
+	// Do NOT rely on environment variables for FD numbers; the broker is responsible for passing
+	// the appropriate ExtraFiles. If the FDs are not available or invalid, gracefully fall back
+	// to stdin/stdout to preserve testability.
+	inputFile := os.NewFile(uintptr(3), "rpc-input")
+	outputFile := os.NewFile(uintptr(4), "rpc-output")
 
-	if inputFDStr != "" && outputFDStr != "" {
-		// Use custom file descriptors for RPC communication
-		// The broker passes these via ExtraFiles, so they are already open
-		var inputFDNum, outputFDNum int
-		_, err1 := fmt.Sscanf(inputFDStr, "%d", &inputFDNum)
-		_, err2 := fmt.Sscanf(outputFDStr, "%d", &outputFDNum)
-
-		if err1 == nil && err2 == nil && inputFDNum >= 0 && outputFDNum >= 0 {
-			// Open the file descriptors that were inherited from parent
-			inputFile := os.NewFile(uintptr(inputFDNum), "rpc-input")
-			outputFile := os.NewFile(uintptr(outputFDNum), "rpc-output")
-
-			if inputFile != nil && outputFile != nil {
-				sp.input = inputFile
-				sp.output = outputFile
-				return sp
-			}
+	var okInput, okOutput bool
+	if inputFile != nil {
+		if _, err := inputFile.Stat(); err == nil {
+			sp.input = inputFile
+			okInput = true
+		} else {
+			inputFile.Close()
 		}
-		// If parsing failed or FDs are invalid, log a warning and fall back to stdio
-		fmt.Fprintf(os.Stderr, "[%s] Warning: Failed to parse custom FDs (input=%s, output=%s), using stdin/stdout\n", id, inputFDStr, outputFDStr)
+	}
+	if outputFile != nil {
+		if _, err := outputFile.Stat(); err == nil {
+			sp.output = outputFile
+			okOutput = true
+		} else {
+			outputFile.Close()
+		}
 	}
 
-	// Fallback to stdin/stdout if custom FDs are not specified or failed to open
+	if okInput && okOutput {
+		return sp
+	}
+
+	// Fallback to stdin/stdout if fixed FDs are not available
 	sp.input = os.Stdin
 	sp.output = os.Stdout
 	return sp

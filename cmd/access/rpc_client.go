@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
+    
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -111,7 +111,7 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 	// Create request message
 	var payload json.RawMessage
 	if params != nil {
-		data, err := sonic.Marshal(params)
+		data, err := subprocess.MarshalFast(params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal params: %w", err)
 		}

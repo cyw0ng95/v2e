@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
@@ -132,7 +131,7 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 	// Create request message
 	var payload []byte
 	if params != nil {
-		data, err := sonic.Marshal(params)
+		data, err := subprocess.MarshalFast(params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal params: %w", err)
 		}
@@ -201,11 +200,8 @@ func main() {
 		processID = "meta"
 	}
 
-	// Log all environment variables for debug
-	fmt.Fprintf(os.Stderr, "[meta] ENV: PROCESS_ID=%s SESSION_DB_PATH=%s PWD=%s\n", os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"), os.Getenv("PWD"))
-	for _, e := range os.Environ() {
-		fmt.Fprintf(os.Stderr, "[meta] ENV: %s\n", e)
-	}
+	// Log minimal startup info only (avoid dumping all environment variables)
+	fmt.Fprintf(os.Stderr, "[meta] STARTUP: PROCESS_ID=%s SESSION_DB_PATH=%s\n", os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
 
 	// Set up logging using common subprocess framework
 	logger, err := subprocess.SetupLogging(processID)
@@ -478,7 +474,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		}
 
 		// Marshal the result
-		jsonData, err := sonic.Marshal(cveData)
+		jsonData, err := subprocess.MarshalFast(cveData)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			logger.Debug("GetCVE failed to marshal response for CVE ID %s: %v", req.CVEID, err)
@@ -573,7 +569,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"cve":     cveData,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -665,7 +661,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"cve":     cveData,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -735,7 +731,7 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"cve_id":  req.CVEID,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -808,7 +804,7 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 			"limit":  req.Limit,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -860,7 +856,7 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"count": countResult.Count,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -928,7 +924,7 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 			"created_at": run.CreatedAt,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -992,7 +988,7 @@ func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.
 			"error_count":   run.ErrorCount,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -1029,7 +1025,7 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 				"has_session": false,
 			}
 
-			jsonData, _ := sonic.Marshal(result)
+			jsonData, _ := subprocess.MarshalFast(result)
 			respMsg.Payload = jsonData
 
 			return respMsg, nil
@@ -1057,7 +1053,7 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 			"error_message":     run.ErrorMessage,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -1104,7 +1100,7 @@ func createPauseJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Log
 			"state":   "paused",
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -1134,7 +1130,7 @@ func createStartCWEViewJobHandler(jobController *cwejob.Controller, logger *comm
 		}
 
 		result := map[string]interface{}{"success": true, "session_id": sessionID}
-		data, err := sonic.Marshal(result)
+		data, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("RPCStartCWEViewJob: failed to marshal response: %v", err)
 			return createErrorResponse(msg, "failed to marshal response"), nil
@@ -1163,7 +1159,7 @@ func createStopCWEViewJobHandler(jobController *cwejob.Controller, logger *commo
 		}
 
 		result := map[string]interface{}{"success": true, "session_id": req.SessionID}
-		data, _ := sonic.Marshal(result)
+		data, _ := subprocess.MarshalFast(result)
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, ID: msg.ID, CorrelationID: msg.CorrelationID, Target: msg.Source, Payload: data}, nil
 	}
 }
@@ -1204,7 +1200,7 @@ func createResumeJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Lo
 			"state":   "running",
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
