@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/session"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -294,7 +294,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 
 			// Parse the CVE response from payload
 			var response cve.CVEResponse
-			if err := sonic.Unmarshal(msg.Payload, &response); err != nil {
+			if err := jsonutil.Unmarshal(msg.Payload, &response); err != nil {
 				c.logger.Error("Failed to unmarshal CVE response: %v", err)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)

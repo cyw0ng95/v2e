@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -76,8 +76,7 @@ func (f *Fetcher) FetchCVEByID(cveID string) (*cve.CVEResponse, error) {
 	// Prefer using sonic for faster unmarshalling on hot paths
 	body := resp.Body()
 	var result cve.CVEResponse
-	api := sonic.ConfigFastest
-	if err := api.Unmarshal(body, &result); err != nil {
+	if err := jsonutil.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal CVE response: %w", err)
 	}
 
@@ -114,8 +113,7 @@ func (f *Fetcher) FetchCVEs(startIndex, resultsPerPage int) (*cve.CVEResponse, e
 
 	body := resp.Body()
 	var result cve.CVEResponse
-	api := sonic.ConfigFastest
-	if err := api.Unmarshal(body, &result); err != nil {
+	if err := jsonutil.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal CVE response: %w", err)
 	}
 

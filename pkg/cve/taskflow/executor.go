@@ -6,10 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 	gotaskflow "github.com/noneback/go-taskflow"
 )
 
@@ -277,10 +278,11 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 			fetchTask := tf.NewTask("fetch", func() {
 				e.logger.Debug("Fetching batch: run_id=%s, index=%d, size=%d", runID, currentIndex, batchSize)
 
-				result, err := e.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchCVEs", map[string]interface{}{
-					"start_index":      currentIndex,
-					"results_per_page": batchSize,
-				})
+				params := &rpc.FetchCVEsParams{
+					StartIndex:     currentIndex,
+					ResultsPerPage: batchSize,
+				}
+				result, err := e.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchCVEs", params)
 
 				if err != nil {
 					fetchErr = err
@@ -302,7 +304,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 
 				// Parse the CVE response from payload
 				var response cve.CVEResponse
-				if err := sonic.Unmarshal(msg.Payload, &response); err != nil {
+				if err := jsonutil.Unmarshal(msg.Payload, &response); err != nil {
 					fetchErr = fmt.Errorf("failed to unmarshal CVE response: %w", err)
 					return
 				}
@@ -328,9 +330,8 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 				errorCount := int64(0)
 
 				for _, vuln := range fetchedVulns {
-					_, err := e.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-						"cve": vuln.CVE,
-					})
+					params := &rpc.SaveCVEByIDParams{CVE: vuln.CVE}
+					_, err := e.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
 
 					if err != nil {
 						e.logger.Error("Failed to store CVE %s: %v", vuln.CVE.ID, err)

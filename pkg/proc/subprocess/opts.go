@@ -4,20 +4,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 // sonicFast is a shared instance of sonic configured for fastest parsing/marshalling.
-var sonicFast = sonic.ConfigFastest
-
-// MarshalFast marshals a value using the shared fastest sonic configuration.
+// MarshalFast marshals a value using the shared fastest configuration.
 func MarshalFast(v interface{}) ([]byte, error) {
-	return sonicFast.Marshal(v)
+	return jsonutil.Marshal(v)
 }
 
-// UnmarshalFast unmarshals data using the shared fastest sonic configuration.
+// UnmarshalFast unmarshals data using the shared fastest configuration.
 func UnmarshalFast(data []byte, v interface{}) error {
-	return sonicFast.Unmarshal(data, v)
+	return jsonutil.Unmarshal(data, v)
 }
 
 // batchJoinPool provides temporary buffers for joining batched messages

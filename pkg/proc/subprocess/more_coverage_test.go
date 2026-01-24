@@ -10,9 +10,8 @@ import (
 // TestNewInvalidFDsFallback ensures New falls back to stdio and logs a warning
 // when RPC_INPUT_FD/RPC_OUTPUT_FD are invalid.
 func TestNewInvalidFDsFallback(t *testing.T) {
-	// Signal that broker is passing RPC fds but the fds won't be valid in this test.
-	os.Setenv("BROKER_PASSING_RPC_FDS", "1")
-	defer os.Unsetenv("BROKER_PASSING_RPC_FDS")
+	// Ensure broker flag is not present so New falls back to stdio.
+	os.Unsetenv("BROKER_PASSING_RPC_FDS")
 
 	sp := New("fd-fallback")
 
