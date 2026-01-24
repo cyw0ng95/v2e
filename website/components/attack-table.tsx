@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -226,6 +226,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
       <Card className="h-full flex flex-col">
         <CardHeader>
           <CardTitle>{type.charAt(0).toUpperCase() + type.slice(1)} Database</CardTitle>
+          <CardDescription>Browse and manage {type} records in the local database</CardDescription>
           <div className="mt-3">
             <Input
               className="w-full"

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCWEList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const PAGE_SIZE = 10;
 
@@ -40,12 +41,13 @@ export function CWETable() {
     <Card className="h-full flex flex-col" ref={tableRef}>
       <CardHeader>
         <CardTitle>CWE Database</CardTitle>
+        <CardDescription>Browse and manage CWE records in the local database</CardDescription>
         <div className="mt-3">
-          <input
-            className="w-full border rounded px-2 py-1 text-sm"
+          <Input
+            className="w-full"
             placeholder="Search CWE ID or name"
             value={search}
-            onChange={e => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               setSearch(e.target.value);
               setPage(0);
             }}
@@ -70,7 +72,7 @@ export function CWETable() {
               </thead>
               <tbody>
                 {/* Use the mapped plain object, not CWEItem type */}
-                {cweList.map((cwe, idx) => (
+                {cweList.map((cwe: any, idx: number) => (
                   <tr key={cwe.id || idx} className="border-b hover:bg-muted/30">
                     <td className="p-2 font-mono">{cwe.id}</td>
                     <td className="p-2">{cwe.name}</td>
