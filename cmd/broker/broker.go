@@ -136,6 +136,8 @@ type Broker struct {
 	pendingRequests map[string]*PendingRequest // correlationID -> PendingRequest
 	pendingMu       sync.RWMutex
 	correlationSeq  uint64 // Atomic counter for generating correlation IDs
+	// Optional pluggable spawner (adapter) for future extensibility.
+	spawner Spawner
 }
 
 // NewBroker creates a new Broker instance
@@ -167,6 +169,22 @@ func (b *Broker) SetLogger(logger *common.Logger) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.logger = logger
+}
+
+// SetSpawner injects a pluggable Spawner implementation. This is optional
+// and for the initial refactor the adapter delegates back to the existing
+// Broker spawn methods.
+func (b *Broker) SetSpawner(s Spawner) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.spawner = s
+}
+
+// Spawner returns the currently configured Spawner (may be nil).
+func (b *Broker) Spawner() Spawner {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.spawner
 }
 
 // Context returns the broker's context

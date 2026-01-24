@@ -74,6 +74,9 @@ func main() {
 	broker := NewBroker()
 	// Provide loaded config to broker so it can use configured settings when spawning
 	broker.SetConfig(config)
+	// Install a default SpawnAdapter that delegates to existing spawn methods.
+	spawnAdapter := NewSpawnAdapter(broker)
+	broker.SetSpawner(spawnAdapter)
 	defer broker.Shutdown()
 
 	// Set up broker logger with dual output and correct level
