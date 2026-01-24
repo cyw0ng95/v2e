@@ -132,9 +132,9 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 			c.logger.Debug("Fetching views: start_index=%d, page_size=%d", current, pageSize)
 
 			// Invoke remote to fetch views
-			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchViews", map[string]interface{}{
-				"start_index":      current,
-				"results_per_page": pageSize,
+			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchViews", &rpc.FetchCVEsParams{
+				StartIndex:     current,
+				ResultsPerPage: pageSize,
 			})
 			if err != nil {
 				c.logger.Error("Failed to fetch views: %v", err)
