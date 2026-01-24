@@ -363,6 +363,10 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
 	}
+	// Indicate that broker is passing RPC fds via ExtraFiles so subprocesses
+	// can safely open fd 3/4. This avoids subprocesses accidentally using
+	// unrelated fds during tests or other runtimes.
+	cmd.Env = append(cmd.Env, "BROKER_PASSING_RPC_FDS=1")
 
 	// Create process info
 	info := &ProcessInfo{
@@ -568,6 +572,10 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
 	}
+	// Indicate that broker is passing RPC fds via ExtraFiles so subprocesses
+	// can safely open fd 3/4. This avoids subprocesses accidentally using
+	// unrelated fds during tests or other runtimes.
+	cmd.Env = append(cmd.Env, "BROKER_PASSING_RPC_FDS=1")
 
 	// Create process info
 	info := &ProcessInfo{
