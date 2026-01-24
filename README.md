@@ -446,6 +446,74 @@ The broker (microkernel) implements several key interfaces and data structures t
   - `AdaptiveOptimizer`: Self-tuning optimization implementation
   - `SystemMonitor`: System and application metrics collection
 
+### Broker Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Broker Core"
+        B[Broker Main]
+    end
+    
+    subgraph "Transport Layer"
+        T{Transport Interface}
+        FDP[FDPipeTransport]
+        TM[Transport Manager]
+    end
+    
+    subgraph "Modular Components"
+        subgraph "Drivers"
+            TD[Transport Driver]
+            FDTD[FDTransportDriver]
+        end
+        
+        subgraph "IPC"
+            MR[Message Router]
+            MQ[Message Queue]
+        end
+        
+        subgraph "Process"
+            PM[Process Manager]
+            PR[Process Registry]
+        end
+        
+        subgraph "Scheduler/Optimizer"
+            SM[System Monitor]
+            AO[Adaptive Optimizer]
+            OPT[Optimizer]
+        end
+    end
+    
+    subgraph "Subprocess Services"
+        S1[Service 1]
+        S2[Service 2]
+        S3[Service N]
+    end
+    
+    B <---> T
+    T <--> FDP
+    B <---> TM
+    
+    B --> TD
+    B --> MR
+    B --> PM
+    B --> SM
+    
+    TD <--> FDTD
+    MR <--> MQ
+    PM <--> PR
+    SM <--> AO
+    AO <--> OPT
+    
+    TM <---> S1
+    TM <---> S2
+    TM <---> S3
+    
+    style B fill:#4e8cff,stroke:#333,stroke-width:2px,color:#fff
+    style SM fill:#ffcc00,stroke:#333,stroke-width:2px,color:#000
+    style AO fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
+    style TM fill:#66cc99,stroke:#333,stroke-width:2px,color:#fff
+```
+
 ### System Monitoring and Optimization
 - **LoadMetrics**: Contains system and application load metrics:
   - CPUUtilization: Current CPU usage percentage
