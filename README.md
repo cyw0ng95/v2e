@@ -13,6 +13,7 @@ Key architectural principles:
 - **Comprehensive Data Handling**: Integrated CVE, CWE, CAPEC, and ATT&CK data management
 - **Frontend Integration**: A Next.js-based web application provides user interface access
 - **Performance Monitoring**: Built-in metrics collection and system monitoring capabilities
+- **Message Optimization**: Asynchronous message routing with configurable buffering and batching
 
 ## System Architecture
 
@@ -52,6 +53,7 @@ graph TB
   - Maintaining process lifecycle and health
   - Tracking message statistics and performance metrics
   - Providing system-wide coordination capabilities
+  - Offering asynchronous message routing with configurable optimization parameters
 
 - **Access Service** ([cmd/access](file:///home/cyw0ng/projects/v2e-qoder/cmd/access)): The REST gateway that:
   - Serves as the primary interface for the Next.js frontend
@@ -60,10 +62,12 @@ graph TB
   - Provides health checks and basic service discovery
 
 - **Meta Service** ([cmd/meta](file:///home/cyw0ng/projects/v2e-qoder/cmd/meta)): The orchestration layer that:
-  - Manages job scheduling and execution
+  - Manages job scheduling and execution using go-taskflow
   - Coordinates complex multi-step operations
   - Handles session management and state persistence
   - Provides workflow control mechanisms
+  - Orchestrates CVE/CWE data fetching jobs with persistent state management
+  - Performs automatic CWE and CAPEC imports at startup
 
 - **Local Service** ([cmd/local](file:///home/cyw0ng/projects/v2e-qoder/cmd/local)): The data persistence layer that:
   - Manages local SQLite databases for CVE, CWE, CAPEC, and ATT&CK data
@@ -95,12 +99,15 @@ The system uses a sophisticated RPC-over-stdin/stdout communication mechanism:
 - **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs
 - **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process
 - **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables for flexible I/O routing
+- **Message Pooling**: Optimized message allocation using sync.Pool for reduced garbage collection
+- **Asynchronous Optimization**: Optional asynchronous message routing with configurable buffering, batching, and worker pools
 
 The communication pattern follows this flow:
 1. External requests → Access REST API → Broker → Backend Services
 2. All inter-service communication happens exclusively through broker routing
 3. No direct subprocess-to-subprocess communication is allowed
 4. The broker maintains message correlation and response tracking
+5. Optional message optimization layer handles high-volume traffic with configurable parameters
 
 ## Frontend Integration
 
@@ -111,6 +118,8 @@ The Next.js-based frontend ([website](file:///home/cyw0ng/projects/v2e-qoder/web
 - **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, and system monitoring data
 - **Real-time Updates**: Session control and live metrics display
 - **Responsive Design**: Adaptable interface for various screen sizes and devices
+- **Modern Tech Stack**: Uses Next.js 16+, React 19+, with TypeScript, Tailwind CSS, and Radix UI components
+- **Data Visualization**: Recharts for performance metrics and data visualization
 
 The frontend includes dedicated sections for:
 - CVE Database browsing and management
@@ -183,6 +192,7 @@ Features:
 - **Automatic Restart**: The broker and Node.js processes restart automatically on file changes
 - **Debouncing**: Prevents rapid restarts with a delay between file change detection and process restarts
 - **Process Cleanup**: Ensures all subprocesses terminate properly before restarting
+- **Verbose Output**: Use `-v` flag with any option for detailed logging
 
 Notes:
 - This workflow is for development only, not for production environments
@@ -218,9 +228,20 @@ Build and package:
 ./build.sh -p
 ```
 
+### Build Script Options
+
+The build script supports the following options:
+
+- `-t`: Run unit tests and return result for CI
+- `-f`: Run fuzz tests on key interfaces (5 seconds per test)
+- `-m`: Run performance benchmarks and generate report
+- `-p`: Build and package binaries with assets
+- `-r`: Run Node.js process and broker (for development)
+- `-v`: Enable verbose output
+- `-h`: Show help message
 ## Job Session Management & State Machine
 
-The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with persistent state management. Job runs are stored in BoltDB and survive service restarts.
+The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with persistent state management. Job runs are stored in BoltDB and survive service restarts. The system also performs automatic CWE and CAPEC imports at startup.
 
 ### Job States
 
@@ -255,7 +276,7 @@ stateDiagram-v2
 
 ### Session Persistence & Recovery
 
-- **Single Active Run Policy**: Only one job run can be active (running or paused) at a time
+- **Single Active Run Policy**: Only one job run can be active (running or paused) at time
 - **BoltDB Storage**: Job runs persist in `session.db` (configurable via `SESSION_DB_PATH` env var)
 - **Auto-Recovery**: On service restart:
   - Running jobs: Automatically resumed
@@ -319,6 +340,13 @@ The meta service uses go-taskflow to orchestrate multi-step jobs:
 
 Tasks are organized in a directed acyclic graph (DAG) with dependency management, retries, and cancellation support.
 
+### Automatic Imports
+
+The meta service performs automatic imports at startup:
+- **CWE Import**: Triggers CWE import from `assets/cwe-raw.json` after 2-second delay
+- **CAPEC Import**: Checks for existing CAPEC data and imports from `assets/capec_contents_latest.xml` if not present
+- **ATT&CK Import**: Local service automatically imports ATT&CK data from XLSX files found in assets directory
+
 ## Configuration Guide
 
 The system is configured through `config.json`, which controls:
@@ -328,8 +356,20 @@ The system is configured through `config.json`, which controls:
 - Service-specific settings
 - RPC communication parameters
 - Performance tuning options
+- Optimizer runtime parameters for message routing
 
 The broker reads this configuration at startup and uses it to determine which subprocess services to spawn and how to configure them.
+
+### Broker Configuration Options
+
+The broker supports the following configuration parameters in `config.json`:
+
+- `broker.processes`: Array of process configurations with ID, command, arguments, RPC flag, and restart policy
+- `broker.log_file`: Path to log file for dual output (stdout + file)
+- `broker.logs_dir`: Directory where logs are stored
+- `broker.authentication`: Authentication settings for RPC endpoints
+- `broker.rpc_input_fd` / `broker.rpc_output_fd`: Optional overrides for RPC file descriptor numbers
+- `broker.optimizer_*`: Various optimization parameters including buffer capacity, worker count, batching, and timeouts
 
 ## Performance Characteristics
 
@@ -339,17 +379,22 @@ The broker-first architecture provides several performance benefits:
 - **Scalable Process Management**: The broker can manage dozens of subprocess services with minimal resource impact
 - **Built-in Metrics Collection**: Comprehensive performance monitoring built into the architecture
 - **Optimized Communication**: Custom file descriptor usage avoids I/O conflicts and improves throughput
+- **Asynchronous Message Optimization**: Configurable buffering, batching, and worker pools for high-volume scenarios
+- **Message Pooling**: Reduced garbage collection through sync.Pool-based message allocation
+- **Concurrent Task Execution**: go-taskflow enables parallel execution of tasks with up to 100 concurrent goroutines
 
 Performance monitoring capabilities include:
 - Message throughput statistics
 - Process response times
 - System resource utilization
 - Error rate tracking
+- Per-process message statistics
+- Optimizer metrics and performance counters
 
 ## Project Layout
 
 - **cmd/** - Service implementations
-  - broker/ - Process manager and RPC router
+  - broker/ - Process manager and RPC router with message optimization
   - access/ - REST gateway (subprocess)
   - local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK)
   - remote/ - Remote data fetching service
@@ -357,12 +402,17 @@ Performance monitoring capabilities include:
   - sysmon/ - System monitoring service
 - **pkg/** - Shared packages
   - proc/subprocess - Subprocess framework (stdin/stdout RPC)
+  - proc/message - Optimized message handling with pooling
   - cve/taskflow - Taskflow-based job executor with persistent state
   - cve - CVE domain types and helpers
   - cwe - CWE domain types and helpers
   - capec - CAPEC domain types and helpers
   - attack - ATT&CK framework domain types and helpers
   - common - Config and logging utilities
+  - broker - Broker interfaces and types
+  - jsonutil - JSON utility functions
+  - rpc - RPC parameter types
+  - testutils - Test utilities
 - **tests/** - Integration tests (pytest)
 - **website/** - Next.js frontend application
 - **assets/** - Data assets (CWE raw JSON, CAPEC XML/XSD, ATT&CK XLSX files)
