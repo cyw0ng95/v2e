@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
@@ -24,7 +23,7 @@ func (s *stubInvoker) InvokeRPC(ctx context.Context, target, method string, para
 		CVE cve.CVEItem `json:"cve"`
 	}
 	cr := cve.CVEResponse{Vulnerabilities: vulns}
-	b, _ := sonic.Marshal(cr)
+	b, _ := subprocess.MarshalFast(cr)
 	resp.Payload = b
 	return resp, nil
 }
@@ -51,7 +50,7 @@ func TestCreateStartAndStopSessionHandler(t *testing.T) {
 
 	// Start session via handler
 	req := &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "RPCStartSession"}
-	b, _ := sonic.Marshal(map[string]interface{}{"session_id": "s1", "start_index": 0, "results_per_batch": 1})
+	b, _ := subprocess.MarshalFast(map[string]interface{}{"session_id": "s1", "start_index": 0, "results_per_batch": 1})
 	req.Payload = b
 
 	resp, err := startHandler(context.Background(), req)
@@ -64,7 +63,7 @@ func TestCreateStartAndStopSessionHandler(t *testing.T) {
 
 	// ensure response payload indicates success
 	var res map[string]interface{}
-	if err := sonic.Unmarshal(resp.Payload, &res); err != nil {
+	if err := subprocess.UnmarshalFast(resp.Payload, &res); err != nil {
 		t.Fatalf("failed to unmarshal start response: %v", err)
 	}
 	if res["success"] != true {
@@ -89,7 +88,7 @@ func TestCreateStartAndStopSessionHandler(t *testing.T) {
 	}
 
 	var sres map[string]interface{}
-	if err := sonic.Unmarshal(stopResp.Payload, &sres); err != nil {
+	if err := subprocess.UnmarshalFast(stopResp.Payload, &sres); err != nil {
 		t.Fatalf("failed to unmarshal stop response: %v", err)
 	}
 	if sres["success"] != true {
@@ -134,7 +133,7 @@ func TestGetSessionStatusHandler_HasSession(t *testing.T) {
 		t.Fatalf("handler returned nil response")
 	}
 	var out map[string]interface{}
-	if err := sonic.Unmarshal(resp.Payload, &out); err != nil {
+	if err := subprocess.UnmarshalFast(resp.Payload, &out); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
 	if has, ok := out["has_session"].(bool); !ok || !has {

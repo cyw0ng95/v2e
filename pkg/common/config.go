@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 const (
@@ -190,7 +190,7 @@ func LoadConfig(filename string) (*Config, error) {
 
 	// Parse JSON
 	var config Config
-	if err := sonic.Unmarshal(data, &config); err != nil {
+	if err := jsonutil.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file %s: %w", filename, err)
 	}
 
@@ -203,7 +203,7 @@ func SaveConfig(config *Config, filename string) error {
 		filename = DefaultConfigFile
 	}
 
-	data, err := sonic.MarshalIndent(config, "", "  ")
+	data, err := jsonutil.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}

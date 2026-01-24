@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // Tests that only validate request parsing and validation logic without making API calls
@@ -12,7 +12,7 @@ func TestRPCGetCVEByID_Validation(t *testing.T) {
 	// without creating a fetcher or making API calls
 
 	// Test 1: Empty CVE ID
-	payload, _ := sonic.Marshal(map[string]string{
+	payload, _ := subprocess.MarshalFast(map[string]string{
 		"cve_id": "",
 	})
 
@@ -20,7 +20,7 @@ func TestRPCGetCVEByID_Validation(t *testing.T) {
 		CVEID string `json:"cve_id"`
 	}
 
-	if err := sonic.Unmarshal(payload, &req); err != nil {
+	if err := subprocess.UnmarshalFast(payload, &req); err != nil {
 		t.Fatalf("Failed to unmarshal payload: %v", err)
 	}
 
@@ -36,13 +36,13 @@ func TestRPCGetCVEByID_Validation(t *testing.T) {
 	}
 
 	// Test 2: Missing field
-	payload2, _ := sonic.Marshal(map[string]string{})
+	payload2, _ := subprocess.MarshalFast(map[string]string{})
 
 	var req2 struct {
 		CVEID string `json:"cve_id"`
 	}
 
-	if err := sonic.Unmarshal(payload2, &req2); err != nil {
+	if err := subprocess.UnmarshalFast(payload2, &req2); err != nil {
 		t.Fatalf("Failed to unmarshal payload: %v", err)
 	}
 
@@ -66,7 +66,7 @@ func TestRPCGetCVEByID_MalformedPayload(t *testing.T) {
 		CVEID string `json:"cve_id"`
 	}
 
-	err := sonic.Unmarshal(invalidJSON, &req)
+	err := subprocess.UnmarshalFast(invalidJSON, &req)
 	if err == nil {
 		t.Error("Expected error when unmarshaling malformed JSON")
 		return
@@ -90,7 +90,7 @@ func TestRPCGetCVECntHandler_MalformedPayload(t *testing.T) {
 		ResultsPerPage int `json:"results_per_page"`
 	}
 
-	err := sonic.Unmarshal(invalidJSON, &req)
+	err := subprocess.UnmarshalFast(invalidJSON, &req)
 	if err == nil {
 		t.Error("Expected error when unmarshaling malformed JSON")
 		return
@@ -114,7 +114,7 @@ func TestRPCFetchCVEsHandler_MalformedPayload(t *testing.T) {
 		ResultsPerPage int `json:"results_per_page"`
 	}
 
-	err := sonic.Unmarshal(invalidJSON, &req)
+	err := subprocess.UnmarshalFast(invalidJSON, &req)
 	if err == nil {
 		t.Error("Expected error when unmarshaling malformed JSON")
 		return

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/bytedance/sonic"
 	"github.com/bytedance/sonic/decoder"
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 // fastDecoder is a configured sonic decoder for zero-copy parsing
@@ -114,7 +114,7 @@ func NewRequestMessage(id string, payload interface{}) (*Message, error) {
 	msg.Type = MessageTypeRequest
 	msg.ID = id
 	if payload != nil {
-		data, err := sonic.Marshal(payload)
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			// Return to pool on error - fields will be reset on next Get
 			PutMessage(msg)
@@ -131,7 +131,7 @@ func NewResponseMessage(id string, payload interface{}) (*Message, error) {
 	msg.Type = MessageTypeResponse
 	msg.ID = id
 	if payload != nil {
-		data, err := sonic.Marshal(payload)
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			// Return to pool on error - fields will be reset on next Get
 			PutMessage(msg)
@@ -148,7 +148,7 @@ func NewEventMessage(id string, payload interface{}) (*Message, error) {
 	msg.Type = MessageTypeEvent
 	msg.ID = id
 	if payload != nil {
-		data, err := sonic.Marshal(payload)
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			// Return to pool on error - fields will be reset on next Get
 			PutMessage(msg)
@@ -175,25 +175,24 @@ func (m *Message) UnmarshalPayload(v interface{}) error {
 	if m.Payload == nil {
 		return fmt.Errorf("no payload to unmarshal")
 	}
-	return sonic.Unmarshal(m.Payload, v)
+	return jsonutil.Unmarshal(m.Payload, v)
 }
 
 // Marshal serializes the message to JSON
 func (m *Message) Marshal() ([]byte, error) {
-	return sonic.Marshal(m)
+	return jsonutil.Marshal(m)
 }
 
 // MarshalFast serializes the message to JSON using fastest configuration
 // This is faster but may have different behavior for edge cases
 func (m *Message) MarshalFast() ([]byte, error) {
-	api := sonic.ConfigFastest
-	return api.Marshal(m)
+	return jsonutil.Marshal(m)
 }
 
 // Unmarshal deserializes a message from JSON
 func Unmarshal(data []byte) (*Message, error) {
 	var msg Message
-	if err := sonic.Unmarshal(data, &msg); err != nil {
+	if err := jsonutil.Unmarshal(data, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 	return &msg, nil
@@ -203,9 +202,7 @@ func Unmarshal(data []byte) (*Message, error) {
 // This is faster but requires the input data to remain valid during message lifetime
 func UnmarshalFast(data []byte) (*Message, error) {
 	msg := GetMessage()
-	// Use sonic.ConfigFastest for zero-copy parsing
-	api := sonic.ConfigFastest
-	if err := api.Unmarshal(data, msg); err != nil {
+	if err := jsonutil.Unmarshal(data, msg); err != nil {
 		PutMessage(msg)
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}

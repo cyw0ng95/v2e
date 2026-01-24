@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -136,7 +136,7 @@ func (cdb *CachedDB) GetCVE(cveID string) (*cve.CVEItem, error) {
 	}
 
 	var cveItem cve.CVEItem
-	if err := sonic.Unmarshal([]byte(record.Data), &cveItem); err != nil {
+	if err := jsonutil.Unmarshal([]byte(record.Data), &cveItem); err != nil {
 		return nil, err
 	}
 
@@ -149,7 +149,7 @@ func (cdb *CachedDB) GetCVE(cveID string) (*cve.CVEItem, error) {
 // SaveCVE saves a CVE item to the database and updates cache
 func (cdb *CachedDB) SaveCVE(cveItem *cve.CVEItem) error {
 	// Marshal the full CVE data to JSON
-	data, err := sonic.Marshal(cveItem)
+	data, err := jsonutil.Marshal(cveItem)
 	if err != nil {
 		return err
 	}

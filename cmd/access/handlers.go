@@ -9,7 +9,6 @@ import (
 
 	"net/http/httptest"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/gin-gonic/gin"
 )
@@ -71,7 +70,7 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeout
 		// Parse payload
 		var payload interface{}
 		if response.Payload != nil {
-			if err := sonic.Unmarshal(response.Payload, &payload); err != nil {
+			if err := subprocess.UnmarshalFast(response.Payload, &payload); err != nil {
 				c.JSON(http.StatusOK, gin.H{
 					"retcode": 500,
 					"message": fmt.Sprintf("Failed to parse response: %v", err),

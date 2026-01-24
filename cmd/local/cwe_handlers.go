@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"os"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"os"
 )
 
 // createGetCWEByIDHandler creates a handler for RPCGetCWEByID

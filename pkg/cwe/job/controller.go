@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -171,7 +171,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 			var resp struct {
 				Views []cwe.CWEView `json:"views"`
 			}
-			if err := sonic.Unmarshal(msg.Payload, &resp); err != nil {
+			if err := jsonutil.Unmarshal(msg.Payload, &resp); err != nil {
 				c.logger.Error("Failed to unmarshal views response: %v", err)
 				select {
 				case <-ctx.Done():

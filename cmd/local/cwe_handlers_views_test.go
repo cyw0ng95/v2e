@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -26,7 +25,7 @@ func TestCWEViewHandlers_CreateGetListDelete(t *testing.T) {
 	// Build Save handler
 	saveH := createSaveCWEViewHandler(store, logger)
 	v := cwe.CWEView{ID: "V-HT-1", Name: "HandlerTestView"}
-	payload, _ := sonic.Marshal(v)
+	payload, _ := subprocess.MarshalFast(v)
 	msg := &subprocess.Message{ID: "1", Payload: payload, Source: "test", CorrelationID: "c1"}
 	_, err = saveH(context.Background(), msg)
 	if err != nil {
@@ -43,7 +42,7 @@ func TestCWEViewHandlers_CreateGetListDelete(t *testing.T) {
 		t.Fatalf("get handler error: %v", err)
 	}
 	var got cwe.CWEView
-	if err := sonic.Unmarshal(resp.Payload, &got); err != nil {
+	if err := subprocess.UnmarshalFast(resp.Payload, &got); err != nil {
 		t.Fatalf("failed to unmarshal get response: %v", err)
 	}
 	if got.ID != v.ID {
@@ -60,7 +59,7 @@ func TestCWEViewHandlers_CreateGetListDelete(t *testing.T) {
 		t.Fatalf("list handler error: %v", err)
 	}
 	var lbody map[string]interface{}
-	if err := sonic.Unmarshal(lresp.Payload, &lbody); err != nil {
+	if err := subprocess.UnmarshalFast(lresp.Payload, &lbody); err != nil {
 		t.Fatalf("failed to unmarshal list response: %v", err)
 	}
 	if lbody["total"].(float64) < 1 {

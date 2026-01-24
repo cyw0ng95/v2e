@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
@@ -57,7 +56,7 @@ func TestRPCGetCVE_EmptyCVEID(t *testing.T) {
 	handler := createGetCVEHandler(rpcClient, logger)
 
 	// Create request with empty CVE ID
-	reqPayload, _ := sonic.Marshal(map[string]string{
+	reqPayload, _ := subprocess.MarshalFast(map[string]string{
 		"cve_id": "",
 	})
 	msg := &subprocess.Message{
@@ -124,7 +123,7 @@ func TestRPCCreateCVE_EmptyCVEID(t *testing.T) {
 	handler := createCreateCVEHandler(rpcClient, logger)
 
 	// Create request with empty CVE ID
-	reqPayload, _ := sonic.Marshal(map[string]string{
+	reqPayload, _ := subprocess.MarshalFast(map[string]string{
 		"cve_id": "",
 	})
 	msg := &subprocess.Message{
@@ -157,7 +156,7 @@ func TestRPCUpdateCVE_EmptyCVEID(t *testing.T) {
 	handler := createUpdateCVEHandler(rpcClient, logger)
 
 	// Create request with empty CVE ID
-	reqPayload, _ := sonic.Marshal(map[string]string{
+	reqPayload, _ := subprocess.MarshalFast(map[string]string{
 		"cve_id": "",
 	})
 	msg := &subprocess.Message{
@@ -190,7 +189,7 @@ func TestRPCDeleteCVE_EmptyCVEID(t *testing.T) {
 	handler := createDeleteCVEHandler(rpcClient, logger)
 
 	// Create request with empty CVE ID
-	reqPayload, _ := sonic.Marshal(map[string]string{
+	reqPayload, _ := subprocess.MarshalFast(map[string]string{
 		"cve_id": "",
 	})
 	msg := &subprocess.Message{
@@ -365,7 +364,7 @@ func TestRPCSaveCVEByID_MissingCVE(t *testing.T) {
 	handler := createCreateCVEHandler(rpcClient, logger)
 
 	// Create request with missing fields
-	reqPayload, _ := sonic.Marshal(map[string]string{})
+	reqPayload, _ := subprocess.MarshalFast(map[string]string{})
 	msg := &subprocess.Message{
 		Type:    subprocess.MessageTypeRequest,
 		ID:      "RPCCreateCVE",
@@ -527,7 +526,7 @@ func TestRPCClient_InvokeRPC_Success(t *testing.T) {
 		t.Fatal("pendingRequests entry not found")
 	}
 
-	payload, _ := sonic.Marshal(map[string]bool{"success": true})
+	payload, _ := subprocess.MarshalFast(map[string]bool{"success": true})
 	respMsg := &subprocess.Message{
 		Type:          subprocess.MessageTypeResponse,
 		ID:            "RPCTest",
@@ -585,7 +584,7 @@ func (b *blockingInvoker) InvokeRPC(ctx context.Context, target, method string, 
 		return nil, ctx.Err()
 	}
 	empty := &cve.CVEResponse{}
-	p, _ := sonic.Marshal(empty)
+	p, _ := subprocess.MarshalFast(empty)
 	return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: p}, nil
 }
 
@@ -643,7 +642,7 @@ func TestRPCClientAdapter_InvokeRPC(t *testing.T) {
 		t.Fatal("pendingRequests entry not found")
 	}
 
-	payload, _ := sonic.Marshal(map[string]bool{"success": true})
+	payload, _ := subprocess.MarshalFast(map[string]bool{"success": true})
 	respMsg := &subprocess.Message{
 		Type:          subprocess.MessageTypeResponse,
 		ID:            "RPCTest",
@@ -707,7 +706,7 @@ func TestCreateStartSessionHandler_EmptySessionID(t *testing.T) {
 	handler := createStartSessionHandler(executor, logger)
 
 	// Create request with empty session ID
-	reqPayload, _ := sonic.Marshal(map[string]interface{}{
+	reqPayload, _ := subprocess.MarshalFast(map[string]interface{}{
 		"session_id": "",
 	})
 	msg := &subprocess.Message{
@@ -753,7 +752,7 @@ func TestCreateStartSessionHandler_ValidSession(t *testing.T) {
 	handler := createStartSessionHandler(executor, logger)
 
 	// Create request with valid session ID
-	reqPayload, _ := sonic.Marshal(map[string]interface{}{
+	reqPayload, _ := subprocess.MarshalFast(map[string]interface{}{
 		"session_id":        "test-session",
 		"start_index":       0,
 		"results_per_batch": 10,
@@ -777,7 +776,7 @@ func TestCreateStartSessionHandler_ValidSession(t *testing.T) {
 
 	// Parse response to verify success
 	var result map[string]interface{}
-	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+	if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -833,7 +832,7 @@ func TestCreateStopSessionHandler(t *testing.T) {
 
 	// Parse response to verify success
 	var result map[string]interface{}
-	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+	if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -885,7 +884,7 @@ func TestCreateGetSessionStatusHandler(t *testing.T) {
 
 	// Parse response to verify session status
 	var result map[string]interface{}
-	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+	if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
