@@ -96,6 +96,9 @@ logs/
 /remote
 /meta
 
+# vendor directory
+/vendor/
+
 # Profiling files
 *.prof
 *.test
