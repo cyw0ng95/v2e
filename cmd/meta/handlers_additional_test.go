@@ -50,7 +50,7 @@ func TestCreateStartAndStopSessionHandler(t *testing.T) {
 
 	// Start session via handler
 	req := &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "RPCStartSession"}
-	b, _ := subprocess.MarshalFast(map[string]interface{}{"session_id": "s1", "start_index": 0, "results_per_batch": 1})
+	b, _ := subprocess.MarshalFast(map[string]interface{}{"data_type": string(taskflow.DataTypeCVE), "start_index": 0, "results_per_batch": 1})
 	req.Payload = b
 
 	resp, err := startHandler(context.Background(), req)
