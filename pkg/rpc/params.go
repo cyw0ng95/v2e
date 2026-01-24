@@ -28,3 +28,10 @@ type ListParams struct {
 	Offset int `json:"offset"`
 	Limit  int `json:"limit"`
 }
+
+// ImportParams is used for import RPCs (CWE/CAPEC)
+type ImportParams struct {
+	Path  string `json:"path"`
+	XSD   string `json:"xsd,omitempty"`
+	Force bool   `json:"force,omitempty"`
+}

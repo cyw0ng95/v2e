@@ -276,7 +276,7 @@ func main() {
 		time.Sleep(2 * time.Second)
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		params := map[string]interface{}{"path": "assets/cwe-raw.json"}
+		params := &rpc.ImportParams{Path: "assets/cwe-raw.json"}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", params)
 		if err != nil {
 			logger.Warn("Failed to import CWE on local: %v", err)
@@ -286,7 +286,7 @@ func main() {
 			logger.Debug("CWE import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CWE import triggered on local")
-			logger.Debug("CWE import process started successfully with path: %s", params["path"])
+			logger.Debug("CWE import process started successfully with path: %s", params.Path)
 		}
 	}()
 
@@ -305,7 +305,7 @@ func main() {
 			return
 		}
 		// If meta not present or query failed, attempt import
-		params := map[string]interface{}{"path": "assets/capec_contents_latest.xml", "xsd": "assets/capec_schema_latest.xsd"}
+		params := &rpc.ImportParams{Path: "assets/capec_contents_latest.xml", XSD: "assets/capec_schema_latest.xsd"}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
 		if err != nil {
 			logger.Warn("Failed to import CAPEC on local: %v", err)
@@ -315,7 +315,7 @@ func main() {
 			logger.Debug("CAPEC import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CAPEC import triggered on local")
-			logger.Debug("CAPEC import process started successfully with path: %s", params["path"])
+			logger.Debug("CAPEC import process started successfully with path: %s", params.Path)
 		}
 	}()
 

@@ -12,6 +12,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve/session"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
 
 var (
@@ -29,22 +30,6 @@ type fetchParams struct {
 
 var fetchParamsPool = sync.Pool{
 	New: func() interface{} { return &fetchParams{} },
-}
-
-type saveCVEParams struct {
-	CVE cve.CVEItem `json:"cve"`
-}
-
-var saveCVEParamsPool = sync.Pool{
-	New: func() interface{} { return &saveCVEParams{} },
-}
-
-// rpcParamMapPool reuses small maps for RPC params to satisfy callers
-var rpcParamMapPool = sync.Pool{
-	New: func() interface{} {
-		m := make(map[string]interface{}, 1)
-		return &m
-	},
 }
 
 // RPCInvoker is an interface for making RPC calls to other services
@@ -316,12 +301,8 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			errorCount := int64(0)
 
 			for _, vuln := range response.Vulnerabilities {
-				mptr := rpcParamMapPool.Get().(*map[string]interface{})
-				(*mptr)["cve"] = vuln.CVE
-				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", *mptr)
-				// clear map and return to pool
-				delete(*mptr, "cve")
-				rpcParamMapPool.Put(mptr)
+				params := &rpc.SaveCVEByIDParams{CVE: vuln.CVE}
+				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
 
 				if err != nil {
 					c.logger.Error("Failed to store CVE %s: %v", vuln.CVE.ID, err)
