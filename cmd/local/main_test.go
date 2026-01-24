@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -42,7 +41,7 @@ func TestRPCSaveCVEByID(t *testing.T) {
 	}
 
 	// Create request message
-	payload, _ := sonic.Marshal(map[string]interface{}{
+	payload, _ := subprocess.MarshalFast(map[string]interface{}{
 		"cve": testCVE,
 	})
 
@@ -66,7 +65,7 @@ func TestRPCSaveCVEByID(t *testing.T) {
 	}
 
 	var result map[string]interface{}
-	if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+	if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
@@ -126,7 +125,7 @@ func TestRPCIsCVEStoredByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create request message
-			payload, _ := sonic.Marshal(map[string]string{
+			payload, _ := subprocess.MarshalFast(map[string]string{
 				"cve_id": tt.cveID,
 			})
 
@@ -150,7 +149,7 @@ func TestRPCIsCVEStoredByID(t *testing.T) {
 			}
 
 			var result map[string]interface{}
-			if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+			if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 				t.Fatalf("Failed to unmarshal response: %v", err)
 			}
 
@@ -193,7 +192,7 @@ func TestRPCGetCVEByID(t *testing.T) {
 
 	t.Run("Get existing CVE", func(t *testing.T) {
 		// Create request message
-		payload, _ := sonic.Marshal(map[string]string{
+		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-GETTEST",
 		})
 
@@ -217,7 +216,7 @@ func TestRPCGetCVEByID(t *testing.T) {
 		}
 
 		var result cve.CVEItem
-		if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 			t.Fatalf("Failed to unmarshal response: %v", err)
 		}
 
@@ -228,7 +227,7 @@ func TestRPCGetCVEByID(t *testing.T) {
 
 	t.Run("Get non-existing CVE", func(t *testing.T) {
 		// Create request message
-		payload, _ := sonic.Marshal(map[string]string{
+		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-NOTFOUND",
 		})
 
@@ -254,7 +253,7 @@ func TestRPCGetCVEByID(t *testing.T) {
 
 	t.Run("Empty CVE ID", func(t *testing.T) {
 		// Create request message
-		payload, _ := sonic.Marshal(map[string]string{
+		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "",
 		})
 
@@ -311,7 +310,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 		db.SaveCVE(testCVE)
 
 		// Create request message
-		payload, _ := sonic.Marshal(map[string]string{
+		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-DELETETEST",
 		})
 
@@ -335,7 +334,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 		}
 
 		var result map[string]interface{}
-		if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 			t.Fatalf("Failed to unmarshal response: %v", err)
 		}
 
@@ -352,7 +351,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 
 	t.Run("Delete non-existing CVE", func(t *testing.T) {
 		// Create request message
-		payload, _ := sonic.Marshal(map[string]string{
+		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-NOTEXIST",
 		})
 
@@ -378,7 +377,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 
 	t.Run("Empty CVE ID", func(t *testing.T) {
 		// Create request message
-		payload, _ := sonic.Marshal(map[string]string{
+		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "",
 		})
 
@@ -460,7 +459,7 @@ func TestRPCListCVEs(t *testing.T) {
 		}
 
 		var result map[string]interface{}
-		if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 			t.Fatalf("Failed to unmarshal response: %v", err)
 		}
 
@@ -478,7 +477,7 @@ func TestRPCListCVEs(t *testing.T) {
 
 	t.Run("List with custom pagination", func(t *testing.T) {
 		// Create request message with custom offset and limit
-		payload, _ := sonic.Marshal(map[string]int{
+		payload, _ := subprocess.MarshalFast(map[string]int{
 			"offset": 5,
 			"limit":  5,
 		})
@@ -503,7 +502,7 @@ func TestRPCListCVEs(t *testing.T) {
 		}
 
 		var result map[string]interface{}
-		if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 			t.Fatalf("Failed to unmarshal response: %v", err)
 		}
 
@@ -521,7 +520,7 @@ func TestRPCListCVEs(t *testing.T) {
 
 	t.Run("List with offset beyond total", func(t *testing.T) {
 		// Create request message with offset beyond total
-		payload, _ := sonic.Marshal(map[string]int{
+		payload, _ := subprocess.MarshalFast(map[string]int{
 			"offset": 20,
 			"limit":  10,
 		})
@@ -546,7 +545,7 @@ func TestRPCListCVEs(t *testing.T) {
 		}
 
 		var result map[string]interface{}
-		if err := sonic.Unmarshal(resp.Payload, &result); err != nil {
+		if err := subprocess.UnmarshalFast(resp.Payload, &result); err != nil {
 			t.Fatalf("Failed to unmarshal response: %v", err)
 		}
 
@@ -593,7 +592,7 @@ func TestMainFunctionInitialization(t *testing.T) {
 	cweDBPath := "/tmp/test_init_cwe.db"
 	capecDBPath := "/tmp/test_init_capec.db"
 	attackDBPath := "/tmp/test_init_attack.db"
-	
+
 	defer os.Remove(dbPath)
 	defer os.Remove(cweDBPath)
 	defer os.Remove(capecDBPath)

@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -216,7 +215,7 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			"mitigations":      mitigations,
 			"references":       references,
 		}
-		jsonData, err := sonic.Marshal(payload)
+		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
 			logger.Error("Failed to marshal CAPEC: %v (capec_id=%s)", err, req.CAPECID)
 			return &subprocess.Message{
@@ -257,7 +256,7 @@ func createGetCAPECCatalogMetaHandler(store *capec.LocalCAPECStore, logger *comm
 			"source":      meta.Source,
 			"imported_at": meta.ImportedAtUTC,
 		}
-		data, err := sonic.Marshal(resp)
+		data, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal catalog meta: %v", err)
 			return &subprocess.Message{
@@ -380,7 +379,7 @@ func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger
 			"limit":  req.Limit,
 			"total":  total,
 		}
-		jsonData, err := sonic.Marshal(resp)
+		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal ListCAPECs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 // OptimizedMessagePool provides enhanced pooling for Message objects
@@ -63,17 +63,7 @@ func PutOptimizedMessage(msg *Message) {
 	optimizedPool.Put(msg)
 }
 
-// Optimized sonic configurations for different use cases
-var (
-	// Fastest configuration for marshaling
-	fastMarshalConfig = sonic.ConfigFastest
-
-	// Optimized configuration for unmarshaling
-	fastUnmarshalConfig = sonic.Config{
-		SortMapKeys:    true,
-		ValidateString: true,
-	}.Froze()
-)
+// Optimized helpers use the shared jsonutil wrapper for marshal/unmarshal.
 
 // OptimizedNewRequestMessage creates a new request message with enhanced performance
 func OptimizedNewRequestMessage(id string, payload interface{}) (*Message, error) {
@@ -82,8 +72,8 @@ func OptimizedNewRequestMessage(id string, payload interface{}) (*Message, error
 	msg.ID = id
 
 	if payload != nil {
-		// Use fastest marshal configuration
-		data, err := fastMarshalConfig.Marshal(payload)
+		// Use shared fast marshal helper
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			PutOptimizedMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
@@ -101,7 +91,7 @@ func OptimizedNewResponseMessage(id string, payload interface{}) (*Message, erro
 
 	if payload != nil {
 		// Use fastest marshal configuration
-		data, err := fastMarshalConfig.Marshal(payload)
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			PutOptimizedMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
@@ -119,7 +109,7 @@ func OptimizedNewEventMessage(id string, payload interface{}) (*Message, error) 
 
 	if payload != nil {
 		// Use fastest marshal configuration
-		data, err := fastMarshalConfig.Marshal(payload)
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			PutOptimizedMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
@@ -135,21 +125,21 @@ func (m *Message) OptimizedUnmarshalPayload(v interface{}) error {
 		return fmt.Errorf("no payload to unmarshal")
 	}
 
-	// Use optimized unmarshal configuration
-	return fastUnmarshalConfig.Unmarshal(m.Payload, v)
+	// Use shared fast unmarshal helper
+	return jsonutil.Unmarshal(m.Payload, v)
 }
 
 // OptimizedMarshal serializes the message to JSON with enhanced performance
 func (m *Message) OptimizedMarshal() ([]byte, error) {
-	return fastMarshalConfig.Marshal(m)
+	return jsonutil.Marshal(m)
 }
 
 // OptimizedUnmarshal deserializes a message from JSON with enhanced performance
 func OptimizedUnmarshal(data []byte) (*Message, error) {
 	msg := GetOptimizedMessage()
 
-	// Use optimized unmarshal configuration
-	if err := fastUnmarshalConfig.Unmarshal(data, msg); err != nil {
+	// Use shared fast unmarshal helper
+	if err := jsonutil.Unmarshal(data, msg); err != nil {
 		PutOptimizedMessage(msg)
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
@@ -166,15 +156,15 @@ func OptimizedUnmarshalReuse(data []byte, msg *Message) error {
 	msg.reset()
 
 	// Use optimized unmarshal configuration
-	return fastUnmarshalConfig.Unmarshal(data, msg)
+	return jsonutil.Unmarshal(data, msg)
 }
 
 // OptimizedUnmarshalDecoder uses a pooled decoder for maximum performance
 func OptimizedUnmarshalDecoder(data []byte) (*Message, error) {
 	msg := GetOptimizedMessage()
 
-	// Use the standard unmarshal approach
-	if err := fastUnmarshalConfig.Unmarshal(data, msg); err != nil {
+	// Use shared fast unmarshal helper
+	if err := jsonutil.Unmarshal(data, msg); err != nil {
 		PutOptimizedMessage(msg)
 		return nil, fmt.Errorf("failed to decode message: %w", err)
 	}
@@ -189,13 +179,13 @@ type OptimizedBatchMessage struct {
 
 // MarshalBatch efficiently marshals multiple messages
 func (obm *OptimizedBatchMessage) MarshalBatch() ([]byte, error) {
-	return fastMarshalConfig.Marshal(obm.Messages)
+	return jsonutil.Marshal(obm.Messages)
 }
 
 // UnmarshalBatch efficiently unmarshals multiple messages
 func UnmarshalBatch(data []byte) ([]*Message, error) {
 	var messages []*Message
-	if err := fastUnmarshalConfig.Unmarshal(data, &messages); err != nil {
+	if err := jsonutil.Unmarshal(data, &messages); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal batch: %w", err)
 	}
 	return messages, nil

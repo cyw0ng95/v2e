@@ -14,6 +14,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/session"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
 
 // TestConcurrentJobControl tests multiple concurrent job control commands
@@ -255,15 +256,25 @@ func (m *mockRPCInvokerWithTracking) InvokeRPC(ctx context.Context, target, meth
 	}
 
 	if target == "local" && method == "RPCSaveCVEByID" {
-		// Extract CVE ID from params
-		paramMap, ok := params.(map[string]interface{})
-		if ok {
-			if cveData, exists := paramMap["cve"]; exists {
+		// Accept either a map-based param (legacy) or typed RPC params
+		switch p := params.(type) {
+		case map[string]interface{}:
+			if cveData, exists := p["cve"]; exists {
 				if cveItem, ok := cveData.(cve.CVEItem); ok {
 					m.saveMutex.Lock()
 					m.savedCVEs[cveItem.ID] = true
 					m.saveMutex.Unlock()
 				}
+			}
+		case rpc.SaveCVEByIDParams:
+			m.saveMutex.Lock()
+			m.savedCVEs[p.CVE.ID] = true
+			m.saveMutex.Unlock()
+		case *rpc.SaveCVEByIDParams:
+			if p != nil {
+				m.saveMutex.Lock()
+				m.savedCVEs[p.CVE.ID] = true
+				m.saveMutex.Unlock()
 			}
 		}
 

@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -37,7 +36,7 @@ func TestCWEHandlers(t *testing.T) {
 	}
 	jsonPath := tempJson.Name()
 	sample := []map[string]interface{}{{"ID": "CWE-1", "Name": "Test CWE"}}
-	data, err := sonic.Marshal(sample)
+	data, err := subprocess.MarshalFast(sample)
 	if err != nil {
 		t.Fatalf("marshal sample: %v", err)
 	}
@@ -53,7 +52,7 @@ func TestCWEHandlers(t *testing.T) {
 	// Import
 	importH := createImportCWEsHandler(store, logger)
 	importReq := map[string]interface{}{"path": jsonPath}
-	impResp, err := importH(ctx, &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "imp1", Payload: func() []byte { b, _ := sonic.Marshal(importReq); return b }()})
+	impResp, err := importH(ctx, &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "imp1", Payload: func() []byte { b, _ := subprocess.MarshalFast(importReq); return b }()})
 	if err != nil || impResp == nil || impResp.Type != subprocess.MessageTypeResponse {
 		t.Fatalf("import handler failed: err=%v resp=%v", err, impResp)
 	}
@@ -61,7 +60,7 @@ func TestCWEHandlers(t *testing.T) {
 	// Get by ID
 	getH := createGetCWEByIDHandler(store, logger)
 	getReq := map[string]interface{}{"cwe_id": "CWE-1"}
-	getResp, err := getH(ctx, &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "g1", Payload: func() []byte { b, _ := sonic.Marshal(getReq); return b }()})
+	getResp, err := getH(ctx, &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "g1", Payload: func() []byte { b, _ := subprocess.MarshalFast(getReq); return b }()})
 	if err != nil || getResp == nil || getResp.Type != subprocess.MessageTypeResponse {
 		t.Fatalf("get handler failed: err=%v resp=%v", err, getResp)
 	}

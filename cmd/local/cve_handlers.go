@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
@@ -63,7 +62,7 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal SaveCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
@@ -119,7 +118,7 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal result: %v", err)
 			return &subprocess.Message{
@@ -184,7 +183,7 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := sonic.Marshal(cveItem)
+		jsonData, err := subprocess.MarshalFast(cveItem)
 		if err != nil {
 			logger.Error("Failed to marshal GetCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
@@ -251,7 +250,7 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal result: %v", err)
 			return &subprocess.Message{
@@ -327,7 +326,7 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal ListCVEs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
@@ -370,7 +369,7 @@ func createCountCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Hand
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal result: %v", err)
 			return &subprocess.Message{

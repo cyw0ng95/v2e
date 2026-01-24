@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/session"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
 
 var (
@@ -29,22 +30,6 @@ type fetchParams struct {
 
 var fetchParamsPool = sync.Pool{
 	New: func() interface{} { return &fetchParams{} },
-}
-
-type saveCVEParams struct {
-	CVE cve.CVEItem `json:"cve"`
-}
-
-var saveCVEParamsPool = sync.Pool{
-	New: func() interface{} { return &saveCVEParams{} },
-}
-
-// rpcParamMapPool reuses small maps for RPC params to satisfy callers
-var rpcParamMapPool = sync.Pool{
-	New: func() interface{} {
-		m := make(map[string]interface{}, 1)
-		return &m
-	},
 }
 
 // RPCInvoker is an interface for making RPC calls to other services
@@ -82,22 +67,30 @@ func (c *Controller) Start(ctx context.Context) error {
 		return ErrJobRunning
 	}
 
+	// Create cancellable context and mark running early to avoid races
+	jobCtx, cancel := context.WithCancel(ctx)
+	c.cancelFunc = cancel
+	c.running = true
+
 	// Get current session
 	sess, err := c.sessionManager.GetSession()
 	if err != nil {
+		// rollback
+		c.cancelFunc()
+		c.cancelFunc = nil
+		c.running = false
 		return fmt.Errorf("failed to get session: %w", err)
 	}
 
 	// Update session state to running
 	err = c.sessionManager.UpdateState(session.StateRunning)
 	if err != nil {
+		// rollback
+		c.cancelFunc()
+		c.cancelFunc = nil
+		c.running = false
 		return fmt.Errorf("failed to update session state: %w", err)
 	}
-
-	// Create cancellable context
-	jobCtx, cancel := context.WithCancel(ctx)
-	c.cancelFunc = cancel
-	c.running = true
 
 	// Start job in background
 	go c.runJob(jobCtx, sess)
@@ -286,7 +279,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 
 			// Parse the CVE response from payload
 			var response cve.CVEResponse
-			if err := sonic.Unmarshal(msg.Payload, &response); err != nil {
+			if err := jsonutil.Unmarshal(msg.Payload, &response); err != nil {
 				c.logger.Error("Failed to unmarshal CVE response: %v", err)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
@@ -308,12 +301,8 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			errorCount := int64(0)
 
 			for _, vuln := range response.Vulnerabilities {
-				mptr := rpcParamMapPool.Get().(*map[string]interface{})
-				(*mptr)["cve"] = vuln.CVE
-				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", *mptr)
-				// clear map and return to pool
-				delete(*mptr, "cve")
-				rpcParamMapPool.Put(mptr)
+				params := &rpc.SaveCVEByIDParams{CVE: vuln.CVE}
+				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
 
 				if err != nil {
 					c.logger.Error("Failed to store CVE %s: %v", vuln.CVE.ID, err)

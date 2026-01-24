@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -146,10 +145,10 @@ func createFetchViewsHandler() subprocess.Handler {
 			}
 
 			var view cwe.CWEView
-			// Try to unmarshal with sonic for speed
-			if err := sonic.Unmarshal(data, &view); err != nil {
-				// try standard unmarshal as fallback
-				_ = sonic.Unmarshal(data, &view)
+			// Try to unmarshal with fast unmarshal
+			if err := subprocess.UnmarshalFast(data, &view); err != nil {
+				// try again as fallback (preserve original behavior)
+				_ = subprocess.UnmarshalFast(data, &view)
 			}
 			// If ID is empty, try to derive filename as ID
 			if view.ID == "" {
@@ -185,7 +184,7 @@ func createFetchViewsHandler() subprocess.Handler {
 			"views": allViews[start:end],
 		}
 
-		jsonData, err := sonic.Marshal(respPayload)
+		jsonData, err := subprocess.MarshalFast(respPayload)
 		if err != nil {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -264,7 +263,7 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		}
 
 		// Marshal the response
-		jsonData, err := sonic.Marshal(response)
+		jsonData, err := subprocess.MarshalFast(response)
 		if err != nil {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -334,7 +333,7 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		}
 
 		// Marshal the result
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -399,7 +398,7 @@ func createFetchCVEsHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		}
 
 		// Marshal the response
-		jsonData, err := sonic.Marshal(response)
+		jsonData, err := subprocess.MarshalFast(response)
 		if err != nil {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,

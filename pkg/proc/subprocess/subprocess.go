@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bytedance/sonic"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 // The core types, constants and pools (Message, MessageType, Handler, Subprocess,
@@ -51,8 +51,7 @@ func (s *Subprocess) Run() error {
 
 		// Parse the message using fastest configuration for zero-copy
 		var msg Message
-		api := sonic.ConfigFastest
-		if err := api.Unmarshal([]byte(line), &msg); err != nil {
+		if err := jsonutil.Unmarshal([]byte(line), &msg); err != nil {
 			// Send error response
 			// Principle 15: Avoid fmt.Sprintf in hot paths - use direct string concat
 			errMsg := &Message{

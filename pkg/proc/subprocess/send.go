@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 // SendMessage sends a message to the broker via stdout
@@ -15,10 +17,8 @@ func (s *Subprocess) SendMessage(msg *Message) error {
 // sendMessage is the internal method to send a message
 // Uses lock-free channel-based batching for better performance
 func (s *Subprocess) sendMessage(msg *Message) error {
-	// Use fastest marshaling for performance
-	// Use package-level sonicFast to avoid repeated config access
-	api := sonicFast
-	data, err := api.Marshal(msg)
+	// Use shared fast marshal helper for performance
+	data, err := jsonutil.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
@@ -75,9 +75,8 @@ func (s *Subprocess) sendMessage(msg *Message) error {
 func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
-		// Use fastest marshaling for performance
-		api := sonicFast
-		data, err := api.Marshal(payload)
+		// Use shared fast marshal helper for performance
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -96,9 +95,8 @@ func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 func (s *Subprocess) SendEvent(id string, payload interface{}) error {
 	var rawPayload json.RawMessage
 	if payload != nil {
-		// Use fastest marshaling for performance
-		api := sonicFast
-		data, err := api.Marshal(payload)
+		// Use shared fast marshal helper for performance
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}

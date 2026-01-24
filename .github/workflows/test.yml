@@ -215,6 +215,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-benchmark-
       
+      - name: Install benchstat (optional, improves benchmark reporting)
+        run: |
+          go install golang.org/x/perf/cmd/benchstat@latest
+          echo "${GOPATH:-$HOME/go}/bin" >> $GITHUB_PATH
+
       - name: Run performance benchmarks via build.sh
         run: ./build.sh -m -v
       
@@ -237,5 +242,23 @@ jobs:
         with:
           name: benchmark-raw-${{ steps.git-sha.outputs.sha_short }}
           path: .build/benchmark-raw.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload benchstat formatted output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-benchstat-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/benchmark-benchstat.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload benchmark aggregated TSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-agg-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/benchmark-agg.tsv
           if-no-files-found: ignore
           retention-days: 30

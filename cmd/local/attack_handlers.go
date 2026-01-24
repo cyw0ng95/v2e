@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -111,7 +110,7 @@ func createGetAttackTechniqueByIDHandler(store *attack.LocalAttackStore, logger 
 			"revoked":     item.Revoked,
 			"deprecated":  item.Deprecated,
 		}
-		jsonData, err := sonic.Marshal(payload)
+		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK technique: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
@@ -179,7 +178,7 @@ func createGetAttackTacticByIDHandler(store *attack.LocalAttackStore, logger *co
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := sonic.Marshal(payload)
+		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK tactic: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
@@ -247,7 +246,7 @@ func createGetAttackMitigationByIDHandler(store *attack.LocalAttackStore, logger
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := sonic.Marshal(payload)
+		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK mitigation: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
@@ -316,7 +315,7 @@ func createGetAttackSoftwareByIDHandler(store *attack.LocalAttackStore, logger *
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := sonic.Marshal(payload)
+		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK software: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
@@ -384,7 +383,7 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := sonic.Marshal(payload)
+		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK group: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
@@ -469,7 +468,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 			"total":      total,
 		}
 
-		jsonData, err := sonic.Marshal(resp)
+		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal ListAttackTechniques response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
@@ -550,7 +549,7 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 			"total":   total,
 		}
 
-		jsonData, err := sonic.Marshal(resp)
+		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK tactics list: %v", err)
 			return &subprocess.Message{
@@ -630,7 +629,7 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 			"total":       total,
 		}
 
-		jsonData, err := sonic.Marshal(resp)
+		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK mitigations list: %v", err)
 			return &subprocess.Message{
@@ -711,7 +710,7 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 			"total":    total,
 		}
 
-		jsonData, err := sonic.Marshal(resp)
+		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK software list: %v", err)
 			return &subprocess.Message{
@@ -791,7 +790,7 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 			"total":  total,
 		}
 
-		jsonData, err := sonic.Marshal(resp)
+		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK groups list: %v", err)
 			return &subprocess.Message{
@@ -838,7 +837,7 @@ func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger
 			"total_records":  meta.TotalRecords,
 			"import_version": meta.ImportVersion,
 		}
-		jsonData, err := sonic.Marshal(payload)
+		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
 			logger.Error("Failed to marshal ATT&CK import metadata: %v", err)
 			return &subprocess.Message{

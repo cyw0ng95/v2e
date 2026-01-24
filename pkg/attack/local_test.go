@@ -89,11 +89,11 @@ func TestHelperFunctions(t *testing.T) {
 		assert.True(t, getBoolValue(row, 8)) // "t"
 
 		// Test various false values
-		assert.False(t, getBoolValue(row, 1)) // "false"
-		assert.False(t, getBoolValue(row, 3)) // "0"
-		assert.False(t, getBoolValue(row, 5)) // "no"
-		assert.False(t, getBoolValue(row, 7)) // "n"
-		assert.False(t, getBoolValue(row, 9)) // "f"
+		assert.False(t, getBoolValue(row, 1))  // "false"
+		assert.False(t, getBoolValue(row, 3))  // "0"
+		assert.False(t, getBoolValue(row, 5))  // "no"
+		assert.False(t, getBoolValue(row, 7))  // "n"
+		assert.False(t, getBoolValue(row, 9))  // "f"
 		assert.False(t, getBoolValue(row, 10)) // "invalid"
 
 		// Test out of bounds

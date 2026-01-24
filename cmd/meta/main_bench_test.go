@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -17,12 +16,12 @@ type mockBenchRPCInvoker struct {
 func (m *mockBenchRPCInvoker) InvokeRPC(ctx context.Context, target, method string, params interface{}) (interface{}, error) {
 	if target == "remote" && method == "RPCFetchCVEs" {
 		m.fetchCalls++
-		emptyPayload, _ := sonic.Marshal(map[string]interface{}{"vulnerabilities": []interface{}{}})
+		emptyPayload, _ := subprocess.MarshalFast(map[string]interface{}{"vulnerabilities": []interface{}{}})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: emptyPayload}, nil
 	}
 	if target == "local" && method == "RPCSaveCVEByID" {
 		m.saveCalls++
-		payload, _ := sonic.Marshal(map[string]interface{}{"success": true})
+		payload, _ := subprocess.MarshalFast(map[string]interface{}{"success": true})
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: payload}, nil
 	}
 	return nil, nil
@@ -51,7 +50,7 @@ func BenchmarkRPCMessageOverhead(b *testing.B) {
 			Target:        "meta",
 		}
 
-		payload, err := sonic.Marshal(data)
+		payload, err := subprocess.MarshalFast(data)
 		if err != nil {
 			b.Fatalf("Marshal failed: %v", err)
 		}

@@ -76,8 +76,6 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	if len(batch) == 0 {
 		return
 	}
-	// DEBUG: log flush activity to stderr to help debug test failures
-	fmt.Fprintf(os.Stderr, "[flushBatch] flushing %d messages\n", len(batch))
 
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()

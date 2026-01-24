@@ -1,15 +1,16 @@
-package main
+package routing
 
 import (
 	"testing"
 	"time"
 
+	"github.com/cyw0ng95/v2e/cmd/broker/core"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
 func TestGenerateCorrelationID(t *testing.T) {
-	broker := NewBroker()
+	broker := core.NewBroker()
 	defer broker.Shutdown()
 
 	// Generate two correlation IDs
@@ -28,7 +29,7 @@ func TestGenerateCorrelationID(t *testing.T) {
 }
 
 func TestRouteMessage_WithTarget(t *testing.T) {
-	broker := NewBroker()
+	broker := core.NewBroker()
 	defer broker.Shutdown()
 
 	// Spawn a simple RPC process (use sleep to keep it alive for testing)
@@ -63,7 +64,7 @@ func TestRouteMessage_WithTarget(t *testing.T) {
 }
 
 func TestRouteMessage_NoTarget(t *testing.T) {
-	broker := NewBroker()
+	broker := core.NewBroker()
 	defer broker.Shutdown()
 
 	// Create a message without a target
@@ -85,7 +86,7 @@ func TestRouteMessage_NoTarget(t *testing.T) {
 }
 
 func TestInvokeRPC(t *testing.T) {
-	broker := NewBroker()
+	broker := core.NewBroker()
 	defer broker.Shutdown()
 
 	// Create a simple echo-like process for testing
@@ -119,7 +120,7 @@ func TestInvokeRPC(t *testing.T) {
 }
 
 func TestLoadProcessesFromConfig(t *testing.T) {
-	broker := NewBroker()
+	broker := core.NewBroker()
 	defer broker.Shutdown()
 
 	t.Run("Nil config", func(t *testing.T) {

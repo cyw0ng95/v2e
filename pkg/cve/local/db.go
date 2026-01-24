@@ -3,8 +3,8 @@ package local
 import (
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -80,7 +80,7 @@ func NewDB(dbPath string) (*DB, error) {
 // SaveCVE saves a CVE item to the database
 func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	// Marshal the full CVE data to JSON
-	data, err := sonic.Marshal(cveItem)
+	data, err := jsonutil.Marshal(cveItem)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (d *DB) SaveCVEs(cves []cve.CVEItem) error {
 	for i := range cves {
 		// Marshal the full CVE data to JSON
 		// Use value type instead of pointer to avoid unnecessary allocation
-		data, err := sonic.Marshal(cves[i])
+		data, err := jsonutil.Marshal(cves[i])
 		if err != nil {
 			return err
 		}
@@ -153,7 +153,7 @@ func (d *DB) GetCVE(cveID string) (*cve.CVEItem, error) {
 	}
 
 	var cveItem cve.CVEItem
-	if err := sonic.Unmarshal([]byte(record.Data), &cveItem); err != nil {
+	if err := jsonutil.Unmarshal([]byte(record.Data), &cveItem); err != nil {
 		return nil, err
 	}
 
@@ -170,7 +170,7 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 	// Pre-allocate with exact capacity to avoid re-allocations
 	cves := make([]cve.CVEItem, len(records))
 	for i, record := range records {
-		if err := sonic.Unmarshal([]byte(record.Data), &cves[i]); err != nil {
+		if err := jsonutil.Unmarshal([]byte(record.Data), &cves[i]); err != nil {
 			return nil, err
 		}
 	}

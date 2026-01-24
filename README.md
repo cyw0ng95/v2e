@@ -218,6 +218,107 @@ Build and package:
 ./build.sh -p
 ```
 
+## Job Session Management & State Machine
+
+The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with persistent state management. Job runs are stored in BoltDB and survive service restarts.
+
+### Job States
+
+The system supports six job states with strictly defined transitions:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Queued: Create Run
+    Queued --> Running: Start
+    Queued --> Stopped: Stop
+    Running --> Paused: Pause
+    Running --> Completed: Finish Successfully
+    Running --> Failed: Error
+    Running --> Stopped: Stop
+    Paused --> Running: Resume
+    Paused --> Stopped: Stop
+    Completed --> [*]
+    Failed --> [*]
+    Stopped --> [*]
+```
+
+**State Descriptions:**
+
+- **Queued**: Job created but not yet started
+- **Running**: Job actively fetching and storing data
+- **Paused**: Job temporarily paused by user (can be resumed)
+- **Completed**: Job finished successfully (all data fetched)
+- **Failed**: Job encountered fatal error
+- **Stopped**: Job manually stopped by user
+
+**Terminal States**: Completed, Failed, Stopped (cannot transition further)
+
+### Session Persistence & Recovery
+
+- **Single Active Run Policy**: Only one job run can be active (running or paused) at a time
+- **BoltDB Storage**: Job runs persist in `session.db` (configurable via `SESSION_DB_PATH` env var)
+- **Auto-Recovery**: On service restart:
+  - Running jobs: Automatically resumed
+  - Paused jobs: Remain paused (manual resume required)
+  - Terminal states: No action taken
+
+### RPC API for Job Control
+
+**Start Session:**
+```json
+{
+  "method": "RPCStartSession",
+  "params": {
+    "session_id": "my-job-001",
+    "start_index": 0,
+    "results_per_batch": 100
+  }
+}
+```
+
+**Stop Session:**
+```json
+{
+  "method": "RPCStopSession",
+  "params": {}
+}
+```
+
+**Pause Job:**
+```json
+{
+  "method": "RPCPauseJob",
+  "params": {}
+}
+```
+
+**Resume Job:**
+```json
+{
+  "method": "RPCResumeJob",
+  "params": {}
+}
+```
+
+**Get Status:**
+```json
+{
+  "method": "RPCGetSessionStatus",
+  "params": {}
+}
+```
+
+Response includes: `state`, `session_id`, `fetched_count`, `stored_count`, `error_count`, `error_message`
+
+### Task Orchestration with go-taskflow
+
+The meta service uses go-taskflow to orchestrate multi-step jobs:
+
+1. **Fetch** task: Retrieve CVE batch from remote NVD API
+2. **Store** task: Save CVEs to local database
+
+Tasks are organized in a directed acyclic graph (DAG) with dependency management, retries, and cancellation support.
+
 ## Configuration Guide
 
 The system is configured through `config.json`, which controls:
@@ -252,10 +353,11 @@ Performance monitoring capabilities include:
   - access/ - REST gateway (subprocess)
   - local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK)
   - remote/ - Remote data fetching service
-  - meta/ - Orchestration and job control
+  - meta/ - Orchestration and job control (with Taskflow)
   - sysmon/ - System monitoring service
 - **pkg/** - Shared packages
   - proc/subprocess - Subprocess framework (stdin/stdout RPC)
+  - cve/taskflow - Taskflow-based job executor with persistent state
   - cve - CVE domain types and helpers
   - cwe - CWE domain types and helpers
   - capec - CAPEC domain types and helpers
@@ -273,12 +375,15 @@ Performance monitoring capabilities include:
 - Configuration (process list, logging) is controlled through `config.json`
 - The authoritative RPC API specification for each subprocess can be found in the top comment of its `cmd/*/main.go` file
 - All inter-service communication flows through the broker to maintain architectural integrity
+- Job sessions persist across service restarts; only one active run is allowed at a time
 
 ## Where to Look Next
 
 - [cmd/broker](file:///home/cyw0ng/projects/v2e-qoder/cmd/broker) — Broker implementation and message routing
 - [pkg/proc/subprocess](file:///home/cyw0ng/projects/v2e-qoder/pkg/proc/subprocess) — Helper framework for subprocesses
+- [pkg/cve/taskflow](file:///home/cyw0ng/projects/v2e-qoder/pkg/cve/taskflow) — Taskflow-based job executor
 - [cmd/access](file:///home/cyw0ng/projects/v2e-qoder/cmd/access) — REST gateway and example of using the RPC client
+- [cmd/meta](file:///home/cyw0ng/projects/v2e-qoder/cmd/meta) — Job orchestration and session management
 - [website/](file:///home/cyw0ng/projects/v2e-qoder/website) — Next.js frontend implementation
 - [tests/](file:///home/cyw0ng/projects/v2e-qoder/tests) — Integration tests demonstrating usage patterns
 

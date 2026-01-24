@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
 
 var (
@@ -132,9 +133,9 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 			c.logger.Debug("Fetching views: start_index=%d, page_size=%d", current, pageSize)
 
 			// Invoke remote to fetch views
-			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchViews", map[string]interface{}{
-				"start_index":      current,
-				"results_per_page": pageSize,
+			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchViews", &rpc.FetchCVEsParams{
+				StartIndex:     current,
+				ResultsPerPage: pageSize,
 			})
 			if err != nil {
 				c.logger.Error("Failed to fetch views: %v", err)
@@ -171,7 +172,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 			var resp struct {
 				Views []cwe.CWEView `json:"views"`
 			}
-			if err := sonic.Unmarshal(msg.Payload, &resp); err != nil {
+			if err := jsonutil.Unmarshal(msg.Payload, &resp); err != nil {
 				c.logger.Error("Failed to unmarshal views response: %v", err)
 				select {
 				case <-ctx.Done():

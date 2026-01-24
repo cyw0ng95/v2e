@@ -22,13 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
-	"github.com/cyw0ng95/v2e/pkg/cve/job"
-	"github.com/cyw0ng95/v2e/pkg/cve/session"
+	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
 
 const (
@@ -133,7 +132,7 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 	// Create request message
 	var payload []byte
 	if params != nil {
-		data, err := sonic.Marshal(params)
+		data, err := subprocess.MarshalFast(params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal params: %w", err)
 		}
@@ -180,57 +179,17 @@ func (a *RPCClientAdapter) InvokeRPC(ctx context.Context, target, method string,
 	return a.client.InvokeRPC(ctx, target, method, params)
 }
 
-// recoverSession checks for existing sessions after restart and recovers running jobs
+// recoverRuns checks for existing runs after restart and recovers running jobs
 // This ensures consistency when the service restarts.
 //
 // Recovery logic:
-// - "running" sessions: Auto-resume (service crashed or was restarted while job was running)
-// - "paused" sessions: Keep paused (user explicitly paused, don't auto-resume)
-// - Other states: No action needed
-func recoverSession(jobController *job.Controller, sessionManager *session.Manager, logger *common.Logger) {
-	// Check if there's an existing session
-	sess, err := sessionManager.GetSession()
-	if err != nil {
-		if err == session.ErrNoSession {
-			logger.Info("No existing session to recover")
-			return
-		}
-		logger.Warn("Failed to check for existing session: %v", err)
-		logger.Debug("Session recovery check failed: %v", err)
-		return
-	}
-	logger.Debug("Session recovery check completed: found session ID %s with state %s", sess.ID, sess.State)
-
-	logger.Info("Found existing session: id=%s, state=%s, fetched=%d, stored=%d",
-		sess.ID, sess.State, sess.FetchedCount, sess.StoredCount)
-
-	// Only auto-recover if the session was in "running" state
-	// Paused sessions should stay paused until explicitly resumed via RPCResumeJob
-	if sess.State == session.StateRunning {
-		logger.Info("Recovering running session: id=%s", sess.ID)
-
-		// Use Start() for sessions that are already in "running" state
-		// Start() doesn't check the state precondition like Resume() does
-		err := jobController.Start(context.Background())
-		if err != nil {
-			// If start fails (e.g., job already running somehow), try to handle gracefully
-			if err == job.ErrJobRunning {
-				logger.Info("Job is already running - recovery not needed")
-				return
-			}
-			logger.Warn("Failed to recover running session: %v", err)
-			logger.Debug("Session recovery failed for session ID %s: %v", sess.ID, err)
-			// Don't change state on recovery failure - keep it as "running"
-			// This way, next restart will try again
-			logger.Warn("Session will remain in 'running' state for next recovery attempt")
-			return
-		}
-
-		logger.Info("Successfully recovered running session: id=%s", sess.ID)
-	} else if sess.State == session.StatePaused {
-		logger.Info("Session is paused - not auto-recovering. Use RPCResumeJob to manually resume.")
-	} else {
-		logger.Info("Session state is '%s' - no recovery needed", sess.State)
+// - "running" runs: Auto-resume (service crashed or was restarted while job was running)
+// - "paused" runs: Keep paused (user explicitly paused, don't auto-resume)
+// - Terminal states: No action needed
+func recoverRuns(jobExecutor *taskflow.JobExecutor, logger *common.Logger) {
+	if err := jobExecutor.RecoverRuns(context.Background()); err != nil {
+		logger.Warn("Failed to recover runs: %v", err)
+		logger.Debug("Run recovery failed: %v", err)
 	}
 }
 
@@ -242,11 +201,8 @@ func main() {
 		processID = "meta"
 	}
 
-	// Log all environment variables for debug
-	fmt.Fprintf(os.Stderr, "[meta] ENV: PROCESS_ID=%s SESSION_DB_PATH=%s PWD=%s\n", os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"), os.Getenv("PWD"))
-	for _, e := range os.Environ() {
-		fmt.Fprintf(os.Stderr, "[meta] ENV: %s\n", e)
-	}
+	// Log minimal startup info only (avoid dumping all environment variables)
+	fmt.Fprintf(os.Stderr, "[meta] STARTUP: PROCESS_ID=%s SESSION_DB_PATH=%s\n", os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
 
 	// Set up logging using common subprocess framework
 	logger, err := subprocess.SetupLogging(processID)
@@ -255,27 +211,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get session database path from environment or use default
-	sessionDBPath := os.Getenv("SESSION_DB_PATH")
-	if sessionDBPath == "" {
-		sessionDBPath = DefaultSessionDBPath
+	// Get run database path from environment or use default
+	runDBPath := os.Getenv("SESSION_DB_PATH")
+	if runDBPath == "" {
+		runDBPath = DefaultSessionDBPath
 	}
-	logger.Info("[meta] Using session DB path: %s", sessionDBPath)
-	if _, err := os.Stat(sessionDBPath); err == nil {
-		logger.Info("[meta] Session DB file exists: %s", sessionDBPath)
+	logger.Info("[meta] Using run DB path: %s", runDBPath)
+	if _, err := os.Stat(runDBPath); err == nil {
+		logger.Info("[meta] Run DB file exists: %s", runDBPath)
 	} else {
-		logger.Warn("[meta] Session DB file does not exist or cannot stat: %s (err=%v)", sessionDBPath, err)
+		logger.Warn("[meta] Run DB file does not exist or cannot stat: %s (err=%v)", runDBPath, err)
 	}
 
-	// Create session manager
-	logger.Info("[meta] Creating session manager...")
-	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	// Create run store
+	logger.Info("[meta] Creating run store...")
+	runStore, err := taskflow.NewRunStore(runDBPath, logger)
 	if err != nil {
-		logger.Error("[meta] Failed to create session manager: %v", err)
+		logger.Error("[meta] Failed to create run store: %v", err)
 		os.Exit(1)
 	}
-	logger.Info("[meta] Session manager created successfully")
-	defer sessionManager.Close()
+	logger.Info("[meta] Run store created successfully")
+	defer runStore.Close()
 
 	// Create subprocess instance
 	sp := subprocess.New(processID)
@@ -284,15 +240,15 @@ func main() {
 	rpcClient := NewRPCClient(sp, logger)
 	rpcAdapter := &RPCClientAdapter{client: rpcClient}
 
-	// Create job controller
-	jobController := job.NewController(rpcAdapter, sessionManager, logger)
+	// Create job executor with Taskflow (100 concurrent goroutines)
+	jobExecutor := taskflow.NewJobExecutor(rpcAdapter, runStore, logger, 100)
 
 	// Create CWE job controller (separate controller for view jobs)
 	cweJobController := cwejob.NewController(rpcAdapter, logger)
 
-	// Recover session if needed after restart
+	// Recover runs if needed after restart
 	// This ensures job consistency when the service restarts
-	recoverSession(jobController, sessionManager, logger)
+	recoverRuns(jobExecutor, logger)
 
 	// Register RPC handlers for CRUD operations
 	sp.RegisterHandler("RPCGetCVE", createGetCVEHandler(rpcClient, logger))
@@ -303,11 +259,11 @@ func main() {
 	sp.RegisterHandler("RPCCountCVEs", createCountCVEsHandler(rpcClient, logger))
 
 	// Register job control RPC handlers
-	sp.RegisterHandler("RPCStartSession", createStartSessionHandler(sessionManager, jobController, logger))
-	sp.RegisterHandler("RPCStopSession", createStopSessionHandler(sessionManager, jobController, logger))
-	sp.RegisterHandler("RPCGetSessionStatus", createGetSessionStatusHandler(sessionManager, logger))
-	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobController, logger))
-	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobController, logger))
+	sp.RegisterHandler("RPCStartSession", createStartSessionHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCStopSession", createStopSessionHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCGetSessionStatus", createGetSessionStatusHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobExecutor, logger))
 
 	// Register CWE view job RPC handlers
 	sp.RegisterHandler("RPCStartCWEViewJob", createStartCWEViewJobHandler(cweJobController, logger))
@@ -320,7 +276,7 @@ func main() {
 		time.Sleep(2 * time.Second)
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		params := map[string]interface{}{"path": "assets/cwe-raw.json"}
+		params := &rpc.ImportParams{Path: "assets/cwe-raw.json"}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", params)
 		if err != nil {
 			logger.Warn("Failed to import CWE on local: %v", err)
@@ -330,7 +286,7 @@ func main() {
 			logger.Debug("CWE import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CWE import triggered on local")
-			logger.Debug("CWE import process started successfully with path: %s", params["path"])
+			logger.Debug("CWE import process started successfully with path: %s", params.Path)
 		}
 	}()
 
@@ -349,7 +305,7 @@ func main() {
 			return
 		}
 		// If meta not present or query failed, attempt import
-		params := map[string]interface{}{"path": "assets/capec_contents_latest.xml", "xsd": "assets/capec_schema_latest.xsd"}
+		params := &rpc.ImportParams{Path: "assets/capec_contents_latest.xml", XSD: "assets/capec_schema_latest.xsd"}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
 		if err != nil {
 			logger.Warn("Failed to import CAPEC on local: %v", err)
@@ -359,7 +315,7 @@ func main() {
 			logger.Debug("CAPEC import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CAPEC import triggered on local")
-			logger.Debug("CAPEC import process started successfully with path: %s", params["path"])
+			logger.Debug("CAPEC import process started successfully with path: %s", params.Path)
 		}
 	}()
 
@@ -409,9 +365,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 
 		// Step 1: Check if CVE exists locally
 		logger.Info("RPCGetCVE: Checking if CVE %s exists in local storage", req.CVEID)
-		checkResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCIsCVEStoredByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		checkResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCIsCVEStoredByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Warn("Failed to check local storage: %v", err)
 			logger.Debug("GetCVE local storage check failed for CVE ID %s: %v", req.CVEID, err)
@@ -441,9 +395,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		if checkResult.Stored {
 			// Step 2a: CVE is stored locally, retrieve it
 			logger.Info("RPCGetCVE: CVE %s found locally, retrieving from local storage", req.CVEID)
-			getResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCVEByID", map[string]interface{}{
-				"cve_id": req.CVEID,
-			})
+			getResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 			if err != nil {
 				logger.Warn("Failed to get CVE from local storage: %v", err)
 				logger.Debug("GetCVE failed to retrieve CVE from local storage for CVE ID %s: %v", req.CVEID, err)
@@ -465,9 +417,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		} else {
 			// Step 2b: CVE not found locally, fetch from remote
 			logger.Info("RPCGetCVE: CVE %s not found locally, fetching from remote NVD API", req.CVEID)
-			remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
-				"cve_id": req.CVEID,
-			})
+			remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 			if err != nil {
 				logger.Warn("Failed to fetch CVE from remote: %v", err)
 				logger.Debug("GetCVE failed to fetch CVE from remote for CVE ID %s: %v", req.CVEID, err)
@@ -500,9 +450,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 
 			// Step 3: Save fetched CVE to local storage
 			logger.Info("RPCGetCVE: Saving CVE %s to local storage", req.CVEID)
-			_, err = rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-				"cve": cveData,
-			})
+			_, err = rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", &rpc.SaveCVEByIDParams{CVE: *cveData})
 			if err != nil {
 				logger.Warn("Failed to save CVE to local storage (continuing anyway): %v", err)
 				logger.Debug("GetCVE save to local storage failed for CVE ID %s: %v", req.CVEID, err)
@@ -519,7 +467,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		}
 
 		// Marshal the result
-		jsonData, err := sonic.Marshal(cveData)
+		jsonData, err := subprocess.MarshalFast(cveData)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			logger.Debug("GetCVE failed to marshal response for CVE ID %s: %v", req.CVEID, err)
@@ -554,9 +502,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCCreateCVE: Fetching CVE %s from NVD", req.CVEID)
 
 		// Fetch from remote (NVD)
-		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Error("Failed to fetch CVE from remote: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %v", err)), nil
@@ -585,9 +531,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 
 		// Save to local storage
 		logger.Info("RPCCreateCVE: Saving CVE %s to local storage", req.CVEID)
-		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-			"cve": cveData,
-		})
+		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", &rpc.SaveCVEByIDParams{CVE: *cveData})
 		if err != nil {
 			logger.Error("Failed to save CVE to local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to save CVE to local storage: %v", err)), nil
@@ -614,7 +558,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"cve":     cveData,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -646,9 +590,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCUpdateCVE: Refetching CVE %s from NVD to update local copy", req.CVEID)
 
 		// Fetch latest data from remote (NVD)
-		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Error("Failed to fetch CVE from remote: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %v", err)), nil
@@ -677,9 +619,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 
 		// Update local storage (save will update if exists, create if not)
 		logger.Info("RPCUpdateCVE: Updating CVE %s in local storage", req.CVEID)
-		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-			"cve": cveData,
-		})
+		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", &rpc.SaveCVEByIDParams{CVE: *cveData})
 		if err != nil {
 			logger.Error("Failed to update CVE in local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to update CVE in local storage: %v", err)), nil
@@ -706,7 +646,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"cve":     cveData,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -738,9 +678,7 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCDeleteCVE: Deleting CVE %s from local storage", req.CVEID)
 
 		// Delete from local storage
-		deleteResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCDeleteCVEByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		deleteResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCDeleteCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Error("Failed to delete CVE from local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to delete CVE from local storage: %v", err)), nil
@@ -776,7 +714,7 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"cve_id":  req.CVEID,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -808,10 +746,7 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 		logger.Info("RPCListCVEs: Listing CVEs with offset=%d, limit=%d", req.Offset, req.Limit)
 
 		// List from local storage
-		listResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCListCVEs", map[string]interface{}{
-			"offset": req.Offset,
-			"limit":  req.Limit,
-		})
+		listResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCListCVEs", &rpc.ListParams{Offset: req.Offset, Limit: req.Limit})
 		if err != nil {
 			logger.Error("Failed to list CVEs from local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to list CVEs from local storage: %v", err)), nil
@@ -849,7 +784,7 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 			"limit":  req.Limit,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -867,7 +802,7 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCCountCVEs: Counting CVEs")
 
 		// Count from local storage
-		countResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCountCVEs", map[string]interface{}{})
+		countResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCountCVEs", nil)
 		if err != nil {
 			logger.Error("Failed to count CVEs from local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to count CVEs from local storage: %v", err)), nil
@@ -901,7 +836,7 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			"count": countResult.Count,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -913,8 +848,8 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 	}
 }
 
-// createStartSessionHandler creates a handler that starts a new job session
-func createStartSessionHandler(sessionManager *session.Manager, jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+// createStartSessionHandler creates a handler that starts a new job run
+func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -937,30 +872,21 @@ func createStartSessionHandler(sessionManager *session.Manager, jobController *j
 			return createErrorResponse(msg, "session_id is required"), nil
 		}
 
-		logger.Info("RPCStartSession: Creating session %s (start_index=%d, batch_size=%d)",
+		logger.Info("RPCStartSession: Starting job run %s (start_index=%d, batch_size=%d)",
 			req.SessionID, req.StartIndex, req.ResultsPerBatch)
 
-		// Create new session
-		sess, err := sessionManager.CreateSession(req.SessionID, req.StartIndex, req.ResultsPerBatch)
-		if err != nil {
-			logger.Error("Failed to create session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to create session: %v", err)), nil
-		}
-
 		// Start the job
-		err = jobController.Start(ctx)
+		err := jobExecutor.Start(ctx, req.SessionID, req.StartIndex, req.ResultsPerBatch)
 		if err != nil {
 			logger.Error("Failed to start job: %v", err)
-			// Clean up session if job failed to start
-			sessionManager.DeleteSession()
 			return createErrorResponse(msg, fmt.Sprintf("failed to start job: %v", err)), nil
 		}
 
-		// Get updated session state after starting the job
-		sess, err = sessionManager.GetSession()
+		// Get updated run state
+		run, err := jobExecutor.GetStatus(req.SessionID)
 		if err != nil {
-			logger.Error("Failed to get updated session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get updated session: %v", err)), nil
+			logger.Error("Failed to get run status: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get run status: %v", err)), nil
 		}
 
 		// Create response
@@ -973,47 +899,57 @@ func createStartSessionHandler(sessionManager *session.Manager, jobController *j
 
 		result := map[string]interface{}{
 			"success":    true,
-			"session_id": sess.ID,
-			"state":      sess.State,
-			"created_at": sess.CreatedAt,
+			"session_id": run.ID,
+			"state":      run.State,
+			"created_at": run.CreatedAt,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
 
-		logger.Info("RPCStartSession: Successfully started session %s", sess.ID)
+		logger.Info("RPCStartSession: Successfully started job run %s", run.ID)
 		return respMsg, nil
 	}
 }
 
-// createStopSessionHandler creates a handler that stops the current session
-func createStopSessionHandler(sessionManager *session.Manager, jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+// createStopSessionHandler creates a handler that stops the current run
+func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info("RPCStopSession: Stopping current session")
+		logger.Info("RPCStopSession: Stopping current run")
 
-		// Stop the job
-		err := jobController.Stop()
-		if err != nil && err != job.ErrJobNotRunning {
-			logger.Error("Failed to stop job: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to stop job: %v", err)), nil
+		// Try to get active run first
+		run, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
-		// Get session info before deleting
-		sess, err := sessionManager.GetSession()
-		if err != nil {
-			logger.Error("Failed to get session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get session: %v", err)), nil
+		// If no active run, try the latest persisted run as a fallback
+		if run == nil {
+			run, err = jobExecutor.GetLatestRun()
+			if err != nil {
+				logger.Error("Failed to get latest run: %v", err)
+				return createErrorResponse(msg, fmt.Sprintf("failed to get latest run: %v", err)), nil
+			}
+			if run == nil {
+				logger.Error("No active run to stop")
+				return createErrorResponse(msg, "no active run"), nil
+			}
 		}
 
-		// Delete the session
-		err = sessionManager.DeleteSession()
-		if err != nil {
-			logger.Error("Failed to delete session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to delete session: %v", err)), nil
+		// If run is actively running or paused, attempt to stop it
+		if run.State == taskflow.StateRunning || run.State == taskflow.StatePaused {
+			err = jobExecutor.Stop(run.ID)
+			if err != nil {
+				logger.Error("Failed to stop job: %v", err)
+				return createErrorResponse(msg, fmt.Sprintf("failed to stop job: %v", err)), nil
+			}
+			// Refresh final run info
+			run, _ = jobExecutor.GetStatus(run.ID)
 		}
 
 		// Create response
@@ -1026,53 +962,53 @@ func createStopSessionHandler(sessionManager *session.Manager, jobController *jo
 
 		result := map[string]interface{}{
 			"success":       true,
-			"session_id":    sess.ID,
-			"fetched_count": sess.FetchedCount,
-			"stored_count":  sess.StoredCount,
-			"error_count":   sess.ErrorCount,
+			"session_id":    run.ID,
+			"fetched_count": run.FetchedCount,
+			"stored_count":  run.StoredCount,
+			"error_count":   run.ErrorCount,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
 
-		logger.Info("RPCStopSession: Successfully stopped session %s", sess.ID)
+		logger.Info("RPCStopSession: Successfully stopped run %s", run.ID)
 		return respMsg, nil
 	}
 }
 
-// createGetSessionStatusHandler creates a handler that returns the current session status
-func createGetSessionStatusHandler(sessionManager *session.Manager, logger *common.Logger) subprocess.Handler {
+// createGetSessionStatusHandler creates a handler that returns the current run status
+func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCGetSessionStatus: Getting session status")
+		logger.Debug("RPCGetSessionStatus: Getting run status")
 
-		// Get current session
-		sess, err := sessionManager.GetSession()
+		// Get active run
+		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
-			if err == session.ErrNoSession {
-				// No session exists - return empty status
-				respMsg := &subprocess.Message{
-					Type:          subprocess.MessageTypeResponse,
-					ID:            msg.ID,
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+		}
 
-				result := map[string]interface{}{
-					"has_session": false,
-				}
-
-				jsonData, _ := sonic.Marshal(result)
-				respMsg.Payload = jsonData
-
-				return respMsg, nil
+		if run == nil {
+			// No active run - return empty status
+			respMsg := &subprocess.Message{
+				Type:          subprocess.MessageTypeResponse,
+				ID:            msg.ID,
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
 			}
 
-			logger.Error("Failed to get session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get session: %v", err)), nil
+			result := map[string]interface{}{
+				"has_session": false,
+			}
+
+			jsonData, _ := subprocess.MarshalFast(result)
+			respMsg.Payload = jsonData
+
+			return respMsg, nil
 		}
 
 		// Create response
@@ -1085,35 +1021,47 @@ func createGetSessionStatusHandler(sessionManager *session.Manager, logger *comm
 
 		result := map[string]interface{}{
 			"has_session":       true,
-			"session_id":        sess.ID,
-			"state":             sess.State,
-			"start_index":       sess.StartIndex,
-			"results_per_batch": sess.ResultsPerBatch,
-			"created_at":        sess.CreatedAt,
-			"updated_at":        sess.UpdatedAt,
-			"fetched_count":     sess.FetchedCount,
-			"stored_count":      sess.StoredCount,
-			"error_count":       sess.ErrorCount,
+			"session_id":        run.ID,
+			"state":             run.State,
+			"start_index":       run.StartIndex,
+			"results_per_batch": run.ResultsPerBatch,
+			"created_at":        run.CreatedAt,
+			"updated_at":        run.UpdatedAt,
+			"fetched_count":     run.FetchedCount,
+			"stored_count":      run.StoredCount,
+			"error_count":       run.ErrorCount,
+			"error_message":     run.ErrorMessage,
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
-
-		logger.Debug("RPCGetSessionStatus: Successfully retrieved session status")
+		logger.Debug("RPCGetSessionStatus: Successfully retrieved run status")
 		return respMsg, nil
 	}
 }
 
 // createPauseJobHandler creates a handler that pauses the running job
-func createPauseJobHandler(jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+func createPauseJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Info("RPCPauseJob: Pausing job")
 
-		err := jobController.Pause()
+		// Get active run first
+		run, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+		}
+
+		if run == nil {
+			logger.Error("No active run to pause")
+			return createErrorResponse(msg, "no active run"), nil
+		}
+
+		err = jobExecutor.Pause(run.ID)
 		if err != nil {
 			logger.Error("Failed to pause job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to pause job: %v", err)), nil
@@ -1132,7 +1080,7 @@ func createPauseJobHandler(jobController *job.Controller, logger *common.Logger)
 			"state":   "paused",
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -1162,7 +1110,7 @@ func createStartCWEViewJobHandler(jobController *cwejob.Controller, logger *comm
 		}
 
 		result := map[string]interface{}{"success": true, "session_id": sessionID}
-		data, err := sonic.Marshal(result)
+		data, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("RPCStartCWEViewJob: failed to marshal response: %v", err)
 			return createErrorResponse(msg, "failed to marshal response"), nil
@@ -1191,17 +1139,29 @@ func createStopCWEViewJobHandler(jobController *cwejob.Controller, logger *commo
 		}
 
 		result := map[string]interface{}{"success": true, "session_id": req.SessionID}
-		data, _ := sonic.Marshal(result)
+		data, _ := subprocess.MarshalFast(result)
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, ID: msg.ID, CorrelationID: msg.CorrelationID, Target: msg.Source, Payload: data}, nil
 	}
 }
 
 // createResumeJobHandler creates a handler that resumes a paused job
-func createResumeJobHandler(jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+func createResumeJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Info("RPCResumeJob: Resuming job")
 
-		err := jobController.Resume(ctx)
+		// Get active run (which should be paused)
+		run, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+		}
+
+		if run == nil {
+			logger.Error("No run to resume")
+			return createErrorResponse(msg, "no paused run"), nil
+		}
+
+		err = jobExecutor.Resume(ctx, run.ID)
 		if err != nil {
 			logger.Error("Failed to resume job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to resume job: %v", err)), nil
@@ -1220,7 +1180,7 @@ func createResumeJobHandler(jobController *job.Controller, logger *common.Logger
 			"state":   "running",
 		}
 
-		jsonData, err := sonic.Marshal(result)
+		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
 			logger.Error("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil

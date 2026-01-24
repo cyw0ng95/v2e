@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -51,7 +50,7 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 		}
 		logger.Debug("Found CWE: %+v", item)
 		logger.Debug("Processing GetCWEByID request completed successfully for CWE ID %s", req.CWEID)
-		jsonData, err := sonic.Marshal(item)
+		jsonData, err := subprocess.MarshalFast(item)
 		if err != nil {
 			logger.Error("Failed to marshal CWE: %v (cwe_id=%s)", err, req.CWEID)
 			return &subprocess.Message{
@@ -122,7 +121,7 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 			"limit":  req.Limit,
 			"total":  total,
 		}
-		jsonData, err := sonic.Marshal(resp)
+		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
 			logger.Error("Failed to marshal CWEs: %v", err)
 			return &subprocess.Message{

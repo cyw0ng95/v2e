@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 
-	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -53,7 +52,7 @@ func createGetCWEViewHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 			logger.Error("GetViewByID error: %v", err)
 			return &subprocess.Message{Type: subprocess.MessageTypeError, ID: msg.ID, Error: "view not found", CorrelationID: msg.CorrelationID, Target: msg.Source}, nil
 		}
-		b, _ := sonic.Marshal(v)
+		b, _ := subprocess.MarshalFast(v)
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, ID: msg.ID, CorrelationID: msg.CorrelationID, Target: msg.Source, Payload: b}, nil
 	}
 }
@@ -82,7 +81,7 @@ func createListCWEViewsHandler(store *cwe.LocalCWEStore, logger *common.Logger) 
 			return &subprocess.Message{Type: subprocess.MessageTypeError, ID: msg.ID, Error: "failed to list views", CorrelationID: msg.CorrelationID, Target: msg.Source}, nil
 		}
 		resp := map[string]interface{}{"views": items, "offset": req.Offset, "limit": req.Limit, "total": total}
-		b, _ := sonic.Marshal(resp)
+		b, _ := subprocess.MarshalFast(resp)
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, ID: msg.ID, CorrelationID: msg.CorrelationID, Target: msg.Source, Payload: b}, nil
 	}
 }
