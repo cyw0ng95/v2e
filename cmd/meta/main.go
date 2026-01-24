@@ -25,8 +25,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
-	"github.com/cyw0ng95/v2e/pkg/cve/job"
-	"github.com/cyw0ng95/v2e/pkg/cve/session"
+	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
@@ -180,57 +179,17 @@ func (a *RPCClientAdapter) InvokeRPC(ctx context.Context, target, method string,
 	return a.client.InvokeRPC(ctx, target, method, params)
 }
 
-// recoverSession checks for existing sessions after restart and recovers running jobs
+// recoverRuns checks for existing runs after restart and recovers running jobs
 // This ensures consistency when the service restarts.
 //
 // Recovery logic:
-// - "running" sessions: Auto-resume (service crashed or was restarted while job was running)
-// - "paused" sessions: Keep paused (user explicitly paused, don't auto-resume)
-// - Other states: No action needed
-func recoverSession(jobController *job.Controller, sessionManager *session.Manager, logger *common.Logger) {
-	// Check if there's an existing session
-	sess, err := sessionManager.GetSession()
-	if err != nil {
-		if err == session.ErrNoSession {
-			logger.Info("No existing session to recover")
-			return
-		}
-		logger.Warn("Failed to check for existing session: %v", err)
-		logger.Debug("Session recovery check failed: %v", err)
-		return
-	}
-	logger.Debug("Session recovery check completed: found session ID %s with state %s", sess.ID, sess.State)
-
-	logger.Info("Found existing session: id=%s, state=%s, fetched=%d, stored=%d",
-		sess.ID, sess.State, sess.FetchedCount, sess.StoredCount)
-
-	// Only auto-recover if the session was in "running" state
-	// Paused sessions should stay paused until explicitly resumed via RPCResumeJob
-	if sess.State == session.StateRunning {
-		logger.Info("Recovering running session: id=%s", sess.ID)
-
-		// Use Start() for sessions that are already in "running" state
-		// Start() doesn't check the state precondition like Resume() does
-		err := jobController.Start(context.Background())
-		if err != nil {
-			// If start fails (e.g., job already running somehow), try to handle gracefully
-			if err == job.ErrJobRunning {
-				logger.Info("Job is already running - recovery not needed")
-				return
-			}
-			logger.Warn("Failed to recover running session: %v", err)
-			logger.Debug("Session recovery failed for session ID %s: %v", sess.ID, err)
-			// Don't change state on recovery failure - keep it as "running"
-			// This way, next restart will try again
-			logger.Warn("Session will remain in 'running' state for next recovery attempt")
-			return
-		}
-
-		logger.Info("Successfully recovered running session: id=%s", sess.ID)
-	} else if sess.State == session.StatePaused {
-		logger.Info("Session is paused - not auto-recovering. Use RPCResumeJob to manually resume.")
-	} else {
-		logger.Info("Session state is '%s' - no recovery needed", sess.State)
+// - "running" runs: Auto-resume (service crashed or was restarted while job was running)
+// - "paused" runs: Keep paused (user explicitly paused, don't auto-resume)
+// - Terminal states: No action needed
+func recoverRuns(jobExecutor *taskflow.JobExecutor, logger *common.Logger) {
+	if err := jobExecutor.RecoverRuns(context.Background()); err != nil {
+		logger.Warn("Failed to recover runs: %v", err)
+		logger.Debug("Run recovery failed: %v", err)
 	}
 }
 
@@ -255,27 +214,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get session database path from environment or use default
-	sessionDBPath := os.Getenv("SESSION_DB_PATH")
-	if sessionDBPath == "" {
-		sessionDBPath = DefaultSessionDBPath
+	// Get run database path from environment or use default
+	runDBPath := os.Getenv("SESSION_DB_PATH")
+	if runDBPath == "" {
+		runDBPath = DefaultSessionDBPath
 	}
-	logger.Info("[meta] Using session DB path: %s", sessionDBPath)
-	if _, err := os.Stat(sessionDBPath); err == nil {
-		logger.Info("[meta] Session DB file exists: %s", sessionDBPath)
+	logger.Info("[meta] Using run DB path: %s", runDBPath)
+	if _, err := os.Stat(runDBPath); err == nil {
+		logger.Info("[meta] Run DB file exists: %s", runDBPath)
 	} else {
-		logger.Warn("[meta] Session DB file does not exist or cannot stat: %s (err=%v)", sessionDBPath, err)
+		logger.Warn("[meta] Run DB file does not exist or cannot stat: %s (err=%v)", runDBPath, err)
 	}
 
-	// Create session manager
-	logger.Info("[meta] Creating session manager...")
-	sessionManager, err := session.NewManager(sessionDBPath, logger)
+	// Create run store
+	logger.Info("[meta] Creating run store...")
+	runStore, err := taskflow.NewRunStore(runDBPath, logger)
 	if err != nil {
-		logger.Error("[meta] Failed to create session manager: %v", err)
+		logger.Error("[meta] Failed to create run store: %v", err)
 		os.Exit(1)
 	}
-	logger.Info("[meta] Session manager created successfully")
-	defer sessionManager.Close()
+	logger.Info("[meta] Run store created successfully")
+	defer runStore.Close()
 
 	// Create subprocess instance
 	sp := subprocess.New(processID)
@@ -284,15 +243,15 @@ func main() {
 	rpcClient := NewRPCClient(sp, logger)
 	rpcAdapter := &RPCClientAdapter{client: rpcClient}
 
-	// Create job controller
-	jobController := job.NewController(rpcAdapter, sessionManager, logger)
+	// Create job executor with Taskflow (100 concurrent goroutines)
+	jobExecutor := taskflow.NewJobExecutor(rpcAdapter, runStore, logger, 100)
 
 	// Create CWE job controller (separate controller for view jobs)
 	cweJobController := cwejob.NewController(rpcAdapter, logger)
 
-	// Recover session if needed after restart
+	// Recover runs if needed after restart
 	// This ensures job consistency when the service restarts
-	recoverSession(jobController, sessionManager, logger)
+	recoverRuns(jobExecutor, logger)
 
 	// Register RPC handlers for CRUD operations
 	sp.RegisterHandler("RPCGetCVE", createGetCVEHandler(rpcClient, logger))
@@ -303,11 +262,11 @@ func main() {
 	sp.RegisterHandler("RPCCountCVEs", createCountCVEsHandler(rpcClient, logger))
 
 	// Register job control RPC handlers
-	sp.RegisterHandler("RPCStartSession", createStartSessionHandler(sessionManager, jobController, logger))
-	sp.RegisterHandler("RPCStopSession", createStopSessionHandler(sessionManager, jobController, logger))
-	sp.RegisterHandler("RPCGetSessionStatus", createGetSessionStatusHandler(sessionManager, logger))
-	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobController, logger))
-	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobController, logger))
+	sp.RegisterHandler("RPCStartSession", createStartSessionHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCStopSession", createStopSessionHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCGetSessionStatus", createGetSessionStatusHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobExecutor, logger))
+	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobExecutor, logger))
 
 	// Register CWE view job RPC handlers
 	sp.RegisterHandler("RPCStartCWEViewJob", createStartCWEViewJobHandler(cweJobController, logger))
@@ -913,8 +872,8 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 	}
 }
 
-// createStartSessionHandler creates a handler that starts a new job session
-func createStartSessionHandler(sessionManager *session.Manager, jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+// createStartSessionHandler creates a handler that starts a new job run
+func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Parse the request payload
 		var req struct {
@@ -937,30 +896,21 @@ func createStartSessionHandler(sessionManager *session.Manager, jobController *j
 			return createErrorResponse(msg, "session_id is required"), nil
 		}
 
-		logger.Info("RPCStartSession: Creating session %s (start_index=%d, batch_size=%d)",
+		logger.Info("RPCStartSession: Starting job run %s (start_index=%d, batch_size=%d)",
 			req.SessionID, req.StartIndex, req.ResultsPerBatch)
 
-		// Create new session
-		sess, err := sessionManager.CreateSession(req.SessionID, req.StartIndex, req.ResultsPerBatch)
-		if err != nil {
-			logger.Error("Failed to create session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to create session: %v", err)), nil
-		}
-
 		// Start the job
-		err = jobController.Start(ctx)
+		err := jobExecutor.Start(ctx, req.SessionID, req.StartIndex, req.ResultsPerBatch)
 		if err != nil {
 			logger.Error("Failed to start job: %v", err)
-			// Clean up session if job failed to start
-			sessionManager.DeleteSession()
 			return createErrorResponse(msg, fmt.Sprintf("failed to start job: %v", err)), nil
 		}
 
-		// Get updated session state after starting the job
-		sess, err = sessionManager.GetSession()
+		// Get updated run state
+		run, err := jobExecutor.GetStatus(req.SessionID)
 		if err != nil {
-			logger.Error("Failed to get updated session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get updated session: %v", err)), nil
+			logger.Error("Failed to get run status: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get run status: %v", err)), nil
 		}
 
 		// Create response
@@ -973,9 +923,9 @@ func createStartSessionHandler(sessionManager *session.Manager, jobController *j
 
 		result := map[string]interface{}{
 			"success":    true,
-			"session_id": sess.ID,
-			"state":      sess.State,
-			"created_at": sess.CreatedAt,
+			"session_id": run.ID,
+			"state":      run.State,
+			"created_at": run.CreatedAt,
 		}
 
 		jsonData, err := sonic.Marshal(result)
@@ -985,35 +935,40 @@ func createStartSessionHandler(sessionManager *session.Manager, jobController *j
 		}
 		respMsg.Payload = jsonData
 
-		logger.Info("RPCStartSession: Successfully started session %s", sess.ID)
+		logger.Info("RPCStartSession: Successfully started job run %s", run.ID)
 		return respMsg, nil
 	}
 }
 
-// createStopSessionHandler creates a handler that stops the current session
-func createStopSessionHandler(sessionManager *session.Manager, jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+// createStopSessionHandler creates a handler that stops the current run
+func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info("RPCStopSession: Stopping current session")
+		logger.Info("RPCStopSession: Stopping current run")
+
+		// Get active run first
+		run, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+		}
+
+		if run == nil {
+			logger.Error("No active run to stop")
+			return createErrorResponse(msg, "no active run"), nil
+		}
 
 		// Stop the job
-		err := jobController.Stop()
-		if err != nil && err != job.ErrJobNotRunning {
+		err = jobExecutor.Stop(run.ID)
+		if err != nil {
 			logger.Error("Failed to stop job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to stop job: %v", err)), nil
 		}
 
-		// Get session info before deleting
-		sess, err := sessionManager.GetSession()
+		// Get final run info
+		run, err = jobExecutor.GetStatus(run.ID)
 		if err != nil {
-			logger.Error("Failed to get session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get session: %v", err)), nil
-		}
-
-		// Delete the session
-		err = sessionManager.DeleteSession()
-		if err != nil {
-			logger.Error("Failed to delete session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to delete session: %v", err)), nil
+			logger.Error("Failed to get run status: %v", err)
+			// Continue anyway with stopped status
 		}
 
 		// Create response
@@ -1026,10 +981,10 @@ func createStopSessionHandler(sessionManager *session.Manager, jobController *jo
 
 		result := map[string]interface{}{
 			"success":       true,
-			"session_id":    sess.ID,
-			"fetched_count": sess.FetchedCount,
-			"stored_count":  sess.StoredCount,
-			"error_count":   sess.ErrorCount,
+			"session_id":    run.ID,
+			"fetched_count": run.FetchedCount,
+			"stored_count":  run.StoredCount,
+			"error_count":   run.ErrorCount,
 		}
 
 		jsonData, err := sonic.Marshal(result)
@@ -1039,40 +994,40 @@ func createStopSessionHandler(sessionManager *session.Manager, jobController *jo
 		}
 		respMsg.Payload = jsonData
 
-		logger.Info("RPCStopSession: Successfully stopped session %s", sess.ID)
+		logger.Info("RPCStopSession: Successfully stopped run %s", run.ID)
 		return respMsg, nil
 	}
 }
 
-// createGetSessionStatusHandler creates a handler that returns the current session status
-func createGetSessionStatusHandler(sessionManager *session.Manager, logger *common.Logger) subprocess.Handler {
+// createGetSessionStatusHandler creates a handler that returns the current run status
+func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCGetSessionStatus: Getting session status")
+		logger.Debug("RPCGetSessionStatus: Getting run status")
 
-		// Get current session
-		sess, err := sessionManager.GetSession()
+		// Get active run
+		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
-			if err == session.ErrNoSession {
-				// No session exists - return empty status
-				respMsg := &subprocess.Message{
-					Type:          subprocess.MessageTypeResponse,
-					ID:            msg.ID,
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+		}
 
-				result := map[string]interface{}{
-					"has_session": false,
-				}
-
-				jsonData, _ := sonic.Marshal(result)
-				respMsg.Payload = jsonData
-
-				return respMsg, nil
+		if run == nil {
+			// No active run - return empty status
+			respMsg := &subprocess.Message{
+				Type:          subprocess.MessageTypeResponse,
+				ID:            msg.ID,
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
 			}
 
-			logger.Error("Failed to get session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get session: %v", err)), nil
+			result := map[string]interface{}{
+				"has_session": false,
+			}
+
+			jsonData, _ := sonic.Marshal(result)
+			respMsg.Payload = jsonData
+
+			return respMsg, nil
 		}
 
 		// Create response
@@ -1085,15 +1040,16 @@ func createGetSessionStatusHandler(sessionManager *session.Manager, logger *comm
 
 		result := map[string]interface{}{
 			"has_session":       true,
-			"session_id":        sess.ID,
-			"state":             sess.State,
-			"start_index":       sess.StartIndex,
-			"results_per_batch": sess.ResultsPerBatch,
-			"created_at":        sess.CreatedAt,
-			"updated_at":        sess.UpdatedAt,
-			"fetched_count":     sess.FetchedCount,
-			"stored_count":      sess.StoredCount,
-			"error_count":       sess.ErrorCount,
+			"session_id":        run.ID,
+			"state":             run.State,
+			"start_index":       run.StartIndex,
+			"results_per_batch": run.ResultsPerBatch,
+			"created_at":        run.CreatedAt,
+			"updated_at":        run.UpdatedAt,
+			"fetched_count":     run.FetchedCount,
+			"stored_count":      run.StoredCount,
+			"error_count":       run.ErrorCount,
+			"error_message":     run.ErrorMessage,
 		}
 
 		jsonData, err := sonic.Marshal(result)
@@ -1102,18 +1058,29 @@ func createGetSessionStatusHandler(sessionManager *session.Manager, logger *comm
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
-
-		logger.Debug("RPCGetSessionStatus: Successfully retrieved session status")
+		logger.Debug("RPCGetSessionStatus: Successfully retrieved run status")
 		return respMsg, nil
 	}
 }
 
 // createPauseJobHandler creates a handler that pauses the running job
-func createPauseJobHandler(jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+func createPauseJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Info("RPCPauseJob: Pausing job")
 
-		err := jobController.Pause()
+		// Get active run first
+		run, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+		}
+
+		if run == nil {
+			logger.Error("No active run to pause")
+			return createErrorResponse(msg, "no active run"), nil
+		}
+
+		err = jobExecutor.Pause(run.ID)
 		if err != nil {
 			logger.Error("Failed to pause job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to pause job: %v", err)), nil
@@ -1197,11 +1164,23 @@ func createStopCWEViewJobHandler(jobController *cwejob.Controller, logger *commo
 }
 
 // createResumeJobHandler creates a handler that resumes a paused job
-func createResumeJobHandler(jobController *job.Controller, logger *common.Logger) subprocess.Handler {
+func createResumeJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Info("RPCResumeJob: Resuming job")
 
-		err := jobController.Resume(ctx)
+		// Get active run (which should be paused)
+		run, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Error("Failed to get active run: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+		}
+
+		if run == nil {
+			logger.Error("No run to resume")
+			return createErrorResponse(msg, "no paused run"), nil
+		}
+
+		err = jobExecutor.Resume(ctx, run.ID)
 		if err != nil {
 			logger.Error("Failed to resume job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to resume job: %v", err)), nil
