@@ -2,7 +2,6 @@ package subprocess
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"strings"
 	"testing"
