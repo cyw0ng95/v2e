@@ -298,3 +298,69 @@ func BenchmarkSendMessageNoAlloc(b *testing.B) {
 		_ = broker.SendMessage(msg)
 	}
 }
+
+// BenchmarkRegisterEndpoint measures performance of registering endpoints
+func BenchmarkRegisterEndpoint(b *testing.B) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		broker.RegisterEndpoint("proc-register", fmt.Sprintf("ep-%d", i))
+	}
+}
+
+// BenchmarkGetEndpoints measures performance of fetching endpoints for a process
+func BenchmarkGetEndpoints(b *testing.B) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	// Pre-register endpoints
+	for i := 0; i < 1000; i++ {
+		broker.RegisterEndpoint("proc-get", fmt.Sprintf("ep-%d", i))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = broker.GetEndpoints("proc-get")
+	}
+}
+
+// BenchmarkRouteResponseToPending benchmarks routing a response to a pending request
+func BenchmarkRouteResponseToPending(b *testing.B) {
+	broker := NewBroker()
+	defer broker.Shutdown()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Create a unique correlation ID per iteration
+		corr := broker.GenerateCorrelationID()
+
+		// Create buffered channel and register pending request
+		ch := make(chan *proc.Message, 1)
+		broker.pendingMu.Lock()
+		broker.pendingRequests[corr] = &PendingRequest{
+			SourceProcess: "bench-source",
+			ResponseChan:  ch,
+			Timestamp:     time.Now(),
+		}
+		broker.pendingMu.Unlock()
+
+		// Build response message matching the correlation ID
+		resp, _ := proc.NewResponseMessage("RPCMethod", nil)
+		resp.CorrelationID = corr
+		resp.Source = "proc"
+		resp.Target = "bench-source"
+
+		// Route the response and read from the channel
+		if err := broker.RouteMessage(resp, "proc"); err != nil {
+			b.Fatal(err)
+		}
+
+		select {
+		case <-ch:
+		case <-time.After(5 * time.Second):
+			b.Fatal("timeout waiting for routed response")
+		}
+	}
+}
