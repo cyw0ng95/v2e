@@ -41,8 +41,13 @@ func NewJobExecutor(rpcInvoker RPCInvoker, runStore *RunStore, logger *common.Lo
 	}
 }
 
-// Start starts a new job run (enforces single active run)
+// Start starts a new CVE job run (enforces single active run)
 func (e *JobExecutor) Start(ctx context.Context, runID string, startIndex, resultsPerBatch int) error {
+	return e.StartTyped(ctx, runID, startIndex, resultsPerBatch, DataTypeCVE)
+}
+
+// StartTyped starts a new job run with a specific data type (enforces single active run)
+func (e *JobExecutor) StartTyped(ctx context.Context, runID string, startIndex, resultsPerBatch int, dataType DataType) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -56,7 +61,7 @@ func (e *JobExecutor) Start(ctx context.Context, runID string, startIndex, resul
 	}
 
 	// Create new run
-	run, err := e.runStore.CreateRun(runID, startIndex, resultsPerBatch)
+	run, err := e.runStore.CreateRun(runID, startIndex, resultsPerBatch, dataType)
 	if err != nil {
 		return fmt.Errorf("failed to create run: %w", err)
 	}
@@ -74,8 +79,8 @@ func (e *JobExecutor) Start(ctx context.Context, runID string, startIndex, resul
 	// Start job in background
 	go e.executeJob(jobCtx, runID)
 
-	e.logger.Info("Job started: run_id=%s, start_index=%d, batch_size=%d",
-		runID, startIndex, resultsPerBatch)
+	e.logger.Info("Job started: run_id=%s, start_index=%d, batch_size=%d, data_type=%s",
+		runID, startIndex, resultsPerBatch, dataType)
 
 	return nil
 }
