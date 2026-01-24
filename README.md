@@ -418,6 +418,61 @@ Performance monitoring capabilities include:
 - **assets/** - Data assets (CWE raw JSON, CAPEC XML/XSD, ATT&CK XLSX files)
 - **.build/** - Build artifacts and packaged distribution
 
+## Broker Interfaces and Internal Data Structures
+
+The broker (microkernel) implements several key interfaces and data structures that enable its functionality:
+
+### Transport Layer Abstraction
+- **Transport Interface**: Defines core communication methods (`Send`, `Receive`, `Connect`, `Close`)
+- **FDPipeTransport**: Implementation using file descriptors for subprocess communication
+- **TransportManager**: Manages multiple transports for different processes
+
+### OS-Style Modular Architecture
+- **drivers/**: Transport drivers and device abstractions
+  - `TransportDriver`: Interface for transport driver implementations
+  - `FDTransportDriver`: File descriptor-based transport driver
+
+- **ipc/**: Inter-process communication modules
+  - `MessageRouter`: Routes messages between processes
+  - `MessageQueue`: Queues messages for processing
+
+- **process/**: Process management modules
+  - `ProcessManager`: Manages subprocess lifecycles
+  - `ProcessRegistry`: Tracks running processes
+
+- **sched/**: Scheduler and optimization modules
+  - `Scheduler`: Scheduling interface for operations
+  - `Optimizer`: Performance optimization interface
+  - `AdaptiveOptimizer`: Self-tuning optimization implementation
+  - `SystemMonitor`: System and application metrics collection
+
+### System Monitoring and Optimization
+- **LoadMetrics**: Contains system and application load metrics:
+  - CPUUtilization: Current CPU usage percentage
+  - MemoryUtilization: Current memory usage percentage
+  - MessageQueueDepth: Depth of message queues
+  - MessageThroughput: Messages per second processed
+  - AverageLatency: Average response time
+  - ActiveConnections: Number of active connections
+  - SystemLoadAvg: System load average
+  - ProcessResourceUsage: Per-process resource metrics
+
+- **OptimizationParameters**: Adjustable parameters for performance tuning:
+  - BufferCapacity: Size of message buffers
+  - WorkerCount: Number of worker goroutines
+  - BatchSize: Number of messages processed in each batch
+  - FlushInterval: Time interval for flushing batches
+  - OfferPolicy: Policy for handling message overflow
+  - OfferTimeout: Timeout for message acceptance
+
+### Adaptive Optimization Algorithms
+The broker implements intelligent adaptive tuning that responds to system and application loads:
+- Dynamic worker count adjustment based on CPU utilization and queue depth
+- Buffer capacity scaling based on throughput patterns
+- Batch size optimization based on throughput and latency
+- Flush interval tuning based on latency requirements
+- Offer policy adjustment based on system load conditions
+
 ## Notes and Conventions
 
 - All subprocesses must be started and managed by the broker; never run backend subprocesses directly in production or integration tests
