@@ -22,3 +22,9 @@ type GetByIDParams struct {
 type CVEIDParams struct {
 	CVEID string `json:"cve_id"`
 }
+
+// ListParams used for pagination-based list RPCs
+type ListParams struct {
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+}

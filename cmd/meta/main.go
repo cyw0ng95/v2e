@@ -27,6 +27,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
 
 const (
@@ -501,9 +502,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCCreateCVE: Fetching CVE %s from NVD", req.CVEID)
 
 		// Fetch from remote (NVD)
-		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Error("Failed to fetch CVE from remote: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %v", err)), nil
@@ -532,9 +531,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 
 		// Save to local storage
 		logger.Info("RPCCreateCVE: Saving CVE %s to local storage", req.CVEID)
-		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-			"cve": cveData,
-		})
+		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", &rpc.SaveCVEByIDParams{CVE: *cveData})
 		if err != nil {
 			logger.Error("Failed to save CVE to local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to save CVE to local storage: %v", err)), nil
@@ -593,9 +590,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCUpdateCVE: Refetching CVE %s from NVD to update local copy", req.CVEID)
 
 		// Fetch latest data from remote (NVD)
-		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		remoteResp, err := rpcClient.InvokeRPC(ctx, "remote", "RPCGetCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Error("Failed to fetch CVE from remote: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %v", err)), nil
@@ -624,9 +619,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 
 		// Update local storage (save will update if exists, create if not)
 		logger.Info("RPCUpdateCVE: Updating CVE %s in local storage", req.CVEID)
-		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", map[string]interface{}{
-			"cve": cveData,
-		})
+		saveResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVEByID", &rpc.SaveCVEByIDParams{CVE: *cveData})
 		if err != nil {
 			logger.Error("Failed to update CVE in local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to update CVE in local storage: %v", err)), nil
@@ -685,9 +678,7 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCDeleteCVE: Deleting CVE %s from local storage", req.CVEID)
 
 		// Delete from local storage
-		deleteResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCDeleteCVEByID", map[string]interface{}{
-			"cve_id": req.CVEID,
-		})
+		deleteResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCDeleteCVEByID", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Error("Failed to delete CVE from local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to delete CVE from local storage: %v", err)), nil
@@ -755,10 +746,7 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 		logger.Info("RPCListCVEs: Listing CVEs with offset=%d, limit=%d", req.Offset, req.Limit)
 
 		// List from local storage
-		listResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCListCVEs", map[string]interface{}{
-			"offset": req.Offset,
-			"limit":  req.Limit,
-		})
+		listResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCListCVEs", &rpc.ListParams{Offset: req.Offset, Limit: req.Limit})
 		if err != nil {
 			logger.Error("Failed to list CVEs from local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to list CVEs from local storage: %v", err)), nil
@@ -814,7 +802,7 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		logger.Info("RPCCountCVEs: Counting CVEs")
 
 		// Count from local storage
-		countResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCountCVEs", map[string]interface{}{})
+		countResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCountCVEs", nil)
 		if err != nil {
 			logger.Error("Failed to count CVEs from local storage: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to count CVEs from local storage: %v", err)), nil
