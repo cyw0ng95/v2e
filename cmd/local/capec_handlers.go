@@ -13,8 +13,20 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
+// capecStore captures the subset of CAPEC store behaviors needed by handlers.
+type capecStore interface {
+	ImportFromXML(xmlPath, xsdPath string, force bool) error
+	GetCatalogMeta(ctx context.Context) (*capec.CAPECCatalogMeta, error)
+	ListCAPECsPaginated(ctx context.Context, offset, limit int) ([]capec.CAPECItemModel, int64, error)
+	GetByID(ctx context.Context, capecID string) (*capec.CAPECItemModel, error)
+	GetRelatedWeaknesses(ctx context.Context, capecID int) ([]capec.CAPECRelatedWeaknessModel, error)
+	GetExamples(ctx context.Context, capecID int) ([]capec.CAPECExampleModel, error)
+	GetMitigations(ctx context.Context, capecID int) ([]capec.CAPECMitigationModel, error)
+	GetReferences(ctx context.Context, capecID int) ([]capec.CAPECReferenceModel, error)
+}
+
 // createImportCAPECsHandler creates a handler for RPCImportCAPECs
-func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger) subprocess.Handler {
+func createImportCAPECsHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug("RPCImportCAPECs handler invoked")
 		var req struct {
@@ -22,15 +34,17 @@ func createImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logg
 			XSD   string `json:"xsd"`
 			Force bool   `json:"force,omitempty"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if msg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				logger.Warn("Failed to parse request: %v", err)
+				return &subprocess.Message{
+					Type:          subprocess.MessageTypeError,
+					ID:            msg.ID,
+					Error:         "failed to parse request",
+					CorrelationID: msg.CorrelationID,
+					Target:        msg.Source,
+				}, nil
+			}
 		}
 		logger.Debug("RPCImportCAPECs received path: %s xsd: %s", req.Path, req.XSD)
 		if req.Path == "" || req.XSD == "" {
@@ -86,22 +100,24 @@ func xmlInnerToPlain(s string) string {
 }
 
 // createForceImportCAPECsHandler creates a handler for RPCForceImportCAPECs
-func createForceImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger) subprocess.Handler {
+func createForceImportCAPECsHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug("RPCForceImportCAPECs handler invoked")
 		var req struct {
 			Path string `json:"path"`
 			XSD  string `json:"xsd"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if msg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				logger.Warn("Failed to parse request: %v", err)
+				return &subprocess.Message{
+					Type:          subprocess.MessageTypeError,
+					ID:            msg.ID,
+					Error:         "failed to parse request",
+					CorrelationID: msg.CorrelationID,
+					Target:        msg.Source,
+				}, nil
+			}
 		}
 		if req.Path == "" || req.XSD == "" {
 			return &subprocess.Message{
@@ -133,20 +149,22 @@ func createForceImportCAPECsHandler(store *capec.LocalCAPECStore, logger *common
 }
 
 // createGetCAPECByIDHandler creates a handler for RPCGetCAPECByID
-func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logger) subprocess.Handler {
+func createGetCAPECByIDHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var req struct {
 			CAPECID string `json:"capec_id"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if msg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				logger.Warn("Failed to parse request: %v", err)
+				return &subprocess.Message{
+					Type:          subprocess.MessageTypeError,
+					ID:            msg.ID,
+					Error:         "failed to parse request",
+					CorrelationID: msg.CorrelationID,
+					Target:        msg.Source,
+				}, nil
+			}
 		}
 		if req.CAPECID == "" {
 			return &subprocess.Message{
@@ -237,7 +255,7 @@ func createGetCAPECByIDHandler(store *capec.LocalCAPECStore, logger *common.Logg
 }
 
 // createGetCAPECCatalogMetaHandler creates a handler for RPCGetCAPECCatalogMeta
-func createGetCAPECCatalogMetaHandler(store *capec.LocalCAPECStore, logger *common.Logger) subprocess.Handler {
+func createGetCAPECCatalogMetaHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// No payload expected
 		meta, err := store.GetCatalogMeta(ctx)
@@ -278,7 +296,7 @@ func createGetCAPECCatalogMetaHandler(store *capec.LocalCAPECStore, logger *comm
 }
 
 // createListCAPECsHandler creates a handler for RPCListCAPECs
-func createListCAPECsHandler(store *capec.LocalCAPECStore, logger *common.Logger) subprocess.Handler {
+func createListCAPECsHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug("Processing ListCAPECs request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
 		var req struct {

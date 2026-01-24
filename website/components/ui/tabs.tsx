@@ -21,11 +21,11 @@ Tabs.displayName = 'Tabs';
 
 export function TabsList({ children, value, onValueChange, className }: any) {
   return (
-    <div className={"inline-flex gap-2 " + (className || "")}>{
-      React.Children.map(children, child =>
+    <div className={"inline-flex gap-1 p-1 bg-muted rounded-lg " + (className || "")}>
+      {React.Children.map(children, child =>
         React.cloneElement(child, { selected: value === child.props.value, onClick: () => onValueChange(child.props.value) })
-      )
-    }</div>
+      )}
+    </div>
   );
 }
 TabsList.displayName = 'TabsList';
@@ -34,10 +34,9 @@ export function TabsTrigger({ value, selected, onClick, children }: any) {
   return (
     <button
       type="button"
-      className={
-        "px-4 py-1 rounded border-b-2 " +
-        (selected ? "border-primary font-bold" : "border-transparent text-muted-foreground hover:border-muted-foreground")
-      }
+      className={`px-4 py-2 rounded-md transition-colors ${selected 
+        ? "bg-background text-foreground shadow-sm" 
+        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
       onClick={onClick}
     >
       {children}
@@ -47,6 +46,6 @@ export function TabsTrigger({ value, selected, onClick, children }: any) {
 TabsTrigger.displayName = 'TabsTrigger';
 
 export function TabsContent({ children, className }: any) {
-  return <div className={className}>{children}</div>;
+  return <div className={`flex-1 min-h-0 overflow-auto ${className}`}>{children}</div>;
 }
 TabsContent.displayName = 'TabsContent';

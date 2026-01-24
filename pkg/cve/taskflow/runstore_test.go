@@ -8,7 +8,7 @@ func TestRunStore_UpdateState_ValidAndInvalid(t *testing.T) {
 	rs := NewTempRunStore(t)
 
 	runID := "run-1"
-	_, err := rs.CreateRun(runID, 0, 10)
+	_, err := rs.CreateRun(runID, 0, 10, DataTypeCVE)
 	if err != nil {
 		t.Fatalf("CreateRun failed: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestRunStore_SetError_SetsFailedStateAndMessage(t *testing.T) {
 	rs := NewTempRunStore(t)
 
 	runID := "run-err"
-	_, err := rs.CreateRun(runID, 0, 5)
+	_, err := rs.CreateRun(runID, 0, 5, DataTypeCVE)
 	if err != nil {
 		t.Fatalf("CreateRun failed: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestRunStore_StoppedFromQueuedAndPaused(t *testing.T) {
 
 	// queued -> stopped
 	run1 := "run-stop-1"
-	if _, err := rs.CreateRun(run1, 0, 1); err != nil {
+	if _, err := rs.CreateRun(run1, 0, 1, DataTypeCVE); err != nil {
 		t.Fatalf("CreateRun failed: %v", err)
 	}
 	if err := rs.UpdateState(run1, StateStopped); err != nil {
@@ -72,7 +72,7 @@ func TestRunStore_StoppedFromQueuedAndPaused(t *testing.T) {
 
 	// queued -> running -> paused -> stopped
 	run2 := "run-stop-2"
-	if _, err := rs.CreateRun(run2, 0, 1); err != nil {
+	if _, err := rs.CreateRun(run2, 0, 1, DataTypeCVE); err != nil {
 		t.Fatalf("CreateRun failed: %v", err)
 	}
 	if err := rs.UpdateState(run2, StateRunning); err != nil {

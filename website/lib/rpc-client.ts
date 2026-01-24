@@ -481,6 +481,37 @@ export class RPCClient {
     );
   }
 
+  async startTypedSession(
+    sessionId: string,
+    dataType: string,
+    startIndex?: number,
+    resultsPerBatch?: number,
+    params?: Record<string, unknown>
+  ): Promise<RPCResponse<StartSessionResponse>> {
+    return this.call<any, StartSessionResponse>(
+      'RPCStartTypedSession',
+      {
+        session_id: sessionId,
+        data_type: dataType,
+        start_index: startIndex ?? 0,
+        results_per_batch: resultsPerBatch ?? 100,
+        params: params,
+      }
+    );
+  }
+
+  async startCWEImport(params?: Record<string, unknown>): Promise<RPCResponse<any>> {
+    return this.call<any, any>('RPCStartCWEImport', params);
+  }
+
+  async startCAPECImport(params?: Record<string, unknown>): Promise<RPCResponse<any>> {
+    return this.call<any, any>('RPCStartCAPECImport', params);
+  }
+
+  async startATTACKImport(params?: Record<string, unknown>): Promise<RPCResponse<any>> {
+    return this.call<any, any>('RPCStartATTACKImport', params);
+  }
+
   async stopSession(): Promise<RPCResponse<StopSessionResponse>> {
     return this.call<undefined, StopSessionResponse>('RPCStopSession');
   }

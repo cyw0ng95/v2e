@@ -4,18 +4,22 @@ package taskflow
 type JobState string
 
 const (
-	// StateQueued means job is queued but not started
+	// Base states (existing)
 	StateQueued JobState = "queued"
-	// StateRunning means job is actively running
 	StateRunning JobState = "running"
-	// StatePaused means job is paused by user
 	StatePaused JobState = "paused"
-	// StateCompleted means job finished successfully
 	StateCompleted JobState = "completed"
-	// StateFailed means job failed with error
 	StateFailed JobState = "failed"
-	// StateStopped means job was stopped by user
 	StateStopped JobState = "stopped"
+	
+	// New granular states
+	StateInitializing JobState = "initializing"
+	StateFetching JobState = "fetching"
+	StateProcessing JobState = "processing"
+	StateSaving JobState = "saving"
+	StateValidating JobState = "validating"
+	StateRecovering JobState = "recovering"
+	StateRollingBack JobState = "rolling_back"
 )
 
 // IsTerminal returns whether this state is a terminal state
@@ -27,13 +31,33 @@ func (s JobState) IsTerminal() bool {
 func (s JobState) CanTransitionTo(target JobState) bool {
 	switch s {
 	case StateQueued:
-		return target == StateRunning || target == StateStopped
+		return target == StateInitializing || target == StateRunning || target == StateStopped
+	case StateInitializing:
+		return target == StateRunning || target == StateFailed || target == StateStopped
 	case StateRunning:
-		return target == StatePaused || target == StateCompleted || target == StateFailed || target == StateStopped
+		return target == StatePaused || target == StateCompleted || target == StateFailed || 
+			target == StateStopped || target == StateFetching || target == StateProcessing || 
+			target == StateSaving || target == StateValidating
+	case StateFetching:
+		return target == StateProcessing || target == StateRunning || target == StatePaused || 
+			target == StateFailed || target == StateStopped
+	case StateProcessing:
+		return target == StateSaving || target == StateRunning || target == StatePaused || 
+			target == StateFailed || target == StateStopped
+	case StateSaving:
+		return target == StateRunning || target == StatePaused || target == StateCompleted || 
+			target == StateFailed || target == StateStopped
+	case StateValidating:
+		return target == StateRunning || target == StatePaused || target == StateCompleted || 
+			target == StateFailed || target == StateStopped
 	case StatePaused:
-		return target == StateRunning || target == StateStopped
+		return target == StateRunning || target == StateStopped || target == StateRecovering
+	case StateRecovering:
+		return target == StateRunning || target == StateFailed || target == StateStopped
 	case StateCompleted, StateFailed, StateStopped:
 		return false // Terminal states cannot transition
+	case StateRollingBack:
+		return target == StateStopped || target == StateFailed
 	default:
 		return false
 	}

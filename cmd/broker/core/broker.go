@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/mq"
+	"github.com/cyw0ng95/v2e/cmd/broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/broker"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
@@ -28,6 +29,10 @@ type Broker struct {
 	pendingMu       sync.RWMutex
 	correlationSeq  uint64
 	spawner         broker.Spawner
+	// optimizer optionally handles message routing asynchronously
+	optimizer OptimizerInterface
+	// transportManager manages communication transports for processes
+	transportManager *TransportManager
 }
 
 // NewBroker creates a new Broker instance.
@@ -35,16 +40,17 @@ func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := mq.NewBus(ctx, 100)
 	return &Broker{
-		processes:       make(map[string]*Process),
-		messages:        bus.Channel(),
-		ctx:             ctx,
-		cancel:          cancel,
-		logger:          common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
-		config:          nil,
-		bus:             bus,
-		rpcEndpoints:    make(map[string][]string),
-		pendingRequests: make(map[string]*PendingRequest),
-		correlationSeq:  0,
+		processes:        make(map[string]*Process),
+		messages:         bus.Channel(),
+		ctx:              ctx,
+		cancel:           cancel,
+		logger:           common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		config:           nil,
+		bus:              bus,
+		rpcEndpoints:     make(map[string][]string),
+		pendingRequests:  make(map[string]*PendingRequest),
+		correlationSeq:   0,
+		transportManager: transport.NewTransportManager(),
 	}
 }
 
@@ -108,6 +114,27 @@ func (b *Broker) Spawner() broker.Spawner {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.spawner
+}
+
+// SetOptimizer attaches a performance optimizer to the Broker.
+func (b *Broker) SetOptimizer(o OptimizerInterface) {
+	b.mu.Lock()
+	b.optimizer = o
+	b.mu.Unlock()
+	// attach broker logger to optimizer if possible
+	if o != nil && b.logger != nil {
+		o.SetLogger(b.logger)
+		b.logger.Info("Optimizer attached")
+	}
+}
+
+// OptimizerInterface is a lightweight interface used by Broker to avoid
+// importing the concrete optimizer implementation and creating an import cycle.
+type OptimizerInterface interface {
+	Offer(msg *proc.Message) bool
+	Stop()
+	Metrics() map[string]interface{}
+	SetLogger(l *common.Logger)
 }
 
 // Context returns the broker's context.

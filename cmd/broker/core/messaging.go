@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -48,7 +50,15 @@ func (b *Broker) GetMessageCount() int64 {
 // GenerateCorrelationID generates a unique correlation ID for request-response matching.
 func (b *Broker) GenerateCorrelationID() string {
 	seq := atomic.AddUint64(&b.correlationSeq, 1)
-	return fmt.Sprintf("corr-%d-%d", time.Now().UnixNano(), seq)
+	// Pre-allocate a string builder to reduce allocations
+	var sb strings.Builder
+	// Use a more efficient correlation ID generation without string concatenation
+	sb.Grow(32) // Pre-allocate space for the correlation ID
+	sb.WriteString("corr-")
+	sb.WriteString(strconv.FormatInt(time.Now().UnixNano(), 10))
+	sb.WriteByte('-')
+	sb.WriteString(strconv.FormatUint(seq, 10))
+	return sb.String()
 }
 
 // RouteMessage routes a message to its target process or handles it locally.
@@ -59,6 +69,7 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 
 	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
 		b.logger.Debug("[TRACE] Received response message: id=%s correlation_id=%s from=%s", msg.ID, msg.CorrelationID, msg.Source)
+		// Use atomic load-and-delete operation to reduce lock contention
 		b.pendingMu.Lock()
 		pending, exists := b.pendingRequests[msg.CorrelationID]
 		if exists {

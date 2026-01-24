@@ -8,6 +8,8 @@ import MessageStatsCharts from "@/components/message-stats-charts";
 import Accordion, { AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
 
 function formatNumber(n?: number, digits = 2) {
   return typeof n === "number" ? n.toFixed(digits) : "—";
@@ -72,8 +74,12 @@ export function SysMonitor() {
   const loadAvg: any = metrics?.loadAvg;
 
   return (
-    <div className="container">
-      <div className="card mb-6">
+    <Card className="h-full flex flex-col">
+      <CardHeader>
+        <CardTitle>System Monitor</CardTitle>
+        <CardDescription>View system performance metrics</CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col">
         <div className="mb-4">
           <div className="flex items-center gap-4 mb-2">
           <label>Poll interval (ms):</label>
@@ -115,17 +121,16 @@ export function SysMonitor() {
 
         <MessageStatsCharts points={polling.points} openPanel={openPanel} setOpenPanel={setOpenPanel} />
         </div>
-      </div>
 
-      <div className="card">
-      <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Metric</TableHead>
-          <TableHead>Value</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+        <div className="flex-1 min-h-0 overflow-auto">
+        <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Metric</TableHead>
+            <TableHead>Value</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
         <TableRow>
           <TableCell>CPU Usage</TableCell>
           <TableCell>{isLoading ? <Spinner /> : `${formatNumber(metrics?.cpuUsage)}%`}</TableCell>
@@ -213,6 +218,7 @@ export function SysMonitor() {
       </TableBody>
       </Table>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

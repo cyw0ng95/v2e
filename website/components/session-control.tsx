@@ -10,9 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useSessionStatus,
   useStartSession,
+  useStartTypedSession,
   useStopSession,
   usePauseJob,
   useResumeJob,
@@ -23,6 +25,7 @@ import { toast } from "sonner";
 export function SessionControl() {
   const { data: sessionStatus } = useSessionStatus();
   const startSession = useStartSession();
+  const startTypedSession = useStartTypedSession();
   const stopSession = useStopSession();
   const pauseJob = usePauseJob();
   const resumeJob = useResumeJob();
@@ -30,17 +33,19 @@ export function SessionControl() {
   const [sessionId, setSessionId] = useState(`session-${Date.now()}`);
   const [startIndex, setStartIndex] = useState(0);
   const [resultsPerBatch, setResultsPerBatch] = useState(100);
+  const [dataType, setDataType] = useState('cve'); // Default to CVE
 
   const handleStartSession = () => {
-    startSession.mutate(
+    startTypedSession.mutate(
       {
         sessionId,
+        dataType,
         startIndex,
         resultsPerBatch,
       },
       {
         onSuccess: () => {
-          toast.success("Session started successfully");
+          toast.success(`Session started successfully for ${dataType.toUpperCase()}`);
         },
         onError: (error) => {
           toast.error(`Failed to start session: ${error.message}`);
@@ -110,6 +115,20 @@ export function SessionControl() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="dataType">Data Type</Label>
+                <Select value={dataType} onValueChange={setDataType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cve">CVE</SelectItem>
+                    <SelectItem value="cwe">CWE</SelectItem>
+                    <SelectItem value="capec">CAPEC</SelectItem>
+                    <SelectItem value="attack">ATT&CK</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="startIndex">Start Index</Label>
                 <Input
                   id="startIndex"
@@ -128,6 +147,19 @@ export function SessionControl() {
                   onChange={(e) => setResultsPerBatch(parseInt(e.target.value) || 100)}
                   placeholder="100"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="actions">Actions</Label>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleStartSession}
+                    disabled={startTypedSession.isPending || !sessionId}
+                    className="w-full"
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Start Session
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -195,6 +227,10 @@ export function SessionControl() {
                   <span className="text-muted-foreground">{sessionStatus.sessionId}</span>
                 </div>
                 <div>
+                  <span className="font-medium">Data Type:</span>{" "}
+                  <span className="text-muted-foreground">{sessionStatus.dataType || 'cve'}</span>
+                </div>
+                <div>
                   <span className="font-medium">State:</span>{" "}
                   <span className="text-muted-foreground">{sessionStatus.state}</span>
                 </div>
@@ -218,6 +254,36 @@ export function SessionControl() {
                   <span className="font-medium">Errors:</span>{" "}
                   <span className="text-muted-foreground">{sessionStatus.errorCount}</span>
                 </div>
+                {sessionStatus.errorMessage && (
+                  <div className="col-span-2">
+                    <span className="font-medium">Error:</span>{" "}
+                    <span className="text-destructive">{sessionStatus.errorMessage}</span>
+                  </div>
+                )}
+                {sessionStatus.progress && Object.keys(sessionStatus.progress).length > 0 && (
+                  <div className="col-span-2 pt-2 mt-2 border-t">
+                    <div className="font-medium mb-2">Progress Details:</div>
+                    {Object.entries(sessionStatus.progress).map(([dt, progress]) => {
+                      const typedProgress = progress as {
+                        totalCount: number;
+                        processedCount: number;
+                        errorCount: number;
+                        startTime: string;
+                        lastUpdate: string;
+                        errorMessage?: string;
+                      };
+                      return (
+                        <div key={dt} className="mb-1 text-xs">
+                          <span className="font-medium">{dt.toUpperCase()}:</span>{" "}
+                          <span>Processed: {typedProgress.processedCount}/{typedProgress.totalCount} ({Math.round((typedProgress.processedCount / Math.max(typedProgress.totalCount, 1)) * 100)}%)</span>
+                          {typedProgress.errorCount > 0 && (
+                            <span className="ml-2 text-destructive">Errors: {typedProgress.errorCount}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

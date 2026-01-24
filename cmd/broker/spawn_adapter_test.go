@@ -29,3 +29,9 @@ func TestSetSpawnerAndToResult(t *testing.T) {
 		t.Fatalf("toResult mapping incorrect: %+v", res)
 	}
 }
+
+func TestToResult_NilSafe(t *testing.T) {
+	if toResult(nil) != nil {
+		t.Fatalf("expected nil when input info is nil")
+	}
+}

@@ -45,6 +45,25 @@ PACKAGE_DIR=".build/package"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERBOSE=false
 
+# Global variables
+BUILD_DIR=".build"
+PACKAGE_DIR=".build/package"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERBOSE=false
+
+# Default Go build tags (can be overridden by setting GO_TAGS env var)
+GO_TAGS="${GO_TAGS:-libxml2}"
+
+# Check if running on Linux, refuse to run on other platforms
+DETECTED_OS="$(uname -s)"
+if [[ "$DETECTED_OS" != "Linux" ]]; then
+    echo "Error: build.sh can only run on Linux systems."
+    echo "For macOS or other platforms, please use runenv.sh instead."
+    exit 1
+fi
+
+log_info "Running on Linux system, proceeding with native build..."
+
 # Default Go build tags (can be overridden by setting GO_TAGS env var)
 GO_TAGS="${GO_TAGS:-libxml2}"
 
@@ -252,7 +271,7 @@ copy_assets() {
     fi
 }
 
-# Build the project with parallel builds
+# Build the project with incremental build support
 build_project() {
     if [ "$VERBOSE" = true ]; then
         log_debug "Building v2e project..."
@@ -267,14 +286,54 @@ build_project() {
     
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
-        if [ "$VERBOSE" = true ]; then
-            log_debug "Running go build..."
+        local binary_path="$BUILD_DIR/v2e"
+        local rebuild_needed=true
+        
+        # Check if binary exists and if any source files are newer
+        if [ -f "$binary_path" ]; then
+            local latest_source_time=0
+            # Find the most recent source file modification time
+            for src_file in $(find . -name "*.go" -not -path "./.build/*" -newer go.mod 2>/dev/null); do
+                if [ "$VERBOSE" = true ]; then
+                    log_debug "Found newer source file: $src_file"
+                fi
+                rebuild_needed=true
+                break
+            done
+            
+            # If no newer files found, check against go.mod and go.sum
+            if [ "$rebuild_needed" = true ] && [ ! -f go.sum ]; then
+                rebuild_needed=false
+            fi
+            
+            if [ "$rebuild_needed" = true ]; then
+                # Check if any .go files are newer than the binary
+                if ! find . -name "*.go" -not -path "./.build/*" -newer "$binary_path" -print -quit | grep -q .; then
+                    # Also check go.mod and go.sum
+                    if [ go.mod -ot "$binary_path" ] && ([ ! -f go.sum ] || [ go.sum -ot "$binary_path" ]); then
+                        rebuild_needed=false
+                        if [ "$VERBOSE" = true ]; then
+                            log_debug "Binary is up-to-date, skipping rebuild"
+                        fi
+                    fi
+                fi
+            fi
         fi
-        mkdir -p "$BUILD_DIR/v2e"
-        go build -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
-        if [ "$VERBOSE" = true ]; then
-            log_debug "Build completed successfully"
-            log_debug "Binary saved to: $BUILD_DIR/v2e"
+        
+        if [ "$rebuild_needed" = true ]; then
+            if [ "$VERBOSE" = true ]; then
+                log_debug "Running go build..."
+            fi
+            mkdir -p "$BUILD_DIR/v2e"
+            go build -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
+            if [ "$VERBOSE" = true ]; then
+                log_debug "Build completed successfully"
+                log_debug "Binary saved to: $binary_path"
+            fi
+        else
+            if [ "$VERBOSE" = true ]; then
+                log_debug "Build is up-to-date, skipping rebuild"
+            fi
         fi
     else
         log_info "No go.mod found. Skipping build."
