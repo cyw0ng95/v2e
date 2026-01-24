@@ -182,7 +182,33 @@ func (e *JobExecutor) GetStatus(runID string) (*JobRun, error) {
 
 // GetActiveRun returns the currently active run (if any)
 func (e *JobExecutor) GetActiveRun() (*JobRun, error) {
+	// First check in-memory active run to avoid races with persistence
+	e.mu.RLock()
+	if e.activeRun != nil {
+		// attempt to return the persisted run so counters reflect latest updates
+		runID := e.activeRun.ID
+		e.mu.RUnlock()
+
+		run, err := e.runStore.GetRun(runID)
+		if err == nil && run != nil {
+			return run, nil
+		}
+
+		// fall back to a copy of the in-memory run
+		e.mu.RLock()
+		runCopy := *e.activeRun
+		e.mu.RUnlock()
+		return &runCopy, nil
+	}
+	e.mu.RUnlock()
+
+	// Fall back to persisted store
 	return e.runStore.GetActiveRun()
+}
+
+// GetLatestRun returns the most recently updated run from the store
+func (e *JobExecutor) GetLatestRun() (*JobRun, error) {
+	return e.runStore.GetLatestRun()
 }
 
 // RecoverRuns attempts to recover runs left in running state after restart

@@ -82,22 +82,30 @@ func (c *Controller) Start(ctx context.Context) error {
 		return ErrJobRunning
 	}
 
+	// Create cancellable context and mark running early to avoid races
+	jobCtx, cancel := context.WithCancel(ctx)
+	c.cancelFunc = cancel
+	c.running = true
+
 	// Get current session
 	sess, err := c.sessionManager.GetSession()
 	if err != nil {
+		// rollback
+		c.cancelFunc()
+		c.cancelFunc = nil
+		c.running = false
 		return fmt.Errorf("failed to get session: %w", err)
 	}
 
 	// Update session state to running
 	err = c.sessionManager.UpdateState(session.StateRunning)
 	if err != nil {
+		// rollback
+		c.cancelFunc()
+		c.cancelFunc = nil
+		c.running = false
 		return fmt.Errorf("failed to update session state: %w", err)
 	}
-
-	// Create cancellable context
-	jobCtx, cancel := context.WithCancel(ctx)
-	c.cancelFunc = cancel
-	c.running = true
 
 	// Start job in background
 	go c.runJob(jobCtx, sess)

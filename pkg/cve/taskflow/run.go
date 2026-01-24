@@ -138,6 +138,39 @@ func (s *RunStore) GetActiveRun() (*JobRun, error) {
 	return activeRun, nil
 }
 
+// GetLatestRun returns the most recently updated run (if any)
+func (s *RunStore) GetLatestRun() (*JobRun, error) {
+	var latest *JobRun
+
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(s.bucketName)
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			var run JobRun
+			if err := json.Unmarshal(v, &run); err != nil {
+				continue
+			}
+
+			if latest == nil || run.UpdatedAt.After(latest.UpdatedAt) {
+				r := run
+				latest = &r
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return latest, nil
+}
+
 // UpdateState updates the run state
 func (s *RunStore) UpdateState(runID string, state JobState) error {
 	run, err := s.GetRun(runID)

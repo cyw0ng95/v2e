@@ -945,30 +945,35 @@ func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Info("RPCStopSession: Stopping current run")
 
-		// Get active run first
+		// Try to get active run first
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
 			logger.Error("Failed to get active run: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
+		// If no active run, try the latest persisted run as a fallback
 		if run == nil {
-			logger.Error("No active run to stop")
-			return createErrorResponse(msg, "no active run"), nil
+			run, err = jobExecutor.GetLatestRun()
+			if err != nil {
+				logger.Error("Failed to get latest run: %v", err)
+				return createErrorResponse(msg, fmt.Sprintf("failed to get latest run: %v", err)), nil
+			}
+			if run == nil {
+				logger.Error("No active run to stop")
+				return createErrorResponse(msg, "no active run"), nil
+			}
 		}
 
-		// Stop the job
-		err = jobExecutor.Stop(run.ID)
-		if err != nil {
-			logger.Error("Failed to stop job: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to stop job: %v", err)), nil
-		}
-
-		// Get final run info
-		run, err = jobExecutor.GetStatus(run.ID)
-		if err != nil {
-			logger.Error("Failed to get run status: %v", err)
-			// Continue anyway with stopped status
+		// If run is actively running or paused, attempt to stop it
+		if run.State == taskflow.StateRunning || run.State == taskflow.StatePaused {
+			err = jobExecutor.Stop(run.ID)
+			if err != nil {
+				logger.Error("Failed to stop job: %v", err)
+				return createErrorResponse(msg, fmt.Sprintf("failed to stop job: %v", err)), nil
+			}
+			// Refresh final run info
+			run, _ = jobExecutor.GetStatus(run.ID)
 		}
 
 		// Create response

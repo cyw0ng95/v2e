@@ -120,7 +120,7 @@ func BenchmarkMessageMarshalUnmarshalRoundTrip(b *testing.B) {
 			_ = decoded.UnmarshalPayload(&result)
 		}
 	})
-	
+
 	b.Run("CreateOnly", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -128,7 +128,7 @@ func BenchmarkMessageMarshalUnmarshalRoundTrip(b *testing.B) {
 			_, _ = NewRequestMessage("req-1", original)
 		}
 	})
-	
+
 	b.Run("MarshalOnly", func(b *testing.B) {
 		msg, _ := NewRequestMessage("req-1", original)
 		b.ReportAllocs()
@@ -137,7 +137,7 @@ func BenchmarkMessageMarshalUnmarshalRoundTrip(b *testing.B) {
 			_, _ = msg.Marshal()
 		}
 	})
-	
+
 	b.Run("UnmarshalOnly", func(b *testing.B) {
 		msg, _ := NewRequestMessage("req-1", original)
 		data, _ := msg.Marshal()

@@ -10,12 +10,12 @@ import (
 // Helper function to create a test CWE item
 func createTestCWEItem(id string) *CWEItem {
 	return &CWEItem{
-		ID:          id,
-		Name:        "Test CWE Item",
-		Abstraction: "Class",
-		Structure:   "Simple",
-		Status:      "Draft",
-		Description: "This is a test description for the CWE item",
+		ID:                  id,
+		Name:                "Test CWE Item",
+		Abstraction:         "Class",
+		Structure:           "Simple",
+		Status:              "Draft",
+		Description:         "This is a test description for the CWE item",
 		ExtendedDescription: "This is an extended description with more detailed information about the weakness and how it can affect systems.",
 		LikelihoodOfExploit: "High",
 		RelatedWeaknesses: []RelatedWeakness{

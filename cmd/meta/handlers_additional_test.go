@@ -80,14 +80,14 @@ func TestCreateStartAndStopSessionHandler(t *testing.T) {
 	if stopResp == nil {
 		t.Fatalf("stopHandler returned nil response")
 	}
-	
+
 	// Check if it's an error (job might have already completed) or success
 	if stopResp.Type == subprocess.MessageTypeError {
 		// Job completed before we could stop it - that's okay for this test
 		t.Logf("Job completed before stop could be called: %s", stopResp.Error)
 		return
 	}
-	
+
 	var sres map[string]interface{}
 	if err := sonic.Unmarshal(stopResp.Payload, &sres); err != nil {
 		t.Fatalf("failed to unmarshal stop response: %v", err)
@@ -99,7 +99,7 @@ func TestCreateStartAndStopSessionHandler(t *testing.T) {
 
 func TestGetSessionStatusHandler_HasSession(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	
+
 	// Create run store
 	tmp := t.TempDir()
 	runDB := tmp + "/runs2.db"

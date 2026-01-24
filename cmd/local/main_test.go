@@ -593,7 +593,7 @@ func TestMainFunctionInitialization(t *testing.T) {
 	cweDBPath := "/tmp/test_init_cwe.db"
 	capecDBPath := "/tmp/test_init_capec.db"
 	attackDBPath := "/tmp/test_init_attack.db"
-	
+
 	defer os.Remove(dbPath)
 	defer os.Remove(cweDBPath)
 	defer os.Remove(capecDBPath)
