@@ -61,7 +61,7 @@ func TestBusSendReceiveStats(t *testing.T) {
 }
 
 func TestBusSendCanceled(t *testing.T) {
-	bus := NewBus(context.Background(), 1)
+	bus := NewBus(context.Background(), 0)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
