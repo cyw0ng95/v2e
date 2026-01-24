@@ -310,7 +310,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 		db.SaveCVE(testCVE)
 
 		// Create request message
-		payload, _ := sonic.Marshal(map[string]string{
+		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-DELETETEST",
 		})
 

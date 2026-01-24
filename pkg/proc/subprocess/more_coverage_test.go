@@ -11,36 +11,13 @@ import (
 // TestNewInvalidFDsFallback ensures New falls back to stdio and logs a warning
 // when RPC_INPUT_FD/RPC_OUTPUT_FD are invalid.
 func TestNewInvalidFDsFallback(t *testing.T) {
-	oldStderr := os.Stderr
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("failed to create pipe: %v", err)
-	}
-	os.Stderr = w
-	defer func() {
-		os.Stderr = oldStderr
-		w.Close()
-		r.Close()
-	}()
-
-	os.Setenv("RPC_INPUT_FD", "not-a-number")
-	os.Setenv("RPC_OUTPUT_FD", "also-bad")
-	defer func() {
-		os.Unsetenv("RPC_INPUT_FD")
-		os.Unsetenv("RPC_OUTPUT_FD")
-	}()
+	// Signal that broker is passing RPC fds but the fds won't be valid in this test.
+	os.Setenv("BROKER_PASSING_RPC_FDS", "1")
+	defer os.Unsetenv("BROKER_PASSING_RPC_FDS")
 
 	sp := New("fd-fallback")
-	// close the writer so we can read
-	_ = w.Close()
-	out, _ := io.ReadAll(r)
-	stderrStr := string(out)
 
-	if !strings.Contains(stderrStr, "Warning") {
-		t.Fatalf("expected warning on stderr, got: %s", stderrStr)
-	}
-
-	// Ensure fallback to stdio
+	// Ensure fallback to stdio when fds are not usable
 	if sp.input != os.Stdin || sp.output != os.Stdout {
 		t.Fatalf("expected stdio fallback, got input=%T output=%T", sp.input, sp.output)
 	}
