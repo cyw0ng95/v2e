@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/cyw0ng95/v2e/pkg/capec"
-	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"html"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/cyw0ng95/v2e/pkg/capec"
+	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // createImportCAPECsHandler creates a handler for RPCImportCAPECs
