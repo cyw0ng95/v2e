@@ -41,13 +41,11 @@ func TestMalformedJSON(t *testing.T) {
 			}()
 
 			// Should either return error or continue
-			select {
-			case err := <-done:
-				// Error is acceptable for malformed JSON
-				if err == nil {
-					// If no error, that's also okay (skipped the bad line)
-					t.Logf("Malformed JSON handled gracefully: %s", tc.input)
-				}
+			err := <-done
+			// Error is acceptable for malformed JSON
+			if err == nil {
+				// If no error, that's also okay (skipped the bad line)
+				t.Logf("Malformed JSON handled gracefully: %s", tc.input)
 			}
 		})
 	}
@@ -120,11 +118,9 @@ func TestMissingRequiredFields(t *testing.T) {
 				done <- sp.Run()
 			}()
 
-			select {
-			case <-done:
-				// Any result is acceptable - we just don't want panic
-				t.Logf("Message with missing fields handled: %s", tc.message)
-			}
+			<-done
+			// Any result is acceptable - we just don't want panic
+			t.Logf("Message with missing fields handled: %s", tc.message)
 		})
 	}
 }

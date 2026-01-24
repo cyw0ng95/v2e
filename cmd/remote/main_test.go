@@ -139,13 +139,9 @@ func TestHandlerCreation(t *testing.T) {
 	// We can't easily create a fetcher that doesn't make API calls
 	// without changing the production code
 
-	// Create dummy handlers to ensure functions exist and work
-	handler1 := createGetCVEByIDHandler // just reference the function
-	handler2 := createGetCVECntHandler  // just reference the function
-	handler3 := createFetchCVEsHandler  // just reference the function
-	handler4 := createFetchViewsHandler // just reference the function
-
-	if handler1 == nil || handler2 == nil || handler3 == nil || handler4 == nil {
-		t.Error("One or more handler creation functions are nil")
-	}
+	// Ensure handler creation functions exist (reference without nil check)
+	_ = createGetCVEByIDHandler
+	_ = createGetCVECntHandler
+	_ = createFetchCVEsHandler
+	_ = createFetchViewsHandler
 }
