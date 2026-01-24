@@ -28,6 +28,8 @@ type Broker struct {
 	pendingMu       sync.RWMutex
 	correlationSeq  uint64
 	spawner         broker.Spawner
+	// optimizer optionally handles message routing asynchronously
+	optimizer OptimizerInterface
 }
 
 // NewBroker creates a new Broker instance.
@@ -108,6 +110,27 @@ func (b *Broker) Spawner() broker.Spawner {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.spawner
+}
+
+// SetOptimizer attaches a performance optimizer to the Broker.
+func (b *Broker) SetOptimizer(o OptimizerInterface) {
+	b.mu.Lock()
+	b.optimizer = o
+	b.mu.Unlock()
+	// attach broker logger to optimizer if possible
+	if o != nil && b.logger != nil {
+		o.SetLogger(b.logger)
+		b.logger.Info("Optimizer attached")
+	}
+}
+
+// OptimizerInterface is a lightweight interface used by Broker to avoid
+// importing the concrete optimizer implementation and creating an import cycle.
+type OptimizerInterface interface {
+	Offer(msg *proc.Message) bool
+	Stop()
+	Metrics() map[string]interface{}
+	SetLogger(l *common.Logger)
 }
 
 // Context returns the broker's context.

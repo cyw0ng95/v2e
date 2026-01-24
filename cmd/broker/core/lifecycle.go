@@ -29,6 +29,22 @@ func (b *Broker) readProcessMessages(p *Process) {
 			continue
 		}
 
+		// Prefer asynchronous routing via optimizer if configured.
+		routedViaOptimizer := false
+		b.mu.RLock()
+		opt := b.optimizer
+		b.mu.RUnlock()
+		if opt != nil {
+			if accepted := opt.Offer(msg); accepted {
+				// optimizer accepted the message for async routing
+				routedViaOptimizer = true
+			}
+		}
+
+		if routedViaOptimizer {
+			continue
+		}
+
 		if err := b.RouteMessage(msg, p.info.ID); err != nil {
 			b.logger.Warn("Failed to route message from process %s: %v", p.info.ID, err)
 

@@ -126,6 +126,15 @@ type BrokerConfig struct {
 	// Optional RPC file descriptor overrides for broker-managed processes
 	RPCInputFD  int `json:"rpc_input_fd,omitempty"`
 	RPCOutputFD int `json:"rpc_output_fd,omitempty"`
+	// Optimizer runtime tuning (optional)
+	OptimizerBufferCap       int    `json:"optimizer_buffer_cap,omitempty"`
+	OptimizerNumWorkers      int    `json:"optimizer_num_workers,omitempty"`
+	OptimizerStatsIntervalMs int    `json:"optimizer_stats_interval_ms,omitempty"`
+	OptimizerOfferPolicy     string `json:"optimizer_offer_policy,omitempty"`
+	OptimizerOfferTimeoutMs  int    `json:"optimizer_offer_timeout_ms,omitempty"`
+	// Batching controls
+	OptimizerBatchSize       int `json:"optimizer_batch_size,omitempty"`
+	OptimizerFlushIntervalMs int `json:"optimizer_flush_interval_ms,omitempty"`
 }
 
 // ProcessConfig represents a process to be managed by the broker

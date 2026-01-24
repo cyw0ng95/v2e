@@ -11,9 +11,26 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
+	"github.com/cyw0ng95/v2e/cmd/broker/core"
+	"github.com/cyw0ng95/v2e/cmd/broker/perf"
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc"
 )
+
+// brokerRouter adapts the core Broker to the routing.Router interface used by perf.Optimizer.
+type brokerRouter struct {
+	b *core.Broker
+}
+
+func (r *brokerRouter) Route(msg *proc.Message, sourceProcess string) error {
+	return r.b.RouteMessage(msg, sourceProcess)
+}
+
+func (r *brokerRouter) ProcessBrokerMessage(msg *proc.Message) error {
+	return r.b.ProcessMessage(msg)
+}
 
 func main() {
 	// Get config file from argv[1] or use default
@@ -87,6 +104,22 @@ func main() {
 	if err := broker.LoadProcessesFromConfig(config); err != nil {
 		common.Error("Error loading processes from config: %v", err)
 	}
+
+	// Create and attach an optimizer using broker config (optional tuning)
+	bufferCap := config.Broker.OptimizerBufferCap
+	numWorkers := config.Broker.OptimizerNumWorkers
+	statsInterval := time.Duration(config.Broker.OptimizerStatsIntervalMs) * time.Millisecond
+	policy := config.Broker.OptimizerOfferPolicy
+	offerTimeout := time.Duration(config.Broker.OptimizerOfferTimeoutMs) * time.Millisecond
+
+	routerAdapter := &brokerRouter{b: broker}
+	batchSize := config.Broker.OptimizerBatchSize
+	flushMs := config.Broker.OptimizerFlushIntervalMs
+	flushInterval := time.Duration(flushMs) * time.Millisecond
+	opt := perf.NewWithParams(routerAdapter, bufferCap, numWorkers, statsInterval, policy, offerTimeout, batchSize, flushInterval)
+	opt.SetLogger(brokerLogger)
+	broker.SetOptimizer(opt)
+	common.Info("Optimizer started: buffer=%d workers=%d policy=%s batch=%d flush_ms=%d", bufferCap, numWorkers, policy, batchSize, int(flushInterval/time.Millisecond))
 
 	common.Info("Broker started, managing %d processes", len(config.Broker.Processes))
 
