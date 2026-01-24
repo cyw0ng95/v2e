@@ -32,7 +32,7 @@ type Broker struct {
 	// optimizer optionally handles message routing asynchronously
 	optimizer OptimizerInterface
 	// transportManager manages communication transports for processes
-	transportManager *TransportManager
+	transportManager *transport.TransportManager
 }
 
 // NewBroker creates a new Broker instance.
