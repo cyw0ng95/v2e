@@ -16,26 +16,26 @@ import (
 
 // UDSTransport implements Transport using Unix Domain Sockets for communication
 type UDSTransport struct {
-	socketPath string
-	connection net.Conn
-	listener   net.Listener
-	scanner    *bufio.Scanner
-	isServer   bool
-	connected  bool
-	mu         sync.RWMutex
-	reconnectAttempts int
+	socketPath           string
+	connection           net.Conn
+	listener             net.Listener
+	scanner              *bufio.Scanner
+	isServer             bool
+	connected            bool
+	mu                   sync.RWMutex
+	reconnectAttempts    int
 	maxReconnectAttempts int
-	reconnectDelay time.Duration
-	reconnectCb func(error)
+	reconnectDelay       time.Duration
+	reconnectCb          func(error)
 }
 
 // NewUDSTransport creates a new UDSTransport with the specified socket path
 func NewUDSTransport(socketPath string, isServer bool) *UDSTransport {
 	transport := &UDSTransport{
-		socketPath: socketPath,
-		isServer:   isServer,
+		socketPath:           socketPath,
+		isServer:             isServer,
 		maxReconnectAttempts: 5,
-		reconnectDelay: 1 * time.Second,
+		reconnectDelay:       1 * time.Second,
 	}
 	return transport
 }
@@ -59,7 +59,7 @@ func (t *UDSTransport) SetReconnectCallback(cb func(error)) {
 func (t *UDSTransport) Connect() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	// Clean up any existing socket file
 	if t.isServer {
 		// Remove existing socket file if it exists
@@ -296,7 +296,7 @@ func (t *UDSTransport) ResetReconnectAttempts() {
 func (t *UDSTransport) Close() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	var err error
 
 	// Close connection
@@ -316,7 +316,7 @@ func (t *UDSTransport) Close() error {
 	}
 
 	t.connected = false
-	
+
 	// Remove socket file if it exists
 	if t.socketPath != "" {
 		if removeErr := os.Remove(t.socketPath); removeErr != nil && !os.IsNotExist(removeErr) && err == nil {
@@ -331,7 +331,7 @@ func (t *UDSTransport) Close() error {
 func (t *UDSTransport) SetSocketPermissions(mode os.FileMode) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	if !t.isServer {
 		return fmt.Errorf("permissions can only be set on server side")
 	}
@@ -348,24 +348,24 @@ func (t *UDSTransport) SetSocketPermissions(mode os.FileMode) error {
 func (t *UDSTransport) CleanupSocketFile() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	// Close any active connections first
 	if t.connection != nil {
 		t.connection.Close()
 		t.connection = nil
 	}
-	
+
 	if t.listener != nil {
 		t.listener.Close()
 		t.listener = nil
 	}
-	
+
 	// Remove socket file
 	if t.socketPath != "" {
 		if removeErr := os.Remove(t.socketPath); removeErr != nil && !os.IsNotExist(removeErr) {
 			return fmt.Errorf("failed to remove socket file: %w", removeErr)
 		}
-		
+
 		// Also remove parent directory if it's empty and was created for this socket
 		dir := filepath.Dir(t.socketPath)
 		if dir != "." && dir != "/" {
@@ -373,7 +373,7 @@ func (t *UDSTransport) CleanupSocketFile() error {
 			os.Remove(dir)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -381,7 +381,7 @@ func (t *UDSTransport) CleanupSocketFile() error {
 func (t *UDSTransport) EnsureSocketDirectory() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	dir := filepath.Dir(t.socketPath)
 	if dir != "." && dir != "/" {
 		// Create directory with 0755 permissions
@@ -389,6 +389,6 @@ func (t *UDSTransport) EnsureSocketDirectory() error {
 			return fmt.Errorf("failed to create socket directory: %w", err)
 		}
 	}
-	
+
 	return nil
 }
