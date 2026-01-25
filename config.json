@@ -7,6 +7,15 @@
     "log_file": "./logs/broker.log",
     "rpc_input_fd": 3,
     "rpc_output_fd": 4,
+    "optimizer_buffer_cap": 1000,
+    "optimizer_num_workers": 4,
+    "optimizer_stats_interval_ms": 100,
+    "optimizer_offer_policy": "drop",
+    "optimizer_offer_timeout_ms": 0,
+    "optimizer_batch_size": 1,
+    "optimizer_flush_interval_ms": 10,
+    "optimizer_enable_adaptive": false,
+    "optimizer_adaptation_freq_ms": 10000,
     "processes": [
       {
         "id": "access",
