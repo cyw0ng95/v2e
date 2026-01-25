@@ -645,3 +645,400 @@ export interface ListCWEViewsResponse {
 export interface GetCWEViewResponse {
   view: CWEView;
 }
+
+// ============================================================================
+// Notes Framework Types
+// ============================================================================
+
+// Bookmark Types
+export interface Bookmark {
+  id: number;
+  global_item_id: string;
+  item_type: string;
+  item_id: string;
+  title: string;
+  description: string;
+  author?: string;
+  is_private: boolean;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface CreateBookmarkRequest {
+  global_item_id: string;
+  item_type: string;
+  item_id: string;
+  title: string;
+  description: string;
+  author?: string;
+  is_private?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateBookmarkResponse {
+  success: boolean;
+  bookmark: Bookmark;
+}
+
+export interface GetBookmarkRequest {
+  id: number;
+}
+
+export interface GetBookmarkResponse {
+  bookmark: Bookmark;
+}
+
+export interface ListBookmarksRequest {
+  offset?: number;
+  limit?: number;
+  item_type?: string;
+  item_id?: string;
+  author?: string;
+  is_private?: boolean;
+}
+
+export interface ListBookmarksResponse {
+  bookmarks: Bookmark[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface UpdateBookmarkRequest {
+  id: number;
+  title?: string;
+  description?: string;
+  author?: string;
+  is_private?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateBookmarkResponse {
+  success: boolean;
+  bookmark: Bookmark;
+}
+
+export interface DeleteBookmarkRequest {
+  id: number;
+}
+
+export interface DeleteBookmarkResponse {
+  success: boolean;
+}
+
+// Note Types
+export interface NoteModel {
+  id: number;
+  bookmark_id: number;
+  content: string;
+  author?: string;
+  is_private: boolean;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface AddNoteRequest {
+  bookmark_id: number;
+  content: string;
+  author?: string;
+  is_private?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AddNoteResponse {
+  success: boolean;
+  note: NoteModel;
+}
+
+export interface GetNoteRequest {
+  id: number;
+}
+
+export interface GetNoteResponse {
+  note: NoteModel;
+}
+
+export interface GetNotesByBookmarkRequest {
+  bookmark_id: number;
+  offset?: number;
+  limit?: number;
+}
+
+export interface GetNotesByBookmarkResponse {
+  notes: NoteModel[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface UpdateNoteRequest {
+  id: number;
+  content?: string;
+  author?: string;
+  is_private?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateNoteResponse {
+  success: boolean;
+  note: NoteModel;
+}
+
+export interface DeleteNoteRequest {
+  id: number;
+}
+
+export interface DeleteNoteResponse {
+  success: boolean;
+}
+
+// Memory Card Types
+export interface MemoryCard {
+  id: number;
+  bookmark_id: number;
+  front_content: string;
+  back_content: string;
+  card_type: string; // 'basic', 'cloze', 'image_occlusion', etc.
+  learning_state: string; // 'to_review', 'learning', 'mastered', 'archived'
+  author?: string;
+  is_private: boolean;
+  interval: number; // Days until next review
+  ease_factor: number; // SM-2 algorithm factor
+  repetitions: number; // Number of times reviewed
+  created_at: string;
+  updated_at: string;
+  next_review_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface CreateMemoryCardRequest {
+  bookmark_id: number;
+  front_content: string;
+  back_content: string;
+  card_type?: string;
+  author?: string;
+  is_private?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateMemoryCardResponse {
+  success: boolean;
+  memory_card: MemoryCard;
+}
+
+export interface GetMemoryCardRequest {
+  id: number;
+}
+
+export interface GetMemoryCardResponse {
+  memory_card: MemoryCard;
+}
+
+export interface ListMemoryCardsRequest {
+  bookmark_id?: number;
+  learning_state?: string;
+  author?: string;
+  is_private?: boolean;
+  offset?: number;
+  limit?: number;
+}
+
+export interface ListMemoryCardsResponse {
+  memory_cards: MemoryCard[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface UpdateMemoryCardRequest {
+  id: number;
+  front_content?: string;
+  back_content?: string;
+  learning_state?: string;
+  author?: string;
+  is_private?: boolean;
+  interval?: number;
+  ease_factor?: number;
+  repetitions?: number;
+  next_review_at?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateMemoryCardResponse {
+  success: boolean;
+  memory_card: MemoryCard;
+}
+
+export interface DeleteMemoryCardRequest {
+  id: number;
+}
+
+export interface DeleteMemoryCardResponse {
+  success: boolean;
+}
+
+export interface RateMemoryCardRequest {
+  id: number;
+  rating: string; // 'again', 'hard', 'good', 'easy'
+}
+
+export interface RateMemoryCardResponse {
+  success: boolean;
+  memory_card: MemoryCard;
+}
+
+// Cross Reference Types
+export interface CrossReference {
+  id: number;
+  from_item_id: string;
+  from_item_type: string;
+  to_item_id: string;
+  to_item_type: string;
+  relationship_type: string; // 'related_to', 'depends_on', 'similar_to', 'opposite_of', etc.
+  description?: string;
+  strength: number; // 1-5 scale
+  author?: string;
+  is_private: boolean;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface CreateCrossReferenceRequest {
+  from_item_id: string;
+  from_item_type: string;
+  to_item_id: string;
+  to_item_type: string;
+  relationship_type: string;
+  description?: string;
+  strength?: number;
+  author?: string;
+  is_private?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateCrossReferenceResponse {
+  success: boolean;
+  cross_reference: CrossReference;
+}
+
+export interface GetCrossReferenceRequest {
+  id: number;
+}
+
+export interface GetCrossReferenceResponse {
+  cross_reference: CrossReference;
+}
+
+export interface ListCrossReferencesRequest {
+  from_item_id?: string;
+  from_item_type?: string;
+  to_item_id?: string;
+  to_item_type?: string;
+  relationship_type?: string;
+  author?: string;
+  is_private?: boolean;
+  offset?: number;
+  limit?: number;
+}
+
+export interface ListCrossReferencesResponse {
+  cross_references: CrossReference[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface UpdateCrossReferenceRequest {
+  id: number;
+  relationship_type?: string;
+  description?: string;
+  strength?: number;
+  author?: string;
+  is_private?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateCrossReferenceResponse {
+  success: boolean;
+  cross_reference: CrossReference;
+}
+
+export interface DeleteCrossReferenceRequest {
+  id: number;
+}
+
+export interface DeleteCrossReferenceResponse {
+  success: boolean;
+}
+
+// History Types
+export interface HistoryEntry {
+  id: number;
+  item_id: string;
+  item_type: string;
+  action: string; // 'created', 'updated', 'deleted', 'bookmarked', 'rated', etc.
+  old_values?: Record<string, unknown>;
+  new_values?: Record<string, unknown>;
+  author?: string;
+  timestamp: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface AddHistoryRequest {
+  item_id: string;
+  item_type: string;
+  action: string;
+  old_values?: Record<string, unknown>;
+  new_values?: Record<string, unknown>;
+  author?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AddHistoryResponse {
+  success: boolean;
+  history_entry: HistoryEntry;
+}
+
+export interface GetHistoryRequest {
+  item_id: string;
+  item_type: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface GetHistoryResponse {
+  history_entries: HistoryEntry[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface GetHistoryByActionRequest {
+  action: string;
+  author?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface GetHistoryByActionResponse {
+  history_entries: HistoryEntry[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+// Bookmark State Reversion
+export interface RevertBookmarkStateRequest {
+  item_id: string;
+  item_type: string;
+  to_timestamp: string;
+  author?: string;
+}
+
+export interface RevertBookmarkStateResponse {
+  success: boolean;
+  message: string;
+}

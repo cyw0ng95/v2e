@@ -15,6 +15,11 @@ type DB struct {
 	db *gorm.DB
 }
 
+// GormDB returns the underlying GORM database instance
+func (d *DB) GormDB() *gorm.DB {
+	return d.db
+}
+
 // CVERecord represents a CVE record in the database
 type CVERecord struct {
 	gorm.Model

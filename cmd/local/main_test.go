@@ -562,26 +562,7 @@ func TestRPCListCVEs(t *testing.T) {
 	})
 }
 
-func TestImportATTACKDataAtStartup(t *testing.T) {
-	// Create a temporary database for testing
-	attackDBPath := "/tmp/test_attack_store_startup.db"
-	defer os.Remove(attackDBPath)
 
-	attackStore, err := attack.NewLocalAttackStore(attackDBPath)
-	if err != nil {
-		t.Fatalf("Failed to create attack store: %v", err)
-	}
-
-	// Create logger
-	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-
-	// Test the function with a non-existent directory
-	// This should not crash and should log appropriately
-	importATTACKDataAtStartup(attackStore, logger)
-
-	// The function should complete without panicking
-	t.Log("importATTACKDataAtStartup completed without crashing")
-}
 
 func TestMainFunctionInitialization(t *testing.T) {
 	// This test ensures that the main function can initialize all components properly

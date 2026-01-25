@@ -36,6 +36,62 @@ import type {
   ListCWEViewsResponse,
   CWEView,
   GetCWEViewResponse,
+  // Notes Framework Types
+  Bookmark,
+  CreateBookmarkRequest,
+  CreateBookmarkResponse,
+  GetBookmarkRequest,
+  GetBookmarkResponse,
+  ListBookmarksRequest,
+  ListBookmarksResponse,
+  UpdateBookmarkRequest,
+  UpdateBookmarkResponse,
+  DeleteBookmarkRequest,
+  DeleteBookmarkResponse,
+  NoteModel as Note,
+  AddNoteRequest,
+  AddNoteResponse,
+  GetNoteRequest,
+  GetNoteResponse,
+  GetNotesByBookmarkRequest,
+  GetNotesByBookmarkResponse,
+  UpdateNoteRequest,
+  UpdateNoteResponse,
+  DeleteNoteRequest,
+  DeleteNoteResponse,
+  MemoryCard,
+  CreateMemoryCardRequest,
+  CreateMemoryCardResponse,
+  GetMemoryCardRequest,
+  GetMemoryCardResponse,
+  ListMemoryCardsRequest,
+  ListMemoryCardsResponse,
+  UpdateMemoryCardRequest,
+  UpdateMemoryCardResponse,
+  DeleteMemoryCardRequest,
+  DeleteMemoryCardResponse,
+  RateMemoryCardRequest,
+  RateMemoryCardResponse,
+  CrossReference,
+  CreateCrossReferenceRequest,
+  CreateCrossReferenceResponse,
+  GetCrossReferenceRequest,
+  GetCrossReferenceResponse,
+  ListCrossReferencesRequest,
+  ListCrossReferencesResponse,
+  UpdateCrossReferenceRequest,
+  UpdateCrossReferenceResponse,
+  DeleteCrossReferenceRequest,
+  DeleteCrossReferenceResponse,
+  HistoryEntry,
+  AddHistoryRequest,
+  AddHistoryResponse,
+  GetHistoryRequest,
+  GetHistoryResponse,
+  GetHistoryByActionRequest,
+  GetHistoryByActionResponse,
+  RevertBookmarkStateRequest,
+  RevertBookmarkStateResponse,
 } from './types';
 
 // ============================================================================
@@ -411,6 +467,301 @@ export class RPCClient {
           payload: { success: true, sessionId: undefined } as TResponse,
         };
 
+      // Notes Framework Mock Responses
+      case 'RPCCreateBookmark': {
+        const req = params as CreateBookmarkRequest | undefined;
+        const mockBookmark: Bookmark = {
+          id: Math.floor(Math.random() * 1000),
+          global_item_id: req?.global_item_id || 'CVE-2021-44228',
+          item_type: req?.item_type || 'CVE',
+          item_id: req?.item_id || 'CVE-2021-44228',
+          title: req?.title || 'Mock Bookmark Title',
+          description: req?.description || 'Mock bookmark description',
+          author: req?.author,
+          is_private: req?.is_private || false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: req?.metadata || {},
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { success: true, bookmark: mockBookmark } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetBookmark': {
+        const req = params as GetBookmarkRequest | undefined;
+        const mockBookmark: Bookmark = {
+          id: req?.id || 1,
+          global_item_id: 'CVE-2021-44228',
+          item_type: 'CVE',
+          item_id: 'CVE-2021-44228',
+          title: 'Mock Bookmark Title',
+          description: 'Mock bookmark description',
+          author: 'mock-user',
+          is_private: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {},
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { bookmark: mockBookmark } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCListBookmarks': {
+        const req = params as ListBookmarksRequest | undefined;
+        const mockBookmarks: Bookmark[] = [
+          {
+            id: 1,
+            global_item_id: 'CVE-2021-44228',
+            item_type: 'CVE',
+            item_id: 'CVE-2021-44228',
+            title: 'Log4Shell Vulnerability',
+            description: 'Critical vulnerability in Log4j',
+            author: 'test-user',
+            is_private: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata: {},
+          },
+          {
+            id: 2,
+            global_item_id: 'CVE-2020-1472',
+            item_type: 'CVE',
+            item_id: 'CVE-2020-1472',
+            title: 'Zerologon Vulnerability',
+            description: 'Privilege escalation in Windows Netlogon',
+            author: 'test-user',
+            is_private: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata: {},
+          },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            bookmarks: mockBookmarks.slice(0, req?.limit || mockBookmarks.length),
+            offset: req?.offset || 0,
+            limit: req?.limit || mockBookmarks.length,
+            total: mockBookmarks.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCAddNote': {
+        const req = params as AddNoteRequest | undefined;
+        const mockNote: Note = {
+          id: Math.floor(Math.random() * 1000),
+          bookmark_id: req?.bookmark_id || 1,
+          content: req?.content || 'Mock note content',
+          author: req?.author,
+          is_private: req?.is_private || false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: req?.metadata || {},
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { success: true, note: mockNote } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetNote': {
+        const req = params as GetNoteRequest | undefined;
+        const mockNote: Note = {
+          id: req?.id || 1,
+          bookmark_id: 1,
+          content: 'Mock note content',
+          author: 'test-user',
+          is_private: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {},
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { note: mockNote } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetNotesByBookmark': {
+        const req = params as GetNotesByBookmarkRequest | undefined;
+        const mockNotes: Note[] = [
+          {
+            id: 1,
+            bookmark_id: req?.bookmark_id || 1,
+            content: 'First note about this vulnerability',
+            author: 'test-user',
+            is_private: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata: {},
+          },
+          {
+            id: 2,
+            bookmark_id: req?.bookmark_id || 1,
+            content: 'Additional details and mitigation steps',
+            author: 'test-user',
+            is_private: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata: {},
+          },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            notes: mockNotes.slice(0, req?.limit || mockNotes.length),
+            offset: req?.offset || 0,
+            limit: req?.limit || mockNotes.length,
+            total: mockNotes.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCCreateMemoryCard': {
+        const req = params as CreateMemoryCardRequest | undefined;
+        const mockCard: MemoryCard = {
+          id: Math.floor(Math.random() * 1000),
+          bookmark_id: req?.bookmark_id || 1,
+          front_content: req?.front_content || 'What is Log4Shell?',
+          back_content: req?.back_content || 'A critical vulnerability in Log4j allowing RCE',
+          card_type: req?.card_type || 'basic',
+          learning_state: 'to_review',
+          author: req?.author,
+          is_private: req?.is_private || false,
+          interval: 1,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          next_review_at: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+          metadata: req?.metadata || {},
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { success: true, memory_card: mockCard } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCListMemoryCards': {
+        const req = params as ListMemoryCardsRequest | undefined;
+        const mockCards: MemoryCard[] = [
+          {
+            id: 1,
+            bookmark_id: 1,
+            front_content: 'What is Log4Shell?',
+            back_content: 'A critical vulnerability in Log4j allowing RCE',
+            card_type: 'basic',
+            learning_state: req?.learning_state || 'to_review',
+            author: 'test-user',
+            is_private: false,
+            interval: 1,
+            ease_factor: 2.5,
+            repetitions: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            next_review_at: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+            metadata: {},
+          },
+          {
+            id: 2,
+            bookmark_id: 1,
+            front_content: 'How to mitigate Log4Shell?',
+            back_content: 'Upgrade to Log4j 2.15.0 or apply JVM parameters',
+            card_type: 'basic',
+            learning_state: 'learning',
+            author: 'test-user',
+            is_private: false,
+            interval: 3,
+            ease_factor: 2.0,
+            repetitions: 2,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            next_review_at: new Date(Date.now() + 86400000 * 3).toISOString(), // In 3 days
+            metadata: {},
+          },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            memory_cards: mockCards.slice(0, req?.limit || mockCards.length),
+            offset: req?.offset || 0,
+            limit: req?.limit || mockCards.length,
+            total: mockCards.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCCreateCrossReference': {
+        const req = params as CreateCrossReferenceRequest | undefined;
+        const mockRef: CrossReference = {
+          id: Math.floor(Math.random() * 1000),
+          from_item_id: req?.from_item_id || 'CVE-2021-44228',
+          from_item_type: req?.from_item_type || 'CVE',
+          to_item_id: req?.to_item_id || 'CWE-502',
+          to_item_type: req?.to_item_type || 'CWE',
+          relationship_type: req?.relationship_type || 'related_to',
+          description: req?.description || 'Cross-reference description',
+          strength: req?.strength || 5,
+          author: req?.author,
+          is_private: req?.is_private || false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: req?.metadata || {},
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { success: true, cross_reference: mockRef } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetHistory': {
+        const req = params as GetHistoryRequest | undefined;
+        const mockHistory: HistoryEntry[] = [
+          {
+            id: 1,
+            item_id: req?.item_id || 'CVE-2021-44228',
+            item_type: req?.item_type || 'CVE',
+            action: 'bookmarked',
+            author: 'test-user',
+            timestamp: new Date().toISOString(),
+            metadata: {},
+          },
+          {
+            id: 2,
+            item_id: req?.item_id || 'CVE-2021-44228',
+            item_type: req?.item_type || 'CVE',
+            action: 'note_added',
+            author: 'test-user',
+            timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+            metadata: {},
+          },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            history_entries: mockHistory.slice(0, req?.limit || mockHistory.length),
+            offset: req?.offset || 0,
+            limit: req?.limit || mockHistory.length,
+            total: mockHistory.length,
+          } as unknown as TResponse,
+        };
+      }
+
       default:
         return {
           retcode: 0,
@@ -677,6 +1028,116 @@ export class RPCClient {
 
   async getSysMetrics(): Promise<RPCResponse<SysMetrics>> {
     return this.call<undefined, SysMetrics>("RPCGetSysMetrics", undefined, "sysmon");
+  }
+
+  // ==========================================================================
+  // Notes Framework Methods
+  // ==========================================================================
+
+  // Bookmark Methods
+  async createBookmark(params: CreateBookmarkRequest): Promise<RPCResponse<CreateBookmarkResponse>> {
+    return this.call<CreateBookmarkRequest, CreateBookmarkResponse>('RPCCreateBookmark', params, 'local');
+  }
+
+  async getBookmark(params: GetBookmarkRequest): Promise<RPCResponse<GetBookmarkResponse>> {
+    return this.call<GetBookmarkRequest, GetBookmarkResponse>('RPCGetBookmark', params, 'local');
+  }
+
+  async listBookmarks(params?: ListBookmarksRequest): Promise<RPCResponse<ListBookmarksResponse>> {
+    return this.call<ListBookmarksRequest, ListBookmarksResponse>('RPCListBookmarks', params || {}, 'local');
+  }
+
+  async updateBookmark(params: UpdateBookmarkRequest): Promise<RPCResponse<UpdateBookmarkResponse>> {
+    return this.call<UpdateBookmarkRequest, UpdateBookmarkResponse>('RPCUpdateBookmark', params, 'local');
+  }
+
+  async deleteBookmark(params: DeleteBookmarkRequest): Promise<RPCResponse<DeleteBookmarkResponse>> {
+    return this.call<DeleteBookmarkRequest, DeleteBookmarkResponse>('RPCDeleteBookmark', params, 'local');
+  }
+
+  // Note Methods
+  async addNote(params: AddNoteRequest): Promise<RPCResponse<AddNoteResponse>> {
+    return this.call<AddNoteRequest, AddNoteResponse>('RPCAddNote', params, 'local');
+  }
+
+  async getNote(params: GetNoteRequest): Promise<RPCResponse<GetNoteResponse>> {
+    return this.call<GetNoteRequest, GetNoteResponse>('RPCGetNote', params, 'local');
+  }
+
+  async getNotesByBookmark(params: GetNotesByBookmarkRequest): Promise<RPCResponse<GetNotesByBookmarkResponse>> {
+    return this.call<GetNotesByBookmarkRequest, GetNotesByBookmarkResponse>('RPCGetNotesByBookmark', params, 'local');
+  }
+
+  async updateNote(params: UpdateNoteRequest): Promise<RPCResponse<UpdateNoteResponse>> {
+    return this.call<UpdateNoteRequest, UpdateNoteResponse>('RPCUpdateNote', params, 'local');
+  }
+
+  async deleteNote(params: DeleteNoteRequest): Promise<RPCResponse<DeleteNoteResponse>> {
+    return this.call<DeleteNoteRequest, DeleteNoteResponse>('RPCDeleteNote', params, 'local');
+  }
+
+  // Memory Card Methods
+  async createMemoryCard(params: CreateMemoryCardRequest): Promise<RPCResponse<CreateMemoryCardResponse>> {
+    return this.call<CreateMemoryCardRequest, CreateMemoryCardResponse>('RPCCreateMemoryCard', params, 'local');
+  }
+
+  async getMemoryCard(params: GetMemoryCardRequest): Promise<RPCResponse<GetMemoryCardResponse>> {
+    return this.call<GetMemoryCardRequest, GetMemoryCardResponse>('RPCGetMemoryCard', params, 'local');
+  }
+
+  async listMemoryCards(params?: ListMemoryCardsRequest): Promise<RPCResponse<ListMemoryCardsResponse>> {
+    return this.call<ListMemoryCardsRequest, ListMemoryCardsResponse>('RPCListMemoryCards', params || {}, 'local');
+  }
+
+  async updateMemoryCard(params: UpdateMemoryCardRequest): Promise<RPCResponse<UpdateMemoryCardResponse>> {
+    return this.call<UpdateMemoryCardRequest, UpdateMemoryCardResponse>('RPCUpdateMemoryCard', params, 'local');
+  }
+
+  async deleteMemoryCard(params: DeleteMemoryCardRequest): Promise<RPCResponse<DeleteMemoryCardResponse>> {
+    return this.call<DeleteMemoryCardRequest, DeleteMemoryCardResponse>('RPCDeleteMemoryCard', params, 'local');
+  }
+
+  async rateMemoryCard(params: RateMemoryCardRequest): Promise<RPCResponse<RateMemoryCardResponse>> {
+    return this.call<RateMemoryCardRequest, RateMemoryCardResponse>('RPCRateMemoryCard', params, 'local');
+  }
+
+  // Cross Reference Methods
+  async createCrossReference(params: CreateCrossReferenceRequest): Promise<RPCResponse<CreateCrossReferenceResponse>> {
+    return this.call<CreateCrossReferenceRequest, CreateCrossReferenceResponse>('RPCCreateCrossReference', params, 'local');
+  }
+
+  async getCrossReference(params: GetCrossReferenceRequest): Promise<RPCResponse<GetCrossReferenceResponse>> {
+    return this.call<GetCrossReferenceRequest, GetCrossReferenceResponse>('RPCGetCrossReference', params, 'local');
+  }
+
+  async listCrossReferences(params?: ListCrossReferencesRequest): Promise<RPCResponse<ListCrossReferencesResponse>> {
+    return this.call<ListCrossReferencesRequest, ListCrossReferencesResponse>('RPCListCrossReferences', params || {}, 'local');
+  }
+
+  async updateCrossReference(params: UpdateCrossReferenceRequest): Promise<RPCResponse<UpdateCrossReferenceResponse>> {
+    return this.call<UpdateCrossReferenceRequest, UpdateCrossReferenceResponse>('RPCUpdateCrossReference', params, 'local');
+  }
+
+  async deleteCrossReference(params: DeleteCrossReferenceRequest): Promise<RPCResponse<DeleteCrossReferenceResponse>> {
+    return this.call<DeleteCrossReferenceRequest, DeleteCrossReferenceResponse>('RPCDeleteCrossReference', params, 'local');
+  }
+
+  // History Methods
+  async addHistory(params: AddHistoryRequest): Promise<RPCResponse<AddHistoryResponse>> {
+    return this.call<AddHistoryRequest, AddHistoryResponse>('RPCAddHistory', params, 'local');
+  }
+
+  async getHistory(params: GetHistoryRequest): Promise<RPCResponse<GetHistoryResponse>> {
+    return this.call<GetHistoryRequest, GetHistoryResponse>('RPCGetHistory', params, 'local');
+  }
+
+  async getHistoryByAction(params: GetHistoryByActionRequest): Promise<RPCResponse<GetHistoryByActionResponse>> {
+    return this.call<GetHistoryByActionRequest, GetHistoryByActionResponse>('RPCGetHistoryByAction', params, 'local');
+  }
+
+  // Bookmark State Reversion
+  async revertBookmarkState(params: RevertBookmarkStateRequest): Promise<RPCResponse<RevertBookmarkStateResponse>> {
+    return this.call<RevertBookmarkStateRequest, RevertBookmarkStateResponse>('RPCRevertBookmarkState', params, 'local');
   }
 }
 
