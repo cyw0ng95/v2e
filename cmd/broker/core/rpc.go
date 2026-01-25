@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,42 +9,6 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
-
-// MessageChannel exposes the broker message channel for read-only consumers (tests).
-func (b *Broker) MessageChannel() <-chan *proc.Message {
-	return b.messages
-}
-
-// SendMessage sends a message to the broker's message channel.
-func (b *Broker) SendMessage(msg *proc.Message) error {
-	return b.bus.Send(b.ctx, msg)
-}
-
-// sendMessageInternal sends a message internally (from broker processes) without error handling.
-func (b *Broker) sendMessageInternal(msg *proc.Message) {
-	b.bus.SendInternal(msg)
-}
-
-// ReceiveMessage receives a message from the broker's message channel.
-// It blocks until a message is available or the context is cancelled.
-func (b *Broker) ReceiveMessage(ctx context.Context) (*proc.Message, error) {
-	return b.bus.Receive(ctx)
-}
-
-// GetMessageStats returns a copy of the current message statistics.
-func (b *Broker) GetMessageStats() MessageStats {
-	return b.bus.GetMessageStats()
-}
-
-// GetPerProcessStats returns a copy of current per-process stats.
-func (b *Broker) GetPerProcessStats() map[string]PerProcessStats {
-	return b.bus.GetPerProcessStats()
-}
-
-// GetMessageCount returns the total number of messages processed (sent + received).
-func (b *Broker) GetMessageCount() int64 {
-	return b.bus.GetMessageCount()
-}
 
 // GenerateCorrelationID generates a unique correlation ID for request-response matching.
 func (b *Broker) GenerateCorrelationID() string {
@@ -59,49 +22,6 @@ func (b *Broker) GenerateCorrelationID() string {
 	sb.WriteByte('-')
 	sb.WriteString(strconv.FormatUint(seq, 10))
 	return sb.String()
-}
-
-// RouteMessage routes a message to its target process or handles it locally.
-func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
-	if msg.Source == "" {
-		msg.Source = sourceProcess
-	}
-
-	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
-		b.logger.Debug("[TRACE] Received response message: id=%s correlation_id=%s from=%s", msg.ID, msg.CorrelationID, msg.Source)
-		// Use atomic load-and-delete operation to reduce lock contention
-		b.pendingMu.Lock()
-		pending, exists := b.pendingRequests[msg.CorrelationID]
-		if exists {
-			delete(b.pendingRequests, msg.CorrelationID)
-		}
-		b.pendingMu.Unlock()
-
-		if exists {
-			b.logger.Debug("[TRACE] Routing response to pending request: correlation_id=%s", msg.CorrelationID)
-			select {
-			case pending.ResponseChan <- msg:
-				b.logger.Debug("[TRACE] Response delivered to waiting channel: correlation_id=%s", msg.CorrelationID)
-				return nil
-			case <-time.After(5 * time.Second):
-				b.logger.Warn("[TRACE] Timeout sending response to pending request: correlation_id=%s", msg.CorrelationID)
-				return fmt.Errorf("timeout sending response to pending request")
-			}
-		}
-		b.logger.Debug("[TRACE] No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
-	}
-
-	if msg.Target != "" {
-		if msg.Target == "broker" {
-			b.logger.Debug("Routing message to broker for local processing: type=%s id=%s from=%s", msg.Type, msg.ID, msg.Source)
-			return b.ProcessMessage(msg)
-		}
-
-		b.logger.Debug("Routing message from %s to %s: type=%s id=%s", msg.Source, msg.Target, msg.Type, msg.ID)
-		return b.SendToProcess(msg.Target, msg)
-	}
-
-	return b.SendMessage(msg)
 }
 
 // InvokeRPC invokes an RPC method on a target process and waits for the response.
@@ -137,11 +57,14 @@ func (b *Broker) InvokeRPC(sourceProcess, targetProcess, rpcMethod string, paylo
 	b.logger.Debug("Invoked RPC: source=%s target=%s method=%s correlation_id=%s", sourceProcess, targetProcess, rpcMethod, correlationID)
 	b.logger.Debug("[TRACE] Waiting for response: correlation_id=%s target=%s method=%s timeout=%v", correlationID, targetProcess, rpcMethod, timeout)
 
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
 	select {
 	case response := <-responseChan:
 		b.logger.Debug("[TRACE] Received response for correlation_id=%s: type=%s", correlationID, response.Type)
 		return response, nil
-	case <-time.After(timeout):
+	case <-timer.C:
 		b.logger.Warn("[TRACE] Timeout waiting for response: correlation_id=%s target=%s method=%s", correlationID, targetProcess, rpcMethod)
 		return nil, fmt.Errorf("timeout waiting for response from %s", targetProcess)
 	case <-b.ctx.Done():
@@ -224,43 +147,6 @@ func (b *Broker) HandleRPCGetMessageCount(reqMsg *proc.Message) (*proc.Message, 
 	respMsg.Target = reqMsg.Source
 
 	return respMsg, nil
-}
-
-// ProcessMessage processes a message directed at the broker.
-func (b *Broker) ProcessMessage(msg *proc.Message) error {
-	if msg.Type != proc.MessageTypeRequest {
-		return nil
-	}
-
-	var respMsg *proc.Message
-	var err error
-
-	switch msg.ID {
-	case "RPCGetMessageStats":
-		respMsg, err = b.HandleRPCGetMessageStats(msg)
-	case "RPCGetMessageCount":
-		respMsg, err = b.HandleRPCGetMessageCount(msg)
-	default:
-		errMsg := proc.NewErrorMessage(msg.ID, fmt.Errorf("unknown RPC method: %s", msg.ID))
-		errMsg.Source = "broker"
-		errMsg.Target = msg.Source
-		if msg.CorrelationID != "" {
-			errMsg.CorrelationID = msg.CorrelationID
-		}
-		return b.RouteMessage(errMsg, "broker")
-	}
-
-	if err != nil {
-		errMsg := proc.NewErrorMessage(msg.ID, err)
-		errMsg.Source = "broker"
-		errMsg.Target = msg.Source
-		if msg.CorrelationID != "" {
-			errMsg.CorrelationID = msg.CorrelationID
-		}
-		return b.RouteMessage(errMsg, "broker")
-	}
-
-	return b.RouteMessage(respMsg, "broker")
 }
 
 // RegisterEndpoint registers an RPC endpoint for a process.

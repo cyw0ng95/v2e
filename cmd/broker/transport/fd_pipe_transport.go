@@ -2,12 +2,12 @@ package transport
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
@@ -66,7 +66,7 @@ func (t *FDPipeTransport) Send(msg *proc.Message) error {
 		return fmt.Errorf("transport not connected")
 	}
 
-	data, err := json.Marshal(msg)
+	data, err := sonic.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
@@ -99,7 +99,7 @@ func (t *FDPipeTransport) Receive() (*proc.Message, error) {
 	}
 
 	var msg proc.Message
-	if err := json.Unmarshal(line, &msg); err != nil {
+	if err := sonic.Unmarshal(line, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 

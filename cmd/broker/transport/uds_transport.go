@@ -2,7 +2,6 @@ package transport
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
@@ -78,6 +78,13 @@ func (t *UDSTransport) Connect() error {
 		if err != nil {
 			return fmt.Errorf("failed to create UDS listener: %w", err)
 		}
+
+		// Secure the socket
+		if err := os.Chmod(t.socketPath, 0600); err != nil {
+			listener.Close()
+			return fmt.Errorf("failed to chmod UDS socket: %w", err)
+		}
+
 		t.listener = listener
 
 		// Accept the first connection (for broker-process communication)
@@ -116,7 +123,7 @@ func (t *UDSTransport) Send(msg *proc.Message) error {
 	}
 	t.mu.RUnlock()
 
-	data, err := json.Marshal(msg)
+	data, err := sonic.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
@@ -192,7 +199,7 @@ func (t *UDSTransport) Receive() (*proc.Message, error) {
 	}
 
 	var msg proc.Message
-	if err := json.Unmarshal(line, &msg); err != nil {
+	if err := sonic.Unmarshal(line, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 

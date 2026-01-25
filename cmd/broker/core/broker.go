@@ -42,7 +42,7 @@ type Broker struct {
 func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := mq.NewBus(ctx, 100)
-	return &Broker{
+	b := &Broker{
 		processes:        make(map[string]*Process),
 		messages:         bus.Channel(),
 		ctx:              ctx,
@@ -55,6 +55,13 @@ func NewBroker() *Broker {
 		correlationSeq:   0,
 		transportManager: transport.NewTransportManager(),
 	}
+
+	// Configure transport based on configuration
+	b.ConfigureTransportFromConfig()
+
+	// Install a default SpawnAdapter that delegates to existing spawn methods.
+
+	return b
 }
 
 // InsertProcessForTest inserts a pre-constructed process into the broker (testing only).
