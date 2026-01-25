@@ -52,7 +52,7 @@ func NewLocalCAPECStore(dbPath string) (*LocalCAPECStore, error) {
 
 // ImportFromXML validates XML with XSD and imports CAPEC items into DB.
 func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) error {
-	common.Info("Importing CAPEC data from XML file: %s (schema: %s)", xmlPath, xsdPath)
+	common.Info(LogMsgImportingXML, xmlPath, xsdPath)
 
 	// Optionally validate XML against XSD using libxml2/xsd.
 	// By default, XSD validation is skipped. To enable strict validation set
@@ -95,7 +95,7 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 		var meta CAPECCatalogMeta
 		if err := s.db.First(&meta).Error; err == nil {
 			if meta.Version == catalogVersion {
-				common.Info("CAPEC catalog version %s already imported; skipping import", catalogVersion)
+				common.Info(LogMsgImportSkipped, catalogVersion)
 				return nil
 			}
 		}
@@ -116,7 +116,7 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 			return fmt.Errorf("xsd validation failed: %w", err)
 		}
 	} else {
-		common.Info("Skipping XSD validation (CAPEC_STRICT_XSD not set); continuing with permissive import")
+		common.Info(LogMsgSkippingValidation)
 	}
 
 	// Parse XML into attack pattern structs (streaming)
