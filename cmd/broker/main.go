@@ -47,7 +47,7 @@ func main() {
 	// Load configuration
 	config, err := common.LoadConfig(configFile)
 	if err != nil {
-		common.Error("Error loading config: %v", err)
+		common.Error(LogMsgErrorLoadingConfig, err)
 		os.Exit(1)
 	}
 
@@ -58,14 +58,14 @@ func main() {
 		logDir := filepath.Dir(config.Broker.LogFile)
 		if logDir != "." && logDir != "" {
 			if err := os.MkdirAll(logDir, 0755); err != nil {
-				common.Error("Error creating log directory '%s': %v", logDir, err)
+				common.Error(LogMsgErrorCreatingLogDir, logDir, err)
 				os.Exit(1)
 			}
 		}
 
 		logFile, err := os.OpenFile(config.Broker.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			common.Error("Error opening log file '%s': %v", config.Broker.LogFile, err)
+			common.Error(LogMsgErrorOpeningLogFile, config.Broker.LogFile, err)
 			os.Exit(1)
 		}
 		defer logFile.Close()
