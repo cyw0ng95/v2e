@@ -62,6 +62,8 @@ const (
 	BookmarkActionDeleted BookmarkAction = "deleted"
 	// BookmarkActionReviewed indicates a bookmark was reviewed in learning mode
 	BookmarkActionReviewed BookmarkAction = "reviewed"
+	// BookmarkActionStateReverted indicates a bookmark state was reverted
+	BookmarkActionStateReverted BookmarkAction = "state_reverted"
 )
 
 // ItemType represents the type of security item

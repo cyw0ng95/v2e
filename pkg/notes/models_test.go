@@ -10,13 +10,13 @@ import (
 func TestBookmarkModel(t *testing.T) {
 	// Test basic struct properties
 	b := &BookmarkModel{
-		GlobalItemID: "global-item-123",
-		ItemType:     "CVE",
-		ItemID:       "CVE-2021-1234",
-		Title:        "Test Vulnerability",
-		Description:  "A test vulnerability for bookmarking",
+		GlobalItemID:  "global-item-123",
+		ItemType:      "CVE",
+		ItemID:        "CVE-2021-1234",
+		Title:         "Test Vulnerability",
+		Description:   "A test vulnerability for bookmarking",
 		LearningState: string(LearningStateToReview),
-		MasteryLevel: 0.5,
+		MasteryLevel:  0.5,
 	}
 
 	// Verify basic properties
@@ -143,13 +143,13 @@ func TestLearningSessionModel(t *testing.T) {
 func TestCrossReferenceModel(t *testing.T) {
 	now := time.Now()
 	cr := &CrossReferenceModel{
-		SourceItemID:    "global-source-123",
-		TargetItemID:    "global-target-456",
-		SourceType:      "CVE",
-		TargetType:      "CWE",
+		SourceItemID:     "global-source-123",
+		TargetItemID:     "global-target-456",
+		SourceType:       "CVE",
+		TargetType:       "CWE",
 		RelationshipType: string(RelationshipTypeExploits),
-		Strength:        0.8,
-		CreatedAt:       now,
+		Strength:         0.8,
+		CreatedAt:        now,
 	}
 
 	if cr.SourceItemID != "global-source-123" {
@@ -180,11 +180,11 @@ func TestCrossReferenceModel(t *testing.T) {
 func TestGlobalItemModel(t *testing.T) {
 	now := time.Now()
 	gi := &GlobalItemModel{
-		ID:       "global-item-789",
-		ItemType: "CAPEC",
-		SourceID: "CAPEC-123",
-		Title:    "Test Attack Pattern",
-		Source:   "MITRE_CAPEC",
+		ID:        "global-item-789",
+		ItemType:  "CAPEC",
+		SourceID:  "CAPEC-123",
+		Title:     "Test Attack Pattern",
+		Source:    "MITRE_CAPEC",
 		CreatedAt: now,
 	}
 
