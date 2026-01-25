@@ -145,9 +145,15 @@ func (b *Broker) Context() context.Context {
 
 // ConfigureTransportFromConfig configures the transport based on the configuration
 func (b *Broker) ConfigureTransportFromConfig() {
-	if b.config == nil || b.config.Broker.Transport.Type == "" {
-		// Default to FD transport for backward compatibility
+	if b.config == nil {
 		return
+	}
+	
+	// Default to UDS transport if not specified
+	if b.config.Broker.Transport.Type == "" {
+		b.config.Broker.Transport.Type = "uds"
+		b.config.Broker.Transport.EnableUDS = true
+		b.logger.Info("Using default UDS transport")
 	}
 	
 	// Set UDS base path if configured
