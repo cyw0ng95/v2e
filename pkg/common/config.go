@@ -86,11 +86,6 @@ type WebsiteConfig struct {
 	UseMockData bool   `json:"use_mock_data,omitempty"`
 }
 
-// Extend Config struct with new top-level sections
-func init() {
-	// noop: types declared for JSON unmarshalling
-}
-
 // AccessConfig holds configuration for the access (HTTP) service
 type AccessConfig struct {
 	// RPC timeout in seconds for forwarding RPC requests (default: 30)

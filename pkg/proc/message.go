@@ -17,9 +17,7 @@ func init() {
 	// Use fastest configuration for zero-copy parsing
 	fastDecoder.UseInt64()
 	fastDecoder.UseNumber()
-}
 
-func init() {
 	// Load config and allow overriding MaxMessageSize if configured
 	cfg, err := common.LoadConfig("")
 	if err != nil {
