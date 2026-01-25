@@ -50,40 +50,46 @@ run_container_env() {
     # Create Go module cache directory if it doesn't exist
     mkdir -p "${SCRIPT_DIR}/${BUILD_DIR}/pkg/mod"
     
-    # If command is provided as argument, run it in the container; otherwise start interactive shell
+    # Determine if running command or interactive shell
     if [ $# -gt 0 ]; then
         log_info "Running command in container environment: $*"
         # Run command in container and capture exit code
-        if podman run --rm -v "$(pwd)":/workspace -w /workspace \
-            -v "${SCRIPT_DIR}/${BUILD_DIR}/pkg/mod":/home/developer/go/pkg/mod \
-            -e SESSION_DB_PATH="$SESSION_DB_PATH" \
-            -e RPC_INPUT_FD="$RPC_INPUT_FD" \
-            -e RPC_OUTPUT_FD="$RPC_OUTPUT_FD" \
-            -e V2E_SKIP_WEBSITE_BUILD="$V2E_SKIP_WEBSITE_BUILD" \
-            -e GO_TAGS="$GO_TAGS" \
-            -e CGO_ENABLED="$CGO_ENABLED" \
-            v2e-dev-container bash -c "$*"; then
-            exit_code=0
-        else
-            exit_code=$?
-        fi
+        container_cmd=(bash -c "$*")
+        log_msg="Running command in container environment"
     else
         # Run an interactive bash shell inside the container with Go module cache mounted
         log_info "Starting container environment with Go module cache mounted..."
         # Run interactive container and capture exit code
-        if podman run -it --rm -v "$(pwd)":/workspace -w /workspace \
-            -v "${SCRIPT_DIR}/${BUILD_DIR}/pkg/mod":/home/developer/go/pkg/mod \
-            -e SESSION_DB_PATH="$SESSION_DB_PATH" \
-            -e RPC_INPUT_FD="$RPC_INPUT_FD" \
-            -e RPC_OUTPUT_FD="$RPC_OUTPUT_FD" \
-            -e V2E_SKIP_WEBSITE_BUILD="$V2E_SKIP_WEBSITE_BUILD" \
-            -e GO_TAGS="$GO_TAGS" \
-            -e CGO_ENABLED="$CGO_ENABLED" \
-            v2e-dev-container; then
-            exit_code=0
-        else
-            exit_code=$?
-        fi
+        container_cmd=()
+        log_msg="Starting container environment"
+    fi
+    
+    # Build podman command with common options
+    podman_base_cmd=(podman run --rm -v "$(pwd)":/workspace -w /workspace \
+        -v "${SCRIPT_DIR}/${BUILD_DIR}/pkg/mod":/home/developer/go/pkg/mod \
+        -e SESSION_DB_PATH="$SESSION_DB_PATH" \
+        -e RPC_INPUT_FD="$RPC_INPUT_FD" \
+        -e RPC_OUTPUT_FD="$RPC_OUTPUT_FD" \
+        -e V2E_SKIP_WEBSITE_BUILD="$V2E_SKIP_WEBSITE_BUILD" \
+        -e GO_TAGS="$GO_TAGS" \
+        -e CGO_ENABLED="$CGO_ENABLED")
+    
+    # Add interactive flag if no command provided
+    if [ $# -eq 0 ]; then
+        podman_base_cmd+=(-it)
+    fi
+    
+    # Add container image and command
+    podman_base_cmd+=(v2e-dev-container)
+    if [ $# -gt 0 ]; then
+        podman_base_cmd+=("${container_cmd[@]}")
+    fi
+    
+    # Execute podman command and capture exit code
+    if "${podman_base_cmd[@]}"; then
+        exit_code=0
+    else
+        exit_code=$?
     fi
     
     # Exit with the same code as the container command
