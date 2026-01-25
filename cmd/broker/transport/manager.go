@@ -10,6 +10,7 @@ import (
 // TransportManager manages communication transports for processes
 type TransportManager struct {
 	transports map[string]Transport
+	udsBasePath string  // Base path for UDS sockets
 	mu         sync.RWMutex
 }
 
@@ -17,6 +18,7 @@ type TransportManager struct {
 func NewTransportManager() *TransportManager {
 	return &TransportManager{
 		transports: make(map[string]Transport),
+		udsBasePath: "/tmp/v2e_uds",
 	}
 }
 
@@ -55,4 +57,22 @@ func (tm *TransportManager) SendToProcess(processID string, msg *proc.Message) e
 	}
 	
 	return transport.Send(msg)
+}
+
+// RegisterUDSTransport creates and registers a UDS transport for a process
+func (tm *TransportManager) RegisterUDSTransport(processID string, isServer bool) error {
+	socketPath := fmt.Sprintf("%s_%s.sock", tm.udsBasePath, processID)
+	transport := NewUDSTransport(socketPath, isServer)
+	
+	if err := transport.Connect(); err != nil {
+		return fmt.Errorf("failed to connect UDS transport for process %s: %w", processID, err)
+	}
+	
+	tm.RegisterTransport(processID, transport)
+	return nil
+}
+
+// SetUdsBasePath sets the base path for UDS socket files
+func (tm *TransportManager) SetUdsBasePath(path string) {
+	tm.udsBasePath = path
 }

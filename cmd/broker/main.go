@@ -96,6 +96,8 @@ func main() {
 	broker := NewBroker()
 	// Provide loaded config to broker so it can use configured settings when spawning
 	broker.SetConfig(config)
+	// Configure transport based on configuration
+	broker.ConfigureTransportFromConfig()
 	// Install a default SpawnAdapter that delegates to existing spawn methods.
 	spawnAdapter := NewSpawnAdapter(broker)
 	broker.SetSpawner(spawnAdapter)

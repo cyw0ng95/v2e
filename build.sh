@@ -39,11 +39,10 @@ log_debug() {
     fi
 }
 
-# Global variables
-BUILD_DIR=".build"
-PACKAGE_DIR=".build/package"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERBOSE=false
+log_fatal() {
+    log_format "FATAL" "$1" "${2:-build}"
+    exit 1
+}
 
 # Global variables
 BUILD_DIR=".build"
@@ -54,11 +53,10 @@ VERBOSE=false
 # Default Go build tags (can be overridden by setting GO_TAGS env var)
 GO_TAGS="${GO_TAGS:-libxml2}"
 
-# Check if running on Linux, refuse to run on other platforms
+# Check operating system for proper containerization support
 DETECTED_OS="$(uname -s)"
-if [[ "$DETECTED_OS" != "Linux" ]]; then
-    echo "Error: build.sh can only run on Linux systems."
-    echo "For macOS or other platforms, please use runenv.sh instead."
+if [[ "$DETECTED_OS" == "Darwin" ]]; then
+    echo "Error: On macOS, please use runenv.sh to run in containerized environment."
     exit 1
 fi
 
@@ -324,8 +322,12 @@ build_project() {
             if [ "$VERBOSE" = true ]; then
                 log_debug "Running go build..."
             fi
-            mkdir -p "$BUILD_DIR/v2e"
-            go build -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
+            mkdir -p "$BUILD_DIR"
+            if [ "$VERBOSE" = true ]; then
+                go build -v -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
+            else
+                go build -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
+            fi
             if [ "$VERBOSE" = true ]; then
                 log_debug "Build completed successfully"
                 log_debug "Binary saved to: $binary_path"
@@ -369,7 +371,11 @@ build_and_package() {
                 if [ "$VERBOSE" = true ]; then
                     log_debug "Building $cmd_name..."
                 fi
-                go build -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                if [ "$VERBOSE" = true ]; then
+                    go build -v -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                else
+                    go build -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                fi
                 build_pids+=($!)
             fi
         done
@@ -801,23 +807,26 @@ main() {
     # Execute based on options
     if [ "$RUN_TESTS" = true ]; then
         run_tests
-        exit $?
+        exit_code=$?
     elif [ "$RUN_FUZZ_TESTS" = true ]; then
         run_fuzz_tests
-        exit $?
+        exit_code=$?
     elif [ "$RUN_BENCHMARKS" = true ]; then
         run_benchmarks
-        exit $?
+        exit_code=$?
     elif [ "$BUILD_PACKAGE" = true ]; then
         build_and_package
-        exit $?
+        exit_code=$?
     elif [ "$RUN_NODE_AND_BROKER" = true ]; then
         run_node_and_broker_once
-        exit $?
+        exit_code=$?
     else
         build_project
-        exit $?
+        exit_code=$?
     fi
+    
+    # Exit with the captured exit code
+    exit $exit_code
 }
 
 main "$@"

@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"io"
 	"testing"
 	"time"
 
@@ -32,14 +33,16 @@ func TestRouteMessage_WithTarget(t *testing.T) {
 	broker := core.NewBroker()
 	defer broker.Shutdown()
 
-	// Spawn a simple RPC process (use sleep to keep it alive for testing)
-	info, err := broker.SpawnRPC("test-process", "sleep", "60")
-	if err != nil {
-		t.Fatalf("Failed to spawn test process: %v", err)
-	}
-
-	// Wait a bit for process to start
-	time.Sleep(100 * time.Millisecond)
+	// Create a test process without spawning an OS process
+	ir, pw := io.Pipe()
+	// Drain stdin so writes do not block
+	go func() { _, _ = io.Copy(io.Discard, ir) }()
+	r, w := io.Pipe()
+	p := core.NewTestProcess("test-process", core.ProcessStatusRunning, pw, r)
+	broker.InsertProcessForTest(p)
+	broker.StartProcessReaderForTest(p)
+	// Close the stdout writer so the reader goroutine can exit cleanly on shutdown
+	_ = w.Close()
 
 	// Create a message with a target
 	msg, err := proc.NewRequestMessage("test", map[string]string{"data": "value"})
@@ -49,7 +52,9 @@ func TestRouteMessage_WithTarget(t *testing.T) {
 	msg.Target = "test-process"
 
 	// Route the message
+	t.Log("Routing message to test-process")
 	err = broker.RouteMessage(msg, "sender")
+	t.Log("RouteMessage returned")
 	if err != nil {
 		t.Errorf("Failed to route message: %v", err)
 	}
@@ -60,7 +65,7 @@ func TestRouteMessage_WithTarget(t *testing.T) {
 	}
 
 	// Clean up
-	broker.Kill(info.ID)
+	_ = broker.Kill("test-process")
 }
 
 func TestRouteMessage_NoTarget(t *testing.T) {
@@ -102,17 +107,20 @@ func TestInvokeRPC(t *testing.T) {
 	})
 
 	t.Run("Timeout behavior", func(t *testing.T) {
-		// Spawn a simple process that won't respond to RPC
-		info, err := broker.SpawnRPC("test-rpc", "sleep", "60")
-		if err != nil {
-			t.Fatalf("Failed to spawn test process: %v", err)
-		}
-		defer broker.Kill(info.ID)
-
-		time.Sleep(100 * time.Millisecond)
+		// Create a test process that won't respond to RPC
+		ir, pw := io.Pipe()
+		// Drain stdin so writes do not block
+		go func() { _, _ = io.Copy(io.Discard, ir) }()
+		r, w := io.Pipe()
+		p := core.NewTestProcess("test-rpc", core.ProcessStatusRunning, pw, r)
+		broker.InsertProcessForTest(p)
+		broker.StartProcessReaderForTest(p)
+		// Close writer to avoid blocking scanner on shutdown
+		_ = w.Close()
+		defer broker.Kill("test-rpc")
 
 		// Try to invoke RPC with very short timeout
-		_, err = broker.InvokeRPC("source", "test-rpc", "RPCTest", map[string]string{}, 50*time.Millisecond)
+		_, err := broker.InvokeRPC("source", "test-rpc", "RPCTest", map[string]string{}, 50*time.Millisecond)
 		if err == nil {
 			t.Error("Expected timeout error when process doesn't respond")
 		}

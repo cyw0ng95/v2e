@@ -3,13 +3,13 @@ package perf
 import (
 	"context"
 	"runtime"
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/routing"
 	"github.com/cyw0ng95/v2e/cmd/broker/sched"
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 

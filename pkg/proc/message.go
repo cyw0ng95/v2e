@@ -17,9 +17,7 @@ func init() {
 	// Use fastest configuration for zero-copy parsing
 	fastDecoder.UseInt64()
 	fastDecoder.UseNumber()
-}
 
-func init() {
 	// Load config and allow overriding MaxMessageSize if configured
 	cfg, err := common.LoadConfig("")
 	if err != nil {
@@ -52,6 +50,13 @@ const (
 
 // MaxMessageSize is adjustable at runtime via configuration (default 10MB)
 var MaxMessageSize = 10 * 1024 * 1024 // 10MB
+
+// DefaultBufferSize is the default initial buffer size for scanners/readers
+const DefaultBufferSize = 4096
+
+// MaxBufferSize is the maximum buffer size for scanners/readers
+// Default to MaxMessageSize to allow large messages
+var MaxBufferSize = MaxMessageSize
 
 // Message represents a message that can be passed between processes
 type Message struct {

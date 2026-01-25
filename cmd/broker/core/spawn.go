@@ -23,41 +23,7 @@ func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error)
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
 
-	if b.config != nil {
-		if cmd.Env == nil {
-			cmd.Env = os.Environ()
-		}
-		switch id {
-		case "local":
-			if b.config.Local.CVEDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", b.config.Local.CVEDBPath))
-			}
-			if b.config.Local.CWEDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", b.config.Local.CWEDBPath))
-			}
-			if b.config.Local.CAPECDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", b.config.Local.CAPECDBPath))
-			}
-			if b.config.Capec.StrictXSDValidation {
-				cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
-			}
-		case "meta":
-			if b.config.Meta.SessionDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", b.config.Meta.SessionDBPath))
-			}
-		case "remote":
-			if b.config.Remote.NVDAPIKey != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", b.config.Remote.NVDAPIKey))
-			}
-			if b.config.Remote.ViewFetchURL != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", b.config.Remote.ViewFetchURL))
-			}
-		case "access":
-			if b.config.Access.StaticDir != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", b.config.Access.StaticDir))
-			}
-		}
-	}
+	setProcessEnv(cmd, id, b.config)
 
 	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
 
@@ -110,51 +76,9 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 
 	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
 
-	inputFD := 3
-	outputFD := 4
-	if b.config != nil {
-		if b.config.Proc.RPCInputFD != 0 {
-			inputFD = b.config.Proc.RPCInputFD
-		} else if b.config.Broker.RPCInputFD != 0 {
-			inputFD = b.config.Broker.RPCInputFD
-		}
-		if b.config.Proc.RPCOutputFD != 0 {
-			outputFD = b.config.Proc.RPCOutputFD
-		} else if b.config.Broker.RPCOutputFD != 0 {
-			outputFD = b.config.Broker.RPCOutputFD
-		}
-	}
+	inputFD, outputFD := b.getRPCFileDescriptors()
 
-	if cmd.Env == nil {
-		cmd.Env = os.Environ()
-	}
-	if b.config != nil {
-		switch id {
-		case "local":
-			if b.config.Local.CVEDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", b.config.Local.CVEDBPath))
-			}
-			if b.config.Local.CWEDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", b.config.Local.CWEDBPath))
-			}
-			if b.config.Local.CAPECDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", b.config.Local.CAPECDBPath))
-			}
-		case "meta":
-			if b.config.Meta.SessionDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", b.config.Meta.SessionDBPath))
-			}
-		case "remote":
-			if b.config.Remote.NVDAPIKey != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", b.config.Remote.NVDAPIKey))
-			}
-		case "access":
-			if b.config.Access.StaticDir != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", b.config.Access.StaticDir))
-			}
-		}
-	}
-
+	setProcessEnv(cmd, id, b.config)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
 	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
@@ -192,16 +116,7 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 
 	infoCopy := *info
 
-	// Create and register transport for the process
-	if b.transportManager != nil {
-		transport := transport.NewFDPipeTransport(inputFD, outputFD)
-		if err := transport.Connect(); err == nil {
-			b.transportManager.RegisterTransport(id, transport)
-			b.logger.Debug("Registered transport for process %s", id)
-		} else {
-			b.logger.Warn("Failed to connect transport for process %s: %v", id, err)
-		}
-	}
+	b.registerProcessTransport(id, inputFD, outputFD)
 
 	b.wg.Add(1)
 	go b.readProcessMessages(proc)
@@ -224,35 +139,7 @@ func (b *Broker) SpawnWithRestart(id, command string, maxRestarts int, args ...s
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
 
-	if b.config != nil {
-		if cmd.Env == nil {
-			cmd.Env = os.Environ()
-		}
-		switch id {
-		case "local":
-			if b.config.Local.CVEDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", b.config.Local.CVEDBPath))
-			}
-			if b.config.Local.CWEDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", b.config.Local.CWEDBPath))
-			}
-			if b.config.Local.CAPECDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", b.config.Local.CAPECDBPath))
-			}
-		case "meta":
-			if b.config.Meta.SessionDBPath != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", b.config.Meta.SessionDBPath))
-			}
-		case "remote":
-			if b.config.Remote.NVDAPIKey != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", b.config.Remote.NVDAPIKey))
-			}
-		case "access":
-			if b.config.Access.StaticDir != "" {
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", b.config.Access.StaticDir))
-			}
-		}
-	}
+	setProcessEnv(cmd, id, b.config)
 
 	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
 
@@ -318,24 +205,9 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 
 	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
 
-	inputFD := 3
-	outputFD := 4
-	if b.config != nil {
-		if b.config.Proc.RPCInputFD != 0 {
-			inputFD = b.config.Proc.RPCInputFD
-		} else if b.config.Broker.RPCInputFD != 0 {
-			inputFD = b.config.Broker.RPCInputFD
-		}
-		if b.config.Proc.RPCOutputFD != 0 {
-			outputFD = b.config.Proc.RPCOutputFD
-		} else if b.config.Broker.RPCOutputFD != 0 {
-			outputFD = b.config.Broker.RPCOutputFD
-		}
-	}
+	inputFD, outputFD := b.getRPCFileDescriptors()
 
-	if cmd.Env == nil {
-		cmd.Env = os.Environ()
-	}
+	setProcessEnv(cmd, id, b.config)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
 	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
@@ -381,16 +253,7 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 
 	infoCopy := *info
 
-	// Create and register transport for the process
-	if b.transportManager != nil {
-		transport := transport.NewFDPipeTransport(inputFD, outputFD)
-		if err := transport.Connect(); err == nil {
-			b.transportManager.RegisterTransport(id, transport)
-			b.logger.Debug("Registered transport for process %s", id)
-		} else {
-			b.logger.Warn("Failed to connect transport for process %s: %v", id, err)
-		}
-	}
+	b.registerProcessTransport(id, inputFD, outputFD)
 
 	b.wg.Add(1)
 	go b.readProcessMessages(proc)
@@ -447,4 +310,109 @@ func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
 	}
 
 	return nil
+}
+
+// setProcessEnv configures environment variables for a process based on its ID and the broker config.
+// This consolidates the repeated env setup logic from Spawn, SpawnRPC, SpawnWithRestart, and SpawnRPCWithRestart.
+func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
+	if config == nil {
+		return
+	}
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
+	switch processID {
+	case "local":
+		if config.Local.CVEDBPath != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", config.Local.CVEDBPath))
+		}
+		if config.Local.CWEDBPath != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", config.Local.CWEDBPath))
+		}
+		if config.Local.CAPECDBPath != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", config.Local.CAPECDBPath))
+		}
+		if config.Capec.StrictXSDValidation {
+			cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
+		}
+	case "meta":
+		if config.Meta.SessionDBPath != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", config.Meta.SessionDBPath))
+		}
+	case "remote":
+		if config.Remote.NVDAPIKey != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", config.Remote.NVDAPIKey))
+		}
+		if config.Remote.ViewFetchURL != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", config.Remote.ViewFetchURL))
+		}
+	case "access":
+		if config.Access.StaticDir != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", config.Access.StaticDir))
+		}
+	}
+}
+
+// getRPCFileDescriptors returns the configured input and output file descriptor numbers for RPC communication.
+// Defaults to 3 (input) and 4 (output) if not configured.
+func (b *Broker) getRPCFileDescriptors() (inputFD, outputFD int) {
+	inputFD, outputFD = 3, 4
+	if b.config == nil {
+		return
+	}
+	if b.config.Proc.RPCInputFD != 0 {
+		inputFD = b.config.Proc.RPCInputFD
+	} else if b.config.Broker.RPCInputFD != 0 {
+		inputFD = b.config.Broker.RPCInputFD
+	}
+	if b.config.Proc.RPCOutputFD != 0 {
+		outputFD = b.config.Proc.RPCOutputFD
+	} else if b.config.Broker.RPCOutputFD != 0 {
+		outputFD = b.config.Broker.RPCOutputFD
+	}
+	return
+}
+
+// registerProcessTransport creates and registers the appropriate transport for a spawned RPC process.
+// Returns an error only if transport registration fails critically.
+func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD int) {
+	if b.transportManager == nil {
+		return
+	}
+	if b.config != nil && shouldUseUDSTransport(b.config.Broker.Transport) {
+		if err := b.transportManager.RegisterUDSTransport(processID, true); err == nil {
+			b.logger.Debug("Registered UDS transport for process %s", processID)
+			return
+		}
+		b.logger.Warn("Failed to connect UDS transport for process %s, falling back to FD transport", processID)
+	}
+	// Use FD transport (default or fallback)
+	fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
+	if err := fdTransport.Connect(); err == nil {
+		b.transportManager.RegisterTransport(processID, fdTransport)
+		b.logger.Debug("Registered FD transport for process %s", processID)
+	} else {
+		b.logger.Warn("Failed to connect FD transport for process %s: %v", processID, err)
+	}
+}
+
+// shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
+func shouldUseUDSTransport(config common.TransportConfigOptions) bool {
+	// If Type is explicitly set to "uds", use UDS
+	if config.Type == "uds" {
+		return true
+	}
+	// If Type is explicitly set to "fd", don't use UDS
+	if config.Type == "fd" {
+		return false
+	}
+	// If Type is "auto" or not set, fall back to EnableUDS flag
+	// If both EnableUDS and EnableFD are set, prioritize UDS unless DualMode is enabled
+	if config.EnableUDS && config.EnableFD {
+		// In dual mode, we might need special handling, but for now default to UDS
+		// If DualMode is enabled, we may want to handle differently
+		return !config.DualMode // If dual mode, prefer FD initially
+	}
+	// Otherwise, use EnableUDS flag
+	return config.EnableUDS
 }
