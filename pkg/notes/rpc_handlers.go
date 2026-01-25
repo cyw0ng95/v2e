@@ -3,8 +3,8 @@ package notes
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -12,13 +12,15 @@ import (
 type RPCHandlers struct {
 	container *ServiceContainer
 	sp        *subprocess.Subprocess
+	logger    *common.Logger
 }
 
 // NewRPCHandlers creates a new RPC handlers instance
-func NewRPCHandlers(container *ServiceContainer, sp *subprocess.Subprocess) *RPCHandlers {
+func NewRPCHandlers(container *ServiceContainer, sp *subprocess.Subprocess, logger *common.Logger) *RPCHandlers {
 	handlers := &RPCHandlers{
 		container: container,
 		sp:        sp,
+		logger:    logger,
 	}
 
 	// Register RPC methods
@@ -1189,8 +1191,8 @@ func (h *RPCHandlers) handleRPCRevertBookmarkState(ctx context.Context, msg *sub
 
 // createErrorResponse creates an error response message
 func (h *RPCHandlers) createErrorResponse(requestMsg *subprocess.Message, errorMsg string) *subprocess.Message {
-	log.Printf("RPC Error: %s", errorMsg)
-	
+	h.logger.Error(LogMsgRPCError, errorMsg)
+
 	return &subprocess.Message{
 		Type:          subprocess.MessageTypeError,
 		ID:            requestMsg.ID,
