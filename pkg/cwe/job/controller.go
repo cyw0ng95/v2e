@@ -62,7 +62,7 @@ func (c *Controller) Start(ctx context.Context, params map[string]interface{}) (
 	go c.runJob(jobCtx, params)
 
 	sessionID := fmt.Sprintf("cwe-session-%d", time.Now().UnixNano())
-	c.logger.Info("CWE view job started: session_id=%s", sessionID)
+	c.logger.Info(cwe.LogMsgJobStarted, sessionID)
 	return sessionID, nil
 }
 
@@ -79,7 +79,7 @@ func (c *Controller) Stop(ctx context.Context, sessionID string) error {
 		c.cancelFunc = nil
 	}
 	c.running = false
-	c.logger.Info("CWE view job stopped: session_id=%s", sessionID)
+	c.logger.Info(cwe.LogMsgJobStopped, sessionID)
 	return nil
 }
 
@@ -120,17 +120,17 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 		pageSize = v
 	}
 
-	c.logger.Info("CWE job loop starting: start_index=%d, page_size=%d", startIndex, pageSize)
+	c.logger.Info(cwe.LogMsgJobLoopStarting, startIndex, pageSize)
 
 	current := startIndex
 
 	for {
 		select {
 		case <-ctx.Done():
-			c.logger.Info("CWE job loop cancelled")
+			c.logger.Info(cwe.LogMsgJobLoopCancelled)
 			return
 		default:
-			c.logger.Debug("Fetching views: start_index=%d, page_size=%d", current, pageSize)
+			c.logger.Debug(cwe.LogMsgFetchingViews, current, pageSize)
 
 			// Invoke remote to fetch views
 			result, err := c.rpcInvoker.InvokeRPC(ctx, "remote", "RPCFetchViews", &rpc.FetchCVEsParams{
@@ -138,7 +138,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 				ResultsPerPage: pageSize,
 			})
 			if err != nil {
-				c.logger.Warn("Failed to fetch views: %v", err)
+				c.logger.Warn(cwe.LogMsgFailedFetchViews, err)
 				select {
 				case <-ctx.Done():
 					return
@@ -149,7 +149,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 
 			msg, ok := result.(*subprocess.Message)
 			if !ok {
-				c.logger.Warn("Invalid response type from remote for views")
+				c.logger.Warn(cwe.LogMsgInvalidResponseType)
 				select {
 				case <-ctx.Done():
 					return
@@ -159,7 +159,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 			}
 
 			if msg.Type == subprocess.MessageTypeError {
-				c.logger.Warn("Error from remote: %s", msg.Error)
+				c.logger.Warn(cwe.LogMsgErrorFromRemote, msg.Error)
 				select {
 				case <-ctx.Done():
 					return
@@ -173,7 +173,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 				Views []cwe.CWEView `json:"views"`
 			}
 			if err := jsonutil.Unmarshal(msg.Payload, &resp); err != nil {
-				c.logger.Warn("Failed to unmarshal views response: %v", err)
+				c.logger.Warn(cwe.LogMsgFailedUnmarshalResponse, err)
 				select {
 				case <-ctx.Done():
 					return
@@ -183,7 +183,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 			}
 
 			if len(resp.Views) == 0 {
-				c.logger.Info("No more views to fetch. Job completed.")
+				c.logger.Info(cwe.LogMsgNoMoreViews)
 				// stop gracefully
 				c.mu.Lock()
 				if c.cancelFunc != nil {
@@ -200,13 +200,13 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 				// Save via local RPC
 				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCWEView", v)
 				if err != nil {
-					c.logger.Error("Failed to save view %s: %v", v.ID, err)
+					c.logger.Error(cwe.LogMsgFailedSaveView, v.ID, err)
 				} else {
 					stored++
 				}
 			}
 
-			c.logger.Info("Fetched %d views and stored %d", len(resp.Views), stored)
+			c.logger.Info(cwe.LogMsgFetchedViews, len(resp.Views), stored)
 
 			current += pageSize
 

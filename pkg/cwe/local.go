@@ -180,7 +180,7 @@ func NewLocalCWEStore(dbPath string) (*LocalCWEStore, error) {
 
 // ImportFromJSON imports CWE records from a JSON file (array of CWEItem).
 func (s *LocalCWEStore) ImportFromJSON(jsonPath string) error {
-	common.Info("Importing CWE data from JSON file: %s", jsonPath)
+	common.Info(LogMsgImportingJSON, jsonPath)
 	f, err := os.Open(jsonPath)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (s *LocalCWEStore) ImportFromJSON(jsonPath string) error {
 	var first, last CWEItemModel
 	if err := s.db.First(&first, "id = ?", items[0].ID).Error; err == nil {
 		if err := s.db.First(&last, "id = ?", items[len(items)-1].ID).Error; err == nil {
-			common.Info("CWE import skipped: first and last CWE already present (IDs: %s, %s)", items[0].ID, items[len(items)-1].ID)
+			common.Info(LogMsgImportSkipped, items[0].ID, items[len(items)-1].ID)
 			return nil
 		}
 	}
