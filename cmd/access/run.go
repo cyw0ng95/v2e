@@ -16,7 +16,7 @@ func runAccess() {
 	// Load configuration
 	config, err := common.LoadConfig("config.json")
 	if err != nil {
-		common.Warn("Warning loading config: %v", err)
+		common.Warn(LogMsgWarningLoadingConfig, err)
 		os.Exit(1)
 	}
 
@@ -57,11 +57,11 @@ func runAccess() {
 
 	// Start RPC client in background
 	go func() {
-		common.Info("[ACCESS] Starting RPC client for process: %s", processID)
+		common.Info(LogMsgStartingRPCClient, processID)
 		if err := rpcClient.Run(context.Background()); err != nil {
-			common.Warn("[ACCESS] RPC client error for process %s: %v", processID, err)
+			common.Warn(LogMsgRPCClientError, processID, err)
 		} else {
-			common.Info("[ACCESS] RPC client stopped for process: %s", processID)
+			common.Info(LogMsgRPCClientStopped, processID)
 		}
 	}()
 
@@ -76,9 +76,9 @@ func runAccess() {
 
 	// Start server in a goroutine
 	go func() {
-		common.Info("[ACCESS] Starting access service on %s", address)
+		common.Info(LogMsgStartingAccessService, address)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			common.Error("[ACCESS] Failed to start server: %v", err)
+			common.Error(LogMsgFailedStartServer, err)
 			return
 		}
 	}()
@@ -88,16 +88,16 @@ func runAccess() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	common.Info("[ACCESS] Shutting down access service...")
+	common.Info(LogMsgShuttingDown)
 
 	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		common.Warn("[ACCESS] Server forced to shutdown: %v", err)
+		common.Warn(LogMsgServerForcedShutdown, err)
 		os.Exit(1)
 	}
 
-	common.Info("[ACCESS] Access service stopped\n")
+	common.Info(LogMsgServiceStopped)
 }
