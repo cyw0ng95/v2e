@@ -169,6 +169,34 @@ func (s *BookmarkService) GetBookmarksByLearningState(ctx context.Context, state
 	return bookmarks, nil
 }
 
+// ListBookmarks lists bookmarks with optional state filtering and pagination
+func (s *BookmarkService) ListBookmarks(ctx context.Context, state string, offset, limit int) ([]*BookmarkModel, int64, error) {
+	var bookmarks []*BookmarkModel
+
+	query := s.db.WithContext(ctx).Preload("Notes").Preload("History")
+
+	if state != "" {
+		query = query.Where("learning_state = ?", state)
+	}
+
+	// Get total count
+	var total int64
+	if err := query.Model(&BookmarkModel{}).Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count bookmarks: %w", err)
+	}
+
+	// Apply pagination
+	if limit > 0 {
+		query = query.Offset(offset).Limit(limit)
+	}
+
+	if err := query.Find(&bookmarks).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list bookmarks: %w", err)
+	}
+
+	return bookmarks, total, nil
+}
+
 // NoteService handles all note-related operations
 type NoteService struct {
 	db *gorm.DB
@@ -224,6 +252,19 @@ func (s *NoteService) UpdateNote(ctx context.Context, note *NoteModel) error {
 	return nil
 }
 
+// GetNoteByID retrieves a note by its ID
+func (s *NoteService) GetNoteByID(ctx context.Context, id uint) (*NoteModel, error) {
+	var note NoteModel
+	err := s.db.WithContext(ctx).First(&note, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("note with ID %d not found", id)
+		}
+		return nil, fmt.Errorf("failed to get note: %w", err)
+	}
+	return &note, nil
+}
+
 // DeleteNote deletes a note
 func (s *NoteService) DeleteNote(ctx context.Context, id uint) error {
 	note := &NoteModel{ID: id}
@@ -262,40 +303,65 @@ func (s *HistoryService) GetHistoryByBookmarkID(ctx context.Context, bookmarkID 
 }
 
 // RevertBookmarkState reverts a bookmark to a previous state
-func (s *HistoryService) RevertBookmarkState(ctx context.Context, bookmarkID uint, timestamp time.Time) error {
-	// Find the history entry at the specified timestamp
+func (s *HistoryService) RevertBookmarkState(ctx context.Context, bookmarkID uint, timestamp interface{}) error {
+	var bookmark BookmarkModel
+	if err := s.db.WithContext(ctx).First(&bookmark, bookmarkID).Error; err != nil {
+		return fmt.Errorf("bookmark with ID %d not found: %w", bookmarkID, err)
+	}
+
+	var timestampTime time.Time
+	switch t := timestamp.(type) {
+	case time.Time:
+		timestampTime = t
+	case *time.Time:
+		if t != nil {
+			timestampTime = *t
+		} else {
+			// Get the most recent history entry before current state
+			var history BookmarkHistoryModel
+			err := s.db.WithContext(ctx).Where("bookmark_id = ?", bookmarkID).Order("timestamp DESC").First(&history).Error
+			if err != nil {
+				return fmt.Errorf("failed to get most recent history: %w", err)
+			}
+			timestampTime = history.Timestamp
+		}
+	case string:
+		var err error
+		timestampTime, err = time.Parse(time.RFC3339, t)
+		if err != nil {
+			return fmt.Errorf("invalid timestamp format: %w", err)
+		}
+	default:
+		return fmt.Errorf("invalid timestamp type")
+	}
+
+	// Find the closest history entry before the given timestamp
 	var historyEntry BookmarkHistoryModel
-	err := s.db.WithContext(ctx).Where("bookmark_id = ? AND timestamp <= ?", bookmarkID, timestamp).Order("timestamp DESC").First(&historyEntry).Error
+	err := s.db.WithContext(ctx).Where("bookmark_id = ? AND timestamp <= ?", bookmarkID, timestampTime).
+		Order("timestamp DESC").First(&historyEntry).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("no history entry found for bookmark ID %d at or before timestamp %v", bookmarkID, timestamp)
+			return fmt.Errorf("no history entry found before the given timestamp")
 		}
 		return fmt.Errorf("failed to find history entry: %w", err)
 	}
 
-	// Update the bookmark to the previous state
-	if historyEntry.OldValue != "" {
-		bookmark := &BookmarkModel{}
-		if err := s.db.WithContext(ctx).First(bookmark, bookmarkID).Error; err != nil {
-			return fmt.Errorf("bookmark with ID %d not found: %w", bookmarkID, err)
-		}
+	// Update the bookmark to the state from the history entry
+	bookmark.LearningState = historyEntry.OldValue
+	if err := s.db.WithContext(ctx).Save(&bookmark).Error; err != nil {
+		return fmt.Errorf("failed to revert bookmark state: %w", err)
+	}
 
-		bookmark.LearningState = historyEntry.OldValue
-		if err := s.db.WithContext(ctx).Save(bookmark).Error; err != nil {
-			return fmt.Errorf("failed to update bookmark state: %w", err)
-		}
-
-		// Create a revert history entry
-		revertHistory := &BookmarkHistoryModel{
-			BookmarkID: bookmarkID,
-			Action:     string(BookmarkActionLearningStateChanged),
-			OldValue:   historyEntry.NewValue,
-			NewValue:   historyEntry.OldValue,
-			Timestamp:  time.Now(),
-		}
-		if err := s.db.WithContext(ctx).Create(revertHistory).Error; err != nil {
-			return fmt.Errorf("failed to create revert history entry: %w", err)
-		}
+	// Create a history entry for the revert action
+	revertHistory := &BookmarkHistoryModel{
+		BookmarkID: bookmarkID,
+		Action:     string(BookmarkActionStateReverted),
+		OldValue:   historyEntry.NewValue,
+		NewValue:   bookmark.LearningState,
+		Timestamp:  time.Now(),
+	}
+	if err := s.db.WithContext(ctx).Create(revertHistory).Error; err != nil {
+		return fmt.Errorf("failed to create revert history entry: %w", err)
 	}
 
 	return nil
@@ -430,9 +496,9 @@ func (s *MemoryCardService) GetCardsForReview(ctx context.Context) ([]*MemoryCar
 	now := time.Now()
 	var cards []*MemoryCardModel
 	err := s.db.WithContext(ctx).
-		Joins("JOIN bookmarks ON memory_cards.bookmark_id = bookmarks.id").
-		Where("bookmarks.learning_state = ? AND (memory_cards.next_review <= ? OR memory_cards.next_review IS NULL)",
-			string(LearningStateLearning), now).
+		Joins("JOIN bookmark_models ON memory_card_models.bookmark_id = bookmark_models.id").
+		Where("bookmark_models.learning_state = ? AND (memory_card_models.next_review <= ? OR memory_card_models.next_review IS NULL)",
+			string(LearningStateLearning), now.Format("2006-01-02 15:04:05")).
 		Find(&cards).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cards for review: %w", err)
@@ -467,7 +533,7 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 		} else if card.Repetition == 1 {
 			card.Interval = 2 // Changed from 3 to 2 for "hard" rating
 		} else {
-			card.Interval = int(max(1, float32(card.Interval) * card.EaseFactor * 0.8)) // Minimum interval of 1 day
+			card.Interval = int(max(1, float32(card.Interval)*card.EaseFactor*0.8)) // Minimum interval of 1 day
 		}
 		card.Repetition += 1
 	case CardRatingGood:
@@ -512,8 +578,8 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 func (s *MemoryCardService) GetCardsByLearningState(ctx context.Context, state LearningState) ([]*MemoryCardModel, error) {
 	var cards []*MemoryCardModel
 	err := s.db.WithContext(ctx).
-		Joins("JOIN bookmarks ON memory_cards.bookmark_id = bookmarks.id").
-		Where("bookmarks.learning_state = ?", string(state)).
+		Joins("JOIN bookmark_models ON memory_card_models.bookmark_id = bookmark_models.id").
+		Where("bookmark_models.learning_state = ?", string(state)).
 		Find(&cards).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cards by learning state: %w", err)
