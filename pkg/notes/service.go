@@ -1,0 +1,570 @@
+package notes
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// BookmarkService handles all bookmark-related operations
+type BookmarkService struct {
+	db *gorm.DB
+}
+
+// NewBookmarkService creates a new BookmarkService instance
+func NewBookmarkService(db *gorm.DB) *BookmarkService {
+	return &BookmarkService{db: db}
+}
+
+// CreateBookmark creates a new bookmark
+func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, error) {
+	bookmark := &BookmarkModel{
+		GlobalItemID:  globalItemID,
+		ItemType:      itemType,
+		ItemID:        itemID,
+		Title:         title,
+		Description:   description,
+		LearningState: string(LearningStateToReview),
+		MasteryLevel:  0.0,
+	}
+
+	if err := s.db.WithContext(ctx).Create(bookmark).Error; err != nil {
+		return nil, fmt.Errorf("failed to create bookmark: %w", err)
+	}
+
+	// Create history entry
+	history := &BookmarkHistoryModel{
+		BookmarkID: bookmark.ID,
+		Action:     string(BookmarkActionCreated),
+		NewValue:   string(LearningStateToReview),
+		Timestamp:  time.Now(),
+	}
+	if err := s.db.WithContext(ctx).Create(history).Error; err != nil {
+		return nil, fmt.Errorf("failed to create bookmark history: %w", err)
+	}
+
+	return bookmark, nil
+}
+
+// GetBookmarkByID retrieves a bookmark by its ID
+func (s *BookmarkService) GetBookmarkByID(ctx context.Context, id uint) (*BookmarkModel, error) {
+	var bookmark BookmarkModel
+	err := s.db.WithContext(ctx).Preload("Notes").Preload("History").First(&bookmark, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("bookmark with ID %d not found", id)
+		}
+		return nil, fmt.Errorf("failed to get bookmark: %w", err)
+	}
+	return &bookmark, nil
+}
+
+// GetBookmarksByGlobalItemID retrieves all bookmarks for a specific global item
+func (s *BookmarkService) GetBookmarksByGlobalItemID(ctx context.Context, globalItemID string) ([]*BookmarkModel, error) {
+	var bookmarks []*BookmarkModel
+	err := s.db.WithContext(ctx).Preload("Notes").Preload("History").Where("global_item_id = ?", globalItemID).Find(&bookmarks).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bookmarks by global item ID: %w", err)
+	}
+	return bookmarks, nil
+}
+
+// UpdateBookmark updates an existing bookmark
+func (s *BookmarkService) UpdateBookmark(ctx context.Context, bookmark *BookmarkModel) error {
+	// Get the original bookmark to track changes
+	var original BookmarkModel
+	if err := s.db.WithContext(ctx).First(&original, bookmark.ID).Error; err != nil {
+		return fmt.Errorf("bookmark with ID %d not found", bookmark.ID)
+	}
+
+	// Update the bookmark
+	if err := s.db.WithContext(ctx).Save(bookmark).Error; err != nil {
+		return fmt.Errorf("failed to update bookmark: %w", err)
+	}
+
+	// Create history entry if learning state changed
+	if original.LearningState != bookmark.LearningState {
+		history := &BookmarkHistoryModel{
+			BookmarkID: bookmark.ID,
+			Action:     string(BookmarkActionLearningStateChanged),
+			OldValue:   original.LearningState,
+			NewValue:   bookmark.LearningState,
+			Timestamp:  time.Now(),
+		}
+		if err := s.db.WithContext(ctx).Create(history).Error; err != nil {
+			return fmt.Errorf("failed to create bookmark history: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteBookmark deletes a bookmark
+func (s *BookmarkService) DeleteBookmark(ctx context.Context, id uint) error {
+	bookmark := &BookmarkModel{ID: id}
+	if err := s.db.WithContext(ctx).First(bookmark).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("bookmark with ID %d not found", id)
+		}
+		return fmt.Errorf("failed to find bookmark: %w", err)
+	}
+
+	// Create history entry before deletion
+	history := &BookmarkHistoryModel{
+		BookmarkID: bookmark.ID,
+		Action:     string(BookmarkActionDeleted),
+		OldValue:   bookmark.LearningState,
+		Timestamp:  time.Now(),
+	}
+	if err := s.db.WithContext(ctx).Create(history).Error; err != nil {
+		return fmt.Errorf("failed to create bookmark history: %w", err)
+	}
+
+	// Delete the bookmark (soft delete)
+	if err := s.db.WithContext(ctx).Delete(bookmark).Error; err != nil {
+		return fmt.Errorf("failed to delete bookmark: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateLearningState updates the learning state of a bookmark
+func (s *BookmarkService) UpdateLearningState(ctx context.Context, bookmarkID uint, newState LearningState) error {
+	// Get the original bookmark to track changes
+	var original BookmarkModel
+	if err := s.db.WithContext(ctx).First(&original, bookmarkID).Error; err != nil {
+		return fmt.Errorf("bookmark with ID %d not found", bookmarkID)
+	}
+
+	// Update the learning state
+	if err := s.db.WithContext(ctx).Model(&BookmarkModel{}).Where("id = ?", bookmarkID).Update("learning_state", string(newState)).Error; err != nil {
+		return fmt.Errorf("failed to update learning state: %w", err)
+	}
+
+	// Create history entry
+	history := &BookmarkHistoryModel{
+		BookmarkID: bookmarkID,
+		Action:     string(BookmarkActionLearningStateChanged),
+		OldValue:   original.LearningState,
+		NewValue:   string(newState),
+		Timestamp:  time.Now(),
+	}
+	if err := s.db.WithContext(ctx).Create(history).Error; err != nil {
+		return fmt.Errorf("failed to create bookmark history: %w", err)
+	}
+
+	return nil
+}
+
+// GetBookmarksByLearningState retrieves bookmarks by learning state
+func (s *BookmarkService) GetBookmarksByLearningState(ctx context.Context, state LearningState) ([]*BookmarkModel, error) {
+	var bookmarks []*BookmarkModel
+	err := s.db.WithContext(ctx).Preload("Notes").Preload("History").Where("learning_state = ?", string(state)).Find(&bookmarks).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bookmarks by learning state: %w", err)
+	}
+	return bookmarks, nil
+}
+
+// NoteService handles all note-related operations
+type NoteService struct {
+	db *gorm.DB
+}
+
+// NewNoteService creates a new NoteService instance
+func NewNoteService(db *gorm.DB) *NoteService {
+	return &NoteService{db: db}
+}
+
+// AddNote adds a note to a bookmark
+func (s *NoteService) AddNote(ctx context.Context, bookmarkID uint, content string, author *string, isPrivate bool) (*NoteModel, error) {
+	note := &NoteModel{
+		BookmarkID: bookmarkID,
+		Content:    content,
+		Author:     author,
+		IsPrivate:  isPrivate,
+	}
+
+	if err := s.db.WithContext(ctx).Create(note).Error; err != nil {
+		return nil, fmt.Errorf("failed to add note: %w", err)
+	}
+
+	// Create history entry
+	bookmarkHistory := &BookmarkHistoryModel{
+		BookmarkID: bookmarkID,
+		Action:     string(BookmarkActionNoteAdded),
+		NewValue:   fmt.Sprintf("Note ID: %d", note.ID),
+		Timestamp:  time.Now(),
+	}
+	if err := s.db.WithContext(ctx).Create(bookmarkHistory).Error; err != nil {
+		return nil, fmt.Errorf("failed to create bookmark history: %w", err)
+	}
+
+	return note, nil
+}
+
+// GetNotesByBookmarkID retrieves all notes for a specific bookmark
+func (s *NoteService) GetNotesByBookmarkID(ctx context.Context, bookmarkID uint) ([]*NoteModel, error) {
+	var notes []*NoteModel
+	err := s.db.WithContext(ctx).Where("bookmark_id = ?", bookmarkID).Find(&notes).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get notes by bookmark ID: %w", err)
+	}
+	return notes, nil
+}
+
+// UpdateNote updates an existing note
+func (s *NoteService) UpdateNote(ctx context.Context, note *NoteModel) error {
+	if err := s.db.WithContext(ctx).Save(note).Error; err != nil {
+		return fmt.Errorf("failed to update note: %w", err)
+	}
+	return nil
+}
+
+// DeleteNote deletes a note
+func (s *NoteService) DeleteNote(ctx context.Context, id uint) error {
+	note := &NoteModel{ID: id}
+	if err := s.db.WithContext(ctx).First(note).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("note with ID %d not found", id)
+		}
+		return fmt.Errorf("failed to find note: %w", err)
+	}
+
+	if err := s.db.WithContext(ctx).Delete(note).Error; err != nil {
+		return fmt.Errorf("failed to delete note: %w", err)
+	}
+
+	return nil
+}
+
+// HistoryService handles all history-related operations
+type HistoryService struct {
+	db *gorm.DB
+}
+
+// NewHistoryService creates a new HistoryService instance
+func NewHistoryService(db *gorm.DB) *HistoryService {
+	return &HistoryService{db: db}
+}
+
+// GetHistoryByBookmarkID retrieves all history entries for a specific bookmark
+func (s *HistoryService) GetHistoryByBookmarkID(ctx context.Context, bookmarkID uint) ([]*BookmarkHistoryModel, error) {
+	var history []*BookmarkHistoryModel
+	err := s.db.WithContext(ctx).Where("bookmark_id = ?", bookmarkID).Order("timestamp DESC").Find(&history).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get history by bookmark ID: %w", err)
+	}
+	return history, nil
+}
+
+// RevertBookmarkState reverts a bookmark to a previous state
+func (s *HistoryService) RevertBookmarkState(ctx context.Context, bookmarkID uint, timestamp time.Time) error {
+	// Find the history entry at the specified timestamp
+	var historyEntry BookmarkHistoryModel
+	err := s.db.WithContext(ctx).Where("bookmark_id = ? AND timestamp <= ?", bookmarkID, timestamp).Order("timestamp DESC").First(&historyEntry).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("no history entry found for bookmark ID %d at or before timestamp %v", bookmarkID, timestamp)
+		}
+		return fmt.Errorf("failed to find history entry: %w", err)
+	}
+
+	// Update the bookmark to the previous state
+	if historyEntry.OldValue != "" {
+		bookmark := &BookmarkModel{}
+		if err := s.db.WithContext(ctx).First(bookmark, bookmarkID).Error; err != nil {
+			return fmt.Errorf("bookmark with ID %d not found: %w", bookmarkID, err)
+		}
+
+		bookmark.LearningState = historyEntry.OldValue
+		if err := s.db.WithContext(ctx).Save(bookmark).Error; err != nil {
+			return fmt.Errorf("failed to update bookmark state: %w", err)
+		}
+
+		// Create a revert history entry
+		revertHistory := &BookmarkHistoryModel{
+			BookmarkID: bookmarkID,
+			Action:     string(BookmarkActionLearningStateChanged),
+			OldValue:   historyEntry.NewValue,
+			NewValue:   historyEntry.OldValue,
+			Timestamp:  time.Now(),
+		}
+		if err := s.db.WithContext(ctx).Create(revertHistory).Error; err != nil {
+			return fmt.Errorf("failed to create revert history entry: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// CrossReferenceService handles cross-reference operations between items
+type CrossReferenceService struct {
+	db *gorm.DB
+}
+
+// NewCrossReferenceService creates a new CrossReferenceService instance
+func NewCrossReferenceService(db *gorm.DB) *CrossReferenceService {
+	return &CrossReferenceService{db: db}
+}
+
+// CreateCrossReference creates a new cross-reference between two items
+func (s *CrossReferenceService) CreateCrossReference(ctx context.Context, sourceItemID, targetItemID, sourceType, targetType, relationshipType string, strength float32, description *string) (*CrossReferenceModel, error) {
+	crossRef := &CrossReferenceModel{
+		SourceItemID:     sourceItemID,
+		TargetItemID:     targetItemID,
+		SourceType:       sourceType,
+		TargetType:       targetType,
+		RelationshipType: relationshipType,
+		Strength:         strength,
+		Description:      description,
+		CreatedAt:        time.Now(),
+	}
+
+	if err := s.db.WithContext(ctx).Create(crossRef).Error; err != nil {
+		return nil, fmt.Errorf("failed to create cross-reference: %w", err)
+	}
+
+	return crossRef, nil
+}
+
+// GetCrossReferencesBySource retrieves all cross-references from a specific source item
+func (s *CrossReferenceService) GetCrossReferencesBySource(ctx context.Context, sourceItemID string) ([]*CrossReferenceModel, error) {
+	var crossRefs []*CrossReferenceModel
+	err := s.db.WithContext(ctx).Where("source_item_id = ?", sourceItemID).Find(&crossRefs).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cross-references by source: %w", err)
+	}
+	return crossRefs, nil
+}
+
+// GetCrossReferencesByTarget retrieves all cross-references pointing to a specific target item
+func (s *CrossReferenceService) GetCrossReferencesByTarget(ctx context.Context, targetItemID string) ([]*CrossReferenceModel, error) {
+	var crossRefs []*CrossReferenceModel
+	err := s.db.WithContext(ctx).Where("target_item_id = ?", targetItemID).Find(&crossRefs).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cross-references by target: %w", err)
+	}
+	return crossRefs, nil
+}
+
+// GetCrossReferencesByType retrieves cross-references by relationship type
+func (s *CrossReferenceService) GetCrossReferencesByType(ctx context.Context, relationshipType RelationshipType) ([]*CrossReferenceModel, error) {
+	var crossRefs []*CrossReferenceModel
+	err := s.db.WithContext(ctx).Where("relationship_type = ?", string(relationshipType)).Find(&crossRefs).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cross-references by type: %w", err)
+	}
+	return crossRefs, nil
+}
+
+// GetBidirectionalCrossReferences gets all cross-references between two items in either direction
+func (s *CrossReferenceService) GetBidirectionalCrossReferences(ctx context.Context, itemID1, itemID2 string) ([]*CrossReferenceModel, error) {
+	var crossRefs []*CrossReferenceModel
+	err := s.db.WithContext(ctx).
+		Where("(source_item_id = ? AND target_item_id = ?) OR (source_item_id = ? AND target_item_id = ?)",
+			itemID1, itemID2, itemID2, itemID1).
+		Find(&crossRefs).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bidirectional cross-references: %w", err)
+	}
+	return crossRefs, nil
+}
+
+// MemoryCardService handles memory card operations for spaced repetition
+type MemoryCardService struct {
+	db *gorm.DB
+}
+
+// NewMemoryCardService creates a new MemoryCardService instance
+func NewMemoryCardService(db *gorm.DB) *MemoryCardService {
+	return &MemoryCardService{db: db}
+}
+
+// CreateMemoryCard creates a new memory card for a bookmark
+func (s *MemoryCardService) CreateMemoryCard(ctx context.Context, bookmarkID uint, front, back string) (*MemoryCardModel, error) {
+	card := &MemoryCardModel{
+		BookmarkID: bookmarkID,
+		Front:      front,
+		Back:       back,
+		EaseFactor: 2.5,
+		Interval:   1,
+		Repetition: 0,
+	}
+
+	if err := s.db.WithContext(ctx).Create(card).Error; err != nil {
+		return nil, fmt.Errorf("failed to create memory card: %w", err)
+	}
+
+	return card, nil
+}
+
+// GetMemoryCardByID retrieves a memory card by its ID
+func (s *MemoryCardService) GetMemoryCardByID(ctx context.Context, id uint) (*MemoryCardModel, error) {
+	var card MemoryCardModel
+	err := s.db.WithContext(ctx).First(&card, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("memory card with ID %d not found", id)
+		}
+		return nil, fmt.Errorf("failed to get memory card: %w", err)
+	}
+	return &card, nil
+}
+
+// GetMemoryCardsByBookmarkID retrieves all memory cards for a specific bookmark
+func (s *MemoryCardService) GetMemoryCardsByBookmarkID(ctx context.Context, bookmarkID uint) ([]*MemoryCardModel, error) {
+	var cards []*MemoryCardModel
+	err := s.db.WithContext(ctx).Where("bookmark_id = ?", bookmarkID).Find(&cards).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get memory cards by bookmark ID: %w", err)
+	}
+	return cards, nil
+}
+
+// GetCardsForReview retrieves memory cards that are due for review
+func (s *MemoryCardService) GetCardsForReview(ctx context.Context) ([]*MemoryCardModel, error) {
+	now := time.Now()
+	var cards []*MemoryCardModel
+	err := s.db.WithContext(ctx).
+		Joins("JOIN bookmarks ON memory_cards.bookmark_id = bookmarks.id").
+		Where("bookmarks.learning_state = ? AND (memory_cards.next_review <= ? OR memory_cards.next_review IS NULL)",
+			string(LearningStateLearning), now).
+		Find(&cards).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cards for review: %w", err)
+	}
+	return cards, nil
+}
+
+// UpdateCardAfterReview updates a memory card based on the user's rating after review
+func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID uint, rating CardRating) error {
+	card, err := s.GetMemoryCardByID(ctx, cardID)
+	if err != nil {
+		return err
+	}
+
+	// Get the bookmark to update mastery level
+	var bookmark BookmarkModel
+	if err := s.db.WithContext(ctx).First(&bookmark, card.BookmarkID).Error; err != nil {
+		return fmt.Errorf("failed to get bookmark: %w", err)
+	}
+
+	// Implement spaced repetition algorithm (simplified SM-2 algorithm)
+	switch rating {
+	case CardRatingAgain:
+		// Reset card to beginning
+		card.Repetition = 0
+		card.Interval = 1
+		card.EaseFactor = max(1.3, card.EaseFactor-0.2)
+	case CardRatingHard:
+		// Slow down the interval increase
+		if card.Repetition == 0 {
+			card.Interval = 1
+		} else if card.Repetition == 1 {
+			card.Interval = 2 // Changed from 3 to 2 for "hard" rating
+		} else {
+			card.Interval = int(max(1, float32(card.Interval) * card.EaseFactor * 0.8)) // Minimum interval of 1 day
+		}
+		card.Repetition += 1
+	case CardRatingGood:
+		// Normal interval increase
+		if card.Repetition == 0 {
+			card.Interval = 1
+		} else if card.Repetition == 1 {
+			card.Interval = 3
+		} else {
+			card.Interval = int(float32(card.Interval) * card.EaseFactor)
+		}
+		card.Repetition += 1
+	case CardRatingEasy:
+		// Increase ease factor and interval
+		card.EaseFactor += 0.15
+		if card.Repetition == 0 {
+			card.Interval = 4
+		} else if card.Repetition == 1 {
+			card.Interval = 6
+		} else {
+			card.Interval = int(float32(card.Interval) * card.EaseFactor * 1.3)
+		}
+		card.Repetition += 1
+	}
+
+	// Calculate next review date
+	nextReview := time.Now().AddDate(0, 0, card.Interval)
+	card.NextReview = &nextReview
+
+	// Update card in database
+	if err := s.db.WithContext(ctx).Save(card).Error; err != nil {
+		return fmt.Errorf("failed to update memory card: %w", err)
+	}
+
+	// Update bookmark's mastery level based on review
+	updateBookmarkMastery(ctx, s.db, &bookmark, rating)
+
+	return nil
+}
+
+// GetCardsByLearningState retrieves memory cards for bookmarks in a specific learning state
+func (s *MemoryCardService) GetCardsByLearningState(ctx context.Context, state LearningState) ([]*MemoryCardModel, error) {
+	var cards []*MemoryCardModel
+	err := s.db.WithContext(ctx).
+		Joins("JOIN bookmarks ON memory_cards.bookmark_id = bookmarks.id").
+		Where("bookmarks.learning_state = ?", string(state)).
+		Find(&cards).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cards by learning state: %w", err)
+	}
+	return cards, nil
+}
+
+// Helper function to update bookmark mastery level based on card review
+func updateBookmarkMastery(ctx context.Context, db *gorm.DB, bookmark *BookmarkModel, rating CardRating) {
+	// Get all cards for this bookmark to calculate average mastery
+	var allCards []*MemoryCardModel
+	db.WithContext(ctx).Where("bookmark_id = ?", bookmark.ID).Find(&allCards)
+
+	if len(allCards) == 0 {
+		return
+	}
+
+	// Calculate average ease factor
+	totalEase := float32(0)
+	for _, card := range allCards {
+		totalEase += card.EaseFactor
+	}
+	avgEase := totalEase / float32(len(allCards))
+
+	// Map ease factor to mastery level (0.0 to 1.0)
+	// Ease factor of 1.3 (hardest) = 0.0 mastery, 3.0+ (easiest) = 1.0 mastery
+	mastery := min(1.0, max(0.0, (avgEase-1.3)/(3.0-1.3)))
+	bookmark.MasteryLevel = mastery
+
+	// Update learning state based on mastery
+	if mastery >= 0.9 {
+		bookmark.LearningState = string(LearningStateMastered)
+	} else if mastery >= 0.7 {
+		bookmark.LearningState = string(LearningStateLearning)
+	}
+
+	// Save updated bookmark
+	db.WithContext(ctx).Save(bookmark)
+}
+
+// Helper functions
+func max(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
+}
