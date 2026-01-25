@@ -182,17 +182,36 @@ func (s *RunStore) UpdateState(runID string, state JobState) error {
 
 // UpdateProgress updates the run progress counters
 func (s *RunStore) UpdateProgress(runID string, fetched, stored, errors int64) error {
-	run, err := s.GetRun(runID)
-	if err != nil {
-		return err
-	}
+	// Perform read-modify-write inside a single DB update transaction to avoid
+	// lost updates when multiple goroutines call UpdateProgress concurrently.
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(s.bucketName)
+		if b == nil {
+			return fmt.Errorf("bucket not found")
+		}
 
-	run.FetchedCount += fetched
-	run.StoredCount += stored
-	run.ErrorCount += errors
-	run.UpdatedAt = time.Now()
+		data := b.Get([]byte(runID))
+		if data == nil {
+			return fmt.Errorf("run not found: %s", runID)
+		}
 
-	return s.saveRun(run)
+		var run JobRun
+		if err := json.Unmarshal(data, &run); err != nil {
+			return err
+		}
+
+		run.FetchedCount += fetched
+		run.StoredCount += stored
+		run.ErrorCount += errors
+		run.UpdatedAt = time.Now()
+
+		newData, err := json.Marshal(&run)
+		if err != nil {
+			return err
+		}
+
+		return b.Put([]byte(run.ID), newData)
+	})
 }
 
 // SetError marks the run as failed with an error message
