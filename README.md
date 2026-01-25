@@ -428,19 +428,19 @@ The broker (microkernel) implements several key interfaces and data structures t
 - **TransportManager**: Manages multiple transports for different processes
 
 ### OS-Style Modular Architecture
-- **drivers/**: Transport drivers and device abstractions
+- **cmd/broker/drivers/**: Transport drivers and device abstractions
   - `TransportDriver`: Interface for transport driver implementations
   - `FDTransportDriver`: File descriptor-based transport driver
 
-- **ipc/**: Inter-process communication modules
+- **cmd/broker/ipc/**: Inter-process communication modules
   - `MessageRouter`: Routes messages between processes
   - `MessageQueue`: Queues messages for processing
 
-- **process/**: Process management modules
+- **cmd/broker/process/**: Process management modules
   - `ProcessManager`: Manages subprocess lifecycles
   - `ProcessRegistry`: Tracks running processes
 
-- **sched/**: Scheduler and optimization modules
+- **cmd/broker/sched/**: Scheduler and optimization modules
   - `Scheduler`: Scheduling interface for operations
   - `Optimizer`: Performance optimization interface
   - `AdaptiveOptimizer`: Self-tuning optimization implementation
