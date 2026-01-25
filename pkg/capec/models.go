@@ -15,15 +15,15 @@ type CAPECItemModel struct {
 type CAPECRelatedWeaknessModel struct {
 	ID      uint   `gorm:"primaryKey"`
 	CAPECID int    `gorm:"index"`
-	CWEID   string `gorm:"index" gorm:"uniqueIndex:ux_capec_cwe,priority:2"`
+	CWEID   string `gorm:"index;uniqueIndex:ux_capec_cwe,priority:2"`
 	// Composite unique index to avoid duplicate (capec_id, cweid)
 	// CAPECID field participates in the composite index as priority 1
 }
 
 type CAPECExampleModel struct {
 	ID          uint   `gorm:"primaryKey"`
-	CAPECID     int    `gorm:"index" gorm:"uniqueIndex:ux_capec_example,priority:1"`
-	ExampleText string `gorm:"type:text" gorm:"uniqueIndex:ux_capec_example,priority:2"`
+	CAPECID     int    `gorm:"index;uniqueIndex:ux_capec_example,priority:1"`
+	ExampleText string `gorm:"type:text;uniqueIndex:ux_capec_example,priority:2"`
 }
 
 type CAPECMitigationModel struct {
