@@ -48,12 +48,12 @@ graph TB
 ### Core Services
 
 - **Broker Service** ([cmd/broker](file:///home/cyw0ng/projects/v2e-qoder/cmd/broker)): The central orchestrator responsible for:
-  - Spawning and managing all subprocess services
-  - Routing RPC messages between services
-  - Maintaining process lifecycle and health
-  - Tracking message statistics and performance metrics
-  - Providing system-wide coordination capabilities
-  - Offering asynchronous message routing with configurable optimization parameters
+  - Spawning and managing all subprocess services with robust supervision and restart policies
+  - Routing RPC messages via a high-performance, dual-mode transport layer (Unix Domain Sockets & FD Pipes)
+  - Utilizing `bytedance/sonic` for zero-copy JSON serialization/deserialization
+  - Implementing an adaptive traffic optimizer with configurable batching, buffering, and backpressure
+  - Maintaining process lifecycle, health checks, and zombie process reaping
+  - Tracking comprehensive real-time message statistics and performance metrics
 
 - **Access Service** ([cmd/access](file:///home/cyw0ng/projects/v2e-qoder/cmd/access)): The REST gateway that:
   - Serves as the primary interface for the Next.js frontend
@@ -90,17 +90,31 @@ graph TB
   - Provides health indicators for operational awareness
   - Reports system status to the frontend
 
-## Communication Flow
+## Configuration
 
-The system uses a sophisticated RPC-over-stdin/stdout communication mechanism:
+The broker is configured via `config.json`. Key configuration areas include:
 
-- **Custom File Descriptors**: RPC subprocesses use file descriptors 3 and 4 (instead of stdin/stdout) to avoid conflicts with standard I/O streams
-- **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching
-- **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs
-- **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process
-- **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables for flexible I/O routing
+- **Transport**: Choose between `uds` (default) or `fd_pipe`.
+- **Optimizer**: Tune the performance characteristics of the message broker.
+  - `optimizer_buffer_cap`: Size of the message buffer.
+  - `optimizer_num_workers`: Number of parallel processing workers.
+  - `optimizer_offer_policy`: Strategy when buffer is full (`drop`, `block`, `timeout`, `drop_oldest`).
+  - `optimizer_enable_adaptive`: Enable dynamic self-tuning of batch sizes and worker counts.
+- **Processes**: Define the subprocesses to be managed by the broker.
+
+## Transport & Communication
+
+The system uses a sophisticated, hybrid RPC communication mechanism designed for high throughput and low latency:
+
+- **Dual-Mode Transport Layer**:
+  - **Unix Domain Sockets (UDS)**: The default, high-performance transport method. Provides secure (0600 permissions), efficient, and standard IPC.
+  - **FD Pipes (Legacy/Fallback)**: Uses custom file descriptors 3 and 4 to avoid conflicts with standard I/O streams.
+- **Adaptive Optimization**: The broker includes a traffic optimizer that dynamically adjusts batch sizes and worker counts based on load.
+- **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching.
+- **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs.
+- **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process.
+- **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables (for FD Pipe transport)
 - **Message Pooling**: Optimized message allocation using sync.Pool for reduced garbage collection
-- **Asynchronous Optimization**: Optional asynchronous message routing with configurable buffering, batching, and worker pools
 
 The communication pattern follows this flow:
 1. External requests → Access REST API → Broker → Backend Services
