@@ -70,7 +70,7 @@ func importATTACKDataAtStartup(attackStore *attack.LocalAttackStore, logger *com
 
 		// Perform the import
 		if err := attackStore.ImportFromXLSX(xlsxFile, false); err != nil {
-			logger.Error("Failed to import ATT&CK data from %s: %v", xlsxFile, err)
+			logger.Warn("Failed to import ATT&CK data from %s: %v", xlsxFile, err)
 		} else {
 			logger.Info("Successfully imported ATT&CK data from: %s", xlsxFile)
 		}

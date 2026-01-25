@@ -320,7 +320,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 			// Task 2: Store batch to local
 			storeTask := tf.NewTask("store", func() {
 				if fetchErr != nil {
-					e.logger.Error("Skipping store due to fetch error: %v", fetchErr)
+					e.logger.Warn("Skipping store due to fetch error: %v", fetchErr)
 					return
 				}
 
@@ -339,7 +339,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 					_, err := e.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
 
 					if err != nil {
-						e.logger.Error("Failed to store CVE %s: %v", vuln.CVE.ID, err)
+						e.logger.Warn("Failed to store CVE %s: %v", vuln.CVE.ID, err)
 						errorCount++
 					} else {
 						storedCount++
@@ -360,7 +360,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 
 			// Check if we should continue
 			if fetchErr != nil {
-				e.logger.Error("Fetch failed: %v", fetchErr)
+				e.logger.Warn("Fetch failed: %v", fetchErr)
 				e.runStore.UpdateProgress(runID, 0, 0, 1)
 
 				// Wait before retrying

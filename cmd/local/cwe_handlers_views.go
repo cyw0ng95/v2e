@@ -21,14 +21,14 @@ func createSaveCWEViewHandler(store *cwe.LocalCWEStore, logger *common.Logger) s
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var view cwe.CWEView
 		if err := subprocess.UnmarshalPayload(msg, &view); err != nil {
-			logger.Error("Failed to parse SaveCWEView request: %v", err)
+			logger.Warn("Failed to parse SaveCWEView request: %v", err)
 			return &subprocess.Message{Type: subprocess.MessageTypeError, ID: msg.ID, Error: "invalid request", CorrelationID: msg.CorrelationID, Target: msg.Source}, nil
 		}
 		if view.ID == "" {
 			return &subprocess.Message{Type: subprocess.MessageTypeError, ID: msg.ID, Error: "ID is required", CorrelationID: msg.CorrelationID, Target: msg.Source}, nil
 		}
 		if err := store.SaveView(ctx, &view); err != nil {
-			logger.Error("SaveView error: %v", err)
+			logger.Warn("SaveView error: %v", err)
 			return &subprocess.Message{Type: subprocess.MessageTypeError, ID: msg.ID, Error: "failed to save view", CorrelationID: msg.CorrelationID, Target: msg.Source}, nil
 		}
 		return &subprocess.Message{Type: subprocess.MessageTypeResponse, ID: msg.ID, CorrelationID: msg.CorrelationID, Target: msg.Source, Payload: []byte(`{"success":true}`)}, nil
@@ -49,7 +49,7 @@ func createGetCWEViewHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 		}
 		v, err := store.GetViewByID(ctx, req.ID)
 		if err != nil {
-			logger.Error("GetViewByID error: %v", err)
+			logger.Warn("GetViewByID error: %v", err)
 			return &subprocess.Message{Type: subprocess.MessageTypeError, ID: msg.ID, Error: "view not found", CorrelationID: msg.CorrelationID, Target: msg.Source}, nil
 		}
 		b, _ := subprocess.MarshalFast(v)
@@ -77,7 +77,7 @@ func createListCWEViewsHandler(store *cwe.LocalCWEStore, logger *common.Logger) 
 		}
 		items, total, err := store.ListViewsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Error("ListViews error: %v", err)
+			logger.Warn("ListViews error: %v", err)
 			return &subprocess.Message{Type: subprocess.MessageTypeError, ID: msg.ID, Error: "failed to list views", CorrelationID: msg.CorrelationID, Target: msg.Source}, nil
 		}
 		resp := map[string]interface{}{"views": items, "offset": req.Offset, "limit": req.Limit, "total": total}

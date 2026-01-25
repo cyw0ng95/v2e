@@ -104,12 +104,12 @@ func (c *DataPopulationController) startCWEImport(ctx context.Context, sessionID
 	paramsObj := &rpc.ImportParams{Path: path}
 	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", paramsObj)
 	if err != nil {
-		c.logger.Error("Failed to start CWE import: %v", err)
+		c.logger.Warn("Failed to start CWE import: %v", err)
 		return "", fmt.Errorf("failed to start CWE import: %w", err)
 	}
 
 	if isErr, errMsg := isErrorResponse(resp); isErr {
-		c.logger.Error("CWE import returned error: %s", errMsg)
+		c.logger.Warn("CWE import returned error: %s", errMsg)
 		return "", fmt.Errorf("CWE import failed: %s", errMsg)
 	}
 
@@ -139,12 +139,12 @@ func (c *DataPopulationController) startCAPECImport(ctx context.Context, session
 	paramsObj := &rpc.ImportParams{Path: path, XSD: xsd, Force: force}
 	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", paramsObj)
 	if err != nil {
-		c.logger.Error("Failed to start CAPEC import: %v", err)
+		c.logger.Warn("Failed to start CAPEC import: %v", err)
 		return "", fmt.Errorf("failed to start CAPEC import: %w", err)
 	}
 
 	if isErr, errMsg := isErrorResponse(resp); isErr {
-		c.logger.Error("CAPEC import returned error: %s", errMsg)
+		c.logger.Warn("CAPEC import returned error: %s", errMsg)
 		return "", fmt.Errorf("CAPEC import failed: %s", errMsg)
 	}
 
@@ -169,12 +169,12 @@ func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessio
 	paramsObj := &rpc.ImportParams{Path: path, Force: force}
 	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportATTACKs", paramsObj)
 	if err != nil {
-		c.logger.Error("Failed to start ATT&CK import: %v", err)
+		c.logger.Warn("Failed to start ATT&CK import: %v", err)
 		return "", fmt.Errorf("failed to start ATT&CK import: %w", err)
 	}
 
 	if isErr, errMsg := isErrorResponse(resp); isErr {
-		c.logger.Error("ATT&CK import returned error: %s", errMsg)
+		c.logger.Warn("ATT&CK import returned error: %s", errMsg)
 		return "", fmt.Errorf("ATT&CK import failed: %s", errMsg)
 	}
 
@@ -443,7 +443,7 @@ func main() {
 		// First check whether local already has CAPEC catalog metadata
 		metaResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCAPECCatalogMeta", nil)
 		if err != nil {
-			logger.Error("Failed to query CAPEC catalog meta on local: %v", err)
+			logger.Warn("Failed to query CAPEC catalog meta on local: %v", err)
 			// fall back to attempting import
 		} else if metaResp.Type == subprocess.MessageTypeResponse {
 			logger.Info("CAPEC catalog already present on local; skipping automatic import")
@@ -546,7 +546,7 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCAPEC, req)
 		if err != nil {
-			logger.Error("Failed to start CAPEC import: %v", err)
+			logger.Warn("Failed to start CAPEC import: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to start CAPEC import: %v", err)), nil
 		}
 
@@ -558,7 +558,7 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, "failed to marshal response"), nil
 		}
 
@@ -590,7 +590,7 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeATTACK, req)
 		if err != nil {
-			logger.Error("Failed to start ATT&CK import: %v", err)
+			logger.Warn("Failed to start ATT&CK import: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to start ATT&CK import: %v", err)), nil
 		}
 
@@ -602,7 +602,7 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, "failed to marshal response"), nil
 		}
 
@@ -634,7 +634,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		}
 
 		if req.CVEID == "" {
-			logger.Error("cve_id is required but was empty or missing")
+			logger.Warn("cve_id is required but was empty or missing")
 			return createErrorResponse(msg, "cve_id is required"), nil
 		}
 
@@ -662,7 +662,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			CVEID  string `json:"cve_id"`
 		}
 		if err := subprocess.UnmarshalPayload(checkResp, &checkResult); err != nil {
-			logger.Error("Failed to parse check response: %v", err)
+			logger.Warn("Failed to parse check response: %v", err)
 			logger.Debug("GetCVE failed to parse local storage check response for CVE ID %s: %v", req.CVEID, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to parse check response: %v", err)), nil
 		}
@@ -687,7 +687,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			}
 
 			if err := subprocess.UnmarshalPayload(getResp, &cveData); err != nil {
-				logger.Error("Failed to parse local CVE data: %v", err)
+				logger.Warn("Failed to parse local CVE data: %v", err)
 				logger.Debug("GetCVE failed to parse local CVE data for CVE ID %s: %v", req.CVEID, err)
 				return createErrorResponse(msg, fmt.Sprintf("failed to parse local CVE data: %v", err)), nil
 			}
@@ -711,7 +711,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			// Parse remote response (NVD API format)
 			var remoteResult cve.CVEResponse
 			if err := subprocess.UnmarshalPayload(remoteResp, &remoteResult); err != nil {
-				logger.Error("Failed to parse remote CVE response: %v", err)
+				logger.Warn("Failed to parse remote CVE response: %v", err)
 				logger.Debug("GetCVE failed to parse remote CVE response for CVE ID %s: %v", req.CVEID, err)
 				return createErrorResponse(msg, fmt.Sprintf("failed to parse remote CVE response: %v", err)), nil
 			}
@@ -746,7 +746,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		// Marshal the result
 		jsonData, err := subprocess.MarshalFast(cveData)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			logger.Debug("GetCVE failed to marshal response for CVE ID %s: %v", req.CVEID, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
@@ -766,7 +766,7 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 		// Get active run
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
-			logger.Error("Failed to get active run: %v", err)
+			logger.Warn("Failed to get active run: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
@@ -818,7 +818,7 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
@@ -835,18 +835,18 @@ func createPauseJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Log
 		// Get active run first
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
-			logger.Error("Failed to get active run: %v", err)
+			logger.Warn("Failed to get active run: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
 		if run == nil {
-			logger.Error("No active run to pause")
+			logger.Warn("No active run to pause")
 			return createErrorResponse(msg, "no active run"), nil
 		}
 
 		err = jobExecutor.Pause(run.ID)
 		if err != nil {
-			logger.Error("Failed to pause job: %v", err)
+			logger.Warn("Failed to pause job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to pause job: %v", err)), nil
 		}
 
@@ -865,7 +865,7 @@ func createPauseJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Log
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
@@ -883,18 +883,18 @@ func createResumeJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Lo
 		// Get active run first
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
-			logger.Error("Failed to get active run: %v", err)
+			logger.Warn("Failed to get active run: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
 		if run == nil {
-			logger.Error("No active run to resume")
+			logger.Warn("No active run to resume")
 			return createErrorResponse(msg, "no active run"), nil
 		}
 
 		err = jobExecutor.Resume(ctx, run.ID)
 		if err != nil {
-			logger.Error("Failed to resume job: %v", err)
+			logger.Warn("Failed to resume job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to resume job: %v", err)), nil
 		}
 
@@ -913,7 +913,7 @@ func createResumeJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Lo
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
@@ -941,17 +941,17 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 		logger.Info("RPCStartSession: Starting new job session with data type %s", req.DataType)
 
 		if req.DataType == "" {
-			logger.Error("data_type is required but was empty or missing")
+			logger.Warn("data_type is required but was empty or missing")
 			return createErrorResponse(msg, "data_type is required"), nil
 		}
 
 		if req.StartIndex < 0 {
-			logger.Error("start_index must be non-negative")
+			logger.Warn("start_index must be non-negative")
 			return createErrorResponse(msg, "start_index must be non-negative"), nil
 		}
 
 		if req.ResultsPerBatch <= 0 {
-			logger.Error("results_per_batch must be positive")
+			logger.Warn("results_per_batch must be positive")
 			return createErrorResponse(msg, "results_per_batch must be positive"), nil
 		}
 
@@ -959,14 +959,14 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 
 		err := jobExecutor.StartTyped(ctx, sessionID, req.StartIndex, req.ResultsPerBatch, req.DataType)
 		if err != nil {
-			logger.Error("Failed to start job session: %v", err)
+			logger.Warn("Failed to start job session: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to start job session: %v", err)), nil
 		}
 
 		// Get updated run state
 		run, err := jobExecutor.GetStatus(sessionID)
 		if err != nil {
-			logger.Error("Failed to get run status: %v", err)
+			logger.Warn("Failed to get run status: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to get run status: %v", err)), nil
 		}
 
@@ -990,7 +990,7 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
@@ -1008,18 +1008,18 @@ func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.
 		// Get active run first
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
-			logger.Error("Failed to get active run: %v", err)
+			logger.Warn("Failed to get active run: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
 		if run == nil {
-			logger.Error("No active run to stop")
+			logger.Warn("No active run to stop")
 			return createErrorResponse(msg, "no active run"), nil
 		}
 
 		err = jobExecutor.Stop(run.ID)
 		if err != nil {
-			logger.Error("Failed to stop job session: %v", err)
+			logger.Warn("Failed to stop job session: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to stop job session: %v", err)), nil
 		}
 
@@ -1037,7 +1037,7 @@ func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData
@@ -1064,7 +1064,7 @@ func createStartCWEViewJobHandler(controller *cwejob.Controller, logger *common.
 		// Start the CWE view job
 		sessionID, err := controller.Start(ctx, req.Params)
 		if err != nil {
-			logger.Error("Failed to start CWE view job: %v", err)
+			logger.Warn("Failed to start CWE view job: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to start CWE view job: %v", err)), nil
 		}
 
@@ -1083,7 +1083,7 @@ func createStartCWEViewJobHandler(controller *cwejob.Controller, logger *common.
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Warn("Failed to marshal response: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
 		}
 		respMsg.Payload = jsonData

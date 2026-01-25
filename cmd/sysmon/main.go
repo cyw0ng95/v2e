@@ -147,7 +147,7 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 		logger.Info("[sysmon] RPCGetSysMetrics handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
 		metrics, err := collectMetrics()
 		if err != nil {
-			logger.Error("[sysmon] Failed to collect metrics: %v", err)
+			logger.Warn("[sysmon] Failed to collect metrics: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -175,7 +175,7 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 		logger.Info("[sysmon] Collected metrics: cpu_usage=%.2f, memory_usage=%.2f, load_avg=%v, uptime=%.0fs", metrics["cpu_usage"], metrics["memory_usage"], metrics["load_avg"], metrics["uptime"])
 		payload, err := subprocess.MarshalFast(metrics)
 		if err != nil {
-			logger.Error("[sysmon] Failed to marshal metrics: %v", err)
+			logger.Warn("[sysmon] Failed to marshal metrics: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

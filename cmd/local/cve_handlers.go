@@ -62,9 +62,9 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := subprocess.MarshalFast(result)
+		jsonData, err := subprocess.MarshalFast(map[string]string{"status": "ok"})
 		if err != nil {
-			logger.Error("Failed to marshal SaveCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn("Failed to marshal SaveCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -96,7 +96,7 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			}, nil
 		}
 		if req.CVEID == "" {
-			logger.Error("cve_id is required")
+			logger.Warn("cve_id is required")
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -118,9 +118,9 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := subprocess.MarshalFast(result)
+		jsonData, err := subprocess.MarshalFast(map[string]int64{"count": count})
 		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
+			logger.Warn("Failed to marshal result: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -183,9 +183,9 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
 		}
-		jsonData, err := subprocess.MarshalFast(cveItem)
+		jsonData, err := subprocess.MarshalFast(cve)
 		if err != nil {
-			logger.Error("Failed to marshal GetCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn("Failed to marshal GetCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -252,7 +252,7 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 		}
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
+			logger.Warn("Failed to marshal result: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -328,7 +328,7 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 		}
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal ListCVEs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn("Failed to marshal ListCVEs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
