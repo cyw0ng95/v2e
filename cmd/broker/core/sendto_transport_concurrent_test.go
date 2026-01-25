@@ -38,10 +38,12 @@ func TestBroker_SendToProcess_Concurrent(t *testing.T) {
 			defer wg.Done()
 			msg, err := proc.NewRequestMessage("m", map[string]string{"n": "v"})
 			if err != nil {
-				t.Fatalf("failed to create message: %v", err)
+				t.Errorf("failed to create message: %v", err)
+				return
 			}
 			if err := b.SendToProcess("p-conc", msg); err != nil {
-				t.Fatalf("SendToProcess returned error: %v", err)
+				t.Errorf("SendToProcess returned error: %v", err)
+				return
 			}
 		}(i)
 	}
