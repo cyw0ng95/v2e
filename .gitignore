@@ -102,3 +102,5 @@ logs/
 # Profiling files
 *.prof
 *.test
+# vconfig binary
+tool/vconfig/vconfig
