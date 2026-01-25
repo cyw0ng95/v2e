@@ -36,7 +36,15 @@ func (b *Broker) reapProcess(p *Process) {
 		p.info.ExitCode = 0
 	}
 
-	b.logger.Info("Process exited: id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+	if p.info.ExitCode != 0 {
+		if p.restartConfig != nil && p.restartConfig.Enabled {
+			b.logger.Warn("Process exited abnormally (will attempt restart): id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+		} else {
+			b.logger.Error("Process exited abnormally (no restart configured): id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+		}
+	} else {
+		b.logger.Info("Process exited successfully: id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+	}
 
 	// Unregister transport for the process if it exists
 	if b.transportManager != nil {
@@ -151,6 +159,7 @@ func (b *Broker) Kill(id string) error {
 		b.logger.Warn("Process did not terminate gracefully, sending SIGKILL: id=%s", id)
 		if proc.cmd != nil && proc.cmd.Process != nil {
 			if err := proc.cmd.Process.Kill(); err != nil {
+				b.logger.Error("Failed to force kill process %s: %v", id, err)
 				return fmt.Errorf("failed to force kill process: %w", err)
 			}
 		}

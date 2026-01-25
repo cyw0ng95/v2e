@@ -74,6 +74,7 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 		readFromSubprocess, writeToParent, err = os.Pipe()
 		if err != nil {
 			cancel()
+			b.logger.Error("Failed to create output pipe for process %s: %v", id, err)
 			return nil, fmt.Errorf("failed to create output pipe: %w", err)
 		}
 
@@ -83,6 +84,7 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 			cancel()
 			readFromSubprocess.Close()
 			writeToParent.Close()
+			b.logger.Error("Failed to create input pipe for process %s: %v", id, err)
 			return nil, fmt.Errorf("failed to create input pipe: %w", err)
 		}
 
@@ -291,7 +293,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 		b.transportManager.RegisterTransport(processID, fdTransport)
 		b.logger.Debug("Registered FD transport for process %s", processID)
 	} else {
-		b.logger.Warn("Failed to connect FD transport for process %s: %v", processID, err)
+		b.logger.Error("Failed to connect FD transport for process %s: %v", processID, err)
 	}
 }
 

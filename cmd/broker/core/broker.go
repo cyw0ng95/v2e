@@ -56,6 +56,13 @@ func NewBroker() *Broker {
 		transportManager: transport.NewTransportManager(),
 	}
 
+	// Set transport error handler to log warnings
+	b.transportManager.SetTransportErrorHandler(func(err error) {
+		if b.logger != nil {
+			b.logger.Warn("Transport background error: %v", err)
+		}
+	})
+
 	// Configure transport based on configuration
 	b.ConfigureTransportFromConfig()
 

@@ -27,6 +27,7 @@ type UDSTransport struct {
 	maxReconnectAttempts int
 	reconnectDelay       time.Duration
 	reconnectCb          func(error)
+	errorHandler         func(error)
 }
 
 // NewUDSTransport creates a new UDSTransport with the specified socket path
@@ -53,6 +54,13 @@ func (t *UDSTransport) SetReconnectCallback(cb func(error)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.reconnectCb = cb
+}
+
+// SetErrorHandler sets a callback function to be called when asynchronous errors occur
+func (t *UDSTransport) SetErrorHandler(cb func(error)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.errorHandler = cb
 }
 
 // Connect establishes the Unix Domain Socket connection
@@ -411,6 +419,15 @@ func (t *UDSTransport) acceptLoop() {
 			if strings.Contains(err.Error(), "use of closed network connection") || strings.Contains(err.Error(), "Listener closed") {
 				return
 			}
+			
+			// Log error via callback if set
+			t.mu.RLock()
+			handler := t.errorHandler
+			t.mu.RUnlock()
+			if handler != nil {
+				handler(fmt.Errorf("UDS accept error: %w", err))
+			}
+
 			// Backoff on temporary error
 			time.Sleep(100 * time.Millisecond)
 			continue
