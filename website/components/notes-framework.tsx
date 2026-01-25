@@ -26,10 +26,19 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
   const [notes, setNotes] = useState<Note[]>([]);
   const [newNote, setNewNote] = useState<string>('');
   const [memoryCards, setMemoryCards] = useState<MemoryCard[]>([]);
+  const [crossReferences, setCrossReferences] = useState<CrossReference[]>([]);
+  const [histories, setHistories] = useState<HistoryEntry[]>([]);
   const [showNotes, setShowNotes] = useState<boolean>(false);
   const [showMemoryCards, setShowMemoryCards] = useState<boolean>(false);
+  const [showCrossRefs, setShowCrossRefs] = useState<boolean>(false);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState<string>('');
+  const [editingCardId, setEditingCardId] = useState<number | null>(null);
+  const [editingCardFront, setEditingCardFront] = useState<string>('');
+  const [editingCardBack, setEditingCardBack] = useState<string>('');
 
   // Check if item is already bookmarked on component mount
   useEffect(() => {
@@ -67,6 +76,26 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
         if (cardsResponse.retcode === 0 && cardsResponse.payload) {
           setMemoryCards(cardsResponse.payload.memory_cards);
         }
+        
+        // Load cross-references
+        const refsResponse = await rpcClient.listCrossReferences({
+          from_item_id: itemId,
+          from_item_type: itemType
+        });
+        
+        if (refsResponse.retcode === 0 && refsResponse.payload) {
+          setCrossReferences(refsResponse.payload.cross_references);
+        }
+        
+        // Load history
+        const historyResponse = await rpcClient.getHistory({
+          item_id: `${itemType}-${itemId}`,
+          item_type: itemType
+        });
+        
+        if (historyResponse.retcode === 0 && historyResponse.payload) {
+          setHistories(historyResponse.payload.history_entries);
+        }
       } else {
         setIsBookmarked(false);
         setBookmark(null);
@@ -88,6 +117,8 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
         setBookmark(null);
         setNotes([]);
         setMemoryCards([]);
+        setCrossReferences([]);
+        setHistories([]);
       } else {
         setError('Failed to remove bookmark');
       }
@@ -122,8 +153,50 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
     if (response.retcode === 0 && response.payload?.note) {
       setNotes([...notes, response.payload.note]);
       setNewNote('');
+      // Add to history
+      await rpcClient.addHistory({
+        item_id: `${itemType}-${itemId}`,
+        item_type: itemType,
+        action: 'note_added',
+        new_values: { note_id: response.payload.note.id, content: newNote.trim() }
+      });
+      setHistories(prev => [...prev, {
+        id: prev.length + 1,
+        item_id: `${itemType}-${itemId}`,
+        item_type: itemType,
+        action: 'note_added',
+        timestamp: new Date().toISOString(),
+        new_values: { note_id: response.payload.note.id, content: newNote.trim() }
+      }]);
     } else {
       setError('Failed to add note');
+    }
+  };
+
+  const handleUpdateNote = async (noteId: number) => {
+    if (!editingNoteContent.trim()) return;
+
+    const response = await rpcClient.updateNote({
+      id: noteId,
+      content: editingNoteContent
+    });
+
+    if (response.retcode === 0 && response.payload?.note) {
+      setNotes(notes.map(note => note.id === noteId ? response.payload!.note : note));
+      setEditingNoteId(null);
+      setEditingNoteContent('');
+    } else {
+      setError('Failed to update note');
+    }
+  };
+
+  const handleDeleteNote = async (noteId: number) => {
+    const response = await rpcClient.deleteNote({ id: noteId });
+
+    if (response.retcode === 0) {
+      setNotes(notes.filter(note => note.id !== noteId));
+    } else {
+      setError('Failed to delete note');
     }
   };
 
@@ -138,8 +211,83 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
 
     if (response.retcode === 0 && response.payload?.memory_card) {
       setMemoryCards([...memoryCards, response.payload.memory_card]);
+      // Add to history
+      await rpcClient.addHistory({
+        item_id: `${itemType}-${itemId}`,
+        item_type: itemType,
+        action: 'memory_card_created',
+        new_values: { card_id: response.payload.memory_card.id, front: front.trim() }
+      });
+      setHistories(prev => [...prev, {
+        id: prev.length + 1,
+        item_id: `${itemType}-${itemId}`,
+        item_type: itemType,
+        action: 'memory_card_created',
+        timestamp: new Date().toISOString(),
+        new_values: { card_id: response.payload.memory_card.id, front: front.trim() }
+      }]);
     } else {
       setError('Failed to create memory card');
+    }
+  };
+
+  const handleUpdateMemoryCard = async (cardId: number) => {
+    if (!editingCardFront.trim() || !editingCardBack.trim()) return;
+
+    const response = await rpcClient.updateMemoryCard({
+      id: cardId,
+      front_content: editingCardFront,
+      back_content: editingCardBack
+    });
+
+    if (response.retcode === 0 && response.payload?.memory_card) {
+      setMemoryCards(memoryCards.map(card => card.id === cardId ? response.payload!.memory_card : card));
+      setEditingCardId(null);
+      setEditingCardFront('');
+      setEditingCardBack('');
+    } else {
+      setError('Failed to update memory card');
+    }
+  };
+
+  const handleDeleteMemoryCard = async (cardId: number) => {
+    const response = await rpcClient.deleteMemoryCard({ id: cardId });
+
+    if (response.retcode === 0) {
+      setMemoryCards(memoryCards.filter(card => card.id !== cardId));
+    } else {
+      setError('Failed to delete memory card');
+    }
+  };
+
+  const handleRateMemoryCard = async (cardId: number, rating: string) => {
+    const response = await rpcClient.rateMemoryCard({
+      id: cardId,
+      rating: rating
+    });
+
+    if (response.retcode === 0 && response.payload?.memory_card) {
+      setMemoryCards(memoryCards.map(card => card.id === cardId ? response.payload!.memory_card : card));
+    } else {
+      setError('Failed to rate memory card');
+    }
+  };
+
+  const handleCreateCrossReference = async (toItemId: string, toItemtype: string, relationshipType: string) => {
+    if (!toItemId.trim() || !toItemtype.trim() || !relationshipType.trim() || !bookmark) return;
+
+    const response = await rpcClient.createCrossReference({
+      from_item_id: `${itemType}-${itemId}`,
+      from_item_type: itemType,
+      to_item_id: toItemId,
+      to_item_type: toItemtype,
+      relationship_type: relationshipType
+    });
+
+    if (response.retcode === 0 && response.payload?.cross_reference) {
+      setCrossReferences([...crossReferences, response.payload.cross_reference]);
+    } else {
+      setError('Failed to create cross-reference');
     }
   };
 
@@ -171,7 +319,7 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
           {/* Notes Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-700">Notes</h4>
+              <h4 className="font-medium text-gray-700">Notes ({notes.length})</h4>
               <button
                 onClick={() => setShowNotes(!showNotes)}
                 className="text-sm text-blue-600 hover:text-blue-800"
@@ -202,16 +350,63 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
                 </div>
 
                 {/* Notes List */}
-                <div className="space-y-2 max-h-40 overflow-y-auto">
+                <div className="space-y-2 max-h-60 overflow-y-auto">
                   {notes.length === 0 ? (
                     <p className="text-sm text-gray-500 italic">No notes yet</p>
                   ) : (
                     notes.map((note) => (
-                      <div key={note.id} className="p-2 bg-gray-50 rounded text-sm">
-                        {note.content}
-                        <div className="text-xs text-gray-500 mt-1">
-                          {new Date(note.created_at).toLocaleDateString()}
-                        </div>
+                      <div key={note.id} className="p-2 bg-gray-50 rounded text-sm border">
+                        {editingNoteId === note.id ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editingNoteContent}
+                              onChange={(e) => setEditingNoteContent(e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              rows={2}
+                            />
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => handleUpdateNote(note.id)}
+                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingNoteId(null);
+                                  setEditingNoteContent('');
+                                }}
+                                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div>{note.content}</div>
+                            <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
+                              <span>{new Date(note.created_at).toLocaleDateString()}</span>
+                              <div className="space-x-1">
+                                <button
+                                  onClick={() => {
+                                    setEditingNoteId(note.id);
+                                    setEditingNoteContent(note.content);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteNote(note.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))
                   )}
@@ -223,7 +418,7 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
           {/* Memory Cards Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-700">Memory Cards</h4>
+              <h4 className="font-medium text-gray-700">Memory Cards ({memoryCards.length})</h4>
               <button
                 onClick={() => setShowMemoryCards(!showMemoryCards)}
                 className="text-sm text-blue-600 hover:text-blue-800"
@@ -238,15 +433,151 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
                 <CreateMemoryCardForm onCreate={handleCreateMemoryCard} />
 
                 {/* Memory Cards List */}
-                <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto">
                   {memoryCards.length === 0 ? (
                     <p className="text-sm text-gray-500 italic">No memory cards yet</p>
                   ) : (
                     memoryCards.map((card) => (
-                      <MemoryCardDisplay key={card.id} card={card} />
+                      <div key={card.id} className="p-3 bg-yellow-50 border rounded">
+                        {editingCardId === card.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editingCardFront}
+                              onChange={(e) => setEditingCardFront(e.target.value)}
+                              placeholder="Front of card..."
+                              className="w-full border rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={editingCardBack}
+                              onChange={(e) => setEditingCardBack(e.target.value)}
+                              placeholder="Back of card..."
+                              className="w-full border rounded px-2 py-1 text-sm"
+                            />
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => handleUpdateMemoryCard(card.id)}
+                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingCardId(null);
+                                  setEditingCardFront('');
+                                  setEditingCardBack('');
+                                }}
+                                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="font-medium">{card.front_content}</div>
+                            <div className="mt-2 text-sm">
+                              <div>{card.back_content}</div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                State: {card.learning_state} | Next review: {new Date(card.next_review_at).toLocaleDateString()}
+                              </div>
+                              <div className="flex justify-between items-center mt-2">
+                                <div className="text-xs">
+                                  Interval: {card.interval} days | EF: {card.ease_factor.toFixed(2)}
+                                </div>
+                                <div className="space-x-1">
+                                  <button
+                                    onClick={() => {
+                                      setEditingCardId(card.id);
+                                      setEditingCardFront(card.front_content);
+                                      setEditingCardBack(card.back_content);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 text-xs"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteMemoryCard(card.id)}
+                                    className="text-red-600 hover:text-red-800 text-xs"
+                                  >
+                                    Delete
+                                  </button>
+                                  <RatingButtons onRate={(rating) => handleRateMemoryCard(card.id, rating)} />
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     ))
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Cross References Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-gray-700">Cross References ({crossReferences.length})</h4>
+              <button
+                onClick={() => setShowCrossRefs(!showCrossRefs)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {showCrossRefs ? 'Hide' : 'Show'} References
+              </button>
+            </div>
+
+            {showCrossRefs && (
+              <div className="space-y-3">
+                <CrossReferenceForm onCreate={handleCreateCrossReference} />
+                
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {crossReferences.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">No cross-references yet</p>
+                  ) : (
+                    crossReferences.map((ref) => (
+                      <div key={ref.id} className="p-2 bg-blue-50 rounded text-sm border">
+                        <div className="font-medium">{ref.relationship_type}</div>
+                        <div className="text-xs text-gray-600">
+                          From: {ref.from_item_id} ({ref.from_item_type}) 
+                          {' '}→ To: {ref.to_item_id} ({ref.to_item_type})
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* History Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-gray-700">History ({histories.length})</h4>
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {showHistory ? 'Hide' : 'Show'} History
+              </button>
+            </div>
+
+            {showHistory && (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {histories.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No history yet</p>
+                ) : (
+                  histories.map((entry, index) => (
+                    <div key={index} className="p-2 bg-gray-100 rounded text-xs">
+                      <div className="font-medium">{entry.action}</div>
+                      <div className="text-gray-600">
+                        {new Date(entry.timestamp).toLocaleString()} | {entry.item_type}: {entry.item_id}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -280,20 +611,21 @@ const CreateMemoryCardForm: React.FC<CreateMemoryCardFormProps> = ({ onCreate })
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <form onSubmit={handleSubmit} className="space-y-2 p-2 bg-gray-50 rounded border">
+      <div className="text-xs font-medium mb-1">Create New Memory Card:</div>
       <input
         type="text"
         value={front}
         onChange={(e) => setFront(e.target.value)}
         placeholder="Front of card..."
-        className="w-full border rounded px-3 py-1 text-sm"
+        className="w-full border rounded px-2 py-1 text-sm"
       />
       <input
         type="text"
         value={back}
         onChange={(e) => setBack(e.target.value)}
         placeholder="Back of card..."
-        className="w-full border rounded px-3 py-1 text-sm"
+        className="w-full border rounded px-2 py-1 text-sm"
       />
       <button
         type="submit"
@@ -306,28 +638,90 @@ const CreateMemoryCardForm: React.FC<CreateMemoryCardFormProps> = ({ onCreate })
   );
 };
 
-interface MemoryCardDisplayProps {
-  card: MemoryCard;
+interface RatingButtonsProps {
+  onRate: (rating: string) => void;
 }
 
-const MemoryCardDisplay: React.FC<MemoryCardDisplayProps> = ({ card }) => {
-  const [showAnswer, setShowAnswer] = useState(false);
+const RatingButtons: React.FC<RatingButtonsProps> = ({ onRate }) => {
+  return (
+    <div className="flex space-x-1">
+      {['again', 'hard', 'good', 'easy'].map((rating) => (
+        <button
+          key={rating}
+          onClick={() => onRate(rating)}
+          className={`text-xs px-2 py-1 rounded ${
+            rating === 'again' ? 'bg-red-100 text-red-700' :
+            rating === 'hard' ? 'bg-orange-100 text-orange-700' :
+            rating === 'good' ? 'bg-green-100 text-green-700' :
+            'bg-blue-100 text-blue-700'
+          }`}
+        >
+          {rating.charAt(0).toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+interface CrossReferenceFormProps {
+  onCreate: (toItemId: string, toItemtype: string, relationshipType: string) => void;
+}
+
+const CrossReferenceForm: React.FC<CrossReferenceFormProps> = ({ onCreate }) => {
+  const [toItemId, setToItemId] = useState('');
+  const [toItemtype, setToItemtype] = useState('CVE');
+  const [relationshipType, setRelationshipType] = useState('related_to');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (toItemId.trim() && toItemtype.trim() && relationshipType.trim()) {
+      onCreate(toItemId.trim(), toItemtype.trim(), relationshipType.trim());
+      setToItemId('');
+    }
+  };
 
   return (
-    <div 
-      className="p-3 bg-yellow-50 border rounded cursor-pointer hover:bg-yellow-100"
-      onClick={() => setShowAnswer(!showAnswer)}
-    >
-      <div className="font-medium">{card.front_content}</div>
-      {showAnswer && (
-        <div className="mt-2 pt-2 border-t text-sm">
-          <div>{card.back_content}</div>
-          <div className="text-xs text-gray-500 mt-1">
-            State: {card.learning_state} | Next review: {new Date(card.next_review_at).toLocaleDateString()}
-          </div>
-        </div>
-      )}
-    </div>
+    <form onSubmit={handleSubmit} className="space-y-2 p-2 bg-gray-50 rounded border">
+      <div className="text-xs font-medium mb-1">Create Cross Reference:</div>
+      <div className="grid grid-cols-3 gap-2">
+        <select
+          value={toItemtype}
+          onChange={(e) => setToItemtype(e.target.value)}
+          className="border rounded px-2 py-1 text-sm"
+        >
+          <option value="CVE">CVE</option>
+          <option value="CWE">CWE</option>
+          <option value="CAPEC">CAPEC</option>
+          <option value="ATT&CK">ATT&CK</option>
+        </select>
+        <input
+          type="text"
+          value={toItemId}
+          onChange={(e) => setToItemId(e.target.value)}
+          placeholder="Target ID"
+          className="border rounded px-2 py-1 text-sm"
+        />
+        <select
+          value={relationshipType}
+          onChange={(e) => setRelationshipType(e.target.value)}
+          className="border rounded px-2 py-1 text-sm"
+        >
+          <option value="related_to">Related To</option>
+          <option value="depends_on">Depends On</option>
+          <option value="similar_to">Similar To</option>
+          <option value="opposite_of">Opposite Of</option>
+          <option value="causes">Causes</option>
+          <option value="mitigates">Mitigates</option>
+        </select>
+      </div>
+      <button
+        type="submit"
+        disabled={!toItemId.trim() || !toItemtype.trim() || !relationshipType.trim()}
+        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 disabled:opacity-50 text-sm"
+      >
+        Create Reference
+      </button>
+    </form>
   );
 };
 
