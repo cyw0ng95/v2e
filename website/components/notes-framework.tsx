@@ -160,14 +160,16 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
         action: 'note_added',
         new_values: { note_id: response.payload.note.id, content: newNote.trim() }
       });
-      setHistories(prev => [...prev, {
-        id: prev.length + 1,
+      const newHistoryEntry: HistoryEntry = {
+        id: histories.length + 1,
         item_id: `${itemType}-${itemId}`,
         item_type: itemType,
         action: 'note_added',
         timestamp: new Date().toISOString(),
-        new_values: { note_id: response.payload.note.id, content: newNote.trim() }
-      }]);
+        new_values: { note_id: response.payload.note.id, content: newNote.trim() },
+        metadata: {}
+      };
+      setHistories(prev => [...prev, newHistoryEntry]);
     } else {
       setError('Failed to add note');
     }
@@ -218,14 +220,16 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
         action: 'memory_card_created',
         new_values: { card_id: response.payload.memory_card.id, front: front.trim() }
       });
-      setHistories(prev => [...prev, {
-        id: prev.length + 1,
+      const newHistoryEntry: HistoryEntry = {
+        id: histories.length + 1,
         item_id: `${itemType}-${itemId}`,
         item_type: itemType,
         action: 'memory_card_created',
         timestamp: new Date().toISOString(),
-        new_values: { card_id: response.payload.memory_card.id, front: front.trim() }
-      }]);
+        new_values: { card_id: response.payload.memory_card.id, front: front.trim() },
+        metadata: {}
+      };
+      setHistories(prev => [...prev, newHistoryEntry]);
     } else {
       setError('Failed to create memory card');
     }
