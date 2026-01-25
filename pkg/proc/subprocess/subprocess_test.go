@@ -21,6 +21,25 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNewWithFDs(t *testing.T) {
+	// We can't easily test real FDs without creating pipes, but we can verify it doesn't panic
+	// and sets ID correctly.
+	// Passing invalid FDs (like -1 or closed ones) might cause issues when using them,
+	// but NewWithFDs itself should be safe.
+	// Actually, NewWithFDs calls os.NewFile.
+	
+	sp := NewWithFDs("test-fds", 0, 1) // 0=stdin, 1=stdout
+	if sp.ID != "test-fds" {
+		t.Errorf("Expected ID to be 'test-fds', got '%s'", sp.ID)
+	}
+	if sp.handlers == nil {
+		t.Error("Expected handlers map to be initialized")
+	}
+	if sp.input == nil || sp.output == nil {
+		t.Error("Expected input and output to be set")
+	}
+}
+
 func TestRegisterHandler(t *testing.T) {
 	sp := New("test")
 	handler := func(ctx context.Context, msg *Message) (*Message, error) {
