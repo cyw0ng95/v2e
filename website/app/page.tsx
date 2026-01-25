@@ -9,6 +9,8 @@ import dynamic from 'next/dynamic';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import NotesFramework from '@/components/notes-framework';
+import BookmarkTable from '@/components/bookmark-table';
 
 // Lazy-load heavier client components to reduce initial bundle size
 const CVETable = dynamic(() => import('@/components/cve-table').then(mod => mod.CVETable), {
@@ -170,6 +172,7 @@ export default function Home() {
                   <TabsTrigger value="attack">ATT&CK</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
+                  <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
                   <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
                 </TabsList>
 
@@ -237,6 +240,34 @@ export default function Home() {
                             searchQuery={searchQuery}
                           />
                         </Suspense>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="bookmarks" className="h-full">
+                  <Card className="h-full flex flex-col">
+                    <CardHeader>
+                      <CardTitle>Bookmarks & Notes</CardTitle>
+                      <CardDescription>Manage your bookmarks and personal notes</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 min-h-0 flex flex-col">
+                      <div className="flex-1 min-h-0 overflow-auto">
+                        <BookmarkTable />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="bookmarks" className="h-full">
+                  <Card className="h-full flex flex-col">
+                    <CardHeader>
+                      <CardTitle>Bookmarks & Notes</CardTitle>
+                      <CardDescription>Manage your bookmarks and personal notes</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 min-h-0 flex flex-col">
+                      <div className="flex-1 min-h-0 overflow-auto">
+                        <BookmarkTable />
                       </div>
                     </CardContent>
                   </Card>
