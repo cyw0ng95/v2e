@@ -28,14 +28,14 @@ type CAPECExampleModel struct {
 
 type CAPECMitigationModel struct {
 	ID             uint   `gorm:"primaryKey"`
-	CAPECID        int    `gorm:"index" gorm:"uniqueIndex:ux_capec_mitigation,priority:1"`
-	MitigationText string `gorm:"type:text" gorm:"uniqueIndex:ux_capec_mitigation,priority:2"`
+	CAPECID        int    `gorm:"index;uniqueIndex:ux_capec_mitigation,priority:1"`
+	MitigationText string `gorm:"type:text;uniqueIndex:ux_capec_mitigation,priority:2"`
 }
 
 type CAPECReferenceModel struct {
 	ID                uint   `gorm:"primaryKey"`
-	CAPECID           int    `gorm:"index" gorm:"uniqueIndex:ux_capec_reference,priority:1"`
-	ExternalReference string `gorm:"index" gorm:"uniqueIndex:ux_capec_reference,priority:2"`
+	CAPECID           int    `gorm:"index;uniqueIndex:ux_capec_reference,priority:1"`
+	ExternalReference string `gorm:"index;uniqueIndex:ux_capec_reference,priority:2"`
 	URL               string
 }
 
