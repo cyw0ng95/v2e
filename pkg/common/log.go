@@ -25,6 +25,17 @@ const (
 	ErrorLevel
 )
 
+const (
+	// DefaultLogsDir is the default directory for log files
+	DefaultLogsDir = "./logs"
+	// LogMsgLoggerSetupFailed is the message when logger setup fails
+	LogMsgLoggerSetupFailed = "Failed to setup logger: %v"
+	// LogMsgServiceStarted is the message when service starts
+	LogMsgServiceStarted = "Service %s started"
+	// LogMsgConfigLoaded is the message when config is loaded
+	LogMsgConfigLoaded = "Configuration loaded from: %s"
+)
+
 // String returns the string representation of the log level
 func (l LogLevel) String() string {
 	switch l {

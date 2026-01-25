@@ -343,7 +343,7 @@ func main() {
 	bootstrapLogger.Info(LogMsgStartup, os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
 
 	// Set up logging using common subprocess framework
-	logger, err := subprocess.SetupLogging(processID)
+	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
 	if err != nil {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)

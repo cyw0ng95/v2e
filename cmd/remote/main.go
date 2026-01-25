@@ -35,7 +35,7 @@ func main() {
 	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
 
 	// Set up logging using common subprocess framework
-	logger, err := subprocess.SetupLogging(processID)
+	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
 	if err != nil {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)

@@ -124,7 +124,7 @@ func main() {
 	// Use a bootstrap logger for initial messages before the full logging system is ready
 	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
 
-	logger, err := subprocess.SetupLogging(processID)
+	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
 	if err != nil {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
