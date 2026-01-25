@@ -53,13 +53,14 @@ type NoteModel struct {
 
 // MemoryCardModel stores card-specific learning data
 type MemoryCardModel struct {
-	ID          uint   `gorm:"primaryKey"`
-	BookmarkID  uint   `gorm:"index;not null"`
-	Front       string `gorm:"type:text;not null"` // Question/content on front of card
-	Back        string `gorm:"type:text;not null"` // Answer/explanation on back of card
-	EaseFactor  float32 `gorm:"default:2.5"`       // For spaced repetition algorithm
-	Interval    int     `gorm:"default:1"`         // Days until next review
-	Repetition  int     `gorm:"default:0"`         // Number of successful reviews
+	ID          uint      `gorm:"primaryKey"`
+	BookmarkID  uint      `gorm:"index;not null"`
+	Front       string    `gorm:"type:text;not null"` // Question/content on front of card
+	Back        string    `gorm:"type:text;not null"` // Answer/explanation on back of card
+	EaseFactor  float32   `gorm:"default:2.5"`       // For spaced repetition algorithm
+	Interval    int       `gorm:"default:1"`         // Days until next review
+	Repetition  int       `gorm:"default:0"`         // Number of successful reviews
+	NextReview  *time.Time                           // When to review this card next
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
