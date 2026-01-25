@@ -208,32 +208,11 @@ func (t *UDSTransport) shouldReconnect(err error) bool {
 // containsAny checks if the string contains any of the substrings
 func containsAny(s string, substrs []string) bool {
 	for _, substr := range substrs {
-		if contains(s, substr) {
+		if strings.Contains(s, substr) {
 			return true
 		}
 	}
 	return false
-}
-
-// contains checks if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && findString(s, substr) != -1
-}
-
-// findString finds the index of a substring in a string
-func findString(s, substr string) int {
-	if len(substr) == 0 {
-		return 0
-	}
-	if len(substr) > len(s) {
-		return -1
-	}
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
 }
 
 // reconnect attempts to reconnect the transport
