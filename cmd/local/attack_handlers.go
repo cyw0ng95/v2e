@@ -12,13 +12,13 @@ import (
 // createImportATTACKsHandler handles importing ATT&CK data from XLSX file
 func createImportATTACKsHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCImportATTACKs handler invoked")
+		logger.Debug(LogMsgImportATTACKInvoked)
 		var req struct {
 			Path  string `json:"path"`
 			Force bool   `json:"force,omitempty"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
+			logger.Warn(LogMsgFailedParseReq, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -27,7 +27,7 @@ func createImportATTACKsHandler(store *attack.LocalAttackStore, logger *common.L
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Debug("RPCImportATTACKs received path: %s", req.Path)
+		logger.Debug(LogMsgImportATTACKReceivedPath, req.Path)
 		if req.Path == "" {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -38,9 +38,9 @@ func createImportATTACKsHandler(store *attack.LocalAttackStore, logger *common.L
 			}, nil
 		}
 		if err := store.ImportFromXLSX(req.Path, req.Force); err != nil {
-			logger.Warn("Failed to import ATT&CK from XLSX: %v (path: %s)", err, req.Path)
+			logger.Warn(LogMsgFailedImportATTACKXLSX, err, req.Path)
 			if _, statErr := os.Stat(req.Path); statErr != nil {
-				logger.Warn("ATT&CK import file stat error: %v (path: %s)", statErr, req.Path)
+				logger.Warn(LogMsgATTACKImportStatError, statErr, req.Path)
 			}
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
@@ -85,10 +85,10 @@ func createGetAttackTechniqueByIDHandler(store *attack.LocalAttackStore, logger 
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Debug("GetAttackTechniqueByID request: id=%s", req.ID)
+		logger.Debug(LogMsgGetAttackTechniqueByIDReq, req.ID)
 		item, err := store.GetTechniqueByID(ctx, req.ID)
 		if err != nil {
-			logger.Warn("Failed to get ATT&CK technique: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedGetAttackTechnique, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -112,7 +112,7 @@ func createGetAttackTechniqueByIDHandler(store *attack.LocalAttackStore, logger 
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK technique: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedMarshalAttackTechnique, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -156,10 +156,10 @@ func createGetAttackTacticByIDHandler(store *attack.LocalAttackStore, logger *co
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Debug("GetAttackTacticByID request: id=%s", req.ID)
+		logger.Debug(LogMsgGetAttackTacticByIDReq, req.ID)
 		item, err := store.GetTacticByID(ctx, req.ID)
 		if err != nil {
-			logger.Warn("Failed to get ATT&CK tactic: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedGetAttackTactic, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -180,7 +180,7 @@ func createGetAttackTacticByIDHandler(store *attack.LocalAttackStore, logger *co
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK tactic: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedMarshalAttackTactic, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -224,10 +224,10 @@ func createGetAttackMitigationByIDHandler(store *attack.LocalAttackStore, logger
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Debug("GetAttackMitigationByID request: id=%s", req.ID)
+		logger.Debug(LogMsgGetAttackMitigationByIDReq, req.ID)
 		item, err := store.GetMitigationByID(ctx, req.ID)
 		if err != nil {
-			logger.Warn("Failed to get ATT&CK mitigation: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedGetAttackMitigation, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -248,7 +248,7 @@ func createGetAttackMitigationByIDHandler(store *attack.LocalAttackStore, logger
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK mitigation: %v (id=%s)", err, req.ID)
+			logger.Error(LogMsgFailedMarshalAttackMitigation, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -292,10 +292,10 @@ func createGetAttackSoftwareByIDHandler(store *attack.LocalAttackStore, logger *
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Debug("GetAttackSoftwareByID request: id=%s", req.ID)
+		logger.Debug(LogMsgGetAttackSoftwareByIDReq, req.ID)
 		item, err := store.GetSoftwareByID(ctx, req.ID)
 		if err != nil {
-			logger.Warn("Failed to get ATT&CK software: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedGetAttackSoftware, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -317,7 +317,7 @@ func createGetAttackSoftwareByIDHandler(store *attack.LocalAttackStore, logger *
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK software: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedMarshalAttackSoftware, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -361,10 +361,10 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Debug("GetAttackGroupByID request: id=%s", req.ID)
+		logger.Debug(LogMsgGetAttackGroupByIDReq, req.ID)
 		item, err := store.GetGroupByID(ctx, req.ID)
 		if err != nil {
-			logger.Warn("Failed to get ATT&CK group: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedGetAttackGroup, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -385,7 +385,7 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK group: %v (id=%s)", err, req.ID)
+			logger.Warn(LogMsgFailedMarshalAttackGroup, err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -407,15 +407,15 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 // createListAttackTechniquesHandler handles listing ATT&CK techniques with pagination
 func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("Processing ListAttackTechniques request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
+		logger.Debug(LogMsgProcessingListAttackTechniques, msg.ID, msg.CorrelationID)
 		var req struct {
 			Offset int `json:"offset"`
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
-				logger.Debug("Processing ListAttackTechniques request failed due to malformed payload - Message ID: %s, Payload: %s", msg.ID, string(msg.Payload))
+				logger.Warn(LogMsgFailedParseListAttackTechniques, msg.ID, msg.CorrelationID, err)
+				logger.Debug(LogMsgProcessingListAttackTechniquesFailed, msg.ID, string(msg.Payload))
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
@@ -431,11 +431,11 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		logger.Info("Processing ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Offset: %d, Limit: %d", msg.ID, msg.CorrelationID, req.Offset, req.Limit)
+		logger.Info(LogMsgListAttackTechniquesParams, msg.ID, msg.CorrelationID, req.Offset, req.Limit)
 		items, total, err := store.ListTechniquesPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Warn("Failed to list ATT&CK techniques from store - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
-			logger.Debug("Processing ListAttackTechniques request failed - Message ID: %s, Error details: %v", msg.ID, err)
+			logger.Warn(LogMsgFailedListAttackTechniques, msg.ID, msg.CorrelationID, err)
+			logger.Debug(LogMsgProcessingListAttackTechniquesError, msg.ID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -447,7 +447,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
 		for _, it := range items {
-			logger.Debug("Mapping ATT&CK technique - Message ID: %s, Technique ID: %s", msg.ID, it.ID)
+			logger.Debug(LogMsgMappingAttackTechnique, msg.ID, it.ID)
 			mapped = append(mapped, map[string]interface{}{
 				"id":          it.ID,
 				"name":        it.Name,
@@ -470,7 +470,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Warn("Failed to marshal ListAttackTechniques response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn(LogMsgFailedMarshalListAttackTechniques, msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -480,7 +480,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 			}, nil
 		}
 
-		logger.Info("Successfully processed ListAttackTechniques request - Message ID: %s, Correlation ID: %s, Returned: %d, Total: %d", msg.ID, msg.CorrelationID, len(items), total)
+		logger.Info(LogMsgSuccessListAttackTechniques, msg.ID, msg.CorrelationID, len(items), total)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,
@@ -494,14 +494,14 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 // createListAttackTacticsHandler handles listing ATT&CK tactics with pagination
 func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		common.Info("RPCListAttackTactics handler invoked with message ID: %s", msg.ID)
+		common.Info(LogMsgListAttackTacticsInvoked, msg.ID)
 		var req struct {
 			Offset int `json:"offset"`
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn(LogMsgFailedParseReq, err)
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
@@ -517,10 +517,10 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK tactics with offset=%d, limit=%d", req.Offset, req.Limit)
+		common.Info(LogMsgListAttackTacticsParams, req.Offset, req.Limit)
 		items, total, err := store.ListTacticsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Warn("Failed to list ATT&CK tactics: %v", err)
+			logger.Warn(LogMsgFailedListAttackTactics, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -551,7 +551,7 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK tactics list: %v", err)
+			logger.Warn(LogMsgFailedMarshalListAttackTactics, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -574,14 +574,14 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 // createListAttackMitigationsHandler handles listing ATT&CK mitigations with pagination
 func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		common.Info("RPCListAttackMitigations handler invoked with message ID: %s", msg.ID)
+		common.Info(LogMsgListAttackMitigationsInvoked, msg.ID)
 		var req struct {
 			Offset int `json:"offset"`
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn(LogMsgFailedParseReq, err)
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
@@ -597,10 +597,10 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK mitigations with offset=%d, limit=%d", req.Offset, req.Limit)
+		common.Info(LogMsgListAttackMitigationsParams, req.Offset, req.Limit)
 		items, total, err := store.ListMitigationsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Warn("Failed to list ATT&CK mitigations: %v", err)
+			logger.Warn(LogMsgFailedListAttackMitigations, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -631,7 +631,7 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK mitigations list: %v", err)
+			logger.Warn(LogMsgFailedMarshalListAttackMitigations, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -654,14 +654,14 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 // createListAttackSoftwareHandler handles listing ATT&CK software with pagination
 func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		common.Info("RPCListAttackSoftware handler invoked with message ID: %s", msg.ID)
+		common.Info(LogMsgListAttackSoftwareInvoked, msg.ID)
 		var req struct {
 			Offset int `json:"offset"`
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn(LogMsgFailedParseReq, err)
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
@@ -677,10 +677,10 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK software with offset=%d, limit=%d", req.Offset, req.Limit)
+		common.Info(LogMsgListAttackSoftwareParams, req.Offset, req.Limit)
 		items, total, err := store.ListSoftwarePaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Warn("Failed to list ATT&CK software: %v", err)
+			logger.Warn(LogMsgFailedListAttackSoftware, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -712,7 +712,7 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK software list: %v", err)
+			logger.Warn(LogMsgFailedMarshalListAttackSoftware, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -735,14 +735,14 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 // createListAttackGroupsHandler handles listing ATT&CK groups with pagination
 func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		common.Info("RPCListAttackGroups handler invoked with message ID: %s", msg.ID)
+		common.Info(LogMsgListAttackGroupsInvoked, msg.ID)
 		var req struct {
 			Offset int `json:"offset"`
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn(LogMsgFailedParseReq, err)
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
@@ -758,10 +758,10 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 		if req.Offset < 0 {
 			req.Offset = 0
 		}
-		common.Info("Listing ATT&CK groups with offset=%d, limit=%d", req.Offset, req.Limit)
+		common.Info(LogMsgListAttackGroupsParams, req.Offset, req.Limit)
 		items, total, err := store.ListGroupsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
-			logger.Warn("Failed to list ATT&CK groups: %v", err)
+			logger.Warn(LogMsgFailedListAttackGroups, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -792,7 +792,7 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Warn("Failed to marshal ATT&CK groups list: %v", err)
+			logger.Warn(LogMsgFailedMarshalListAttackGroups, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -815,11 +815,11 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 // createGetAttackImportMetadataHandler handles getting ATT&CK import metadata
 func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCGetAttackImportMetadata handler invoked")
+		logger.Debug(LogMsgGetAttackImportMetadataInvoked)
 
 		meta, err := store.GetImportMetadata(ctx)
 		if err != nil {
-			logger.Warn("Failed to get ATT&CK import metadata: %v", err)
+			logger.Warn(LogMsgFailedGetAttackImportMetadata, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -839,7 +839,7 @@ func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK import metadata: %v", err)
+			logger.Error(LogMsgFailedMarshalAttackImportMetadata, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

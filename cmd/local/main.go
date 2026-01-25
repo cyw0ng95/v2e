@@ -1,8 +1,8 @@
 /*
 Package main implements the local RPC service.
 
-Refer to service.md for the RPC API Specification and available 
-methods.                                                        
+Refer to service.md for the RPC API Specification and available
+methods.
 Notes:
 ------
 - Uses SQLite databases for local CVE and CWE storage
@@ -14,7 +14,6 @@ Notes:
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -88,10 +87,13 @@ func main() {
 		processID = "local"
 	}
 
+	// Use a bootstrap logger for initial messages before the full logging system is ready
+	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+
 	// Set up logging using common subprocess framework
 	logger, err := subprocess.SetupLogging(processID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to setup logging: %v\n", err)
+		bootstrapLogger.Error(LogMsgFailedSetupLogging, err)
 		os.Exit(1)
 	}
 
@@ -104,7 +106,7 @@ func main() {
 	// Create or open the database
 	db, err := local.NewDB(dbPath)
 	if err != nil {
-		logger.Error("Failed to open database: %v", err)
+		logger.Error(LogMsgFailedOpenDB, err)
 		os.Exit(1)
 	}
 	defer db.Close()
@@ -116,7 +118,7 @@ func main() {
 	}
 	cweStore, err := cwe.NewLocalCWEStore(cweDBPath)
 	if err != nil {
-		logger.Error("Failed to open CWE database: %v", err)
+		logger.Error(LogMsgFailedOpenCWEDB, err)
 		os.Exit(1)
 	}
 
@@ -127,7 +129,7 @@ func main() {
 	}
 	capecStore, err := capec.NewLocalCAPECStore(capecDBPath)
 	if err != nil {
-		logger.Error("Failed to open CAPEC database: %v", err)
+		logger.Error(LogMsgFailedOpenCAPECDB, err)
 		os.Exit(1)
 	}
 
@@ -138,13 +140,13 @@ func main() {
 	}
 	attackStore, err := attack.NewLocalAttackStore(attackDBPath)
 	if err != nil {
-		logger.Error("Failed to open ATT&CK database: %v", err)
+		logger.Error(LogMsgFailedOpenATTACKDB, err)
 		os.Exit(1)
 	}
 
 	// Import CWEs from JSON file at startup (if file exists)
 	// Removed duplicate importCWEsAtStartup definition; now only in cwe_handlers.go
-	
+
 	// Import ATT&CK data from XLSX files at startup (if files exist)
 	importATTACKDataAtStartup(attackStore, logger)
 
