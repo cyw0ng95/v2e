@@ -195,13 +195,25 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 	// Create and register transport for the process
 	if b.transportManager != nil {
 		// Determine transport type based on configuration
-		if b.config != nil && b.config.Broker.Transport.EnableUDS {
-			// Register UDS transport
-			if err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
-				b.logger.Debug("Registered UDS transport for process %s", id)
+		if b.config != nil {
+			// Determine transport type based on configuration
+			if shouldUseUDSTransport(b.config.Broker.Transport) {
+				// Register UDS transport
+				if err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
+					b.logger.Debug("Registered UDS transport for process %s", id)
+				} else {
+					b.logger.Warn("Failed to connect UDS transport for process %s: %v, falling back to FD transport", id, err)
+					// Fall back to FD transport
+					fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
+					if err := fdTransport.Connect(); err == nil {
+						b.transportManager.RegisterTransport(id, fdTransport)
+						b.logger.Debug("Registered FD transport for process %s", id)
+					} else {
+						b.logger.Warn("Failed to connect FD transport for process %s: %v", id, err)
+					}
+				}
 			} else {
-				b.logger.Warn("Failed to connect UDS transport for process %s: %v, falling back to FD transport", id, err)
-				// Fall back to FD transport
+				// Use FD transport based on configuration
 				fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
 				if err := fdTransport.Connect(); err == nil {
 					b.transportManager.RegisterTransport(id, fdTransport)
@@ -403,13 +415,25 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	// Create and register transport for the process
 	if b.transportManager != nil {
 		// Determine transport type based on configuration
-		if b.config != nil && b.config.Broker.Transport.EnableUDS {
-			// Register UDS transport
-			if err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
-				b.logger.Debug("Registered UDS transport for process %s", id)
+		if b.config != nil {
+			// Determine transport type based on configuration
+			if shouldUseUDSTransport(b.config.Broker.Transport) {
+				// Register UDS transport
+				if err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
+					b.logger.Debug("Registered UDS transport for process %s", id)
+				} else {
+					b.logger.Warn("Failed to connect UDS transport for process %s: %v, falling back to FD transport", id, err)
+					// Fall back to FD transport
+					fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
+					if err := fdTransport.Connect(); err == nil {
+						b.transportManager.RegisterTransport(id, fdTransport)
+						b.logger.Debug("Registered FD transport for process %s", id)
+					} else {
+						b.logger.Warn("Failed to connect FD transport for process %s: %v", id, err)
+					}
+				}
 			} else {
-				b.logger.Warn("Failed to connect UDS transport for process %s: %v, falling back to FD transport", id, err)
-				// Fall back to FD transport
+				// Use FD transport based on configuration
 				fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
 				if err := fdTransport.Connect(); err == nil {
 					b.transportManager.RegisterTransport(id, fdTransport)
@@ -485,4 +509,25 @@ func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
 	}
 
 	return nil
+}
+
+// shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
+func shouldUseUDSTransport(config common.TransportConfigOptions) bool {
+	// If Type is explicitly set to "uds", use UDS
+	if config.Type == "uds" {
+		return true
+	}
+	// If Type is explicitly set to "fd", don't use UDS
+	if config.Type == "fd" {
+		return false
+	}
+	// If Type is "auto" or not set, fall back to EnableUDS flag
+	// If both EnableUDS and EnableFD are set, prioritize UDS unless DualMode is enabled
+	if config.EnableUDS && config.EnableFD {
+		// In dual mode, we might need special handling, but for now default to UDS
+		// If DualMode is enabled, we may want to handle differently
+		return !config.DualMode // If dual mode, prefer FD initially
+	}
+	// Otherwise, use EnableUDS flag
+	return config.EnableUDS
 }

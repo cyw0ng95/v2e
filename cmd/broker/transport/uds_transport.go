@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -202,13 +203,8 @@ func (t *UDSTransport) Receive() (*proc.Message, error) {
 func (t *UDSTransport) shouldReconnect(err error) bool {
 	// Check if the error indicates a broken pipe, connection closed, or similar
 	errStr := err.Error()
-	return containsAny(errStr, []string{"broken pipe", "connection closed", "connection reset", "EOF"})
-}
-
-// containsAny checks if the string contains any of the substrings
-func containsAny(s string, substrs []string) bool {
-	for _, substr := range substrs {
-		if strings.Contains(s, substr) {
+	for _, substr := range []string{"broken pipe", "connection closed", "connection reset", "EOF"} {
+		if strings.Contains(errStr, substr) {
 			return true
 		}
 	}
@@ -217,8 +213,8 @@ func containsAny(s string, substrs []string) bool {
 
 // reconnect attempts to reconnect the transport
 func (t *UDSTransport) reconnect() error {
+	// Close existing connection and increment counter while holding lock
 	t.mu.Lock()
-	defer t.mu.Unlock()
 	
 	// Close existing connection
 	if t.connection != nil {
@@ -237,38 +233,48 @@ func (t *UDSTransport) reconnect() error {
 		if t.reconnectCb != nil {
 			t.reconnectCb(fmt.Errorf("maximum reconnection attempts (%d) exceeded", t.maxReconnectAttempts))
 		}
+		t.mu.Unlock()
 		return fmt.Errorf("maximum reconnection attempts (%d) exceeded", t.maxReconnectAttempts)
 	}
+
+	t.mu.Unlock()
 	
-	// Wait before attempting to reconnect
+	// Wait before attempting to reconnect (without holding the lock)
 	time.Sleep(t.reconnectDelay)
 	
 	// Try to establish a new connection
+	var conn net.Conn
+	var err error
 	if t.isServer {
 		// Server side: accept a new connection
 		if t.listener != nil {
-			conn, err := t.listener.Accept()
+			conn, err = t.listener.Accept()
 			if err != nil {
 				return fmt.Errorf("failed to accept new UDS connection: %w", err)
 			}
-			t.connection = conn
-			t.scanner = bufio.NewScanner(conn)
-			t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
 		} else {
 			return fmt.Errorf("listener not available for server-side reconnection")
 		}
 	} else {
 		// Client side: dial the socket again
-		conn, err := net.Dial("unix", t.socketPath)
+		conn, err = net.Dial("unix", t.socketPath)
 		if err != nil {
 			return fmt.Errorf("failed to dial UDS for reconnection: %w", err)
 		}
-		t.connection = conn
-		t.scanner = bufio.NewScanner(conn)
-		t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
 	}
+
+	// Acquire lock again to update state
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	
+	t.connection = conn
+	t.scanner = bufio.NewScanner(conn)
+	t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
 	t.connected = true
+	
+	// Reset reconnect attempts counter on successful reconnection
+	t.reconnectAttempts = 0
+	
 	return nil
 }
 

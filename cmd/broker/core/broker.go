@@ -33,7 +33,8 @@ type Broker struct {
 	optimizer OptimizerInterface
 	// transportManager manages communication transports for processes
 	transportManager *transport.TransportManager
-	// migrationMode indicates if the broker is in migration mode
+	// migrationMode indicates if the broker is in migration mode for transitioning between transport types
+	// Planned use: Will be used to handle dual-mode transport during migration from one transport type to another
 	migrationMode bool
 }
 
