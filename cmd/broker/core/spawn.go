@@ -145,6 +145,9 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	info.PID = cmd.Process.Pid
 	b.processes[id] = proc
 
+	// Create a copy of the process info to return, before starting goroutines that might modify it
+	infoCopy := *info
+
 	if isRPC {
 		b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s (advertised fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
 		b.registerProcessTransport(id, inputFD, outputFD)
@@ -157,7 +160,6 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	b.wg.Add(1)
 	go b.reapProcess(proc)
 
-	infoCopy := *info
 	return &infoCopy, nil
 }
 
