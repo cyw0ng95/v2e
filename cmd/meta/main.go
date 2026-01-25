@@ -338,12 +338,14 @@ func main() {
 	}
 
 	// Log minimal startup info only (avoid dumping all environment variables)
-	fmt.Fprintf(os.Stderr, "[meta] STARTUP: PROCESS_ID=%s SESSION_DB_PATH=%s\n", os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
+	// Use a bootstrap logger for initial messages before the full logging system is ready
+	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+	bootstrapLogger.Info(LogMsgStartup, os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
 
 	// Set up logging using common subprocess framework
 	logger, err := subprocess.SetupLogging(processID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[meta] Failed to setup logging: %v\n", err)
+		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
 	}
 
@@ -352,21 +354,21 @@ func main() {
 	if runDBPath == "" {
 		runDBPath = DefaultSessionDBPath
 	}
-	logger.Info("[meta] Using run DB path: %s", runDBPath)
+	logger.Info(LogMsgUsingRunDBPath, runDBPath)
 	if _, err := os.Stat(runDBPath); err == nil {
-		logger.Info("[meta] Run DB file exists: %s", runDBPath)
+		logger.Info(LogMsgRunDBFileExists, runDBPath)
 	} else {
-		logger.Warn("[meta] Run DB file does not exist or cannot stat: %s (err=%v)", runDBPath, err)
+		logger.Warn(LogMsgRunDBFileDoesNotExist, runDBPath, err)
 	}
 
 	// Create run store
-	logger.Info("[meta] Creating run store...")
+	logger.Info(LogMsgCreatingRunStore)
 	runStore, err := taskflow.NewRunStore(runDBPath, logger)
 	if err != nil {
-		logger.Error("[meta] Failed to create run store: %v", err)
+		logger.Error(LogMsgFailedToCreateRunStore, err)
 		os.Exit(1)
 	}
-	logger.Info("[meta] Run store created successfully")
+	logger.Info(LogMsgRunStoreCreated)
 	defer runStore.Close()
 
 	// Create subprocess instance
@@ -490,19 +492,19 @@ func isErrorResponse(response *subprocess.Message) (bool, string) {
 // createStartCWEImportHandler creates a handler for starting CWE import
 func createStartCWEImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info("RPCStartCWEImport: Starting CWE import job")
+		logger.Info(LogMsgRPCStartCWEImport)
 
 		var req map[string]interface{}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn(LogMsgFailedToParseRequest, err)
 				return createErrorResponse(msg, "failed to parse request"), nil
 			}
 		}
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCWE, req)
 		if err != nil {
-			logger.Error("Failed to start CWE import: %v", err)
+			logger.Error(LogMsgFailedToStartCWEImport, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to start CWE import: %v", err)), nil
 		}
 
@@ -514,7 +516,7 @@ func createStartCWEImportHandler(controller *DataPopulationController, logger *c
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
+			logger.Error(LogMsgFailedToMarshalResponse, err)
 			return createErrorResponse(msg, "failed to marshal response"), nil
 		}
 
@@ -526,7 +528,7 @@ func createStartCWEImportHandler(controller *DataPopulationController, logger *c
 			Payload:       jsonData,
 		}
 
-		logger.Info("RPCStartCWEImport: Successfully started CWE import job: %s", sessionID)
+		logger.Info(LogMsgSuccessStartCWEImport, sessionID)
 		return respMsg, nil
 	}
 }
@@ -534,19 +536,19 @@ func createStartCWEImportHandler(controller *DataPopulationController, logger *c
 // createStartCAPECImportHandler creates a handler for starting CAPEC import
 func createStartCAPECImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info("RPCStartCAPECImport: Starting CAPEC import job")
+		logger.Info(LogMsgRPCStartCAPECImport)
 
 		var req map[string]interface{}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn(LogMsgFailedToParseRequest, err)
 				return createErrorResponse(msg, "failed to parse request"), nil
 			}
 		}
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCAPEC, req)
 		if err != nil {
-			logger.Warn("Failed to start CAPEC import: %v", err)
+			logger.Warn(LogMsgFailedToStartCAPECImport, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to start CAPEC import: %v", err)), nil
 		}
 
@@ -558,7 +560,7 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
+			logger.Warn(LogMsgFailedToMarshalResponse, err)
 			return createErrorResponse(msg, "failed to marshal response"), nil
 		}
 
@@ -570,7 +572,7 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 			Payload:       jsonData,
 		}
 
-		logger.Info("RPCStartCAPECImport: Successfully started CAPEC import job: %s", sessionID)
+		logger.Info(LogMsgSuccessStartCAPECImport, sessionID)
 		return respMsg, nil
 	}
 }
@@ -578,19 +580,19 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 // createStartATTACKImportHandler creates a handler for starting ATT&CK import
 func createStartATTACKImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info("RPCStartATTACKImport: Starting ATT&CK import job")
+		logger.Info(LogMsgRPCStartATTACKImport)
 
 		var req map[string]interface{}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
+				logger.Warn(LogMsgFailedToParseRequest, err)
 				return createErrorResponse(msg, "failed to parse request"), nil
 			}
 		}
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeATTACK, req)
 		if err != nil {
-			logger.Warn("Failed to start ATT&CK import: %v", err)
+			logger.Warn(LogMsgFailedToStartATTACKImport, err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to start ATT&CK import: %v", err)), nil
 		}
 
@@ -602,7 +604,7 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
+			logger.Warn(LogMsgFailedToMarshalResponse, err)
 			return createErrorResponse(msg, "failed to marshal response"), nil
 		}
 
@@ -614,7 +616,7 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 			Payload:       jsonData,
 		}
 
-		logger.Info("RPCStartATTACKImport: Successfully started ATT&CK import job: %s", sessionID)
+		logger.Info(LogMsgSuccessStartATTACKImport, sessionID)
 		return respMsg, nil
 	}
 }
