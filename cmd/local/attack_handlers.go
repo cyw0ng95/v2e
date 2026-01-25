@@ -112,7 +112,7 @@ func createGetAttackTechniqueByIDHandler(store *attack.LocalAttackStore, logger 
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK technique: %v (id=%s)", err, req.ID)
+			logger.Warn("Failed to marshal ATT&CK technique: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -180,7 +180,7 @@ func createGetAttackTacticByIDHandler(store *attack.LocalAttackStore, logger *co
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK tactic: %v (id=%s)", err, req.ID)
+			logger.Warn("Failed to marshal ATT&CK tactic: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -317,7 +317,7 @@ func createGetAttackSoftwareByIDHandler(store *attack.LocalAttackStore, logger *
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK software: %v (id=%s)", err, req.ID)
+			logger.Warn("Failed to marshal ATT&CK software: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -385,7 +385,7 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK group: %v (id=%s)", err, req.ID)
+			logger.Warn("Failed to marshal ATT&CK group: %v (id=%s)", err, req.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -470,7 +470,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal ListAttackTechniques response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn("Failed to marshal ListAttackTechniques response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -551,7 +551,7 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK tactics list: %v", err)
+			logger.Warn("Failed to marshal ATT&CK tactics list: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -631,7 +631,7 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK mitigations list: %v", err)
+			logger.Warn("Failed to marshal ATT&CK mitigations list: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -712,7 +712,7 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK software list: %v", err)
+			logger.Warn("Failed to marshal ATT&CK software list: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -792,7 +792,7 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal ATT&CK groups list: %v", err)
+			logger.Warn("Failed to marshal ATT&CK groups list: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

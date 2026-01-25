@@ -47,21 +47,21 @@ graph TB
 
 ### Core Services
 
-- **Broker Service** ([cmd/broker](file:///home/cyw0ng/projects/v2e-qoder/cmd/broker)): The central orchestrator responsible for:
-  - Spawning and managing all subprocess services
-  - Routing RPC messages between services
-  - Maintaining process lifecycle and health
-  - Tracking message statistics and performance metrics
-  - Providing system-wide coordination capabilities
-  - Offering asynchronous message routing with configurable optimization parameters
+- **Broker Service** ([cmd/broker](cmd/broker)): The central orchestrator responsible for:
+  - Spawning and managing all subprocess services with robust supervision and restart policies
+  - Routing RPC messages via a high-performance, dual-mode transport layer (Unix Domain Sockets & FD Pipes)
+  - Utilizing `bytedance/sonic` for zero-copy JSON serialization/deserialization
+  - Implementing an adaptive traffic optimizer with configurable batching, buffering, and backpressure
+  - Maintaining process lifecycle, health checks, and zombie process reaping
+  - Tracking comprehensive real-time message statistics and performance metrics
 
-- **Access Service** ([cmd/access](file:///home/cyw0ng/projects/v2e-qoder/cmd/access)): The REST gateway that:
+- **Access Service** ([cmd/access](cmd/access)): The REST gateway that:
   - Serves as the primary interface for the Next.js frontend
   - Exposes `/restful/rpc` endpoint for RPC forwarding
   - Translates HTTP requests to RPC calls and responses back
   - Provides health checks and basic service discovery
 
-- **Meta Service** ([cmd/meta](file:///home/cyw0ng/projects/v2e-qoder/cmd/meta)): The orchestration layer that:
+- **Meta Service** ([cmd/meta](cmd/meta)): The orchestration layer that:
   - Manages job scheduling and execution using go-taskflow
   - Coordinates complex multi-step operations
   - Handles session management and state persistence
@@ -69,7 +69,7 @@ graph TB
   - Orchestrates CVE/CWE data fetching jobs with persistent state management
   - Performs automatic CWE and CAPEC imports at startup
 
-- **Local Service** ([cmd/local](file:///home/cyw0ng/projects/v2e-qoder/cmd/local)): The data persistence layer that:
+- **Local Service** ([cmd/local](cmd/local)): The data persistence layer that:
   - Manages local SQLite databases for CVE, CWE, CAPEC, and ATT&CK data
   - Provides CRUD operations for vulnerability information
   - Handles data indexing and querying
@@ -78,29 +78,43 @@ graph TB
   - Supports CAPEC XML schema validation and catalog metadata retrieval
   - Offers CWE view management with storage and retrieval capabilities
 
-- **Remote Service** ([cmd/remote](file:///home/cyw0ng/projects/v2e-qoder/cmd/remote)): The data acquisition layer that:
+- **Remote Service** ([cmd/remote](cmd/remote)): The data acquisition layer that:
   - Fetches vulnerability data from external APIs (NVD, etc.)
   - Implements rate limiting and retry mechanisms
   - Handles data transformation and normalization
   - Manages API credentials and authentication
 
-- **SysMon Service** ([cmd/sysmon](file:///home/cyw0ng/projects/v2e-qoder/cmd/sysmon)): The system monitoring layer that:
+- **SysMon Service** ([cmd/sysmon](cmd/sysmon)): The system monitoring layer that:
   - Collects performance metrics and system statistics
   - Monitors resource utilization across services
   - Provides health indicators for operational awareness
   - Reports system status to the frontend
 
-## Communication Flow
+## Configuration
 
-The system uses a sophisticated RPC-over-stdin/stdout communication mechanism:
+The broker is configured via `config.json`. Key configuration areas include:
 
-- **Custom File Descriptors**: RPC subprocesses use file descriptors 3 and 4 (instead of stdin/stdout) to avoid conflicts with standard I/O streams
-- **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching
-- **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs
-- **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process
-- **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables for flexible I/O routing
+- **Transport**: Choose between `uds` (default) or `fd_pipe`.
+- **Optimizer**: Tune the performance characteristics of the message broker.
+  - `optimizer_buffer_cap`: Size of the message buffer.
+  - `optimizer_num_workers`: Number of parallel processing workers.
+  - `optimizer_offer_policy`: Strategy when buffer is full (`drop`, `block`, `timeout`, `drop_oldest`).
+  - `optimizer_enable_adaptive`: Enable dynamic self-tuning of batch sizes and worker counts.
+- **Processes**: Define the subprocesses to be managed by the broker.
+
+## Transport & Communication
+
+The system uses a sophisticated, hybrid RPC communication mechanism designed for high throughput and low latency:
+
+- **Dual-Mode Transport Layer**:
+  - **Unix Domain Sockets (UDS)**: The default, high-performance transport method. Provides secure (0600 permissions), efficient, and standard IPC.
+  - **FD Pipes (Legacy/Fallback)**: Uses custom file descriptors 3 and 4 to avoid conflicts with standard I/O streams.
+- **Adaptive Optimization**: The broker includes a traffic optimizer that dynamically adjusts batch sizes and worker counts based on load.
+- **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching.
+- **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs.
+- **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process.
+- **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables (for FD Pipe transport)
 - **Message Pooling**: Optimized message allocation using sync.Pool for reduced garbage collection
-- **Asynchronous Optimization**: Optional asynchronous message routing with configurable buffering, batching, and worker pools
 
 The communication pattern follows this flow:
 1. External requests → Access REST API → Broker → Backend Services
@@ -111,7 +125,7 @@ The communication pattern follows this flow:
 
 ## Frontend Integration
 
-The Next.js-based frontend ([website](file:///home/cyw0ng/projects/v2e-qoder/website)) provides:
+The Next.js-based frontend ([website](website)) provides:
 
 - **REST Gateway Interface**: Access service exposes `/restful/rpc` endpoint for frontend-backend communication
 - **Sophisticated RPC Client**: Handles automatic case conversion (camelCase ↔ snake_case) and comprehensive error handling
@@ -420,118 +434,79 @@ Performance monitoring capabilities include:
 
 ## Broker Interfaces and Internal Data Structures
 
-The broker (microkernel) implements several key interfaces and data structures that enable its functionality:
+The broker (microkernel) is organized into three primary layers:
 
-### Transport Layer Abstraction
-- **Transport Interface**: Defines core communication methods (`Send`, `Receive`, `Connect`, `Close`)
-- **FDPipeTransport**: Implementation using file descriptors for subprocess communication
-- **TransportManager**: Manages multiple transports for different processes
+### 1. Core Layer (`cmd/broker/core`)
+Central management logic responsible for process supervision and message routing.
+- **Broker**: The main struct orchestrating the system.
+- **Process**: Represents a managed subprocess with its lifecycle state (`ProcessInfo`) and I/O pipes.
+- **ProcessInfo**: Serializable struct containing PID, status (`running`, `exited`, `failed`), command, and start/end times.
+- **Router Interface**: Defines how messages are routed between processes.
 
-### OS-Style Modular Architecture
-- **cmd/broker/drivers/**: Transport drivers and device abstractions
-  - `TransportDriver`: Interface for transport driver implementations
-  - `FDTransportDriver`: File descriptor-based transport driver
+### 2. Transport Layer (`cmd/broker/transport`)
+Handles low-level communication mechanics.
+- **Transport Interface**: Defines the contract for IPC.
+  - `Connect() error`: Establishes the connection.
+  - `Close() error`: Terminates the connection.
+  - `Send(msg *proc.Message) error`: Sends a structured message.
+  - `Receive() (*proc.Message, error)`: Reads a structured message.
+- **UDSTransport**: High-performance implementation using Unix Domain Sockets.
+- **FDPipeTransport**: Legacy implementation using inherited file descriptors (3 & 4).
 
-- **cmd/broker/ipc/**: Inter-process communication modules
-  - `MessageRouter`: Routes messages between processes
-  - `MessageQueue`: Queues messages for processing
-
-- **cmd/broker/process/**: Process management modules
-  - `ProcessManager`: Manages subprocess lifecycles
-  - `ProcessRegistry`: Tracks running processes
-
-- **cmd/broker/sched/**: Scheduler and optimization modules
-  - `Scheduler`: Scheduling interface for operations
-  - `Optimizer`: Performance optimization interface
-  - `AdaptiveOptimizer`: Self-tuning optimization implementation
-  - `SystemMonitor`: System and application metrics collection
+### 3. Performance Layer (`cmd/broker/perf`)
+Decoupled optimization module for high-throughput message handling.
+- **Optimizer**: Manages worker pools and message batching.
+- **AdaptiveOptimizer**: Monitors system load and dynamically adjusts:
+  - `BufferCapacity`: Channel size.
+  - `WorkerCount`: Number of concurrent processors.
+  - `BatchSize` & `FlushInterval`: For throughput tuning.
 
 ### Broker Architecture Diagram
 
 ```mermaid
 graph TB
     subgraph "Broker Core"
-        B[Broker Main]
+        B[Broker]
+        P[Process Map]
+        R[Router]
     end
     
     subgraph "Transport Layer"
-        T{Transport Interface}
+        TI{Transport Interface}
+        UDS[UDSTransport]
         FDP[FDPipeTransport]
-        TM[Transport Manager]
     end
     
-    subgraph "Modular Components"
-        subgraph "Drivers"
-            TD[Transport Driver]
-            FDTD[FDTransportDriver]
-        end
-        
-        subgraph "IPC"
-            MR[Message Router]
-            MQ[Message Queue]
-        end
-        
-        subgraph "Process"
-            PM[Process Manager]
-            PR[Process Registry]
-        end
-        
-        subgraph "Scheduler/Optimizer"
-            SM[System Monitor]
-            AO[Adaptive Optimizer]
-            OPT[Optimizer]
-        end
+    subgraph "Performance Layer"
+        OPT[Optimizer]
+        AO[Adaptive Optimizer]
+        SM[System Monitor]
     end
     
-    subgraph "Subprocess Services"
+    subgraph "Subprocesses"
         S1[Service 1]
         S2[Service 2]
-        S3[Service N]
     end
     
-    B <---> T
-    T <--> FDP
-    B <---> TM
+    B --> P
+    B --> R
+    B --> OPT
     
-    B --> TD
-    B --> MR
-    B --> PM
-    B --> SM
+    OPT --> AO
+    AO --> SM
     
-    TD <--> FDTD
-    MR <--> MQ
-    PM <--> PR
-    SM <--> AO
-    AO <--> OPT
+    P --> TI
+    TI -.-> UDS
+    TI -.-> FDP
     
-    TM <---> S1
-    TM <---> S2
-    TM <---> S3
+    UDS <==> S1
+    FDP <==> S2
     
     style B fill:#4e8cff,stroke:#333,stroke-width:2px,color:#fff
-    style SM fill:#ffcc00,stroke:#333,stroke-width:2px,color:#000
-    style AO fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
-    style TM fill:#66cc99,stroke:#333,stroke-width:2px,color:#fff
+    style OPT fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
+    style TI fill:#66cc99,stroke:#333,stroke-width:2px,color:#fff
 ```
 
-### System Monitoring and Optimization
-- **LoadMetrics**: Contains system and application load metrics:
-  - CPUUtilization: Current CPU usage percentage
-  - MemoryUtilization: Current memory usage percentage
-  - MessageQueueDepth: Depth of message queues
-  - MessageThroughput: Messages per second processed
-  - AverageLatency: Average response time
-  - ActiveConnections: Number of active connections
-  - SystemLoadAvg: System load average
-  - ProcessResourceUsage: Per-process resource metrics
-
-- **OptimizationParameters**: Adjustable parameters for performance tuning:
-  - BufferCapacity: Size of message buffers
-  - WorkerCount: Number of worker goroutines
-  - BatchSize: Number of messages processed in each batch
-  - FlushInterval: Time interval for flushing batches
-  - OfferPolicy: Policy for handling message overflow
-  - OfferTimeout: Timeout for message acceptance
 
 ### Adaptive Optimization Algorithms
 The broker implements intelligent adaptive tuning that responds to system and application loads:
@@ -552,13 +527,13 @@ The broker implements intelligent adaptive tuning that responds to system and ap
 
 ## Where to Look Next
 
-- [cmd/broker](file:///home/cyw0ng/projects/v2e-qoder/cmd/broker) — Broker implementation and message routing
-- [pkg/proc/subprocess](file:///home/cyw0ng/projects/v2e-qoder/pkg/proc/subprocess) — Helper framework for subprocesses
-- [pkg/cve/taskflow](file:///home/cyw0ng/projects/v2e-qoder/pkg/cve/taskflow) — Taskflow-based job executor
-- [cmd/access](file:///home/cyw0ng/projects/v2e-qoder/cmd/access) — REST gateway and example of using the RPC client
-- [cmd/meta](file:///home/cyw0ng/projects/v2e-qoder/cmd/meta) — Job orchestration and session management
-- [website/](file:///home/cyw0ng/projects/v2e-qoder/website) — Next.js frontend implementation
-- [tests/](file:///home/cyw0ng/projects/v2e-qoder/tests) — Integration tests demonstrating usage patterns
+- [cmd/broker](cmd/broker) — Broker implementation and message routing
+- [pkg/proc/subprocess](pkg/proc/subprocess) — Helper framework for subprocesses
+- [pkg/cve/taskflow](pkg/cve/taskflow) — Taskflow-based job executor
+- [cmd/access](cmd/access) — REST gateway and example of using the RPC client
+- [cmd/meta](cmd/meta) — Job orchestration and session management
+- [website/](website/) — Next.js frontend implementation
+- [tests/](tests/) — Integration tests demonstrating usage patterns
 
 ## License
 

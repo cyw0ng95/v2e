@@ -237,7 +237,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			fetchParamsPool.Put(fp)
 
 			if err != nil {
-				c.logger.Error("Failed to fetch CVEs: %v", err)
+				c.logger.Warn("Failed to fetch CVEs: %v", err)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}
@@ -254,7 +254,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			// Parse the RPC response (it's a subprocess.Message)
 			msg, ok := result.(*subprocess.Message)
 			if !ok {
-				c.logger.Error("Invalid response type from remote")
+				c.logger.Warn("Invalid response type from remote")
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}
@@ -263,7 +263,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 
 			// Check if it's an error message
 			if msg.Type == subprocess.MessageTypeError {
-				c.logger.Error("Error from remote: %s", msg.Error)
+				c.logger.Warn("Error from remote: %s", msg.Error)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}
@@ -280,7 +280,7 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			// Parse the CVE response from payload
 			var response cve.CVEResponse
 			if err := jsonutil.Unmarshal(msg.Payload, &response); err != nil {
-				c.logger.Error("Failed to unmarshal CVE response: %v", err)
+				c.logger.Warn("Failed to unmarshal CVE response: %v", err)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
 					c.logger.Warn("Failed to update progress: %v", err)
 				}

@@ -52,7 +52,7 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 		logger.Debug("Processing GetCWEByID request completed successfully for CWE ID %s", req.CWEID)
 		jsonData, err := subprocess.MarshalFast(item)
 		if err != nil {
-			logger.Error("Failed to marshal CWE: %v (cwe_id=%s)", err, req.CWEID)
+			logger.Warn("Failed to marshal CWE: %v (cwe_id=%s)", err, req.CWEID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -123,7 +123,7 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 		}
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal CWEs: %v", err)
+			logger.Warn("Failed to marshal CWEs: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

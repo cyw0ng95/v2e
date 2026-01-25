@@ -2,7 +2,6 @@ package transport
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
@@ -27,6 +27,7 @@ type UDSTransport struct {
 	maxReconnectAttempts int
 	reconnectDelay       time.Duration
 	reconnectCb          func(error)
+	errorHandler         func(error)
 }
 
 // NewUDSTransport creates a new UDSTransport with the specified socket path
@@ -55,6 +56,13 @@ func (t *UDSTransport) SetReconnectCallback(cb func(error)) {
 	t.reconnectCb = cb
 }
 
+// SetErrorHandler sets a callback function to be called when asynchronous errors occur
+func (t *UDSTransport) SetErrorHandler(cb func(error)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.errorHandler = cb
+}
+
 // Connect establishes the Unix Domain Socket connection
 func (t *UDSTransport) Connect() error {
 	t.mu.Lock()
@@ -78,18 +86,18 @@ func (t *UDSTransport) Connect() error {
 		if err != nil {
 			return fmt.Errorf("failed to create UDS listener: %w", err)
 		}
+
+		// Secure the socket
+		if err := os.Chmod(t.socketPath, 0600); err != nil {
+			listener.Close()
+			return fmt.Errorf("failed to chmod UDS socket: %w", err)
+		}
+
 		t.listener = listener
 
-		// Accept the first connection (for broker-process communication)
-		conn, err := listener.Accept()
-		if err != nil {
-			return fmt.Errorf("failed to accept UDS connection: %w", err)
-		}
-		t.connection = conn
-
-		// Create scanner for the connection
-		t.scanner = bufio.NewScanner(conn)
-		t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
+		// Start accepting connections asynchronously to avoid blocking
+		// the broker/spawning process.
+		go t.acceptLoop()
 	} else {
 		// Client connects to existing socket
 		conn, err := net.Dial("unix", t.socketPath)
@@ -116,7 +124,7 @@ func (t *UDSTransport) Send(msg *proc.Message) error {
 	}
 	t.mu.RUnlock()
 
-	data, err := json.Marshal(msg)
+	data, err := sonic.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
@@ -192,7 +200,7 @@ func (t *UDSTransport) Receive() (*proc.Message, error) {
 	}
 
 	var msg proc.Message
-	if err := json.Unmarshal(line, &msg); err != nil {
+	if err := sonic.Unmarshal(line, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 
@@ -246,15 +254,16 @@ func (t *UDSTransport) reconnect() error {
 	var conn net.Conn
 	var err error
 	if t.isServer {
-		// Server side: accept a new connection
-		if t.listener != nil {
-			conn, err = t.listener.Accept()
-			if err != nil {
-				return fmt.Errorf("failed to accept new UDS connection: %w", err)
-			}
-		} else {
-			return fmt.Errorf("listener not available for server-side reconnection")
+		// Server side: check if acceptLoop has established a connection
+		t.mu.Lock()
+		if t.connection != nil {
+			// Connection established by acceptLoop
+			t.reconnectAttempts = 0
+			t.mu.Unlock()
+			return nil
 		}
+		t.mu.Unlock()
+		return fmt.Errorf("server waiting for client connection")
 	} else {
 		// Client side: dial the socket again
 		conn, err = net.Dial("unix", t.socketPath)
@@ -392,3 +401,56 @@ func (t *UDSTransport) EnsureSocketDirectory() error {
 
 	return nil
 }
+
+// acceptLoop accepts incoming connections asynchronously
+func (t *UDSTransport) acceptLoop() {
+	for {
+		t.mu.RLock()
+		listener := t.listener
+		t.mu.RUnlock()
+
+		if listener == nil {
+			return
+		}
+
+		conn, err := listener.Accept()
+		if err != nil {
+			// Stop if listener is closed
+			if strings.Contains(err.Error(), "use of closed network connection") || strings.Contains(err.Error(), "Listener closed") {
+				return
+			}
+			
+			// Log error via callback if set
+			t.mu.RLock()
+			handler := t.errorHandler
+			t.mu.RUnlock()
+			if handler != nil {
+				handler(fmt.Errorf("UDS accept error: %w", err))
+			}
+
+			// Backoff on temporary error
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		t.handleNewConnection(conn)
+	}
+}
+
+// handleNewConnection handles a new incoming connection
+func (t *UDSTransport) handleNewConnection(conn net.Conn) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Close existing connection if any
+	if t.connection != nil {
+		t.connection.Close()
+	}
+
+	t.connection = conn
+	t.scanner = bufio.NewScanner(conn)
+	t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
+	t.connected = true
+	t.reconnectAttempts = 0
+}
+

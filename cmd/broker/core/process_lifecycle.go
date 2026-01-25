@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bufio"
 	"fmt"
 	"os/exec"
 	"syscall"
@@ -9,118 +8,6 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
-
-// readProcessMessages reads messages from a process's stdout and forwards them to the broker.
-func (b *Broker) readProcessMessages(p *Process) {
-	defer b.wg.Done()
-
-	scanner := bufio.NewScanner(p.stdout)
-	buf := make([]byte, proc.MaxMessageSize)
-	scanner.Buffer(buf, proc.MaxMessageSize)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		msg, err := proc.Unmarshal([]byte(line))
-		if err != nil {
-			b.logger.Warn("Failed to parse message from process %s: %v", p.info.ID, err)
-			continue
-		}
-
-		// Prefer asynchronous routing via optimizer if configured.
-		routedViaOptimizer := false
-		b.mu.RLock()
-		opt := b.optimizer
-		b.mu.RUnlock()
-		if opt != nil {
-			if accepted := opt.Offer(msg); accepted {
-				// optimizer accepted the message for async routing
-				routedViaOptimizer = true
-			}
-		}
-
-		if routedViaOptimizer {
-			continue
-		}
-
-		if err := b.RouteMessage(msg, p.info.ID); err != nil {
-			b.logger.Warn("Failed to route message from process %s: %v", p.info.ID, err)
-
-			if msg.Type == proc.MessageTypeRequest && msg.CorrelationID != "" {
-				errorMsg := &proc.Message{
-					Type:          proc.MessageTypeError,
-					ID:            msg.ID,
-					Error:         err.Error(),
-					Target:        msg.Source,
-					CorrelationID: msg.CorrelationID,
-				}
-				go func() {
-					if sendErr := b.SendToProcess(msg.Source, errorMsg); sendErr != nil {
-						b.logger.Debug("Failed to send error response back to %s: %v", msg.Source, sendErr)
-					}
-				}()
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		b.logger.Warn("Error reading from process %s: %v", p.info.ID, err)
-	}
-}
-
-// SendToProcess sends a message to a specific process via stdin.
-func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
-	// First try to use transport if available
-	if b.transportManager != nil {
-		if err := b.transportManager.SendToProcess(processID, msg); err == nil {
-			b.bus.Record(msg, true)
-			b.logger.Debug("Sent message to process %s via transport: type=%s id=%s", processID, msg.Type, msg.ID)
-			return nil
-		}
-		// If transport fails, fall back to the original stdin method
-	}
-
-	// Fallback to original stdin-based implementation for backward compatibility
-	b.mu.RLock()
-	p, exists := b.processes[processID]
-	b.mu.RUnlock()
-
-	if !exists {
-		return fmt.Errorf("process with id '%s' not found", processID)
-	}
-
-	p.mu.RLock()
-	stdin := p.stdin
-	status := p.info.Status
-	p.mu.RUnlock()
-
-	if status != ProcessStatusRunning {
-		return fmt.Errorf("process '%s' is not running", processID)
-	}
-
-	if stdin == nil {
-		return fmt.Errorf("process '%s' does not support RPC (no stdin pipe)", processID)
-	}
-
-	data, err := msg.Marshal()
-	if err != nil {
-		return fmt.Errorf("failed to marshal message: %w", err)
-	}
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if _, err := fmt.Fprintf(stdin, "%s\n", string(data)); err != nil {
-		return fmt.Errorf("failed to write message to process: %w", err)
-	}
-
-	b.bus.Record(msg, true)
-
-	b.logger.Debug("Sent message to process %s: type=%s id=%s", processID, msg.Type, msg.ID)
-	return nil
-}
 
 // reapProcess waits for a process to complete and updates its status.
 // If auto-restart is enabled, it will attempt to restart the process according to the configured policy.
@@ -149,7 +36,15 @@ func (b *Broker) reapProcess(p *Process) {
 		p.info.ExitCode = 0
 	}
 
-	b.logger.Info("Process exited: id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+	if p.info.ExitCode != 0 {
+		if p.restartConfig != nil && p.restartConfig.Enabled {
+			b.logger.Warn("Process exited abnormally (will attempt restart): id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+		} else {
+			b.logger.Error("Process exited abnormally (no restart configured): id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+		}
+	} else {
+		b.logger.Info("Process exited successfully: id=%s pid=%d exit_code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
+	}
 
 	// Unregister transport for the process if it exists
 	if b.transportManager != nil {
@@ -164,7 +59,11 @@ func (b *Broker) reapProcess(p *Process) {
 		"exit_code": p.info.ExitCode,
 	})
 	event.Target = "test-target"
+
+	// Release lock before sending message to avoid deadlock if channel is full
+	p.mu.Unlock()
 	b.sendMessageInternal(event)
+	p.mu.Lock()
 
 	if p.restartConfig != nil && p.restartConfig.Enabled {
 		if p.restartConfig.MaxRestarts >= 0 && p.restartConfig.RestartCount >= p.restartConfig.MaxRestarts {
@@ -260,6 +159,7 @@ func (b *Broker) Kill(id string) error {
 		b.logger.Warn("Process did not terminate gracefully, sending SIGKILL: id=%s", id)
 		if proc.cmd != nil && proc.cmd.Process != nil {
 			if err := proc.cmd.Process.Kill(); err != nil {
+				b.logger.Error("Failed to force kill process %s: %v", id, err)
 				return fmt.Errorf("failed to force kill process: %w", err)
 			}
 		}

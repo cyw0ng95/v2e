@@ -138,7 +138,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 				ResultsPerPage: pageSize,
 			})
 			if err != nil {
-				c.logger.Error("Failed to fetch views: %v", err)
+				c.logger.Warn("Failed to fetch views: %v", err)
 				select {
 				case <-ctx.Done():
 					return
@@ -149,7 +149,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 
 			msg, ok := result.(*subprocess.Message)
 			if !ok {
-				c.logger.Error("Invalid response type from remote for views")
+				c.logger.Warn("Invalid response type from remote for views")
 				select {
 				case <-ctx.Done():
 					return
@@ -159,7 +159,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 			}
 
 			if msg.Type == subprocess.MessageTypeError {
-				c.logger.Error("Error from remote: %s", msg.Error)
+				c.logger.Warn("Error from remote: %s", msg.Error)
 				select {
 				case <-ctx.Done():
 					return
@@ -173,7 +173,7 @@ func (c *Controller) runJob(ctx context.Context, params map[string]interface{}) 
 				Views []cwe.CWEView `json:"views"`
 			}
 			if err := jsonutil.Unmarshal(msg.Payload, &resp); err != nil {
-				c.logger.Error("Failed to unmarshal views response: %v", err)
+				c.logger.Warn("Failed to unmarshal views response: %v", err)
 				select {
 				case <-ctx.Done():
 					return

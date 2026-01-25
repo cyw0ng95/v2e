@@ -235,7 +235,7 @@ func createGetCAPECByIDHandler(store capecStore, logger *common.Logger) subproce
 		}
 		jsonData, err := subprocess.MarshalFast(payload)
 		if err != nil {
-			logger.Error("Failed to marshal CAPEC: %v (capec_id=%s)", err, req.CAPECID)
+			logger.Warn("Failed to marshal CAPEC: %v (capec_id=%s)", err, req.CAPECID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -276,7 +276,7 @@ func createGetCAPECCatalogMetaHandler(store capecStore, logger *common.Logger) s
 		}
 		data, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal catalog meta: %v", err)
+			logger.Warn("Failed to marshal catalog meta: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -399,7 +399,7 @@ func createListCAPECsHandler(store capecStore, logger *common.Logger) subprocess
 		}
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal ListCAPECs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn("Failed to marshal ListCAPECs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

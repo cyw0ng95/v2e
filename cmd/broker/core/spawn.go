@@ -13,172 +13,46 @@ import (
 
 // Spawn starts a new subprocess with the given command and arguments.
 func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if _, exists := b.processes[id]; exists {
-		return nil, fmt.Errorf("process with id '%s' already exists", id)
-	}
-
-	ctx, cancel := context.WithCancel(b.ctx)
-	cmd := exec.CommandContext(ctx, command, args...)
-
-	setProcessEnv(cmd, id, b.config)
-
-	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
-
-	proc := &Process{info: info, cmd: cmd, cancel: cancel, done: make(chan struct{})}
-
-	if err := cmd.Start(); err != nil {
-		cancel()
-		info.Status = ProcessStatusFailed
-		return info, fmt.Errorf("failed to start process: %w", err)
-	}
-
-	info.PID = cmd.Process.Pid
-	b.processes[id] = proc
-
-	b.logger.Info("Spawned process: id=%s pid=%d command=%s", id, info.PID, command)
-
-	infoCopy := *info
-
-	b.wg.Add(1)
-	go b.reapProcess(proc)
-
-	return &infoCopy, nil
+	return b.spawnInternal(id, command, args, nil)
 }
 
 // SpawnRPC starts a new subprocess with RPC support using custom file descriptors.
 func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if _, exists := b.processes[id]; exists {
-		return nil, fmt.Errorf("process with id '%s' already exists", id)
+	restartConfig := &RestartConfig{
+		Enabled: false,
+		Command: command,
+		Args:    args,
+		IsRPC:   true,
 	}
-
-	ctx, cancel := context.WithCancel(b.ctx)
-	cmd := exec.CommandContext(ctx, command, args...)
-
-	readFromSubprocess, writeToParent, err := os.Pipe()
-	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("failed to create output pipe: %w", err)
-	}
-
-	readFromParent, writeToSubprocess, err := os.Pipe()
-	if err != nil {
-		cancel()
-		readFromSubprocess.Close()
-		writeToParent.Close()
-		return nil, fmt.Errorf("failed to create input pipe: %w", err)
-	}
-
-	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
-
-	inputFD, outputFD := b.getRPCFileDescriptors()
-
-	setProcessEnv(cmd, id, b.config)
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
-	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
-	}
-	cmd.Env = append(cmd.Env, "BROKER_PASSING_RPC_FDS=1")
-
-	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
-
-	proc := &Process{
-		info:   info,
-		cmd:    cmd,
-		cancel: cancel,
-		done:   make(chan struct{}),
-		stdin:  writeToSubprocess,
-		stdout: readFromSubprocess,
-	}
-
-	if err := cmd.Start(); err != nil {
-		cancel()
-		readFromSubprocess.Close()
-		writeToSubprocess.Close()
-		readFromParent.Close()
-		writeToParent.Close()
-		info.Status = ProcessStatusFailed
-		return info, fmt.Errorf("failed to start process: %w", err)
-	}
-
-	readFromParent.Close()
-	writeToParent.Close()
-
-	info.PID = cmd.Process.Pid
-	b.processes[id] = proc
-
-	b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s (advertised fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
-
-	infoCopy := *info
-
-	b.registerProcessTransport(id, inputFD, outputFD)
-
-	b.wg.Add(1)
-	go b.readProcessMessages(proc)
-
-	b.wg.Add(1)
-	go b.reapProcess(proc)
-
-	return &infoCopy, nil
+	return b.spawnInternal(id, command, args, restartConfig)
 }
 
 // SpawnWithRestart starts a new subprocess with auto-restart capability.
 func (b *Broker) SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if _, exists := b.processes[id]; exists {
-		return nil, fmt.Errorf("process with id '%s' already exists", id)
+	restartConfig := &RestartConfig{
+		Enabled:     true,
+		MaxRestarts: maxRestarts,
+		Command:     command,
+		Args:        args,
+		IsRPC:       false,
 	}
-
-	ctx, cancel := context.WithCancel(b.ctx)
-	cmd := exec.CommandContext(ctx, command, args...)
-
-	setProcessEnv(cmd, id, b.config)
-
-	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
-
-	proc := &Process{
-		info:   info,
-		cmd:    cmd,
-		cancel: cancel,
-		done:   make(chan struct{}),
-		restartConfig: &RestartConfig{
-			Enabled:      true,
-			MaxRestarts:  maxRestarts,
-			RestartCount: 0,
-			Command:      command,
-			Args:         args,
-			IsRPC:        false,
-		},
-	}
-
-	if err := cmd.Start(); err != nil {
-		cancel()
-		info.Status = ProcessStatusFailed
-		return info, fmt.Errorf("failed to start process: %w", err)
-	}
-
-	info.PID = cmd.Process.Pid
-	b.processes[id] = proc
-
-	b.logger.Info("Spawned process with restart: id=%s pid=%d command=%s max_restarts=%d", id, info.PID, command, maxRestarts)
-
-	infoCopy := *info
-
-	b.wg.Add(1)
-	go b.reapProcess(proc)
-
-	return &infoCopy, nil
+	return b.spawnInternal(id, command, args, restartConfig)
 }
 
 // SpawnRPCWithRestart starts a new RPC subprocess with auto-restart capability using custom file descriptors.
 func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error) {
+	restartConfig := &RestartConfig{
+		Enabled:     true,
+		MaxRestarts: maxRestarts,
+		Command:     command,
+		Args:        args,
+		IsRPC:       true,
+	}
+	return b.spawnInternal(id, command, args, restartConfig)
+}
+
+// spawnInternal handles the common logic for spawning processes.
+func (b *Broker) spawnInternal(id, command string, args []string, restartConfig *RestartConfig) (*ProcessInfo, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -189,74 +63,101 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
 
-	readFromSubprocess, writeToParent, err := os.Pipe()
-	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("failed to create output pipe: %w", err)
+	var inputFD, outputFD int
+	var readFromSubprocess, writeToSubprocess *os.File
+	var readFromParent, writeToParent *os.File
+	isRPC := restartConfig != nil && restartConfig.IsRPC
+
+	if isRPC {
+		var err error
+		// Create output pipe: subprocess writes to writeToParent, parent reads from readFromSubprocess
+		readFromSubprocess, writeToParent, err = os.Pipe()
+		if err != nil {
+			cancel()
+			b.logger.Error("Failed to create output pipe for process %s: %v", id, err)
+			return nil, fmt.Errorf("failed to create output pipe: %w", err)
+		}
+
+		// Create input pipe: parent writes to writeToSubprocess, subprocess reads from readFromParent
+		readFromParent, writeToSubprocess, err = os.Pipe()
+		if err != nil {
+			cancel()
+			readFromSubprocess.Close()
+			writeToParent.Close()
+			b.logger.Error("Failed to create input pipe for process %s: %v", id, err)
+			return nil, fmt.Errorf("failed to create input pipe: %w", err)
+		}
+
+		cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
+		inputFD, outputFD = b.getRPCFileDescriptors()
+		cmd.Env = append(cmd.Env, "BROKER_PASSING_RPC_FDS=1")
 	}
-
-	readFromParent, writeToSubprocess, err := os.Pipe()
-	if err != nil {
-		cancel()
-		readFromSubprocess.Close()
-		writeToParent.Close()
-		return nil, fmt.Errorf("failed to create input pipe: %w", err)
-	}
-
-	cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
-
-	inputFD, outputFD := b.getRPCFileDescriptors()
 
 	setProcessEnv(cmd, id, b.config)
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
-	if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
+	if isRPC {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
+		if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
+		}
 	}
-	cmd.Env = append(cmd.Env, "BROKER_PASSING_RPC_FDS=1")
 
 	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
-
+	
 	proc := &Process{
 		info:   info,
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
-		stdin:  writeToSubprocess,
-		stdout: readFromSubprocess,
-		restartConfig: &RestartConfig{
-			Enabled:      true,
-			MaxRestarts:  maxRestarts,
-			RestartCount: 0,
-			Command:      command,
-			Args:         args,
-			IsRPC:        true,
-		},
+	}
+	
+	if isRPC {
+		proc.stdin = writeToSubprocess
+		proc.stdout = readFromSubprocess
+	}
+
+	if restartConfig != nil {
+		// Ensure restart config has correct command/args if not set
+		if restartConfig.Command == "" {
+			restartConfig.Command = command
+		}
+		if len(restartConfig.Args) == 0 {
+			restartConfig.Args = args
+		}
+		proc.restartConfig = restartConfig
 	}
 
 	if err := cmd.Start(); err != nil {
 		cancel()
-		readFromSubprocess.Close()
-		writeToSubprocess.Close()
-		readFromParent.Close()
-		writeToParent.Close()
+		if isRPC {
+			readFromSubprocess.Close()
+			writeToSubprocess.Close()
+			readFromParent.Close()
+			writeToParent.Close()
+		}
 		info.Status = ProcessStatusFailed
 		return info, fmt.Errorf("failed to start process: %w", err)
 	}
 
-	readFromParent.Close()
-	writeToParent.Close()
+	if isRPC {
+		// Close parent's copy of the pipe ends used by the child
+		readFromParent.Close()
+		writeToParent.Close()
+	}
 
 	info.PID = cmd.Process.Pid
 	b.processes[id] = proc
 
-	b.logger.Info("Spawned RPC process with restart: id=%s pid=%d command=%s max_restarts=%d (advertised fds=%d,%d)", id, info.PID, command, maxRestarts, inputFD, outputFD)
-
+	// Create a copy of the process info to return, before starting goroutines that might modify it
 	infoCopy := *info
 
-	b.registerProcessTransport(id, inputFD, outputFD)
-
-	b.wg.Add(1)
-	go b.readProcessMessages(proc)
+	if isRPC {
+		b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s (advertised fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
+		b.registerProcessTransport(id, inputFD, outputFD)
+		b.wg.Add(1)
+		go b.readProcessMessages(proc)
+	} else {
+		b.logger.Info("Spawned process: id=%s pid=%d command=%s", id, info.PID, command)
+	}
 
 	b.wg.Add(1)
 	go b.reapProcess(proc)
@@ -392,7 +293,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 		b.transportManager.RegisterTransport(processID, fdTransport)
 		b.logger.Debug("Registered FD transport for process %s", processID)
 	} else {
-		b.logger.Warn("Failed to connect FD transport for process %s: %v", processID, err)
+		b.logger.Error("Failed to connect FD transport for process %s: %v", processID, err)
 	}
 }
 
