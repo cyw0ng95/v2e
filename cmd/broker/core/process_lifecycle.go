@@ -51,7 +51,11 @@ func (b *Broker) reapProcess(p *Process) {
 		"exit_code": p.info.ExitCode,
 	})
 	event.Target = "test-target"
+
+	// Release lock before sending message to avoid deadlock if channel is full
+	p.mu.Unlock()
 	b.sendMessageInternal(event)
+	p.mu.Lock()
 
 	if p.restartConfig != nil && p.restartConfig.Enabled {
 		if p.restartConfig.MaxRestarts >= 0 && p.restartConfig.RestartCount >= p.restartConfig.MaxRestarts {
