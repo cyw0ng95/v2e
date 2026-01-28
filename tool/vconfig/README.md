@@ -95,8 +95,6 @@ The tool generates a simple configuration file format for build systems:
 
 ```
 CONFIG_MIN_LOG_LEVEL="INFO"
-CONFIG_DEBUG_MODE=n
-CONFIG_ENABLE_METRICS=y
 ```
 
 ## License

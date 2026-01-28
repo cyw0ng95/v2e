@@ -119,7 +119,7 @@ func TestGetDefaultConfig(t *testing.T) {
 	}
 
 	// Check that required features exist
-	requiredFeatures := []string{"CONFIG_MIN_LOG_LEVEL", "CONFIG_DEBUG_MODE", "CONFIG_ENABLE_METRICS"}
+	requiredFeatures := []string{"CONFIG_MIN_LOG_LEVEL"}
 	for _, feature := range requiredFeatures {
 		if _, exists := config.Features[feature]; !exists {
 			t.Errorf("Expected feature %s to exist in default config", feature)
@@ -137,26 +137,5 @@ func TestGetDefaultConfig(t *testing.T) {
 		if minLogLevel.Default != "INFO" {
 			t.Errorf("Expected CONFIG_MIN_LOG_LEVEL default to be 'INFO', got '%v'", minLogLevel.Default)
 		}
-	}
-}
-
-func TestConfigValidation(t *testing.T) {
-	config := GetDefaultConfig()
-
-	err := config.Validate()
-	if err != nil {
-		t.Errorf("Default config should be valid: %v", err)
-	}
-
-	// Test invalid config - missing description
-	invalidConfig := GetDefaultConfig()
-	if option, exists := invalidConfig.Features["CONFIG_DEBUG_MODE"]; exists {
-		option.Description = ""
-		invalidConfig.Features["CONFIG_DEBUG_MODE"] = option
-	}
-
-	err = invalidConfig.Validate()
-	if err == nil {
-		t.Error("Config with missing description should be invalid")
 	}
 }

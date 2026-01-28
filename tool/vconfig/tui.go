@@ -274,15 +274,13 @@ func runTUIInteractive() error {
 
 				// Wait a moment then restore
 				go func() {
-					select {
-					case <-time.After(time.Second * 3):
-						grid.Set(
-							termui.NewRow(1.0/10, title),
-							termui.NewRow(8.0/10, list),
-							termui.NewRow(1.0/10, instructions),
-						)
-						termui.Render(grid)
-					}
+					time.Sleep(time.Second * 3)
+					grid.Set(
+						termui.NewRow(1.0/10, title),
+						termui.NewRow(8.0/10, list),
+						termui.NewRow(1.0/10, instructions),
+					)
+					termui.Render(grid)
 				}()
 			} else {
 				// Read and display the config content in the TUI
@@ -306,15 +304,13 @@ func runTUIInteractive() error {
 
 					// Wait a moment then restore
 					go func() {
-						select {
-						case <-time.After(time.Second * 3):
-							grid.Set(
-								termui.NewRow(1.0/10, title),
-								termui.NewRow(8.0/10, list),
-								termui.NewRow(1.0/10, instructions),
-							)
-							termui.Render(grid)
-						}
+						time.Sleep(time.Second * 3)
+						grid.Set(
+							termui.NewRow(1.0/10, title),
+							termui.NewRow(8.0/10, list),
+							termui.NewRow(1.0/10, instructions),
+						)
+						termui.Render(grid)
 					}()
 				} else {
 					// Show the config content
@@ -334,15 +330,13 @@ func runTUIInteractive() error {
 
 					// Wait a moment then restore
 					go func() {
-						select {
-						case <-time.After(time.Second * 5):
-							grid.Set(
-								termui.NewRow(1.0/10, title),
-								termui.NewRow(8.0/10, list),
-								termui.NewRow(1.0/10, instructions),
-							)
-							termui.Render(grid)
-						}
+						time.Sleep(time.Second * 5)
+						grid.Set(
+							termui.NewRow(1.0/10, title),
+							termui.NewRow(8.0/10, list),
+							termui.NewRow(1.0/10, instructions),
+						)
+						termui.Render(grid)
 					}()
 				}
 				// Clean up temp file
