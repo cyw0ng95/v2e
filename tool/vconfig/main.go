@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	configFile      = flag.String("config", "config.json", "Path to the configuration file")
+	configFile       = flag.String("config", "config.json", "Path to the configuration file")
 	generateDefaults = flag.Bool("generate-defaults", false, "Generate configuration with default values")
-	tuiMode         = flag.Bool("tui", false, "Run in TUI mode")
-	getBuildFlags   = flag.Bool("get-build-flags", false, "Output build flags based on configuration")
+	tuiMode          = flag.Bool("tui", false, "Run in TUI mode")
+	getBuildFlags    = flag.Bool("get-build-flags", false, "Output build flags based on configuration")
 )
 
 func main() {
@@ -50,30 +50,30 @@ func main() {
 				fmt.Printf("Error loading config: %v\n", err)
 				os.Exit(1)
 			}
-			
+
 			flags, err := GenerateBuildFlags(config)
 			if err != nil {
 				fmt.Printf("Error generating build flags: %v\n", err)
 				os.Exit(1)
 			}
-			
+
 			fmt.Print(flags)
 			return
 		}
-		
+
 		// Convert simple config to full config
 		config, err := ConvertSimpleToFullConfig(simpleConfig)
 		if err != nil {
 			fmt.Printf("Error converting simple config: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		flags, err := GenerateBuildFlags(config)
 		if err != nil {
 			fmt.Printf("Error generating build flags: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		fmt.Print(flags)
 		return
 	}

@@ -93,7 +93,7 @@ func TestGenerateCHeader(t *testing.T) {
 func TestGenerateBuildFlagsEmpty(t *testing.T) {
 	// Create a config with no enabled boolean features
 	config := GetDefaultConfig()
-	
+
 	// Disable all boolean features
 	for key, option := range config.Features {
 		if _, ok := option.Default.(bool); ok {

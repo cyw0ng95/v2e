@@ -53,10 +53,28 @@ func SaveConfig(path string, config *Config) error {
 }
 
 func GetDefaultConfigFromFile() (Config, error) {
-	data, err := os.ReadFile("../config_spec.json")
+	// Try multiple possible locations for the config spec file
+	possiblePaths := []string{
+		"config_spec.json",          // Current directory
+		"../config_spec.json",       // One level up
+		"../../config_spec.json",    // Two levels up (project root from tool/vconfig)
+		"../../../config_spec.json", // Three levels up
+	}
+
+	var data []byte
+	var err error
+
+	// Try each path until we find the file
+	for _, path := range possiblePaths {
+		data, err = os.ReadFile(path)
+		if err == nil {
+			break
+		}
+	}
+
 	if err != nil {
-		// If the file doesn't exist, return the default config
-		return GetDefaultConfig(), nil
+		// If the file doesn't exist anywhere, return an empty config
+		return Config{}, err
 	}
 
 	var config Config
@@ -69,76 +87,13 @@ func GetDefaultConfigFromFile() (Config, error) {
 }
 
 func GetDefaultConfig() Config {
-	return Config{
-		Build: BuildSection{
-			ConfigFile: ".config",
-		},
-		Features: map[string]ConfigOption{
-			"CONFIG_MIN_LOG_LEVEL": {
-				Description: "Minimum log level for the application",
-				Type:        "string",
-				Default:     "INFO",
-				Values:      []string{"DEBUG", "INFO", "WARN", "ERROR"},
-			},
-			"CONFIG_DEBUG_MODE": {
-				Description: "Enable debug mode with additional logging",
-				Type:        "bool",
-				Default:     false,
-			},
-			"CONFIG_ENABLE_METRICS": {
-				Description: "Enable metrics collection and reporting",
-				Type:        "bool",
-				Default:     true,
-			},
-			"CONFIG_ENABLE_TRACING": {
-				Description: "Enable distributed tracing",
-				Type:        "bool",
-				Default:     false,
-			},
-			"CONFIG_ENABLE_PROFILING": {
-				Description: "Enable profiling for performance analysis",
-				Type:        "bool",
-				Default:     false,
-			},
-			"CONFIG_USE_CACHE": {
-				Description: "Enable caching mechanisms",
-				Type:        "bool",
-				Default:     true,
-			},
-			"CONFIG_ENABLE_SSL": {
-				Description: "Enable SSL/TLS encryption",
-				Type:        "bool",
-				Default:     true,
-			},
-			"CONFIG_ASYNC_PROCESSING": {
-				Description: "Enable asynchronous processing",
-				Type:        "bool",
-				Default:     true,
-			},
-		},
-		Profiles: map[string]interface{}{
-			"development": map[string]interface{}{
-				"CONFIG_MIN_LOG_LEVEL":    "DEBUG",
-				"CONFIG_DEBUG_MODE":       true,
-				"CONFIG_ENABLE_METRICS":   true,
-				"CONFIG_ENABLE_TRACING":   true,
-				"CONFIG_ENABLE_PROFILING": true,
-				"CONFIG_USE_CACHE":        false,
-				"CONFIG_ENABLE_SSL":       true,
-				"CONFIG_ASYNC_PROCESSING": true,
-			},
-			"production": map[string]interface{}{
-				"CONFIG_MIN_LOG_LEVEL":    "INFO",
-				"CONFIG_DEBUG_MODE":       false,
-				"CONFIG_ENABLE_METRICS":   true,
-				"CONFIG_ENABLE_TRACING":   false,
-				"CONFIG_ENABLE_PROFILING": false,
-				"CONFIG_USE_CACHE":        true,
-				"CONFIG_ENABLE_SSL":       true,
-				"CONFIG_ASYNC_PROCESSING": true,
-			},
-		},
+	// Try to load from spec file first
+	specConfig, err := GetDefaultConfigFromFile()
+	if err != nil {
+		panic("Failed to load default config: " + err.Error())
 	}
+
+	return specConfig
 }
 
 func (c *Config) Validate() error {

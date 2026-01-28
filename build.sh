@@ -56,7 +56,7 @@ GO_TAGS="${GO_TAGS:-libxml2}"
 # Check operating system for proper containerization support
 DETECTED_OS="$(uname -s)"
 if [[ "$DETECTED_OS" == "Darwin" ]]; then
-    echo "Error: On macOS, please use runenv.sh to run in containerized environment."
+    log_error "On macOS, please use runenv.sh to run in containerized environment."
     exit 1
 fi
 
@@ -138,6 +138,7 @@ show_help() {
 Usage: $0 [OPTIONS]
 
 Options:
+    -c          Run vconfig TUI to configure build options
     -t          Run unit tests and return result for GitHub CI
     -f          Run fuzz tests on key interfaces (5 seconds per test)
     -m          Run performance benchmarks and generate report
@@ -151,7 +152,6 @@ Examples:
     $0 -t       # Run unit tests for CI
     $0 -f       # Run fuzz tests (5 seconds per test)
     $0 -m       # Run performance benchmarks
-    $0 -M       # Run RPC performance benchmarks
     $0 -p       # Build and package binaries
     $0 -r       # Run Node.js process and broker
     $0 -t -v    # Run unit tests with verbose output
@@ -873,23 +873,36 @@ main() {
 
     # Execute based on options
     if [ "$RUN_VCONFIG_TUI" = true ]; then
-        # Ensure vconfig binary exists
-        if [ ! -f ".build/vconfig" ]; then
-            echo "Building vconfig tool..."
-            mkdir -p .build
-            (cd tool/vconfig && go build -o ../.build/vconfig .)
-        fi
-        # Check if config exists
-        if [ -f ".build/.config" ]; then
-            echo "Using existing config at .build/.config, skipping TUI"
+        # Ensure vconfig binary exists and is up-to-date with source files
+        VCONFIG_BINARY=".build/vconfig"
+        VCONFIG_SRC_CHANGED=false
+        
+        # Check if binary exists
+        if [ ! -f "$VCONFIG_BINARY" ]; then
+            VCONFIG_SRC_CHANGED=true
         else
-            echo "No config found, running vconfig TUI..."
-            mkdir -p .build
-            .build/vconfig -tui -config .build/.config
+            # Check if any source files are newer than the binary
+            for src_file in tool/vconfig/*.go; do
+                if [ "$src_file" -nt "$VCONFIG_BINARY" ]; then
+                    VCONFIG_SRC_CHANGED=true
+                    break
+                fi
+            done
         fi
-        # Even if we didn't run TUI, we'll continue to build
-        build_project
-        exit_code=$?
+        
+        if [ "$VCONFIG_SRC_CHANGED" = true ]; then
+            log_info "Building vconfig tool..."
+            mkdir -p .build
+            (cd tool/vconfig && go build -o ../../.build/vconfig .)
+        fi
+        # When -c flag is used, always run TUI regardless of existing config
+        log_info "Running vconfig TUI..."
+        mkdir -p .build
+        .build/vconfig -tui -config .build/.config
+        log_info "Current config:"
+        cat ./.build/.config
+        # Only run TUI, don't continue with build
+        exit 0
     elif [ "$RUN_TESTS" = true ]; then
         run_tests
         exit_code=$?

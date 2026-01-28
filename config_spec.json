@@ -8,63 +8,6 @@
       "type": "string",
       "default": "INFO",
       "values": ["DEBUG", "INFO", "WARN", "ERROR"]
-    },
-    "CONFIG_DEBUG_MODE": {
-      "description": "Enable debug mode with additional logging",
-      "type": "bool",
-      "default": false
-    },
-    "CONFIG_ENABLE_METRICS": {
-      "description": "Enable metrics collection and reporting",
-      "type": "bool",
-      "default": true
-    },
-    "CONFIG_ENABLE_TRACING": {
-      "description": "Enable distributed tracing",
-      "type": "bool",
-      "default": false
-    },
-    "CONFIG_ENABLE_PROFILING": {
-      "description": "Enable profiling for performance analysis",
-      "type": "bool",
-      "default": false
-    },
-    "CONFIG_USE_CACHE": {
-      "description": "Enable caching mechanisms",
-      "type": "bool",
-      "default": true
-    },
-    "CONFIG_ENABLE_SSL": {
-      "description": "Enable SSL/TLS encryption",
-      "type": "bool",
-      "default": true
-    },
-    "CONFIG_ASYNC_PROCESSING": {
-      "description": "Enable asynchronous processing",
-      "type": "bool",
-      "default": true
-    }
-  },
-  "profiles": {
-    "development": {
-      "CONFIG_MIN_LOG_LEVEL": "DEBUG",
-      "CONFIG_DEBUG_MODE": true,
-      "CONFIG_ENABLE_METRICS": true,
-      "CONFIG_ENABLE_TRACING": true,
-      "CONFIG_ENABLE_PROFILING": true,
-      "CONFIG_USE_CACHE": false,
-      "CONFIG_ENABLE_SSL": true,
-      "CONFIG_ASYNC_PROCESSING": true
-    },
-    "production": {
-      "CONFIG_MIN_LOG_LEVEL": "INFO",
-      "CONFIG_DEBUG_MODE": false,
-      "CONFIG_ENABLE_METRICS": true,
-      "CONFIG_ENABLE_TRACING": false,
-      "CONFIG_ENABLE_PROFILING": false,
-      "CONFIG_USE_CACHE": true,
-      "CONFIG_ENABLE_SSL": true,
-      "CONFIG_ASYNC_PROCESSING": true
     }
   }
 }

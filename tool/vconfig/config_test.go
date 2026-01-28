@@ -142,7 +142,7 @@ func TestGetDefaultConfig(t *testing.T) {
 
 func TestConfigValidation(t *testing.T) {
 	config := GetDefaultConfig()
-	
+
 	err := config.Validate()
 	if err != nil {
 		t.Errorf("Default config should be valid: %v", err)
