@@ -471,7 +471,14 @@ func (s *LocalAttackStore) GetRelatedTechniquesByTactic(ctx context.Context, tac
 	var techniques []AttackTechnique
 	for _, rel := range relationships {
 		var technique AttackTechnique
-		if err := s.db.WithContext(ctx).Where("id = ?", rel.SourceRef).First(&technique).Error; err != nil {
+		// For "mitigates" relationships, technique ID is in SourceRef
+		// For "has-subtechnique" relationships, technique ID is in TargetRef
+		techniqueID := rel.SourceRef
+		if rel.RelationshipType == "has-subtechnique" {
+			techniqueID = rel.TargetRef
+		}
+		
+		if err := s.db.WithContext(ctx).Where("id = ?", techniqueID).First(&technique).Error; err != nil {
 			continue // Skip if technique not found
 		}
 		techniques = append(techniques, technique)

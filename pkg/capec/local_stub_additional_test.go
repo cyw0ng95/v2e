@@ -27,7 +27,7 @@ func TestImportFromXML_PersistsData(t *testing.T) {
 	xmlContent := `<?xml version="1.0"?><Attack_Patterns><Attack_Pattern ID="1" Name="Test"><Description>Desc</Description><Likelihood_Of_Attack>Low</Likelihood_Of_Attack><Typical_Severity>High</Typical_Severity><Related_Weaknesses><Related_Weakness CWE_ID="CWE-1" /></Related_Weaknesses><Example_Instances><Example>Example text</Example></Example_Instances><Mitigations><Mitigation>Mitigation text</Mitigation></Mitigations><References><Reference External_Reference_ID="REF-1" /></References></Attack_Pattern></Attack_Patterns>`
 	xmlPath := writeTempFile(t, dir, "capec.xml", xmlContent)
 
-	if err := store.ImportFromXML(xmlPath, "", true); err != nil {
+	if err := store.ImportFromXML(xmlPath, true); err != nil {
 		t.Fatalf("ImportFromXML: %v", err)
 	}
 

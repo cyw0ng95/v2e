@@ -20,7 +20,7 @@ type RunStore struct {
 
 // NewRunStore creates a new run store backed by BoltDB
 func NewRunStore(dbPath string, logger *common.Logger) (*RunStore, error) {
-	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 10 * time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open run database: %w", err)
 	}

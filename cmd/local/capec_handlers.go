@@ -15,7 +15,7 @@ import (
 
 // capecStore captures the subset of CAPEC store behaviors needed by handlers.
 type capecStore interface {
-	ImportFromXML(xmlPath, xsdPath string, force bool) error
+	ImportFromXML(xmlPath string, force bool) error
 	GetCatalogMeta(ctx context.Context) (*capec.CAPECCatalogMeta, error)
 	ListCAPECsPaginated(ctx context.Context, offset, limit int) ([]capec.CAPECItemModel, int64, error)
 	GetByID(ctx context.Context, capecID string) (*capec.CAPECItemModel, error)
@@ -32,7 +32,7 @@ func createImportCAPECsHandler(store capecStore, logger *common.Logger) subproce
 		logger.Debug("RPCImportCAPECs handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
 		var req struct {
 			Path  string `json:"path"`
-			XSD   string `json:"xsd"`
+			XSD   string `json:"xsd,omitempty"`
 			Force bool   `json:"force,omitempty"`
 		}
 		if msg.Payload != nil {
@@ -47,19 +47,19 @@ func createImportCAPECsHandler(store capecStore, logger *common.Logger) subproce
 				}, nil
 			}
 		}
-		logger.Debug("RPCImportCAPECs received path: %s xsd: %s", req.Path, req.XSD)
-		if req.Path == "" || req.XSD == "" {
+		logger.Debug("RPCImportCAPECs received path: %s", req.Path)
+		if req.Path == "" {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         "path and xsd are required",
+				Error:         "path is required",
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
 		}
 		logger.Info("Starting CAPEC import from path: %s. correlation_id=%s", req.Path, msg.CorrelationID)
-		if err := store.ImportFromXML(req.Path, req.XSD, req.Force); err != nil {
-			logger.Warn("Failed to import CAPEC from XML: %v (path: %s xsd: %s)", err, req.Path, req.XSD)
+		if err := store.ImportFromXML(req.Path, req.Force); err != nil {
+			logger.Warn("Failed to import CAPEC from XML: %v (path: %s)", err, req.Path)
 			if _, statErr := os.Stat(req.Path); statErr != nil {
 				logger.Warn("CAPEC import file stat error: %v (path: %s)", statErr, req.Path)
 			}
@@ -110,7 +110,7 @@ func createForceImportCAPECsHandler(store capecStore, logger *common.Logger) sub
 		logger.Debug("RPCForceImportCAPECs handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
 		var req struct {
 			Path string `json:"path"`
-			XSD  string `json:"xsd"`
+			XSD  string `json:"xsd,omitempty"`
 		}
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -124,18 +124,18 @@ func createForceImportCAPECsHandler(store capecStore, logger *common.Logger) sub
 				}, nil
 			}
 		}
-		if req.Path == "" || req.XSD == "" {
+		if req.Path == "" {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         "path and xsd are required",
+				Error:         "path is required",
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
 		}
 		logger.Info("Starting force CAPEC import from path: %s. correlation_id=%s", req.Path, msg.CorrelationID)
-		if err := store.ImportFromXML(req.Path, req.XSD, true); err != nil {
-			logger.Warn("Failed to import CAPEC from XML (force): %v (path: %s xsd: %s)", err, req.Path, req.XSD)
+		if err := store.ImportFromXML(req.Path, true); err != nil {
+			logger.Warn("Failed to import CAPEC from XML (force): %v (path: %s)", err, req.Path)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

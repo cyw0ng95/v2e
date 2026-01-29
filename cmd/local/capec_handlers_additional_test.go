@@ -36,12 +36,12 @@ type stubCAPECStore struct {
 	}
 }
 
-func (s *stubCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) error {
+func (s *stubCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 	s.lastImport = struct {
 		path  string
 		xsd   string
 		force bool
-	}{path: xmlPath, xsd: xsdPath, force: force}
+	}{path: xmlPath, force: force}
 	return s.importErr
 }
 
@@ -198,7 +198,7 @@ func TestCreateImportCAPECsHandler_ValidatesInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handler returned error: %v", err)
 	}
-	if resp.Type != subprocess.MessageTypeError || resp.Error != "path and xsd are required" {
+	if resp.Type != subprocess.MessageTypeError || resp.Error != "path is required" {
 		t.Fatalf("expected validation error, got %+v", resp)
 	}
 }
@@ -208,7 +208,7 @@ func TestCreateImportCAPECsHandler_Succeeds(t *testing.T) {
 	store := &stubCAPECStore{}
 	handler := createImportCAPECsHandler(store, logger)
 
-	payload, _ := subprocess.MarshalFast(map[string]any{"path": "file.xml", "xsd": "schema.xsd", "force": true})
+	payload, _ := subprocess.MarshalFast(map[string]any{"path": "file.xml", "force": true})
 	msg := &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "RPCImportCAPECs", Payload: payload}
 	resp, err := handler(context.Background(), msg)
 	if err != nil {
@@ -217,7 +217,7 @@ func TestCreateImportCAPECsHandler_Succeeds(t *testing.T) {
 	if resp.Type != subprocess.MessageTypeResponse {
 		t.Fatalf("expected success response, got %+v", resp)
 	}
-	if !store.lastImport.force || store.lastImport.path != "file.xml" || store.lastImport.xsd != "schema.xsd" {
+	if !store.lastImport.force || store.lastImport.path != "file.xml" {
 		t.Fatalf("import parameters not recorded correctly: %+v", store.lastImport)
 	}
 }
@@ -227,7 +227,7 @@ func TestCreateImportCAPECsHandler_PropagatesStoreError(t *testing.T) {
 	store := &stubCAPECStore{importErr: errors.New("boom")}
 	handler := createImportCAPECsHandler(store, logger)
 
-	payload, _ := subprocess.MarshalFast(map[string]string{"path": "file.xml", "xsd": "schema.xsd"})
+	payload, _ := subprocess.MarshalFast(map[string]string{"path": "file.xml"})
 	msg := &subprocess.Message{Type: subprocess.MessageTypeRequest, ID: "RPCImportCAPECs", Payload: payload}
 	resp, err := handler(context.Background(), msg)
 	if err != nil {

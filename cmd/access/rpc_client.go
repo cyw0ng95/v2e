@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -41,7 +43,32 @@ type RPCClient struct {
 
 // NewRPCClient creates a new RPC client for broker communication
 func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
-	sp := subprocess.New(processID)
+	var sp *subprocess.Subprocess
+
+	// Check if we're running as an RPC subprocess with file descriptors
+	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
+		// Use file descriptors 3 and 4 for RPC communication
+		inputFD := 3
+		outputFD := 4
+
+		// Allow environment override for file descriptors
+		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				inputFD = fd
+			}
+		}
+		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				outputFD = fd
+			}
+		}
+
+		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
+	} else {
+		// Use default stdin/stdout for non-RPC mode
+		sp = subprocess.New(processID)
+	}
+
 	client := &RPCClient{
 		sp:              sp,
 		pendingRequests: make(map[string]*requestEntry),
@@ -67,10 +94,11 @@ func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message)
 
 	if entry != nil {
 		common.Debug(LogMsgRPCResponseReceived, msg.CorrelationID, msg.Type)
+		common.Debug("Signaling response for correlation ID: %s, message type: %s", msg.CorrelationID, msg.Type)
 		entry.signal(msg)
 		common.Debug(LogMsgRPCChannelSignal, msg.CorrelationID)
 	} else {
-		common.Debug("Received response for unknown correlation ID: %s", msg.CorrelationID)
+		common.Warn("Received response for unknown correlation ID: %s, message type: %s, target: %s", msg.CorrelationID, msg.Type, msg.Target)
 	}
 
 	return nil, nil // Don't send another response
@@ -79,6 +107,7 @@ func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message)
 // handleError handles error messages from the broker (treat them as responses)
 func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 	// Error messages are also valid responses
+	common.Debug("Handling error message for correlation ID: %s, error: %s", msg.CorrelationID, msg.Error)
 	return c.handleResponse(ctx, msg)
 }
 
@@ -94,6 +123,8 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 	c.correlationSeq++
 	correlationID := fmt.Sprintf("access-rpc-%d", c.correlationSeq)
 	c.mu.Unlock()
+
+	common.Debug("Creating RPC request with correlation ID: %s, method: %s, target: %s", correlationID, method, target)
 
 	// Create response channel and entry
 	resp := make(chan *subprocess.Message, 1)
@@ -133,18 +164,26 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 	}
 
 	// Send request to broker
+	common.Debug("About to send RPC request: %s to target: %s, correlation: %s", method, target, correlationID)
 	if err := c.sp.SendMessage(msg); err != nil {
+		common.Error("Failed to send RPC request: %s to target: %s, correlation: %s, error: %v", method, target, correlationID, err)
 		return nil, fmt.Errorf("failed to send RPC request: %w", err)
 	}
+	common.Debug("Successfully sent RPC request: %s to target: %s, correlation: %s", method, target, correlationID)
 
 	// Wait for response with timeout (use configured rpcTimeout)
+	common.Debug("Waiting for RPC response: %s to target: %s, correlation: %s", method, target, correlationID)
 	select {
 	case response := <-resp:
+		common.Debug("Received RPC response: %s from target: %s, correlation: %s", method, target, correlationID)
 		return response, nil
 	case <-time.After(c.rpcTimeout):
+		common.Error("RPC timeout waiting for response: %s from target: %s, correlation: %s", method, target, correlationID)
 		return nil, fmt.Errorf("RPC timeout waiting for response")
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		err := ctx.Err()
+		common.Error("RPC call context canceled while waiting for response: %s from target: %s, correlation: %s, error: %v", method, target, correlationID, err)
+		return nil, err
 	}
 }
 

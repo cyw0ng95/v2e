@@ -58,9 +58,41 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeout
 		}
 
 		// Forward RPC request to target process (use configured rpc timeout)
-		common.Debug(LogMsgRPCInvokeStarted, target, request.Method)
-		response, err := rpcClient.InvokeRPCWithTarget(c.Request.Context(), target, request.Method, request.Params)
+		requestCtx := c.Request.Context()
+		common.Info(LogMsgRPCInvokeStarted, target, request.Method)
+		common.Debug("RPC request context value: %v", requestCtx)
+
+		// Check if context is already done before making RPC call
+		select {
+		case <-requestCtx.Done():
+			err := requestCtx.Err()
+			common.Error("HTTP request context already canceled before RPC call: %v", err)
+			c.JSON(http.StatusOK, gin.H{
+				"retcode": 500,
+				"message": fmt.Sprintf("Request context canceled: %v", err),
+				"payload": nil,
+			})
+			return
+		default:
+			// Context is not done, proceed with RPC
+		}
+
+		// Create a separate context for the RPC call to avoid cancellation from HTTP context
+		// This prevents the RPC call from being canceled when the HTTP client disconnects
+		rpcCtx, cancel := context.WithTimeout(context.Background(), rpcClient.rpcTimeout)
+		defer cancel()
+
+		response, err := rpcClient.InvokeRPCWithTarget(rpcCtx, target, request.Method, request.Params)
 		common.Debug(LogMsgRPCInvokeCompleted, target, request.Method)
+
+		// Log context state after RPC call completes
+		select {
+		case <-requestCtx.Done():
+			err := requestCtx.Err()
+			common.Warn("HTTP request context canceled after RPC call: %v", err)
+		default:
+			// Context is still active
+		}
 
 		if err != nil {
 			common.Error(LogMsgRPCForwardingError, err)

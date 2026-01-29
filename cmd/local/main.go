@@ -15,6 +15,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/cyw0ng95/v2e/pkg/attack"
@@ -188,7 +189,32 @@ func main() {
 	logger.Info("All startup import processes completed")
 
 	// Create subprocess instance
-	sp := subprocess.New(processID)
+	var sp *subprocess.Subprocess
+	
+	// Check if we're running as an RPC subprocess with file descriptors
+	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
+		// Use file descriptors 3 and 4 for RPC communication
+		inputFD := 3
+		outputFD := 4
+		
+		// Allow environment override for file descriptors
+		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				inputFD = fd
+			}
+		}
+		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				outputFD = fd
+			}
+		}
+		
+		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
+	} else {
+		// Use default stdin/stdout for non-RPC mode
+		sp = subprocess.New(processID)
+	}
+	
 	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Register RPC handlers

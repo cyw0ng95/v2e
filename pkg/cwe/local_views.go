@@ -9,52 +9,52 @@ import (
 
 // GORM models for views and nested arrays
 type ViewModel struct {
-	ID        string `gorm:"primaryKey"`
-	Name      string
-	Type      string
-	Status    string
-	Objective string
-	Raw       []byte `gorm:"type:blob"`
+	ID        string `gorm:"column:id;primaryKey"`
+	Name      string `gorm:"column:name"`
+	Type      string `gorm:"column:type"`
+	Status    string `gorm:"column:status"`
+	Objective string `gorm:"column:objective"`
+	Raw       []byte `gorm:"column:raw;type:blob"`
 }
 
 type ViewMemberModel struct {
-	ID     uint   `gorm:"primaryKey"`
-	ViewID string `gorm:"index"`
-	CWEID  string
-	Role   string
+	ID     uint   `gorm:"column:id;primaryKey"`
+	ViewID string `gorm:"column:view_id;index"` // Foreign key to parent view
+	CWEID  string `gorm:"column:cwe_id"`        // Foreign key to CWE
+	Role   string `gorm:"column:role"`
 }
 
 type StakeholderModel struct {
-	ID          uint   `gorm:"primaryKey"`
-	ViewID      string `gorm:"index"`
-	Type        string
-	Description string
+	ID          uint   `gorm:"column:id;primaryKey"`
+	ViewID      string `gorm:"column:view_id;index"` // Foreign key to parent view
+	Type        string `gorm:"column:type"`
+	Description string `gorm:"column:description"`
 }
 
 type ViewReferenceModel struct {
-	ID                  uint   `gorm:"primaryKey"`
-	ViewID              string `gorm:"index"`
-	ExternalReferenceID string
-	Title               string
-	URL                 string
-	Description         string
+	ID                  uint   `gorm:"column:id;primaryKey"`
+	ViewID              string `gorm:"column:view_id;index"` // Foreign key to parent view
+	ExternalReferenceID string `gorm:"column:external_reference_id"`
+	Title               string `gorm:"column:title"`
+	URL                 string `gorm:"column:url"`
+	Description         string `gorm:"column:description"`
 }
 
 type ViewNoteModel struct {
-	ID     uint   `gorm:"primaryKey"`
-	ViewID string `gorm:"index"`
-	Type   string
-	Note   string
+	ID     uint   `gorm:"column:id;primaryKey"`
+	ViewID string `gorm:"column:view_id;index"`  // Foreign key to parent view
+	Type   string `gorm:"column:type"`
+	Note   string `gorm:"column:note"`
 }
 
 type ViewContentHistoryModel struct {
-	ID             uint   `gorm:"primaryKey"`
-	ViewID         string `gorm:"index"`
-	Type           string
-	SubmissionName string
-	Date           string
-	Version        string
-	Details        string
+	ID             uint   `gorm:"column:id;primaryKey"`
+	ViewID         string `gorm:"column:view_id;index"`  // Foreign key to parent view
+	Type           string `gorm:"column:type"`
+	SubmissionName string `gorm:"column:submission_name"`
+	Date           string `gorm:"column:date"`
+	Version        string `gorm:"column:version"`
+	Details        string `gorm:"column:details"`
 }
 
 // AutoMigrateViews migrates view-related tables into the provided DB.

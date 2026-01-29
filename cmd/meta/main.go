@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -124,19 +125,14 @@ func (c *DataPopulationController) startCAPECImport(ctx context.Context, session
 		path = "assets/capec_contents_latest.xml" // default path
 	}
 
-	xsd, ok := params["xsd"].(string)
-	if !ok {
-		xsd = "assets/capec_schema_latest.xsd" // default xsd
-	}
-
 	force, _ := params["force"].(bool)
 
-	c.logger.Info("Starting CAPEC import: session_id=%s, path=%s, xsd=%s, force=%t", sessionID, path, xsd, force)
+	c.logger.Info("Starting CAPEC import: session_id=%s, path=%s, force=%t", sessionID, path, force)
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
-	paramsObj := &rpc.ImportParams{Path: path, XSD: xsd, Force: force}
+	paramsObj := &rpc.ImportParams{Path: path, Force: force}
 	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", paramsObj)
 	if err != nil {
 		c.logger.Warn("Failed to start CAPEC import: %v", err)
@@ -384,7 +380,32 @@ func main() {
 	}()
 
 	// Create subprocess instance
-	sp := subprocess.New(processID)
+	var sp *subprocess.Subprocess
+
+	// Check if we're running as an RPC subprocess with file descriptors
+	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
+		// Use file descriptors 3 and 4 for RPC communication
+		inputFD := 3
+		outputFD := 4
+
+		// Allow environment override for file descriptors
+		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				inputFD = fd
+			}
+		}
+		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				outputFD = fd
+			}
+		}
+
+		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
+	} else {
+		// Use default stdin/stdout for non-RPC mode
+		sp = subprocess.New(processID)
+	}
+
 	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Create RPC client for inter-service communication
@@ -495,7 +516,7 @@ func main() {
 			return
 		}
 		// If meta not present or query failed, attempt import
-		params := &rpc.ImportParams{Path: "assets/capec_contents_latest.xml", XSD: "assets/capec_schema_latest.xsd"}
+		params := &rpc.ImportParams{Path: "assets/capec_contents_latest.xml"}
 		logger.Info(LogMsgCAPECImportTriggered, params.Path)
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
 		if err != nil {
