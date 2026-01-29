@@ -1,0 +1,92 @@
+{
+  "server": {
+    "address": "0.0.0.0:8080"
+  },
+  "broker": {
+    "logs_dir": "./logs",
+    "log_file": "./logs/broker.log",
+    "rpc_input_fd": 3,
+    "rpc_output_fd": 4,
+    "processes": [
+      {
+        "id": "access",
+        "command": "./access",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "remote",
+        "command": "./remote",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "local",
+        "command": "./local",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "meta",
+        "command": "./meta",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      },
+      {
+        "id": "sysmon",
+        "command": "./sysmon",
+        "args": [],
+        "rpc": true,
+        "restart": true,
+        "max_restarts": -1
+      }
+    ]
+  },
+  "logging": {
+    "level": "info",
+    "dir": "./logs"
+  },
+  "access": {
+    "rpc_timeout_seconds": 30,
+    "shutdown_timeout_seconds": 10,
+    "static_dir": "website"
+  }
+  ,
+  "proc": {
+    "max_message_size_bytes": 10485760,
+    "rpc_input_fd": 3,
+    "rpc_output_fd": 4
+  },
+  "local": {
+    "cve_db_path": "cve.db",
+    "cwe_db_path": "cwe.db",
+    "capec_db_path": "capec.db"
+  },
+  "meta": {
+    "session_db_path": "session.db"
+  },
+  "remote": {
+    "nvd_api_key": "",
+    "view_fetch_url": "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip"
+  },
+  "assets": {
+    "cwe_raw_path": "assets/cwe-raw.json",
+    "capec_xml_path": "assets/capec_contents_latest.xml",
+    "capec_xsd_path": "assets/capec_schema_latest.xsd"
+  },
+  "capec": {
+    "strict_xsd_validation": false
+  },
+  "website": {
+    "api_base_url": "http://localhost:8080",
+    "use_mock_data": false
+  }
+}

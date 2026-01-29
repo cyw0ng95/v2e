@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -19,6 +21,47 @@ func runAccess() {
 		common.Warn(LogMsgWarningLoadingConfig, err)
 		os.Exit(1)
 	}
+
+	// Set up logger with dual output (stdout + file) if logging directory is configured
+	var logOutput io.Writer
+	if config.Logging.Dir != "" {
+		// Create log file path for this service
+		logDir := config.Logging.Dir
+		if logDir != "." && logDir != "" {
+			if err := os.MkdirAll(logDir, 0755); err != nil {
+				common.Error("[ACCESS] Error creating log directory: %v", err)
+				os.Exit(1)
+			}
+		}
+		logFileName := filepath.Join(logDir, "access.log")
+		logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			common.Error("[ACCESS] Error opening log file: %v", err)
+			os.Exit(1)
+		}
+		defer logFile.Close()
+		logOutput = io.MultiWriter(os.Stdout, logFile)
+	} else {
+		logOutput = os.Stdout
+	}
+
+	// Set default logger output
+	common.SetOutput(logOutput)
+	// Set log level from config if present, default to InfoLevel
+	logLevel := common.InfoLevel
+	if config.Logging.Level != "" {
+		switch config.Logging.Level {
+		case "debug":
+			logLevel = common.DebugLevel
+		case "info":
+			logLevel = common.InfoLevel
+		case "warn":
+			logLevel = common.WarnLevel
+		case "error":
+			logLevel = common.ErrorLevel
+		}
+	}
+	common.SetLevel(logLevel)
 
 	common.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, config.Access.StaticDir)
 

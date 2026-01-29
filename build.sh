@@ -231,7 +231,7 @@ run_node_and_broker_once() {
     log_info "[build.sh] Starting broker from $PACKAGE_DIR..."
     pushd "$PACKAGE_DIR" > /dev/null
     log_info "[build.sh] Launch command: ./broker"
-    ./broker &
+    ./broker config.json &
     BROKER_PID=$!
     log_info "[build.sh] Broker started with PID: $BROKER_PID"
     popd > /dev/null
