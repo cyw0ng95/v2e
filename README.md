@@ -14,6 +14,9 @@ Key architectural principles:
 - **Frontend Integration**: A Next.js-based web application provides user interface access
 - **Performance Monitoring**: Built-in metrics collection and system monitoring capabilities
 - **Message Optimization**: Asynchronous message routing with configurable buffering and batching
+- **Adaptive Optimization**: Dynamic performance tuning based on workload with adaptive algorithms
+- **Enhanced Configuration**: Advanced configuration management via vconfig tool with TUI interface
+- **Cross-Platform Support**: Containerized development environment for macOS with Linux support
 
 ## System Architecture
 
@@ -25,6 +28,7 @@ graph TB
     
     subgraph "Broker Layer"
         B[Broker Service]
+        Opt[Adaptive Optimizer]
     end
     
     subgraph "Backend Services"
@@ -35,13 +39,33 @@ graph TB
         G[SysMon Service]
     end
     
+    subgraph "Transport Layer"
+        UDS[Unix Domain Sockets]
+        FDP[FD Pipes]
+    end
+    
     A <--> C
     C <--> B
     B <--> D
     B <--> E
     B <--> F
     B <--> G
+    B <--> Opt
+    B <--> UDS
+    B <--> FDP
+    UDS <--> C
+    UDS <--> D
+    UDS <--> E
+    UDS <--> F
+    UDS <--> G
+    FDP <--> C
+    FDP <--> D
+    FDP <--> E
+    FDP <--> F
+    FDP <--> G
 ```
+
+The system utilizes a sophisticated dual-mode transport layer with both Unix Domain Sockets (UDS) as the default and File Descriptor Pipes (FD Pipes) as a fallback mechanism. The broker incorporates an advanced adaptive optimizer that dynamically adjusts performance parameters based on system load and message throughput.
 
 ## Component Breakdown
 
@@ -54,6 +78,8 @@ graph TB
   - Implementing an adaptive traffic optimizer with configurable batching, buffering, and backpressure
   - Maintaining process lifecycle, health checks, and zombie process reaping
   - Tracking comprehensive real-time message statistics and performance metrics
+  - Supporting advanced logging with dual output (console + file) and configurable log levels
+  - Providing dynamic configuration of performance parameters via adaptive optimization algorithms
 
 - **Access Service** ([cmd/access](cmd/access)): The REST gateway that:
   - Serves as the primary interface for the Next.js frontend
@@ -102,6 +128,15 @@ The broker is configured via `config.json`. Key configuration areas include:
   - `optimizer_enable_adaptive`: Enable dynamic self-tuning of batch sizes and worker counts.
 - **Processes**: Define the subprocesses to be managed by the broker.
 
+### Advanced Configuration Management
+
+The project includes a dedicated configuration management tool (`vconfig`) with the following features:
+
+- **TUI Interface**: Interactive text-based user interface for configuration management
+- **Build Flag Generation**: Automatic generation of build flags based on configuration
+- **Default Configuration**: Generation of configuration files with default values
+- **Validation**: Configuration validation and error checking
+
 ## Transport & Communication
 
 The system uses a sophisticated, hybrid RPC communication mechanism designed for high throughput and low latency:
@@ -145,7 +180,20 @@ The frontend includes dedicated sections for:
 
 ## Quickstart
 
-Prerequisites: Go 1.21+, Node.js 20+, npm 10+, and basic shell tools.
+Prerequisites: Go 1.21+, Node.js 20+, npm 10+, and basic shell tools. For macOS users, Podman is required for the containerized development environment.
+
+### Build Script Options
+
+The project includes an enhanced build script (`build.sh`) with multiple options:
+
+- `-c`: Run vconfig TUI to configure build options
+- `-t`: Run unit tests and return result for GitHub CI
+- `-f`: Run fuzz tests on key interfaces (5 seconds per test)
+- `-m`: Run performance benchmarks and generate report
+- `-p`: Build and package binaries with assets
+- `-r`: Run Node.js process and broker (for development)
+- `-v`: Enable verbose output
+- `-h`: Show help message
 
 Build all commands:
 
@@ -246,6 +294,7 @@ Build and package:
 
 The build script supports the following options:
 
+- `-c`: Run vconfig TUI to configure build options
 - `-t`: Run unit tests and return result for CI
 - `-f`: Run fuzz tests on key interfaces (5 seconds per test)
 - `-m`: Run performance benchmarks and generate report
@@ -253,6 +302,25 @@ The build script supports the following options:
 - `-r`: Run Node.js process and broker (for development)
 - `-v`: Enable verbose output
 - `-h`: Show help message
+
+### Containerized Development Environment
+
+For macOS users, a containerized development environment is available via `runenv.sh`:
+
+```bash
+# Run any command in containerized environment
+./runenv.sh -t  # Run unit tests in container
+./runenv.sh -f  # Run fuzz tests in container
+./runenv.sh -m  # Run benchmarks in container
+./runenv.sh -p  # Package in container
+./runenv.sh -r  # Run development mode in container
+```
+
+On Linux, the containerized environment can be used with the `USE_CONTAINER=true` environment variable:
+
+```bash
+USE_CONTAINER=true ./runenv.sh -t  # Run tests in container on Linux
+```
 ## Job Session Management & State Machine
 
 The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with persistent state management. Job runs are stored in BoltDB and survive service restarts. The system also performs automatic CWE and CAPEC imports at startup.
@@ -396,6 +464,8 @@ The broker-first architecture provides several performance benefits:
 - **Asynchronous Message Optimization**: Configurable buffering, batching, and worker pools for high-volume scenarios
 - **Message Pooling**: Reduced garbage collection through sync.Pool-based message allocation
 - **Concurrent Task Execution**: go-taskflow enables parallel execution of tasks with up to 100 concurrent goroutines
+- **Adaptive Optimization**: Dynamic adjustment of performance parameters based on system load and throughput
+- **Enhanced Benchmarking**: Comprehensive performance benchmarking with detailed reporting capabilities
 
 Performance monitoring capabilities include:
 - Message throughput statistics
@@ -404,6 +474,8 @@ Performance monitoring capabilities include:
 - Error rate tracking
 - Per-process message statistics
 - Optimizer metrics and performance counters
+- Adaptive algorithm effectiveness metrics
+- Detailed benchmark reports with statistical analysis
 
 ## Project Layout
 
@@ -427,6 +499,7 @@ Performance monitoring capabilities include:
   - jsonutil - JSON utility functions
   - rpc - RPC parameter types
   - testutils - Test utilities
+- **tool/vconfig** - Configuration management tool with TUI interface
 - **tests/** - Integration tests (pytest)
 - **website/** - Next.js frontend application
 - **assets/** - Data assets (CWE raw JSON, CAPEC XML/XSD, ATT&CK XLSX files)
@@ -538,3 +611,45 @@ The broker implements intelligent adaptive tuning that responds to system and ap
 ## License
 
 MIT
+
+## Additional Documentation
+
+### Containerized Development
+
+For macOS users or when isolation is required, the project includes a containerized development environment:
+
+- **runenv.sh**: Shell script that detects the operating system and runs the build environment in a container
+- **Container Image**: Uses `assets/dev.Containerfile` to create the development environment
+- **Go Module Cache**: Mounts the Go module cache inside the container for faster builds
+- **Cross-platform**: Works on both macOS and Linux (optional on Linux with USE_CONTAINER=true)
+
+### Configuration Management
+
+The project includes a dedicated configuration management tool:
+
+- **Location**: `tool/vconfig/`
+- **Purpose**: Provides a TUI interface and command-line options for configuration management
+- **Features**: 
+  - Interactive TUI mode for easy configuration
+  - Default configuration generation
+  - Build flag generation based on configuration
+  - Validation of configuration parameters
+
+### Enhanced Testing
+
+The project includes multiple testing methodologies:
+
+- **Unit Tests**: Standard Go unit tests with coverage reporting
+- **Fuzz Tests**: Fuzz testing for key interfaces to discover edge cases
+- **Performance Benchmarks**: Comprehensive benchmarking with statistical analysis
+- **Integration Tests**: Pytest-based integration tests in the `tests/` directory
+
+### Build Options
+
+The build script (`build.sh`) provides multiple options for different workflows:
+
+- **Development**: Incremental builds with dependency checking
+- **Packaging**: Complete packaging with all assets and binaries
+- **Testing**: Dedicated test execution with coverage reports
+- **Benchmarking**: Performance benchmarking with detailed reports
+- **Continuous Integration**: CI-ready test execution
