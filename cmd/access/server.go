@@ -33,19 +33,22 @@ func setupRouter(rpcClient *RPCClient, rpcTimeoutSec int, staticDir string) *gin
 	router := gin.New()
 	// Add recovery middleware but log to stderr
 	router.Use(gin.RecoveryWithWriter(os.Stderr))
+	common.Info(LogMsgRecoveryMiddlewareAdded)
 
 	// Add CORS middleware
 	router.Use(cors.Default())
+	common.Info(LogMsgCORSMiddlewareAdded)
 
 	// Create RESTful API group
 	restful := router.Group("/restful")
 	registerHandlers(restful, rpcClient, int(rpcTimeoutSec))
+	common.Info("[ACCESS] RESTful API group registered")
 
 	// Serve static files from configured staticDir if present (Next.js static export)
 	outDir := staticDir
 	if _, err := os.Stat(outDir); err == nil {
 		absOut, _ := filepath.Abs(outDir)
-		common.Info("[ACCESS] Serving static files from %s", absOut)
+		common.Info(LogMsgStaticFileServing, absOut)
 
 		// Use NoRoute to serve files and fallback to index.html for SPA routes.
 		// Avoid registering a catch-all route which conflicts with existing API prefixes.
@@ -66,15 +69,17 @@ func setupRouter(rpcClient *RPCClient, rpcTimeoutSec int, staticDir string) *gin
 			relPath := strings.TrimPrefix(reqPath, "/")
 			fullPath := filepath.Join(outDir, relPath)
 			if fi, err := os.Stat(fullPath); err == nil && !fi.IsDir() {
+				common.Debug(LogMsgStaticFileServed, fullPath)
 				c.File(fullPath)
 				return
 			}
 
 			// Fallback to index.html for SPA routing
+			common.Debug(LogMsgStaticFallbackSPA, c.Request.URL.Path)
 			c.File(filepath.Join(outDir, "index.html"))
 		})
 	} else {
-		common.Info("[ACCESS] Static dir %s not found, skipping static serving", outDir)
+		common.Info(LogMsgStaticDirNotFound, outDir)
 	}
 
 	return router

@@ -9,6 +9,7 @@ import (
 
 	"net/http/httptest"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +18,7 @@ import (
 func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeoutSec int) {
 	// Health check endpoint
 	restful.GET("/health", func(c *gin.Context) {
+		common.Debug(LogMsgHealthCheckReceived)
 		c.JSON(http.StatusOK, gin.H{
 			"status": "ok",
 		})
@@ -24,6 +26,8 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeout
 
 	// Generic RPC forwarding endpoint
 	restful.POST("/rpc", func(c *gin.Context) {
+		common.Debug(LogMsgHTTPRequestReceived, c.Request.Method, c.Request.URL.Path)
+
 		// Parse request body
 		var request struct {
 			Method string                 `json:"method" binding:"required"`
@@ -32,11 +36,13 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeout
 		}
 
 		if err := c.ShouldBindJSON(&request); err != nil {
+			common.Warn(LogMsgRequestParsingError, err)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"retcode": 400,
 				"message": fmt.Sprintf("Invalid request: %v", err),
 				"payload": nil,
 			})
+			common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, http.StatusBadRequest)
 			return
 		}
 
@@ -46,38 +52,54 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeout
 			target = "broker"
 		}
 
+		common.Info(LogMsgRPCForwardingStarted, request.Method, target)
+		if request.Params != nil {
+			common.Debug(LogMsgRPCForwardingParams, request.Params)
+		}
+
 		// Forward RPC request to target process (use configured rpc timeout)
+		common.Debug(LogMsgRPCInvokeStarted, target, request.Method)
 		response, err := rpcClient.InvokeRPCWithTarget(c.Request.Context(), target, request.Method, request.Params)
+		common.Debug(LogMsgRPCInvokeCompleted, target, request.Method)
+
 		if err != nil {
+			common.Error(LogMsgRPCForwardingError, err)
 			c.JSON(http.StatusOK, gin.H{
 				"retcode": 500,
 				"message": fmt.Sprintf("RPC error: %v", err),
 				"payload": nil,
 			})
+			common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, 200)
 			return
 		}
 
 		// Check response type
 		if response.Type == subprocess.MessageTypeError {
+			common.Warn("RPC response is an error: %s", response.Error)
 			c.JSON(http.StatusOK, gin.H{
 				"retcode": 500,
 				"message": response.Error,
 				"payload": nil,
 			})
+			common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, 200)
 			return
 		}
 
 		// Parse payload
 		var payload interface{}
 		if response.Payload != nil {
+			common.Debug(LogMsgRPCResponseParsing)
 			if err := subprocess.UnmarshalFast(response.Payload, &payload); err != nil {
+				common.Error(LogMsgRPCResponseParseError, err)
 				c.JSON(http.StatusOK, gin.H{
 					"retcode": 500,
 					"message": fmt.Sprintf("Failed to parse response: %v", err),
 					"payload": nil,
 				})
+				common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, 200)
 				return
 			}
+			common.Debug(LogMsgRPCResponseParsed)
 		}
 
 		// Return success response
@@ -86,6 +108,8 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeout
 			"message": "success",
 			"payload": payload,
 		})
+		common.Info(LogMsgRPCForwardingComplete, request.Method, target)
+		common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, http.StatusOK)
 	})
 }
 

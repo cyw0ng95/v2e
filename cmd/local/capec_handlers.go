@@ -28,7 +28,8 @@ type capecStore interface {
 // createImportCAPECsHandler creates a handler for RPCImportCAPECs
 func createImportCAPECsHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCImportCAPECs handler invoked")
+		logger.Info(LogMsgStartingImportCAPEC, msg.CorrelationID)
+		logger.Debug("RPCImportCAPECs handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
 		var req struct {
 			Path  string `json:"path"`
 			XSD   string `json:"xsd"`
@@ -56,6 +57,7 @@ func createImportCAPECsHandler(store capecStore, logger *common.Logger) subproce
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Info("Starting CAPEC import from path: %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		if err := store.ImportFromXML(req.Path, req.XSD, req.Force); err != nil {
 			logger.Warn("Failed to import CAPEC from XML: %v (path: %s xsd: %s)", err, req.Path, req.XSD)
 			if _, statErr := os.Stat(req.Path); statErr != nil {
@@ -69,6 +71,8 @@ func createImportCAPECsHandler(store capecStore, logger *common.Logger) subproce
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Info(LogMsgImportCAPECCompleted, req.Path)
+		logger.Debug("Processing ImportCAPECs request completed successfully for path %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,
@@ -102,7 +106,8 @@ func xmlInnerToPlain(s string) string {
 // createForceImportCAPECsHandler creates a handler for RPCForceImportCAPECs
 func createForceImportCAPECsHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCForceImportCAPECs handler invoked")
+		logger.Info(LogMsgStartingForceImportCAPEC, msg.CorrelationID)
+		logger.Debug("RPCForceImportCAPECs handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
 		var req struct {
 			Path string `json:"path"`
 			XSD  string `json:"xsd"`
@@ -128,6 +133,7 @@ func createForceImportCAPECsHandler(store capecStore, logger *common.Logger) sub
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Info("Starting force CAPEC import from path: %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		if err := store.ImportFromXML(req.Path, req.XSD, true); err != nil {
 			logger.Warn("Failed to import CAPEC from XML (force): %v (path: %s xsd: %s)", err, req.Path, req.XSD)
 			return &subprocess.Message{
@@ -138,6 +144,8 @@ func createForceImportCAPECsHandler(store capecStore, logger *common.Logger) sub
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Info(LogMsgForceImportCAPECCompleted, req.Path)
+		logger.Debug("Processing ForceImportCAPECs request completed successfully for path %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,
@@ -257,10 +265,15 @@ func createGetCAPECByIDHandler(store capecStore, logger *common.Logger) subproce
 // createGetCAPECCatalogMetaHandler creates a handler for RPCGetCAPECCatalogMeta
 func createGetCAPECCatalogMetaHandler(store capecStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Info(LogMsgStartingGetCAPECMeta)
+		logger.Debug("RPCGetCAPECCatalogMeta handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
+
 		// No payload expected
+		logger.Debug("Attempting to get CAPEC catalog metadata")
 		meta, err := store.GetCatalogMeta(ctx)
 		if err != nil {
-			logger.Debug("No CAPEC catalog metadata: %v", err)
+			logger.Warn("No CAPEC catalog metadata: %v", err)
+			logger.Debug("GetCAPECCatalogMeta failed to retrieve metadata: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -269,6 +282,8 @@ func createGetCAPECCatalogMetaHandler(store capecStore, logger *common.Logger) s
 				Target:        msg.Source,
 			}, nil
 		}
+
+		logger.Debug("CAPEC catalog metadata retrieved successfully: version=%s, source=%s", meta.Version, meta.Source)
 		resp := map[string]interface{}{
 			"version":     meta.Version,
 			"source":      meta.Source,
@@ -285,6 +300,8 @@ func createGetCAPECCatalogMetaHandler(store capecStore, logger *common.Logger) s
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Info(LogMsgGetCAPECMetaCompleted)
+		logger.Debug("RPCGetCAPECCatalogMeta completed successfully. correlation_id=%s", msg.CorrelationID)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,

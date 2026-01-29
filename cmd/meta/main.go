@@ -32,7 +32,7 @@ import (
 
 const (
 	// DefaultRPCTimeout is the default timeout for RPC requests to other services
-	DefaultRPCTimeout = 30 * time.Second
+	DefaultRPCTimeout = 60 * time.Second
 	// DefaultSessionDBPath is the default path for the session database
 	DefaultSessionDBPath = "session.db"
 )
@@ -98,7 +98,7 @@ func (c *DataPopulationController) startCWEImport(ctx context.Context, sessionID
 
 	c.logger.Info("Starting CWE import: session_id=%s, path=%s", sessionID, path)
 
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	paramsObj := &rpc.ImportParams{Path: path}
@@ -133,7 +133,7 @@ func (c *DataPopulationController) startCAPECImport(ctx context.Context, session
 
 	c.logger.Info("Starting CAPEC import: session_id=%s, path=%s, xsd=%s, force=%t", sessionID, path, xsd, force)
 
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	paramsObj := &rpc.ImportParams{Path: path, XSD: xsd, Force: force}
@@ -163,7 +163,7 @@ func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessio
 
 	c.logger.Info("Starting ATT&CK import: session_id=%s, path=%s, force=%t", sessionID, path, force)
 
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	paramsObj := &rpc.ImportParams{Path: path, Force: force}
@@ -336,10 +336,12 @@ func main() {
 	if processID == "" {
 		processID = "meta"
 	}
+	common.Info(LogMsgProcessIDConfigured, processID)
 
 	// Log minimal startup info only (avoid dumping all environment variables)
 	// Use a bootstrap logger for initial messages before the full logging system is ready
 	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+	common.Info(LogMsgBootstrapLoggerCreated)
 	bootstrapLogger.Info(LogMsgStartup, os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
 
 	// Set up logging using common subprocess framework
@@ -348,82 +350,121 @@ func main() {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
 	}
+	common.Info(LogMsgLoggingSetupComplete, common.InfoLevel)
 
 	// Get run database path from environment or use default
 	runDBPath := os.Getenv("SESSION_DB_PATH")
 	if runDBPath == "" {
 		runDBPath = DefaultSessionDBPath
+		logger.Info(LogMsgRunDBPathDefaultUsed, runDBPath)
+	} else {
+		logger.Info(LogMsgRunDBPathConfigured, runDBPath)
 	}
 	logger.Info(LogMsgUsingRunDBPath, runDBPath)
-	if _, err := os.Stat(runDBPath); err == nil {
+	if fileInfo, err := os.Stat(runDBPath); err == nil {
 		logger.Info(LogMsgRunDBFileExists, runDBPath)
+		logger.Info(LogMsgRunDBStatInfo, fileInfo.Size(), fileInfo.ModTime())
 	} else {
 		logger.Warn(LogMsgRunDBFileDoesNotExist, runDBPath, err)
 	}
 
 	// Create run store
+	logger.Info(LogMsgRunStoreOpening, runDBPath)
 	logger.Info(LogMsgCreatingRunStore)
 	runStore, err := taskflow.NewRunStore(runDBPath, logger)
 	if err != nil {
 		logger.Error(LogMsgFailedToCreateRunStore, err)
 		os.Exit(1)
 	}
+	logger.Info(LogMsgRunStoreOpened)
 	logger.Info(LogMsgRunStoreCreated)
-	defer runStore.Close()
+	defer func() {
+		logger.Info(LogMsgRunStoreClosing)
+		runStore.Close()
+	}()
 
 	// Create subprocess instance
 	sp := subprocess.New(processID)
+	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Create RPC client for inter-service communication
+	logger.Info(LogMsgRPCClientCreated)
 	rpcClient := NewRPCClient(sp, logger)
 	rpcAdapter := &RPCClientAdapter{client: rpcClient}
+	logger.Info(LogMsgRPCAdapterCreated)
 
 	// Create job executor with Taskflow (100 concurrent goroutines)
+	logger.Info(LogMsgJobExecutorCreated, 100)
 	jobExecutor := taskflow.NewJobExecutor(rpcAdapter, runStore, logger, 100)
 
 	// Create CWE job controller (separate controller for view jobs)
+	logger.Info(LogMsgCWEJobControllerCreated)
 	cweJobController := cwejob.NewController(rpcAdapter, logger)
 
 	// Create data population controller for all data types
+	logger.Info(LogMsgDataPopControllerCreated)
 	dataPopController := NewDataPopulationController(rpcClient, logger)
 
 	// Recover runs if needed after restart
 	// This ensures job consistency when the service restarts
+	logger.Info(LogMsgRunRecoveryStarted)
 	recoverRuns(jobExecutor, logger)
+	logger.Info(LogMsgRunRecoveryCompleted)
 
 	// Register RPC handlers for CRUD operations
+	logger.Info("Registering RPC handlers...")
 	sp.RegisterHandler("RPCGetCVE", createGetCVEHandler(rpcClient, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCVE")
 	sp.RegisterHandler("RPCCreateCVE", createCreateCVEHandler(rpcClient, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCCreateCVE")
 	sp.RegisterHandler("RPCUpdateCVE", createUpdateCVEHandler(rpcClient, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCUpdateCVE")
 	sp.RegisterHandler("RPCDeleteCVE", createDeleteCVEHandler(rpcClient, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCDeleteCVE")
 	sp.RegisterHandler("RPCListCVEs", createListCVEsHandler(rpcClient, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCListCVEs")
 	sp.RegisterHandler("RPCCountCVEs", createCountCVEsHandler(rpcClient, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCCountCVEs")
 
 	// Register job control RPC handlers
 	sp.RegisterHandler("RPCStartSession", createStartSessionHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartSession")
 	sp.RegisterHandler("RPCStartTypedSession", createStartTypedSessionHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartTypedSession")
 	sp.RegisterHandler("RPCStopSession", createStopSessionHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopSession")
 	sp.RegisterHandler("RPCGetSessionStatus", createGetSessionStatusHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetSessionStatus")
 	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCPauseJob")
 	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCResumeJob")
 
 	// Register CWE view job RPC handlers
 	sp.RegisterHandler("RPCStartCWEViewJob", createStartCWEViewJobHandler(cweJobController, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCWEViewJob")
 	sp.RegisterHandler("RPCStopCWEViewJob", createStopCWEViewJobHandler(cweJobController, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopCWEViewJob")
 
 	// Register data population RPC handlers
 	sp.RegisterHandler("RPCStartCWEImport", createStartCWEImportHandler(dataPopController, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCWEImport")
 	sp.RegisterHandler("RPCStartCAPECImport", createStartCAPECImportHandler(dataPopController, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCAPECImport")
 	sp.RegisterHandler("RPCStartATTACKImport", createStartATTACKImportHandler(dataPopController, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartATTACKImport")
 
-	logger.Info("[meta] CVE meta service started - orchestrates local and remote")
+	logger.Info(LogMsgServiceStarted)
+	logger.Info(LogMsgServiceReady)
 
 	// --- CWE Import Control ---
 	go func() {
+		logger.Info("Starting CWE import control routine...")
 		time.Sleep(2 * time.Second)
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		params := &rpc.ImportParams{Path: "assets/cwe-raw.json"}
+		logger.Info(LogMsgCWEImportTriggered, params.Path)
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", params)
 		if err != nil {
 			logger.Warn("Failed to import CWE on local: %v", err)
@@ -439,10 +480,12 @@ func main() {
 
 	// --- CAPEC Import Control ---
 	go func() {
+		logger.Info("Starting CAPEC import control routine...")
 		time.Sleep(2 * time.Second)
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		// First check whether local already has CAPEC catalog metadata
+		logger.Info("Checking for existing CAPEC catalog metadata...")
 		metaResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCAPECCatalogMeta", nil)
 		if err != nil {
 			logger.Warn("Failed to query CAPEC catalog meta on local: %v", err)
@@ -453,6 +496,7 @@ func main() {
 		}
 		// If meta not present or query failed, attempt import
 		params := &rpc.ImportParams{Path: "assets/capec_contents_latest.xml", XSD: "assets/capec_schema_latest.xsd"}
+		logger.Info(LogMsgCAPECImportTriggered, params.Path)
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
 		if err != nil {
 			logger.Warn("Failed to import CAPEC on local: %v", err)
@@ -467,7 +511,10 @@ func main() {
 	}()
 
 	// Run with default lifecycle management
+	logger.Info("Starting subprocess with default lifecycle management")
 	subprocess.RunWithDefaults(sp, logger)
+	logger.Info(LogMsgServiceShutdownStarting)
+	logger.Info(LogMsgServiceShutdownComplete)
 }
 
 // createErrorResponse creates a properly formatted error response message

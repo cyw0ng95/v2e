@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -65,7 +66,11 @@ func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message)
 	c.mu.Unlock()
 
 	if entry != nil {
+		common.Debug(LogMsgRPCResponseReceived, msg.CorrelationID, msg.Type)
 		entry.signal(msg)
+		common.Debug(LogMsgRPCChannelSignal, msg.CorrelationID)
+	} else {
+		common.Debug("Received response for unknown correlation ID: %s", msg.CorrelationID)
 	}
 
 	return nil, nil // Don't send another response
@@ -98,6 +103,7 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 	c.mu.Lock()
 	c.pendingRequests[correlationID] = entry
 	c.mu.Unlock()
+	common.Debug(LogMsgRPCPendingRequestAdded, correlationID)
 
 	// Clean up on exit: remove from map and ensure channel is closed exactly once
 	defer func() {
@@ -105,6 +111,7 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 		delete(c.pendingRequests, correlationID)
 		c.mu.Unlock()
 		entry.close()
+		common.Debug(LogMsgRPCPendingRequestRemoved, correlationID)
 	}()
 
 	// Create request message

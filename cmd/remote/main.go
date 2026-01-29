@@ -30,9 +30,11 @@ func main() {
 	if processID == "" {
 		processID = "remote"
 	}
+	common.Info(LogMsgProcessIDConfigured, processID)
 
 	// Use a bootstrap logger for initial messages before the full logging system is ready
 	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+	common.Info(LogMsgBootstrapLoggerCreated)
 
 	// Set up logging using common subprocess framework
 	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
@@ -40,26 +42,43 @@ func main() {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
 	}
+	common.Info(LogMsgLoggingSetupComplete, common.InfoLevel)
 
 	// Get API key from environment (optional)
 	apiKey := os.Getenv("NVD_API_KEY")
+	if apiKey != "" {
+		logger.Info(LogMsgAPIKeyDetected)
+	} else {
+		logger.Info(LogMsgAPIKeyNotSet)
+	}
 
 	// Create CVE fetcher
 	fetcher := remote.NewFetcher(apiKey)
+	logger.Info(LogMsgFetcherCreated, apiKey != "")
 
 	// Create subprocess instance
 	sp := subprocess.New(processID)
+	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Register RPC handlers
+	logger.Info("Registering RPC handlers...")
 	sp.RegisterHandler("RPCGetCVEByID", createGetCVEByIDHandler(fetcher))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCVEByID")
 	sp.RegisterHandler("RPCGetCVECnt", createGetCVECntHandler(fetcher))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCVECnt")
 	sp.RegisterHandler("RPCFetchCVEs", createFetchCVEsHandler(fetcher))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCFetchCVEs")
 	sp.RegisterHandler("RPCFetchViews", createFetchViewsHandler())
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCFetchViews")
 
 	logger.Info(LogMsgServiceStarted)
+	logger.Info(LogMsgServiceReady)
 
 	// Run with default lifecycle management
+	logger.Info("Starting subprocess with default lifecycle management")
 	subprocess.RunWithDefaults(sp, logger)
+	logger.Info(LogMsgServiceShutdownStarting)
+	logger.Info(LogMsgServiceShutdownComplete)
 }
 
 // createFetchViewsHandler creates a handler for RPCFetchViews which downloads
