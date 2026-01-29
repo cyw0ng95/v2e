@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/stretchr/testify/assert"
 )
@@ -269,7 +271,8 @@ func (m *MockSysmonRPCClient) handleError(ctx context.Context, msg *subprocess.M
 
 func TestRPCClient_HandleResponse(t *testing.T) {
 	sp := subprocess.New("test")
-	client := NewRPCClient(sp)
+	logger := common.NewLogger(io.Discard, "test", common.InfoLevel)
+	client := NewRPCClient(sp, logger)
 
 	// Create a request entry manually
 	entry := newRequestEntry()
@@ -298,7 +301,8 @@ func TestRPCClient_HandleResponse(t *testing.T) {
 
 func TestRPCClient_HandleError(t *testing.T) {
 	sp := subprocess.New("test")
-	client := NewRPCClient(sp)
+	logger := common.NewLogger(io.Discard, "test", common.InfoLevel)
+	client := NewRPCClient(sp, logger)
 
 	// Create a request entry manually
 	entry := newRequestEntry()

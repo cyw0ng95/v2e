@@ -25,6 +25,17 @@ const (
 	ErrorLevel
 )
 
+const (
+	// DefaultLogsDir is the default directory for log files
+	DefaultLogsDir = "./logs"
+	// LogMsgLoggerSetupFailed is the message when logger setup fails
+	LogMsgLoggerSetupFailed = "Failed to setup logger: %v"
+	// LogMsgServiceStarted is the message when service starts
+	LogMsgServiceStarted = "Service %s started"
+	// LogMsgConfigLoaded is the message when config is loaded
+	LogMsgConfigLoaded = "Configuration loaded from: %s"
+)
+
 // String returns the string representation of the log level
 func (l LogLevel) String() string {
 	switch l {
@@ -59,12 +70,11 @@ func (f *CustomFormatter) WriteLevel(level, message string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05.000")
 	entity := f.Prefix
 	if entity == "" {
-		entity = "[main]"
-	} else {
-		// Remove brackets and spaces, convert to lowercase
-		entity = "[" + strings.ToLower(strings.Trim(entity, "[] ")) + "]"
+		entity = "main"
 	}
-	fmt.Fprintf(f.Out, "[%s][%s]%s %s\n", timestamp, level, entity, message)
+	// Format the entity as [entity]
+	formattedEntity := "[" + entity + "]"
+	fmt.Fprintf(f.Out, "[%s][%s]%s %s\n", timestamp, level, formattedEntity, message)
 }
 
 // toZerologLevel converts our LogLevel to zerolog.Level
@@ -105,11 +115,19 @@ func init() {
 func NewLogger(out io.Writer, prefix string, level LogLevel) *Logger {
 	zerolog.SetGlobalLevel(level.toZerologLevel())
 
+	// Transform the prefix to lowercase and strip brackets/spaces for consistency
+	processedPrefix := prefix
+	if prefix == "" {
+		processedPrefix = "main"
+	} else {
+		processedPrefix = strings.ToLower(strings.Trim(prefix, "[] "))
+	}
+
 	return &Logger{
 		level:     level,
 		output:    out,
 		prefix:    prefix,
-		formatter: &CustomFormatter{Out: out, Prefix: prefix},
+		formatter: &CustomFormatter{Out: out, Prefix: processedPrefix},
 	}
 }
 

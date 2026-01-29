@@ -42,7 +42,7 @@ type Broker struct {
 func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := mq.NewBus(ctx, 100)
-	return &Broker{
+	b := &Broker{
 		processes:        make(map[string]*Process),
 		messages:         bus.Channel(),
 		ctx:              ctx,
@@ -55,6 +55,20 @@ func NewBroker() *Broker {
 		correlationSeq:   0,
 		transportManager: transport.NewTransportManager(),
 	}
+
+	// Set transport error handler to log warnings
+	b.transportManager.SetTransportErrorHandler(func(err error) {
+		if b.logger != nil {
+			b.logger.Warn("Transport background error: %v", err)
+		}
+	})
+
+	// Configure transport based on configuration
+	b.ConfigureTransportFromConfig()
+
+	// Install a default SpawnAdapter that delegates to existing spawn methods.
+
+	return b
 }
 
 // InsertProcessForTest inserts a pre-constructed process into the broker (testing only).
@@ -138,9 +152,15 @@ func (b *Broker) Context() context.Context {
 
 // ConfigureTransportFromConfig configures the transport based on the configuration
 func (b *Broker) ConfigureTransportFromConfig() {
-	if b.config == nil || b.config.Broker.Transport.Type == "" {
-		// Default to FD transport for backward compatibility
+	if b.config == nil {
 		return
+	}
+	
+	// Default to UDS transport if not specified
+	if b.config.Broker.Transport.Type == "" {
+		b.config.Broker.Transport.Type = "uds"
+		b.config.Broker.Transport.EnableUDS = true
+		b.logger.Info("Using default UDS transport")
 	}
 	
 	// Set UDS base path if configured

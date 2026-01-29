@@ -52,7 +52,7 @@ func createGetCWEByIDHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 		logger.Debug("Processing GetCWEByID request completed successfully for CWE ID %s", req.CWEID)
 		jsonData, err := subprocess.MarshalFast(item)
 		if err != nil {
-			logger.Error("Failed to marshal CWE: %v (cwe_id=%s)", err, req.CWEID)
+			logger.Warn("Failed to marshal CWE: %v (cwe_id=%s)", err, req.CWEID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -123,7 +123,7 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 		}
 		jsonData, err := subprocess.MarshalFast(resp)
 		if err != nil {
-			logger.Error("Failed to marshal CWEs: %v", err)
+			logger.Warn("Failed to marshal CWEs: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -145,7 +145,8 @@ func createListCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subp
 // createImportCWEsHandler creates a handler for RPCImportCWEs
 func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCImportCWEs handler invoked")
+		logger.Info(LogMsgStartingImportCWE, msg.CorrelationID)
+		logger.Debug("RPCImportCWEs handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
 		var req struct {
 			Path string `json:"path"`
 		}
@@ -170,6 +171,7 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 				Target:        msg.Source,
 			}, nil
 		}
+		logger.Info("Starting CWE import from path: %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		err := store.ImportFromJSON(req.Path)
 		if err != nil {
 			logger.Warn("Failed to import CWE from raw JSON: %v (path: %s)", err, req.Path)
@@ -185,7 +187,8 @@ func createImportCWEsHandler(store *cwe.LocalCWEStore, logger *common.Logger) su
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Debug("Processing ImportCWEs request completed successfully for path %s", req.Path)
+		logger.Info(LogMsgImportCWECompleted, req.Path)
+		logger.Debug("Processing ImportCWEs request completed successfully for path %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,

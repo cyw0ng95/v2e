@@ -10,37 +10,7 @@ import (
 )
 
 // SetupLogging initializes logging for a subprocess
-// It reads config from config.json and sets up logging to both stderr and a file
-func SetupLogging(processID string) (*common.Logger, error) {
-	// Load configuration
-	config, err := common.LoadConfig("config.json")
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	// Determine log level
-	logLevel := common.InfoLevel
-	if config.Logging.Level != "" {
-		switch config.Logging.Level {
-		case "debug":
-			logLevel = common.DebugLevel
-		case "info":
-			logLevel = common.InfoLevel
-		case "warn":
-			logLevel = common.WarnLevel
-		case "error":
-			logLevel = common.ErrorLevel
-		}
-	}
-
-	// Determine log directory
-	logsDir := "./logs"
-	if config.Logging.Dir != "" {
-		logsDir = config.Logging.Dir
-	} else if config.Broker.LogsDir != "" {
-		logsDir = config.Broker.LogsDir
-	}
-
+func SetupLogging(processID string, logsDir string, logLevel common.LogLevel) (*common.Logger, error) {
 	// Create logs directory if it doesn't exist
 	if err := os.MkdirAll(logsDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create logs directory: %w", err)

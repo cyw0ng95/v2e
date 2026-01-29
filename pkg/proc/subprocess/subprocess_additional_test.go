@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 func TestNewDefaults(t *testing.T) {
@@ -201,7 +203,7 @@ func TestRegisterHandlerAndResponse(t *testing.T) {
 
 func TestSetupLoggingCreatesFile(t *testing.T) {
 	proc := "test-logger"
-	logger, err := SetupLogging(proc)
+	logger, err := SetupLogging(proc, common.DefaultLogsDir, common.InfoLevel)
 	if err != nil {
 		t.Fatalf("SetupLogging failed: %v", err)
 	}

@@ -1,0 +1,13 @@
+{
+  "build": {
+    "config_file": ".config"
+  },
+  "features": {
+    "CONFIG_MIN_LOG_LEVEL": {
+      "description": "Minimum log level for the application",
+      "type": "string",
+      "default": "INFO",
+      "values": ["DEBUG", "INFO", "WARN", "ERROR"]
+    }
+  }
+}

@@ -31,111 +31,111 @@ type CWEItemModel struct {
 // RelatedWeaknessModel is the GORM model for related weaknesses.
 type RelatedWeaknessModel struct {
 	ID      uint   `gorm:"primaryKey"`
-	CWEID   string `gorm:"index"`
-	Nature  string
-	CweID   string
-	ViewID  string
-	Ordinal string
+	CWEID   string `gorm:"column:cwe_id;index"`   // Foreign key to parent CWE item
+	Nature  string `gorm:"column:nature"`
+	CweID   string `gorm:"column:related_cwe_id"` // ID of the related CWE
+	ViewID  string `gorm:"column:view_id"`
+	Ordinal string `gorm:"column:ordinal"`
 }
 
 // WeaknessOrdinalityModel is the GORM model for weakness ordinalities.
 type WeaknessOrdinalityModel struct {
 	ID          uint   `gorm:"primaryKey"`
-	CWEID       string `gorm:"index"`
-	Ordinality  string
-	Description string
+	CWEID       string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	Ordinality  string `gorm:"column:ordinality"`
+	Description string `gorm:"column:description"`
 }
 
 // DetectionMethodModel is the GORM model for detection methods.
 type DetectionMethodModel struct {
 	ID                 uint   `gorm:"primaryKey"`
-	CWEID              string `gorm:"index"`
-	DetectionMethodID  string
-	Method             string
-	Description        string
-	Effectiveness      string
-	EffectivenessNotes string
+	CWEID              string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	DetectionMethodID  string `gorm:"column:detection_method_id"`
+	Method             string `gorm:"column:method"`
+	Description        string `gorm:"column:description"`
+	Effectiveness      string `gorm:"column:effectiveness"`
+	EffectivenessNotes string `gorm:"column:effectiveness_notes"`
 }
 
 // MitigationModel is the GORM model for potential mitigations.
 type MitigationModel struct {
 	ID                 uint   `gorm:"primaryKey"`
-	CWEID              string `gorm:"index"`
-	MitigationID       string
-	Phase              string // store as comma-separated string for []string
-	Strategy           string
-	Description        string
-	Effectiveness      string
-	EffectivenessNotes string
+	CWEID              string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	MitigationID       string `gorm:"column:mitigation_id"`
+	Phase              string `gorm:"column:phase"` // store as comma-separated string for []string
+	Strategy           string `gorm:"column:strategy"`
+	Description        string `gorm:"column:description"`
+	Effectiveness      string `gorm:"column:effectiveness"`
+	EffectivenessNotes string `gorm:"column:effectiveness_notes"`
 }
 
 // DemonstrativeExampleModel is the GORM model for demonstrative examples.
 type DemonstrativeExampleModel struct {
 	ID          uint   `gorm:"primaryKey"`
-	CWEID       string `gorm:"index"`
-	EntryID     string
-	IntroText   string
-	BodyText    string
-	Nature      string
-	Language    string
-	ExampleCode string
-	Reference   string
+	CWEID       string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	EntryID     string `gorm:"column:entry_id"`
+	IntroText   string `gorm:"column:intro_text"`
+	BodyText    string `gorm:"column:body_text"`
+	Nature      string `gorm:"column:nature"`
+	Language    string `gorm:"column:language"`
+	ExampleCode string `gorm:"column:example_code"`
+	Reference   string `gorm:"column:reference"`
 }
 
 // ObservedExampleModel is the GORM model for observed examples.
 type ObservedExampleModel struct {
 	ID          uint   `gorm:"primaryKey"`
-	CWEID       string `gorm:"index"`
-	Reference   string
-	Description string
-	Link        string
+	CWEID       string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	Reference   string `gorm:"column:reference"`
+	Description string `gorm:"column:description"`
+	Link        string `gorm:"column:link"`
 }
 
 // TaxonomyMappingModel is the GORM model for taxonomy mappings.
 type TaxonomyMappingModel struct {
 	ID           uint   `gorm:"primaryKey"`
-	CWEID        string `gorm:"index"`
-	TaxonomyName string
-	EntryName    string
-	EntryID      string
-	MappingFit   string
+	CWEID        string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	TaxonomyName string `gorm:"column:taxonomy_name"`
+	EntryName    string `gorm:"column:entry_name"`
+	EntryID      string `gorm:"column:entry_id"`
+	MappingFit   string `gorm:"column:mapping_fit"`
 }
 
 // NoteModel is the GORM model for notes.
 type NoteModel struct {
 	ID    uint   `gorm:"primaryKey"`
-	CWEID string `gorm:"index"`
-	Type  string
-	Note  string
+	CWEID string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	Type  string `gorm:"column:type"`
+	Note  string `gorm:"column:note"`
 }
 
 // ContentHistoryModel is the GORM model for content history.
 type ContentHistoryModel struct {
 	ID                       uint   `gorm:"primaryKey"`
-	CWEID                    string `gorm:"index"`
-	Type                     string
-	SubmissionName           string
-	SubmissionOrganization   string
-	SubmissionDate           string
-	SubmissionVersion        string
-	SubmissionReleaseDate    string
-	SubmissionComment        string
-	ModificationName         string
-	ModificationOrganization string
-	ModificationDate         string
-	ModificationVersion      string
-	ModificationReleaseDate  string
-	ModificationComment      string
-	ContributionName         string
-	ContributionOrganization string
-	ContributionDate         string
-	ContributionVersion      string
-	ContributionReleaseDate  string
-	ContributionComment      string
-	ContributionType         string
-	PreviousEntryName        string
-	Date                     string
-	Version                  string
+	CWEID                    string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	Type                     string `gorm:"column:type"`
+	SubmissionName           string `gorm:"column:submission_name"`
+	SubmissionOrganization   string `gorm:"column:submission_organization"`
+	SubmissionDate           string `gorm:"column:submission_date"`
+	SubmissionVersion        string `gorm:"column:submission_version"`
+	SubmissionReleaseDate    string `gorm:"column:submission_release_date"`
+	SubmissionComment        string `gorm:"column:submission_comment"`
+	ModificationName         string `gorm:"column:modification_name"`
+	ModificationOrganization string `gorm:"column:modification_organization"`
+	ModificationDate         string `gorm:"column:modification_date"`
+	ModificationVersion      string `gorm:"column:modification_version"`
+	ModificationReleaseDate  string `gorm:"column:modification_release_date"`
+	ModificationComment      string `gorm:"column:modification_comment"`
+	ContributionName         string `gorm:"column:contribution_name"`
+	ContributionOrganization string `gorm:"column:contribution_organization"`
+	ContributionDate         string `gorm:"column:contribution_date"`
+	ContributionVersion      string `gorm:"column:contribution_version"`
+	ContributionReleaseDate  string `gorm:"column:contribution_release_date"`
+	ContributionComment      string `gorm:"column:contribution_comment"`
+	ContributionType         string `gorm:"column:contribution_type"`
+	PreviousEntryName        string `gorm:"column:previous_entry_name"`
+	Date                     string `gorm:"column:date"`
+	Version                  string `gorm:"column:version"`
 }
 
 // NewLocalCWEStore creates or opens a local CWE database at dbPath.
@@ -180,7 +180,7 @@ func NewLocalCWEStore(dbPath string) (*LocalCWEStore, error) {
 
 // ImportFromJSON imports CWE records from a JSON file (array of CWEItem).
 func (s *LocalCWEStore) ImportFromJSON(jsonPath string) error {
-	common.Info("Importing CWE data from JSON file: %s", jsonPath)
+	common.Info(LogMsgImportingJSON, jsonPath)
 	f, err := os.Open(jsonPath)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (s *LocalCWEStore) ImportFromJSON(jsonPath string) error {
 	var first, last CWEItemModel
 	if err := s.db.First(&first, "id = ?", items[0].ID).Error; err == nil {
 		if err := s.db.First(&last, "id = ?", items[len(items)-1].ID).Error; err == nil {
-			common.Info("CWE import skipped: first and last CWE already present (IDs: %s, %s)", items[0].ID, items[len(items)-1].ID)
+			common.Info(LogMsgImportSkipped, items[0].ID, items[len(items)-1].ID)
 			return nil
 		}
 	}

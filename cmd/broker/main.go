@@ -47,7 +47,7 @@ func main() {
 	// Load configuration
 	config, err := common.LoadConfig(configFile)
 	if err != nil {
-		common.Error("Error loading config: %v", err)
+		common.Error(LogMsgErrorLoadingConfig, err)
 		os.Exit(1)
 	}
 
@@ -58,14 +58,14 @@ func main() {
 		logDir := filepath.Dir(config.Broker.LogFile)
 		if logDir != "." && logDir != "" {
 			if err := os.MkdirAll(logDir, 0755); err != nil {
-				common.Error("Error creating log directory '%s': %v", logDir, err)
+				common.Error(LogMsgErrorCreatingLogDir, logDir, err)
 				os.Exit(1)
 			}
 		}
 
 		logFile, err := os.OpenFile(config.Broker.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			common.Error("Error opening log file '%s': %v", config.Broker.LogFile, err)
+			common.Error(LogMsgErrorOpeningLogFile, config.Broker.LogFile, err)
 			os.Exit(1)
 		}
 		defer logFile.Close()
@@ -113,20 +113,39 @@ func main() {
 	}
 
 	// Create and attach an optimizer using broker config (optional tuning)
-	bufferCap := config.Broker.OptimizerBufferCap
-	numWorkers := config.Broker.OptimizerNumWorkers
-	statsInterval := time.Duration(config.Broker.OptimizerStatsIntervalMs) * time.Millisecond
-	policy := config.Broker.OptimizerOfferPolicy
-	offerTimeout := time.Duration(config.Broker.OptimizerOfferTimeoutMs) * time.Millisecond
-
 	routerAdapter := &brokerRouter{b: broker}
-	batchSize := config.Broker.OptimizerBatchSize
-	flushMs := config.Broker.OptimizerFlushIntervalMs
-	flushInterval := time.Duration(flushMs) * time.Millisecond
-	opt := perf.NewWithParams(routerAdapter, bufferCap, numWorkers, statsInterval, policy, offerTimeout, batchSize, flushInterval)
+
+	optConfig := perf.Config{
+		BufferCap:      config.Broker.OptimizerBufferCap,
+		NumWorkers:     config.Broker.OptimizerNumWorkers,
+		StatsInterval:  time.Duration(config.Broker.OptimizerStatsIntervalMs) * time.Millisecond,
+		OfferPolicy:    config.Broker.OptimizerOfferPolicy,
+		OfferTimeout:   time.Duration(config.Broker.OptimizerOfferTimeoutMs) * time.Millisecond,
+		BatchSize:      config.Broker.OptimizerBatchSize,
+		FlushInterval:  time.Duration(config.Broker.OptimizerFlushIntervalMs) * time.Millisecond,
+		AdaptationFreq: time.Duration(config.Broker.OptimizerAdaptationFreqMs) * time.Millisecond,
+	}
+
+	opt := perf.NewWithConfig(routerAdapter, optConfig)
 	opt.SetLogger(brokerLogger)
+
+	if config.Broker.OptimizerEnableAdaptive {
+		opt.EnableAdaptiveOptimization()
+		common.Info("Adaptive optimization enabled (freq=%v)", optConfig.AdaptationFreq)
+	}
+
 	broker.SetOptimizer(opt)
-	common.Info("Optimizer started: buffer=%d workers=%d policy=%s batch=%d flush_ms=%d", bufferCap, numWorkers, policy, batchSize, int(flushInterval/time.Millisecond))
+	
+	// Get actual values from optimizer metrics or use config (config might be 0/empty, handled by defaults)
+	// We can trust NewWithConfig set defaults, but we don't have easy access to the final config struct inside opt
+	// except via side channels. For logging, we'll just log what we have or query metrics.
+	metrics := opt.Metrics()
+	common.Info("Optimizer started: buffer=%v workers=%v policy=%s batch=%d flush=%v", 
+		metrics["message_channel_buffer"], 
+		metrics["active_workers"], 
+		optConfig.OfferPolicy, 
+		optConfig.BatchSize, 
+		optConfig.FlushInterval)
 
 	common.Info("Broker started, managing %d processes", len(config.Broker.Processes))
 

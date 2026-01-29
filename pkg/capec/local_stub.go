@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -29,16 +30,15 @@ func NewLocalCAPECStore(dbPath string) (*LocalCAPECStore, error) {
 		return nil, err
 	}
 	// AutoMigrate minimal tables to allow app to run; detailed imports require libxml2 build tag.
-	if err := db.AutoMigrate(&CAPECItemModel{}, &CAPECRelatedWeaknessModel{}, &CAPECExampleModel{}, &CAPECMitigationModel{}, &CAPECReferenceModel{}); err != nil {
+	if err := db.AutoMigrate(&CAPECItemModel{}, &CAPECRelatedWeaknessModel{}, &CAPECExampleModel{}, &CAPECMitigationModel{}, &CAPECReferenceModel{}, &CAPECCatalogMeta{}); err != nil {
 		return nil, err
 	}
 	return &LocalCAPECStore{db: db}, nil
 }
 
-// ImportFromXML is a stub that returns an informative error when libxml2 support is not enabled.
-func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) error {
-	// Permissive importer: parse the CAPEC XML without XSD validation so
-	// local environments can populate the DB even when libxml2 isn't available.
+// ImportFromXML imports CAPEC items from XML into DB without XSD validation.
+func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
+	// Permissive importer: parse the CAPEC XML without XSD validation
 	f, err := os.Open(xmlPath)
 	if err != nil {
 		return err
@@ -47,6 +47,10 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 
 	dec := xml.NewDecoder(f)
 	// The CAPEC XML uses a default namespace; we'll match elements by local name.
+	// First, check for catalog version in root element
+	catalogVersion := ""
+	firstToken := true
+
 	for {
 		t, err := dec.Token()
 		if err != nil {
@@ -58,6 +62,25 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 		se, ok := t.(xml.StartElement)
 		if !ok {
 			continue
+		}
+		// Check if this is the root element and extract version if present
+		if firstToken {
+			firstToken = false
+			for _, attr := range se.Attr {
+				if attr.Name.Local == "Version" {
+					catalogVersion = attr.Value
+					break
+				}
+			}
+			// Now that we have the version, check if we should skip import
+			if !force && catalogVersion != "" {
+				var meta CAPECCatalogMeta
+				if err := s.db.First(&meta).Error; err == nil {
+					if meta.Version == catalogVersion {
+						return nil
+					}
+				}
+			}
 		}
 		if se.Name.Local != "Attack_Pattern" {
 			continue
@@ -78,6 +101,7 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 
 		// defaults
 		description := ""
+		summary := ""
 		likelihood := ""
 		typicalSeverity := ""
 		var weaknesses []string
@@ -98,9 +122,20 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 			case xml.StartElement:
 				switch tt.Name.Local {
 				case "Description":
-					var stext string
-					if err := dec.DecodeElement(&stext, &tt); err == nil {
-						description = stext
+					// Decode the Description element content
+					var descContent string
+					if err := dec.DecodeElement(&descContent, &tt); err == nil {
+						description = descContent
+						// Check if the description content contains a nested Summary element
+						trimmed := strings.TrimSpace(descContent)
+						if strings.Contains(trimmed, "<Summary>") && strings.Contains(trimmed, "</Summary>") {
+							startIndex := strings.Index(trimmed, "<Summary>")
+							endIndex := strings.Index(trimmed, "</Summary>")
+							if startIndex >= 0 && endIndex > startIndex {
+								innerStart := startIndex + len("<Summary>")
+								summary = trimmed[innerStart:endIndex]
+							}
+						}
 					}
 				case "Likelihood_Of_Attack":
 					var stext string
@@ -187,7 +222,12 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 					item := CAPECItemModel{
 						CAPECID:         capecID,
 						Name:            firstNonEmpty(nameAttr, ""),
-						Summary:         truncateString(description, 200),
+						Summary:         func() string {
+												if summary != "" {
+													return summary
+												}
+												return truncateString(description, 200)
+											}(),
 						Description:     description,
 						Status:          "",
 						Likelihood:      likelihood,
@@ -249,6 +289,15 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 					}
 				}
 			}
+		}
+	}
+	// persist catalog metadata
+	if catalogVersion != "" {
+		// Use a fixed primary key to ensure a single-row metadata table.
+		meta := CAPECCatalogMeta{ID: 1, Version: catalogVersion, Source: xmlPath, ImportedAtUTC: time.Now().Unix()}
+		// upsert single-row meta by primary key
+		if err := s.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "id"}}, UpdateAll: true}).Create(&meta).Error; err != nil {
+			return err
 		}
 	}
 	return nil

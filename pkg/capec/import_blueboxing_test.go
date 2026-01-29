@@ -36,7 +36,7 @@ func TestImportBlueBoxingDescription(t *testing.T) {
 		t.Fatalf("failed to create store: %v", err)
 	}
 
-	if err := store.ImportFromXML(xmlPath, "", true); err != nil {
+	if err := store.ImportFromXML(xmlPath, true); err != nil {
 		t.Fatalf("import failed: %v", err)
 	}
 

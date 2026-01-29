@@ -133,7 +133,7 @@ func BenchmarkGetCAPECOpt(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	if err := store.ImportFromXML(xmlPath, "", false); err != nil {
+	if err := store.ImportFromXML(xmlPath, false); err != nil {
 		b.Fatal(err)
 	}
 
@@ -182,7 +182,7 @@ func BenchmarkListCAPECsOpt(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	if err := store.ImportFromXML(xmlPath, "", false); err != nil {
+	if err := store.ImportFromXML(xmlPath, false); err != nil {
 		b.Fatal(err)
 	}
 

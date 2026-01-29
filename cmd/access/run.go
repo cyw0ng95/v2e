@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -16,28 +18,75 @@ func runAccess() {
 	// Load configuration
 	config, err := common.LoadConfig("config.json")
 	if err != nil {
-		common.Warn("Warning loading config: %v", err)
+		common.Warn(LogMsgWarningLoadingConfig, err)
 		os.Exit(1)
 	}
+
+	// Set up logger with dual output (stdout + file) if logging directory is configured
+	var logOutput io.Writer
+	if config.Logging.Dir != "" {
+		// Create log file path for this service
+		logDir := config.Logging.Dir
+		if logDir != "." && logDir != "" {
+			if err := os.MkdirAll(logDir, 0755); err != nil {
+				common.Error("[ACCESS] Error creating log directory: %v", err)
+				os.Exit(1)
+			}
+		}
+		logFileName := filepath.Join(logDir, "access.log")
+		logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			common.Error("[ACCESS] Error opening log file: %v", err)
+			os.Exit(1)
+		}
+		defer logFile.Close()
+		logOutput = io.MultiWriter(os.Stdout, logFile)
+	} else {
+		logOutput = os.Stdout
+	}
+
+	// Set default logger output
+	common.SetOutput(logOutput)
+	// Set log level from config if present, default to InfoLevel
+	logLevel := common.InfoLevel
+	if config.Logging.Level != "" {
+		switch config.Logging.Level {
+		case "debug":
+			logLevel = common.DebugLevel
+		case "info":
+			logLevel = common.InfoLevel
+		case "warn":
+			logLevel = common.WarnLevel
+		case "error":
+			logLevel = common.ErrorLevel
+		}
+	}
+	common.SetLevel(logLevel)
+
+	common.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, config.Access.StaticDir)
 
 	// Configure service timeouts and static dir from config (with defaults)
 	rpcTimeout := 30 * time.Second
 	if config.Access.RPCTimeoutSeconds > 0 {
 		rpcTimeout = time.Duration(config.Access.RPCTimeoutSeconds) * time.Second
+		common.Info(LogMsgRPCTimeoutConfigured, config.Access.RPCTimeoutSeconds)
 	}
 
 	shutdownTimeout := 10 * time.Second
 	if config.Access.ShutdownTimeoutSeconds > 0 {
 		shutdownTimeout = time.Duration(config.Access.ShutdownTimeoutSeconds) * time.Second
+		common.Info(LogMsgShutdownTimeoutConfig, config.Access.ShutdownTimeoutSeconds)
 	}
 
 	staticDir := "website"
 	if config.Access.StaticDir != "" {
 		staticDir = config.Access.StaticDir
+		common.Info(LogMsgStaticDirConfigured, staticDir)
 	}
 	// Allow broker to override static dir via environment when running as subprocess
 	if envStatic := os.Getenv("ACCESS_STATIC_DIR"); envStatic != "" {
 		staticDir = envStatic
+		common.Info(LogMsgStaticDirEnvOverride, staticDir)
 	}
 
 	// Set default address if not configured
@@ -45,6 +94,7 @@ func runAccess() {
 	if config.Server.Address != "" {
 		address = config.Server.Address
 	}
+	common.Info(LogMsgAddressConfigured, address)
 
 	// Get process ID from environment or use default
 	processID := os.Getenv("PROCESS_ID")
@@ -54,16 +104,19 @@ func runAccess() {
 
 	// Create RPC client for broker communication (use configured rpc timeout)
 	rpcClient := NewRPCClient(processID, rpcTimeout)
+	common.Info(LogMsgRPCClientCreated, rpcTimeout)
 
 	// Start RPC client in background
 	go func() {
-		common.Info("[ACCESS] Starting RPC client for process: %s", processID)
+		common.Info(LogMsgRPCClientStarting)
+		common.Info(LogMsgStartingRPCClient, processID)
 		if err := rpcClient.Run(context.Background()); err != nil {
-			common.Warn("[ACCESS] RPC client error for process %s: %v", processID, err)
+			common.Warn(LogMsgRPCClientError, processID, err)
 		} else {
-			common.Info("[ACCESS] RPC client stopped for process: %s", processID)
+			common.Info(LogMsgRPCClientStopped, processID)
 		}
 	}()
+	common.Info(LogMsgRPCClientStarted)
 
 	// Setup router and server
 	router := setupRouter(rpcClient, int(rpcTimeout.Seconds()), staticDir)
@@ -76,28 +129,33 @@ func runAccess() {
 
 	// Start server in a goroutine
 	go func() {
-		common.Info("[ACCESS] Starting access service on %s", address)
+		common.Info(LogMsgServerStarting, address)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			common.Error("[ACCESS] Failed to start server: %v", err)
+			common.Error(LogMsgFailedStartServer, err)
 			return
 		}
+		common.Info(LogMsgServerStarted)
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	common.Info("[ACCESS] Waiting for shutdown signal...")
 	<-quit
 
-	common.Info("[ACCESS] Shutting down access service...")
+	common.Info(LogMsgShuttingDown)
 
 	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
+	common.Info(LogMsgServerShutdownInitiated)
 	if err := srv.Shutdown(ctx); err != nil {
-		common.Warn("[ACCESS] Server forced to shutdown: %v", err)
+		common.Warn(LogMsgServerForcedShutdown, err)
+		common.Info(LogMsgServerShutdownForced)
 		os.Exit(1)
 	}
+	common.Info(LogMsgServerShutdownComplete)
 
-	common.Info("[ACCESS] Access service stopped\n")
+	common.Info(LogMsgServiceStopped)
 }

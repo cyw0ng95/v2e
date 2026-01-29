@@ -13,13 +13,13 @@ import (
 // createSaveCVEByIDHandler creates a handler for RPCSaveCVEByID
 func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("Processing SaveCVEByID request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
+		logger.Debug(LogMsgProcessingSaveCVE, msg.ID, msg.CorrelationID)
 		var req struct {
 			CVE cve.CVEItem `json:"cve"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse SaveCVEByID request - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
-			logger.Debug("Processing SaveCVEByID request failed due to malformed payload - Message ID: %s, Payload: %s", msg.ID, string(msg.Payload))
+			logger.Warn(LogMsgFailedParseSaveCVEReq, msg.ID, msg.CorrelationID, err)
+			logger.Debug(LogMsgProcessingSaveCVEFailed, msg.ID, string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -29,8 +29,8 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			}, nil
 		}
 		if req.CVE.ID == "" {
-			logger.Warn("CVE ID is required in SaveCVEByID request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
-			logger.Debug("Processing SaveCVEByID request failed: CVE ID missing in payload - Message ID: %s", msg.ID)
+			logger.Warn(LogMsgCVEIDRequired, msg.ID, msg.CorrelationID)
+			logger.Debug(LogMsgProcessingSaveCVEFailedID, msg.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -40,8 +40,8 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 			}, nil
 		}
 		if err := db.SaveCVE(&req.CVE); err != nil {
-			logger.Warn("Failed to save CVE to database - Message ID: %s, Correlation ID: %s, CVE ID: %s, Error: %v", msg.ID, msg.CorrelationID, req.CVE.ID, err)
-			logger.Debug("Processing SaveCVEByID request failed for CVE ID %s - Message ID: %s, Error details: %v", req.CVE.ID, msg.ID, err)
+			logger.Warn(LogMsgFailedSaveCVE, msg.ID, msg.CorrelationID, req.CVE.ID, err)
+			logger.Debug(LogMsgProcessingSaveCVEFailedErr, req.CVE.ID, msg.ID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -50,8 +50,8 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Info("Successfully saved CVE to local database - Message ID: %s, Correlation ID: %s, CVE ID: %s", msg.ID, msg.CorrelationID, req.CVE.ID)
-		logger.Debug("Processing SaveCVEByID request completed successfully - Message ID: %s, CVE ID: %s", msg.ID, req.CVE.ID)
+		logger.Info(LogMsgSuccessSaveCVE, msg.ID, msg.CorrelationID, req.CVE.ID)
+		logger.Debug(LogMsgProcessingSaveCVECompleted, msg.ID, req.CVE.ID)
 		result := map[string]interface{}{
 			"success": true,
 			"cve_id":  req.CVE.ID,
@@ -64,7 +64,7 @@ func createSaveCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Ha
 		}
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal SaveCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn(LogMsgFailedMarshalSaveCVEResp, msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -85,8 +85,8 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			CVEID string `json:"cve_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			logger.Debug("Processing IsCVEStoredByID request failed due to malformed payload: %s", string(msg.Payload))
+			logger.Warn(LogMsgFailedParseReq, err)
+			logger.Debug(LogMsgProcessingIsCVEFailed, string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -96,7 +96,7 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			}, nil
 		}
 		if req.CVEID == "" {
-			logger.Error("cve_id is required")
+			logger.Warn(LogMsgCVEIDRequiredSimple)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -107,7 +107,7 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 		}
 		_, err := db.GetCVE(req.CVEID)
 		stored := err == nil
-		logger.Debug("Processing IsCVEStoredByID request completed successfully for CVE ID %s, stored: %v", req.CVEID, stored)
+		logger.Debug(LogMsgProcessingIsCVECompleted, req.CVEID, stored)
 		result := map[string]interface{}{
 			"cve_id": req.CVEID,
 			"stored": stored,
@@ -120,7 +120,7 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 		}
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
+			logger.Warn(LogMsgFailedMarshalResult, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -137,13 +137,13 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 // createGetCVEByIDHandler creates a handler for RPCGetCVEByID
 func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("Processing GetCVEByID request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
+		logger.Debug(LogMsgProcessingGetCVE, msg.ID, msg.CorrelationID)
 		var req struct {
 			CVEID string `json:"cve_id"`
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse GetCVEByID request - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
-			logger.Debug("Processing GetCVEByID request failed due to malformed payload - Message ID: %s, Payload: %s", msg.ID, string(msg.Payload))
+			logger.Warn(LogMsgFailedParseGetCVEReq, msg.ID, msg.CorrelationID, err)
+			logger.Debug(LogMsgProcessingGetCVEFailed, msg.ID, string(msg.Payload))
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -153,8 +153,8 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 			}, nil
 		}
 		if req.CVEID == "" {
-			logger.Warn("CVE ID is required in GetCVEByID request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
-			logger.Debug("Processing GetCVEByID request failed: CVE ID missing in payload - Message ID: %s", msg.ID)
+			logger.Warn(LogMsgCVEIDRequiredGet, msg.ID, msg.CorrelationID)
+			logger.Debug(LogMsgProcessingGetCVEFailedID, msg.ID)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -165,18 +165,18 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 		}
 		cveItem, err := db.GetCVE(req.CVEID)
 		if err != nil {
-			logger.Warn("Failed to get CVE from database - Message ID: %s, Correlation ID: %s, CVE ID: %s, Error: %v", msg.ID, msg.CorrelationID, req.CVEID, err)
-			logger.Debug("Processing GetCVEByID request failed for CVE ID %s - Message ID: %s, Error details: %v", req.CVEID, msg.ID, err)
+			logger.Warn(LogMsgFailedGetCVE, msg.ID, msg.CorrelationID, req.CVEID, err)
+			logger.Debug(LogMsgProcessingGetCVEFailedErr, req.CVEID, msg.ID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("CVE not found: %v", err),
+				Error:         fmt.Sprintf(LogMsgCVEIDNotFound, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Info("Retrieved CVE from local database - Message ID: %s, Correlation ID: %s, CVE ID: %s", msg.ID, msg.CorrelationID, req.CVEID)
-		logger.Debug("Processing GetCVEByID request completed successfully - Message ID: %s, CVE ID: %s", msg.ID, req.CVEID)
+		logger.Info(LogMsgSuccessGetCVE, msg.ID, msg.CorrelationID, req.CVEID)
+		logger.Debug(LogMsgProcessingGetCVECompleted, msg.ID, req.CVEID)
 		respMsg := &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,
@@ -185,7 +185,7 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 		}
 		jsonData, err := subprocess.MarshalFast(cveItem)
 		if err != nil {
-			logger.Error("Failed to marshal GetCVEByID response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn(LogMsgFailedMarshalGetCVEResp, msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -252,7 +252,7 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 		}
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
+			logger.Warn("Failed to marshal result: %v", err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -328,7 +328,7 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 		}
 		jsonData, err := subprocess.MarshalFast(result)
 		if err != nil {
-			logger.Error("Failed to marshal ListCVEs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			logger.Warn("Failed to marshal ListCVEs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,

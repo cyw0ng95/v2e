@@ -44,9 +44,6 @@ go.work.sum
 # Logs directory
 logs/
 
-# Config files (may contain sensitive data)
-config.json
-
 # Database files
 cve.db
 
@@ -102,3 +99,5 @@ logs/
 # Profiling files
 *.prof
 *.test
+# vconfig binary
+tool/vconfig/vconfig

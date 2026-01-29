@@ -33,7 +33,7 @@ func TestImportGatingAndForce(t *testing.T) {
 	}
 
 	// First import should succeed
-	if err := store.ImportFromXML(xmlPath, "", false); err != nil {
+	if err := store.ImportFromXML(xmlPath, false); err != nil {
 		t.Fatalf("first import failed: %v", err)
 	}
 	meta, err := store.GetCatalogMeta(nil)
@@ -47,7 +47,7 @@ func TestImportGatingAndForce(t *testing.T) {
 
 	// Second import without force should be skipped (ImportedAtUTC unchanged)
 	time.Sleep(1 * time.Second)
-	if err := store.ImportFromXML(xmlPath, "", false); err != nil {
+	if err := store.ImportFromXML(xmlPath, false); err != nil {
 		t.Fatalf("second import (should skip) returned error: %v", err)
 	}
 	meta2, err := store.GetCatalogMeta(nil)
@@ -60,7 +60,7 @@ func TestImportGatingAndForce(t *testing.T) {
 
 	// Force import should update ImportedAtUTC
 	time.Sleep(1 * time.Second)
-	if err := store.ImportFromXML(xmlPath, "", true); err != nil {
+	if err := store.ImportFromXML(xmlPath, true); err != nil {
 		t.Fatalf("force import failed: %v", err)
 	}
 	meta3, err := store.GetCatalogMeta(nil)

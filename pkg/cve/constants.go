@@ -1,0 +1,41 @@
+package cve
+
+const (
+	// Log messages
+	LogMsgJobStarted              = "Job started: session_id=%s, start_index=%d, batch_size=%d"
+	LogMsgJobStopped              = "Job stopped"
+	LogMsgJobPaused               = "Job paused"
+	LogMsgJobResumed              = "Job resumed: session_id=%s"
+	LogMsgJobLoopStarting         = "Job loop starting: start_index=%d, batch_size=%d"
+	LogMsgJobLoopCancelled        = "Job loop cancelled"
+	LogMsgFetchingBatch           = "Fetching batch: start_index=%d, batch_size=%d"
+	LogMsgFailedFetchCVEs         = "Failed to fetch CVEs: %v"
+	LogMsgFailedUpdateProgress    = "Failed to update progress: %v"
+	LogMsgInvalidResponseType     = "Invalid response type from remote"
+	LogMsgErrorFromRemote         = "Error from remote: %s"
+	LogMsgFailedUnmarshalResponse = "Failed to unmarshal CVE response: %v"
+	LogMsgNoMoreCVEs              = "No more CVEs to fetch. Job completed."
+	LogMsgFetchedCVEs             = "Fetched %d CVEs from NVD"
+	LogMsgFailedStoreCVE          = "Failed to store CVE %s: %v"
+	LogMsgStoredCVEsSuccess       = "Stored %d/%d CVEs successfully"
+
+	// Taskflow Executor Log messages
+	LogMsgTFJobStarted         = "Job started: run_id=%s, start_index=%d, batch_size=%d, data_type=%s"
+	LogMsgTFJobResumed         = "Job resumed: run_id=%s"
+	LogMsgTFJobPaused          = "Job paused: run_id=%s"
+	LogMsgTFJobStopped         = "Job stopped: run_id=%s"
+	LogMsgTFNoActiveRuns       = "No active runs to recover"
+	LogMsgTFFoundRun           = "Found run to recover: id=%s, state=%s"
+	LogMsgTFAutoRecover        = "Auto-recovering running job: %s"
+	LogMsgTFManualResume       = "Run is %s - manual resume required"
+	LogMsgTFFailedGetRun       = "Failed to get run: %v"
+	LogMsgTFJobLoopStarting    = "Job loop starting: run_id=%s, start_index=%d, batch_size=%d"
+	LogMsgTFJobLoopCancelled   = "Job loop cancelled: run_id=%s"
+	LogMsgTFFetchingBatch      = "Fetching batch: run_id=%s, index=%d, size=%d"
+	LogMsgTFSkippingStore      = "Skipping store due to fetch error: %v"
+	LogMsgTFNoMoreCVEs         = "No more CVEs to fetch. Job completed: run_id=%s"
+	LogMsgTFFailedStoreCVE     = "Failed to store CVE %s: %v"
+	LogMsgTFStoredCVEsSuccess  = "Stored %d/%d CVEs successfully"
+	LogMsgTFFetchFailed        = "Fetch failed: %v"
+	LogMsgTFJobCompleted       = "Job completed: run_id=%s"
+)

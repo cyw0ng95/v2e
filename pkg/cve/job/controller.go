@@ -95,7 +95,7 @@ func (c *Controller) Start(ctx context.Context) error {
 	// Start job in background
 	go c.runJob(jobCtx, sess)
 
-	c.logger.Info("Job started: session_id=%s, start_index=%d, batch_size=%d",
+	c.logger.Info(cve.LogMsgJobStarted,
 		sess.ID, sess.StartIndex, sess.ResultsPerBatch)
 
 	return nil
@@ -124,7 +124,7 @@ func (c *Controller) Stop() error {
 		return fmt.Errorf("failed to update session state: %w", err)
 	}
 
-	c.logger.Info("Job stopped")
+	c.logger.Info(cve.LogMsgJobStopped)
 
 	return nil
 }
@@ -152,7 +152,7 @@ func (c *Controller) Pause() error {
 		return fmt.Errorf("failed to update session state: %w", err)
 	}
 
-	c.logger.Info("Job paused")
+	c.logger.Info(cve.LogMsgJobPaused)
 
 	return nil
 }
@@ -191,7 +191,7 @@ func (c *Controller) Resume(ctx context.Context) error {
 	// Restart job in background
 	go c.runJob(jobCtx, sess)
 
-	c.logger.Info("Job resumed: session_id=%s", sess.ID)
+	c.logger.Info(cve.LogMsgJobResumed, sess.ID)
 
 	return nil
 }
@@ -215,16 +215,16 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 	currentIndex := sess.StartIndex
 	batchSize := sess.ResultsPerBatch
 
-	c.logger.Info("Job loop starting: start_index=%d, batch_size=%d", currentIndex, batchSize)
+	c.logger.Info(cve.LogMsgJobLoopStarting, currentIndex, batchSize)
 
 	for {
 		select {
 		case <-ctx.Done():
-			c.logger.Info("Job loop cancelled")
+			c.logger.Info(cve.LogMsgJobLoopCancelled)
 			return
 		default:
 			// Fetch batch from NVD via remote
-			c.logger.Debug("Fetching batch: start_index=%d, batch_size=%d", currentIndex, batchSize)
+			c.logger.Debug(cve.LogMsgFetchingBatch, currentIndex, batchSize)
 
 			// Get pooled fetch params to avoid allocating a map each iteration
 			fp := fetchParamsPool.Get().(*fetchParams)
@@ -237,9 +237,9 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			fetchParamsPool.Put(fp)
 
 			if err != nil {
-				c.logger.Error("Failed to fetch CVEs: %v", err)
+				c.logger.Warn(cve.LogMsgFailedFetchCVEs, err)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
-					c.logger.Warn("Failed to update progress: %v", err)
+					c.logger.Warn(cve.LogMsgFailedUpdateProgress, err)
 				}
 
 				// Wait before retrying
@@ -254,18 +254,18 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			// Parse the RPC response (it's a subprocess.Message)
 			msg, ok := result.(*subprocess.Message)
 			if !ok {
-				c.logger.Error("Invalid response type from remote")
+				c.logger.Warn(cve.LogMsgInvalidResponseType)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
-					c.logger.Warn("Failed to update progress: %v", err)
+					c.logger.Warn(cve.LogMsgFailedUpdateProgress, err)
 				}
 				continue
 			}
 
 			// Check if it's an error message
 			if msg.Type == subprocess.MessageTypeError {
-				c.logger.Error("Error from remote: %s", msg.Error)
+				c.logger.Warn(cve.LogMsgErrorFromRemote, msg.Error)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
-					c.logger.Warn("Failed to update progress: %v", err)
+					c.logger.Warn(cve.LogMsgFailedUpdateProgress, err)
 				}
 
 				// Wait before retrying
@@ -280,21 +280,21 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 			// Parse the CVE response from payload
 			var response cve.CVEResponse
 			if err := jsonutil.Unmarshal(msg.Payload, &response); err != nil {
-				c.logger.Error("Failed to unmarshal CVE response: %v", err)
+				c.logger.Warn(cve.LogMsgFailedUnmarshalResponse, err)
 				if err := c.sessionManager.UpdateProgress(0, 0, 1); err != nil {
-					c.logger.Warn("Failed to update progress: %v", err)
+					c.logger.Warn(cve.LogMsgFailedUpdateProgress, err)
 				}
 				continue
 			}
 
 			// Check if we have any CVEs
 			if len(response.Vulnerabilities) == 0 {
-				c.logger.Info("No more CVEs to fetch. Job completed.")
+				c.logger.Info(cve.LogMsgNoMoreCVEs)
 				c.Stop()
 				return
 			}
 
-			c.logger.Info("Fetched %d CVEs from NVD", len(response.Vulnerabilities))
+			c.logger.Info(cve.LogMsgFetchedCVEs, len(response.Vulnerabilities))
 
 			// Store each CVE via local
 			storedCount := int64(0)
@@ -305,18 +305,18 @@ func (c *Controller) runJob(ctx context.Context, sess *session.Session) {
 				_, err := c.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
 
 				if err != nil {
-					c.logger.Error("Failed to store CVE %s: %v", vuln.CVE.ID, err)
+					c.logger.Error(cve.LogMsgFailedStoreCVE, vuln.CVE.ID, err)
 					errorCount++
 				} else {
 					storedCount++
 				}
 			}
 
-			c.logger.Info("Stored %d/%d CVEs successfully", storedCount, len(response.Vulnerabilities))
+			c.logger.Info(cve.LogMsgStoredCVEsSuccess, storedCount, len(response.Vulnerabilities))
 
 			// Update progress
 			if err := c.sessionManager.UpdateProgress(int64(len(response.Vulnerabilities)), storedCount, errorCount); err != nil {
-				c.logger.Warn("Failed to update progress: %v", err)
+				c.logger.Warn(cve.LogMsgFailedUpdateProgress, err)
 			}
 
 			// Move to next batch

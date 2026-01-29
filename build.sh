@@ -56,7 +56,7 @@ GO_TAGS="${GO_TAGS:-libxml2}"
 # Check operating system for proper containerization support
 DETECTED_OS="$(uname -s)"
 if [[ "$DETECTED_OS" == "Darwin" ]]; then
-    echo "Error: On macOS, please use runenv.sh to run in containerized environment."
+    log_error "On macOS, please use runenv.sh to run in containerized environment."
     exit 1
 fi
 
@@ -138,6 +138,7 @@ show_help() {
 Usage: $0 [OPTIONS]
 
 Options:
+    -c          Run vconfig TUI to configure build options
     -t          Run unit tests and return result for GitHub CI
     -f          Run fuzz tests on key interfaces (5 seconds per test)
     -m          Run performance benchmarks and generate report
@@ -151,7 +152,6 @@ Examples:
     $0 -t       # Run unit tests for CI
     $0 -f       # Run fuzz tests (5 seconds per test)
     $0 -m       # Run performance benchmarks
-    $0 -M       # Run RPC performance benchmarks
     $0 -p       # Build and package binaries
     $0 -r       # Run Node.js process and broker
     $0 -t -v    # Run unit tests with verbose output
@@ -231,7 +231,7 @@ run_node_and_broker_once() {
     log_info "[build.sh] Starting broker from $PACKAGE_DIR..."
     pushd "$PACKAGE_DIR" > /dev/null
     log_info "[build.sh] Launch command: ./broker"
-    ./broker &
+    ./broker config.json &
     BROKER_PID=$!
     log_info "[build.sh] Broker started with PID: $BROKER_PID"
     popd > /dev/null
@@ -282,6 +282,19 @@ build_project() {
     
     setup_build_dir
     
+    # Check if config file exists and generate build tags
+    local build_tags="$GO_TAGS"
+    if [ -f ".build/.config" ]; then
+        log_debug "Using configuration from .build/.config"
+        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
+        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
+            build_tags="$GO_TAGS,$config_tags"
+            log_debug "Using build tags: $build_tags"
+        fi
+    else
+        log_debug "No config file found, using default build tags: $GO_TAGS"
+    fi
+    
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         local binary_path="$BUILD_DIR/v2e"
@@ -324,9 +337,9 @@ build_project() {
             fi
             mkdir -p "$BUILD_DIR"
             if [ "$VERBOSE" = true ]; then
-                go build -v -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
+                go build -v -tags "$build_tags" -o "$BUILD_DIR/v2e" ./...
             else
-                go build -tags "$GO_TAGS" -o "$BUILD_DIR/v2e" ./...
+                go build -tags "$build_tags" -o "$BUILD_DIR/v2e" ./...
             fi
             if [ "$VERBOSE" = true ]; then
                 log_debug "Build completed successfully"
@@ -357,6 +370,19 @@ build_and_package() {
     setup_build_dir
     mkdir -p "$PACKAGE_DIR"
     
+    # Check if config file exists and generate build tags
+    local build_tags="$GO_TAGS"
+    if [ -f ".build/.config" ]; then
+        log_debug "Using configuration from .build/.config"
+        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
+        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
+            build_tags="$GO_TAGS,$config_tags"
+            log_debug "Using build tags: $build_tags"
+        fi
+    else
+        log_debug "No config file found, using default build tags: $GO_TAGS"
+    fi
+    
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         if [ "$VERBOSE" = true ]; then
@@ -372,9 +398,9 @@ build_and_package() {
                     log_debug "Building $cmd_name..."
                 fi
                 if [ "$VERBOSE" = true ]; then
-                    go build -v -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    go build -v -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
                 else
-                    go build -tags "$GO_TAGS" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    go build -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
                 fi
                 build_pids+=($!)
             fi
@@ -467,16 +493,29 @@ run_tests() {
     
     setup_build_dir
     
+    # Check if config file exists and generate build tags
+    local build_tags="$GO_TAGS"
+    if [ -f ".build/.config" ]; then
+        log_debug "Using configuration from .build/.config for tests"
+        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
+        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
+            build_tags="$GO_TAGS,$config_tags"
+            log_debug "Using test tags: $build_tags"
+        fi
+    else
+        log_debug "No config file found, using default test tags: $GO_TAGS"
+    fi
+    
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
         if [ "$VERBOSE" = true ]; then
             log_info "Running go test with verbose output..."
             # Run tests with coverage and verbose output, excluding fuzz tests
-            go test -tags "$GO_TAGS" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            go test -tags "$build_tags" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         else
             log_info "Running go test..."
             # Run tests with coverage, excluding fuzz tests
-            go test -tags "$GO_TAGS" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            go test -tags "$build_tags" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
         fi
         TEST_EXIT_CODE=$?
         
@@ -508,6 +547,19 @@ run_fuzz_tests() {
     log_info "Running fuzz tests on key interfaces..."
     setup_build_dir
     
+    # Check if config file exists and generate build tags
+    local build_tags="$GO_TAGS"
+    if [ -f ".build/.config" ]; then
+        log_debug "Using configuration from .build/.config for fuzz tests"
+        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
+        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
+            build_tags="$GO_TAGS,$config_tags"
+            log_debug "Using fuzz test tags: $build_tags"
+        fi
+    else
+        log_debug "No config file found, using default fuzz test tags: $GO_TAGS"
+    fi
+    
     # Fuzz test configuration
     FUZZ_TIME="1s"  # 1 second per test, since it may take too long to run on CI
     FUZZ_REPORT="$BUILD_DIR/fuzz-report.txt"
@@ -519,7 +571,7 @@ run_fuzz_tests() {
         fi
         
         # Find all fuzz tests
-        FUZZ_TESTS=$(go test -tags "$GO_TAGS" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
+        FUZZ_TESTS=$(go test -tags "$build_tags" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
         
         if [ -z "$FUZZ_TESTS" ]; then
             log_info "No fuzz tests found. Creating report..."
@@ -626,6 +678,19 @@ run_fuzz_tests() {
 run_benchmarks() {
     log_info "Running performance benchmarks..."
     setup_build_dir
+    
+    # Check if config file exists and generate build tags
+    local build_tags="$GO_TAGS"
+    if [ -f ".build/.config" ]; then
+        log_debug "Using configuration from .build/.config for benchmarks"
+        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
+        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
+            build_tags="$GO_TAGS,$config_tags"
+            log_debug "Using benchmark tags: $build_tags"
+        fi
+    else
+        log_debug "No config file found, using default benchmark tags: $GO_TAGS"
+    fi
 
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
@@ -652,10 +717,10 @@ run_benchmarks() {
                 log_info "Benchmarking package: $PKG"
                 if [ "$VERBOSE" = true ]; then
                     # Stream output to console and prefix with package
-                    (go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") | tee -a "$BENCHMARK_OUTPUT"
+                    (go test -tags "$build_tags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") | tee -a "$BENCHMARK_OUTPUT"
                     rc=${PIPESTATUS[0]}
                 else
-                    (go test -tags "$GO_TAGS" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") >> "$BENCHMARK_OUTPUT" 2>&1
+                    (go test -tags "$build_tags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") >> "$BENCHMARK_OUTPUT" 2>&1
                     rc=${PIPESTATUS[0]}
                 fi
                 if [ $rc -ne 0 ]; then
@@ -790,9 +855,11 @@ main() {
     RUN_BENCHMARKS=false
     BUILD_PACKAGE=false
     RUN_NODE_AND_BROKER=false
+    RUN_VCONFIG_TUI=false
 
-    while getopts "tfmphrv" opt; do
+    while getopts "ctfmphrv" opt; do
         case "$opt" in
+            c) RUN_VCONFIG_TUI=true ;;
             t) RUN_TESTS=true ;;
             f) RUN_FUZZ_TESTS=true ;;
             m) RUN_BENCHMARKS=true ;;
@@ -805,7 +872,38 @@ main() {
     done
 
     # Execute based on options
-    if [ "$RUN_TESTS" = true ]; then
+    if [ "$RUN_VCONFIG_TUI" = true ]; then
+        # Ensure vconfig binary exists and is up-to-date with source files
+        VCONFIG_BINARY=".build/vconfig"
+        VCONFIG_SRC_CHANGED=false
+        
+        # Check if binary exists
+        if [ ! -f "$VCONFIG_BINARY" ]; then
+            VCONFIG_SRC_CHANGED=true
+        else
+            # Check if any source files are newer than the binary
+            for src_file in tool/vconfig/*.go; do
+                if [ "$src_file" -nt "$VCONFIG_BINARY" ]; then
+                    VCONFIG_SRC_CHANGED=true
+                    break
+                fi
+            done
+        fi
+        
+        if [ "$VCONFIG_SRC_CHANGED" = true ]; then
+            log_info "Building vconfig tool..."
+            mkdir -p .build
+            (cd tool/vconfig && go build -o ../../.build/vconfig .)
+        fi
+        # When -c flag is used, always run TUI regardless of existing config
+        log_info "Running vconfig TUI..."
+        mkdir -p .build
+        .build/vconfig -tui -config .build/.config
+        log_info "Current config:"
+        cat ./.build/.config
+        # Only run TUI, don't continue with build
+        exit 0
+    elif [ "$RUN_TESTS" = true ]; then
         run_tests
         exit_code=$?
     elif [ "$RUN_FUZZ_TESTS" = true ]; then

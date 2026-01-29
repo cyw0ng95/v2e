@@ -250,7 +250,7 @@ func TestImportFromXMLErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test importing from non-existent file
-	err = store.ImportFromXML("/non/existent/file.xml", "", false)
+	err = store.ImportFromXML("/non/existent/file.xml", false)
 	assert.Error(t, err)
 	// Check for the actual error message - might be different from what we expect
 	// In any case, there should be an error

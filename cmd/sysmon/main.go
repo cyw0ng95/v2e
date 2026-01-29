@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ type RPCClient struct {
 	pendingRequests map[string]*requestEntry
 	mu              sync.RWMutex
 	correlationSeq  uint64
+	logger          *common.Logger
 }
 
 type requestEntry struct {
@@ -44,10 +46,11 @@ func (e *requestEntry) close() {
 	})
 }
 
-func NewRPCClient(sp *subprocess.Subprocess) *RPCClient {
+func NewRPCClient(sp *subprocess.Subprocess, logger *common.Logger) *RPCClient {
 	client := &RPCClient{
 		sp:              sp,
 		pendingRequests: make(map[string]*requestEntry),
+		logger:          logger,
 	}
 	sp.RegisterHandler(string(subprocess.MessageTypeResponse), client.handleResponse)
 	sp.RegisterHandler(string(subprocess.MessageTypeError), client.handleError)
@@ -62,7 +65,11 @@ func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message)
 	}
 	c.mu.Unlock()
 	if exists && entry != nil {
+		c.logger.Info(LogMsgRPCResponseReceived, msg.CorrelationID, msg.Type)
 		entry.signal(msg)
+		c.logger.Info(LogMsgRPCChannelSignaled, msg.CorrelationID)
+	} else {
+		c.logger.Warn("Received response for unknown correlation ID: %s", msg.CorrelationID)
 	}
 	return nil, nil
 }
@@ -120,34 +127,75 @@ func main() {
 	if processID == "" {
 		processID = "sysmon"
 	}
+	common.Info(LogMsgProcessIDConfigured, processID)
 
-	logger, err := subprocess.SetupLogging(processID)
+	// Use a bootstrap logger for initial messages before the full logging system is ready
+	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+	common.Info(LogMsgBootstrapLoggerCreated)
+
+	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[sysmon] Failed to setup logging: %v\n", err)
+		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
 	}
+	common.Info(LogMsgLoggingSetupComplete, common.InfoLevel)
 
-	sp := subprocess.New(processID)
+	var sp *subprocess.Subprocess
+	
+	// Check if we're running as an RPC subprocess with file descriptors
+	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
+		// Use file descriptors 3 and 4 for RPC communication
+		inputFD := 3
+		outputFD := 4
+		
+		// Allow environment override for file descriptors
+		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				inputFD = fd
+			}
+		}
+		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				outputFD = fd
+			}
+		}
+		
+		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
+	} else {
+		// Use default stdin/stdout for non-RPC mode
+		sp = subprocess.New(processID)
+	}
+	
+	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// RPC client to query the broker for message statistics
-	rpcClient := NewRPCClient(sp)
+	logger.Info(LogMsgRPCClientCreated)
+	rpcClient := NewRPCClient(sp, logger)
 
 	// Register RPC handler for system metrics (pass rpcClient so we can query broker)
 	sp.RegisterHandler("RPCGetSysMetrics", createGetSysMetricsHandler(logger, rpcClient))
-	logger.Info("[sysmon] Registered RPCGetSysMetrics handler")
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetSysMetrics")
+	logger.Info(LogMsgRegisteredSysMetrics)
 
-	logger.Info("[sysmon] Sysmon service started")
+	logger.Info(LogMsgServiceStarted)
+	logger.Info(LogMsgServiceReady)
 
 	subprocess.RunWithDefaults(sp, logger)
+	logger.Info(LogMsgServiceShutdownStarting)
+	logger.Info(LogMsgServiceShutdownComplete)
 }
 
 // createGetSysMetricsHandler creates a handler for RPCGetSysMetrics
 func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info("[sysmon] RPCGetSysMetrics handler invoked. msg.ID=%s, correlation_id=%s", msg.ID, msg.CorrelationID)
+		logger.Info(LogMsgStartingGetSysMetrics, msg.CorrelationID)
+		logger.Info(LogMsgSysMetricsInvoked, msg.ID, msg.CorrelationID)
+		logger.Info(LogMsgMetricCollectionStarted)
 		metrics, err := collectMetrics()
+		logger.Info(LogMsgMetricCollectionCompleted)
 		if err != nil {
-			logger.Error("[sysmon] Failed to collect metrics: %v", err)
+			logger.Warn(LogMsgFailedCollectMetrics, err)
+			logger.Info(LogMsgGetSysMetricsFailed, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -158,24 +206,30 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 		}
 		// Attempt to fetch broker message statistics via RPC
 		if rpcClient != nil {
+			logger.Info(LogMsgBrokerStatsFetchStarted)
 			rpcCtx, cancel := context.WithTimeout(ctx, DefaultRPCTimeout)
 			defer cancel()
 			resp, rpcErr := rpcClient.InvokeRPC(rpcCtx, "broker", "RPCGetMessageStats", nil)
 			if rpcErr != nil {
-				logger.Info("[sysmon] Failed to fetch message stats from broker: %v", rpcErr)
+				logger.Info(LogMsgFailedFetchBrokerStats, rpcErr)
 			} else if resp != nil && len(resp.Payload) > 0 {
 				var msgStats map[string]interface{}
 				if err := subprocess.UnmarshalFast(resp.Payload, &msgStats); err != nil {
-					logger.Info("[sysmon] Failed to unmarshal broker message stats: %v", err)
+					logger.Info(LogMsgFailedUnmarshalStats, err)
 				} else {
 					metrics["message_stats"] = msgStats
+					logger.Info(LogMsgBrokerStatsFetchSuccess)
 				}
+			} else {
+				logger.Info(LogMsgBrokerStatsFetchFailed, "empty response")
 			}
 		}
-		logger.Info("[sysmon] Collected metrics: cpu_usage=%.2f, memory_usage=%.2f, load_avg=%v, uptime=%.0fs", metrics["cpu_usage"], metrics["memory_usage"], metrics["load_avg"], metrics["uptime"])
+		logger.Info(LogMsgCollectedMetrics, metrics["cpu_usage"], metrics["memory_usage"], metrics["load_avg"], metrics["uptime"])
+		logger.Info(LogMsgMetricsMarshalingStarted)
 		payload, err := subprocess.MarshalFast(metrics)
 		if err != nil {
-			logger.Error("[sysmon] Failed to marshal metrics: %v", err)
+			logger.Warn(LogMsgFailedMarshalMetrics, err)
+			logger.Info(LogMsgGetSysMetricsFailed, msg.CorrelationID, err)
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
@@ -184,7 +238,9 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 				Target:        msg.Source,
 			}, nil
 		}
-		logger.Info("[sysmon] Returning metrics response. correlation_id=%s", msg.CorrelationID)
+		logger.Info(LogMsgMetricsMarshalingSuccess)
+		logger.Info(LogMsgReturningMetrics, msg.CorrelationID)
+		logger.Info(LogMsgGetSysMetricsSuccess, msg.CorrelationID)
 		return &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
 			ID:            msg.ID,

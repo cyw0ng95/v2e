@@ -182,47 +182,78 @@ func New(router routing.Router) *Optimizer {
 	return opt
 }
 
-// NewWithParams constructs an Optimizer with tunable runtime parameters.
-// Pass bufferCap<=0 to use default (1000). Pass numWorkers<=0 to use CPU-based default.
-// Pass statsInterval<=0 to use default (100ms).
-func NewWithParams(router routing.Router, bufferCap, numWorkers int, statsInterval time.Duration, offerPolicy string, offerTimeout time.Duration, batchSize int, flushInterval time.Duration) *Optimizer {
-	if bufferCap <= 0 {
-		bufferCap = 1000
+// Config holds the configuration for the Optimizer.
+type Config struct {
+	BufferCap       int
+	NumWorkers      int
+	StatsInterval   time.Duration
+	OfferPolicy     string
+	OfferTimeout    time.Duration
+	BatchSize       int
+	FlushInterval   time.Duration
+	AdaptationFreq  time.Duration
+}
+
+// DefaultConfig returns a Config with default values.
+func DefaultConfig() Config {
+	n := runtime.NumCPU()
+	if n < 4 {
+		n = 4
 	}
-	if numWorkers <= 0 {
-		numWorkers = runtime.NumCPU()
-		if numWorkers < 4 {
-			numWorkers = 4
-		}
+	return Config{
+		BufferCap:      1000,
+		NumWorkers:     n,
+		StatsInterval:  100 * time.Millisecond,
+		OfferPolicy:    "drop",
+		OfferTimeout:   0,
+		BatchSize:      1,
+		FlushInterval:  10 * time.Millisecond,
+		AdaptationFreq: 10 * time.Second,
 	}
-	if statsInterval <= 0 {
-		statsInterval = 100 * time.Millisecond
+}
+
+// NewWithConfig constructs an Optimizer with the provided configuration.
+func NewWithConfig(router routing.Router, cfg Config) *Optimizer {
+	defaults := DefaultConfig()
+
+	if cfg.BufferCap <= 0 {
+		cfg.BufferCap = defaults.BufferCap
 	}
-	if offerPolicy == "" {
-		offerPolicy = "drop"
+	if cfg.NumWorkers <= 0 {
+		cfg.NumWorkers = defaults.NumWorkers
 	}
-	if batchSize <= 0 {
-		batchSize = 1
+	if cfg.StatsInterval <= 0 {
+		cfg.StatsInterval = defaults.StatsInterval
 	}
-	if flushInterval <= 0 {
-		flushInterval = 10 * time.Millisecond
+	if cfg.OfferPolicy == "" {
+		cfg.OfferPolicy = defaults.OfferPolicy
 	}
+	if cfg.BatchSize <= 0 {
+		cfg.BatchSize = defaults.BatchSize
+	}
+	if cfg.FlushInterval <= 0 {
+		cfg.FlushInterval = defaults.FlushInterval
+	}
+	if cfg.AdaptationFreq <= 0 {
+		cfg.AdaptationFreq = defaults.AdaptationFreq
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	opt := &Optimizer{
 		router:            router,
-		statsSyncInterval: statsInterval,
-		optimizedMessages: make(chan *proc.Message, bufferCap),
-		bufferCap:         bufferCap,
-		numWorkers:        numWorkers,
-		offerPolicy:       offerPolicy,
-		offerTimeout:      offerTimeout,
-		batchSize:         batchSize,
-		flushInterval:     flushInterval,
+		statsSyncInterval: cfg.StatsInterval,
+		optimizedMessages: make(chan *proc.Message, cfg.BufferCap),
+		bufferCap:         cfg.BufferCap,
+		numWorkers:        cfg.NumWorkers,
+		offerPolicy:       cfg.OfferPolicy,
+		offerTimeout:      cfg.OfferTimeout,
+		batchSize:         cfg.BatchSize,
+		flushInterval:     cfg.FlushInterval,
 		ctx:               ctx,
 		cancel:            cancel,
 		monitor:           sched.NewSystemMonitor(5 * time.Second),
 		adaptiveOpt:       sched.NewAdaptiveOptimizer(),
-		adaptationFreq:    10 * time.Second,
+		adaptationFreq:    cfg.AdaptationFreq,
 		lastAdaptation:    time.Now(),
 	}
 	opt.statsSyncTicker = time.NewTicker(opt.statsSyncInterval)
@@ -231,6 +262,20 @@ func NewWithParams(router routing.Router, bufferCap, numWorkers int, statsInterv
 		go opt.worker(i)
 	}
 	return opt
+}
+
+// NewWithParams constructs an Optimizer with tunable runtime parameters.
+// Deprecated: Use NewWithConfig instead.
+func NewWithParams(router routing.Router, bufferCap, numWorkers int, statsInterval time.Duration, offerPolicy string, offerTimeout time.Duration, batchSize int, flushInterval time.Duration) *Optimizer {
+	return NewWithConfig(router, Config{
+		BufferCap:     bufferCap,
+		NumWorkers:    numWorkers,
+		StatsInterval: statsInterval,
+		OfferPolicy:   offerPolicy,
+		OfferTimeout:  offerTimeout,
+		BatchSize:     batchSize,
+		FlushInterval: flushInterval,
+	})
 }
 
 func (o *Optimizer) worker(id int) {

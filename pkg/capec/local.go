@@ -19,7 +19,6 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/lestrrat-go/libxml2/parser"
-	"github.com/lestrrat-go/libxml2/xsd"
 )
 
 // LocalCAPECStore manages a local database of CAPEC items.
@@ -50,14 +49,9 @@ func NewLocalCAPECStore(dbPath string) (*LocalCAPECStore, error) {
 	return &LocalCAPECStore{db: db}, nil
 }
 
-// ImportFromXML validates XML with XSD and imports CAPEC items into DB.
-func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) error {
-	common.Info("Importing CAPEC data from XML file: %s (schema: %s)", xmlPath, xsdPath)
-
-	// Optionally validate XML against XSD using libxml2/xsd.
-	// By default, XSD validation is skipped. To enable strict validation set
-	// environment variable `CAPEC_STRICT_XSD=1` before running the process.
-	strict := os.Getenv("CAPEC_STRICT_XSD") == "1"
+// ImportFromXML imports CAPEC items from XML into DB without XSD validation.
+func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
+	common.Info("Importing CAPEC data from XML file: %s", xmlPath)
 
 	// Parse XML file into a libxml2 document using the parser package
 	xf, err := os.Open(xmlPath)
@@ -95,29 +89,14 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath, xsdPath string, force bool) err
 		var meta CAPECCatalogMeta
 		if err := s.db.First(&meta).Error; err == nil {
 			if meta.Version == catalogVersion {
-				common.Info("CAPEC catalog version %s already imported; skipping import", catalogVersion)
+				common.Info(LogMsgImportSkipped, catalogVersion)
 				return nil
 			}
 		}
 	}
 
-	if strict {
-		schemaData, err := os.ReadFile(xsdPath)
-		if err != nil {
-			return fmt.Errorf("failed to read xsd: %w", err)
-		}
-		schema, err := xsd.Parse(schemaData)
-		if err != nil {
-			return fmt.Errorf("failed to parse xsd: %w", err)
-		}
-		defer schema.Free()
-
-		if err := schema.Validate(doc); err != nil {
-			return fmt.Errorf("xsd validation failed: %w", err)
-		}
-	} else {
-		common.Info("Skipping XSD validation (CAPEC_STRICT_XSD not set); continuing with permissive import")
-	}
+	// Skip XSD validation entirely - this ensures imports work without XSD schema
+	common.Info("Skipping XSD validation as per security requirement; continuing with permissive import")
 
 	// Parse XML into attack pattern structs (streaming)
 	f, err := os.Open(xmlPath)

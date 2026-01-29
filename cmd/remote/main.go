@@ -16,8 +16,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
@@ -29,33 +31,80 @@ func main() {
 	if processID == "" {
 		processID = "remote"
 	}
+	common.Info(LogMsgProcessIDConfigured, processID)
+
+	// Use a bootstrap logger for initial messages before the full logging system is ready
+	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+	common.Info(LogMsgBootstrapLoggerCreated)
 
 	// Set up logging using common subprocess framework
-	logger, err := subprocess.SetupLogging(processID)
+	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to setup logging: %v\n", err)
+		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
 	}
+	common.Info(LogMsgLoggingSetupComplete, common.InfoLevel)
 
 	// Get API key from environment (optional)
 	apiKey := os.Getenv("NVD_API_KEY")
+	if apiKey != "" {
+		logger.Info(LogMsgAPIKeyDetected)
+	} else {
+		logger.Info(LogMsgAPIKeyNotSet)
+	}
 
 	// Create CVE fetcher
 	fetcher := remote.NewFetcher(apiKey)
+	logger.Info(LogMsgFetcherCreated, apiKey != "")
 
 	// Create subprocess instance
-	sp := subprocess.New(processID)
+	var sp *subprocess.Subprocess
+
+	// Check if we're running as an RPC subprocess with file descriptors
+	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
+		// Use file descriptors 3 and 4 for RPC communication
+		inputFD := 3
+		outputFD := 4
+
+		// Allow environment override for file descriptors
+		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				inputFD = fd
+			}
+		}
+		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				outputFD = fd
+			}
+		}
+
+		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
+	} else {
+		// Use default stdin/stdout for non-RPC mode
+		sp = subprocess.New(processID)
+	}
+
+	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Register RPC handlers
+	logger.Info("Registering RPC handlers...")
 	sp.RegisterHandler("RPCGetCVEByID", createGetCVEByIDHandler(fetcher))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCVEByID")
 	sp.RegisterHandler("RPCGetCVECnt", createGetCVECntHandler(fetcher))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCVECnt")
 	sp.RegisterHandler("RPCFetchCVEs", createFetchCVEsHandler(fetcher))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCFetchCVEs")
 	sp.RegisterHandler("RPCFetchViews", createFetchViewsHandler())
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCFetchViews")
 
-	logger.Info("CVE remote service started")
+	logger.Info(LogMsgServiceStarted)
+	logger.Info(LogMsgServiceReady)
 
 	// Run with default lifecycle management
+	logger.Info("Starting subprocess with default lifecycle management")
 	subprocess.RunWithDefaults(sp, logger)
+	logger.Info(LogMsgServiceShutdownStarting)
+	logger.Info(LogMsgServiceShutdownComplete)
 }
 
 // createFetchViewsHandler creates a handler for RPCFetchViews which downloads
@@ -84,7 +133,7 @@ func createFetchViewsHandler() subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to download archive: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedDownloadArchive, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -95,7 +144,7 @@ func createFetchViewsHandler() subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("unexpected HTTP status: %s", resp.Status),
+				Error:         fmt.Sprintf(ErrMsgUnexpectedHTTPStatus, resp.Status),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -106,7 +155,7 @@ func createFetchViewsHandler() subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to read archive body: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedReadBody, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -117,7 +166,7 @@ func createFetchViewsHandler() subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to open zip archive: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedOpenZip, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -189,7 +238,7 @@ func createFetchViewsHandler() subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal response: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedMarshalResp, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -216,7 +265,7 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to parse request: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedParseReq, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -226,7 +275,7 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         "cve_id is required",
+				Error:         ErrMsgCVEIDRequired,
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -240,7 +289,7 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
-					Error:         "NVD_RATE_LIMITED: NVD API rate limit exceeded (HTTP 429)",
+					Error:         ErrMsgNVDRateLimited,
 					CorrelationID: msg.CorrelationID,
 					Target:        msg.Source,
 				}, nil
@@ -248,7 +297,7 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to fetch CVE: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedFetchCVE, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -268,7 +317,7 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal response: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedMarshalResp, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -305,7 +354,7 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
-					Error:         "NVD_RATE_LIMITED: NVD API rate limit exceeded (HTTP 429)",
+					Error:         ErrMsgNVDRateLimited,
 					CorrelationID: msg.CorrelationID,
 					Target:        msg.Source,
 				}, nil
@@ -313,7 +362,7 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to fetch CVE count: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedFetchCount, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -338,7 +387,7 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal result: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedMarshalResult, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -375,7 +424,7 @@ func createFetchCVEsHandler(fetcher *remote.Fetcher) subprocess.Handler {
 				return &subprocess.Message{
 					Type:          subprocess.MessageTypeError,
 					ID:            msg.ID,
-					Error:         "NVD_RATE_LIMITED: NVD API rate limit exceeded (HTTP 429)",
+					Error:         ErrMsgNVDRateLimited,
 					CorrelationID: msg.CorrelationID,
 					Target:        msg.Source,
 				}, nil
@@ -383,7 +432,7 @@ func createFetchCVEsHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to fetch CVEs: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedFetchCVEs, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil
@@ -403,7 +452,7 @@ func createFetchCVEsHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return &subprocess.Message{
 				Type:          subprocess.MessageTypeError,
 				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal response: %v", err),
+				Error:         fmt.Sprintf(ErrMsgFailedMarshalResp, err),
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
 			}, nil

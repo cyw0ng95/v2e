@@ -25,7 +25,8 @@ func TestRunStore_UpdateProgress_Concurrent(t *testing.T) {
 			defer wg.Done()
 			for i := 0; i < perG; i++ {
 				if err := rs.UpdateProgress(runID, 1, 2, 0); err != nil {
-					t.Fatalf("UpdateProgress failed: %v", err)
+					t.Errorf("UpdateProgress failed: %v", err)
+					return
 				}
 			}
 		}()

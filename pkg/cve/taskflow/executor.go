@@ -79,7 +79,7 @@ func (e *JobExecutor) StartTyped(ctx context.Context, runID string, startIndex, 
 	// Start job in background
 	go e.executeJob(jobCtx, runID)
 
-	e.logger.Info("Job started: run_id=%s, start_index=%d, batch_size=%d, data_type=%s",
+	e.logger.Info(cve.LogMsgTFJobStarted,
 		runID, startIndex, resultsPerBatch, dataType)
 
 	return nil
@@ -114,7 +114,7 @@ func (e *JobExecutor) Resume(ctx context.Context, runID string) error {
 	// Restart job in background
 	go e.executeJob(jobCtx, runID)
 
-	e.logger.Info("Job resumed: run_id=%s", runID)
+	e.logger.Info(cve.LogMsgTFJobResumed, runID)
 
 	return nil
 }
@@ -150,7 +150,7 @@ func (e *JobExecutor) Pause(runID string) error {
 	}
 
 	e.activeRun = nil
-	e.logger.Info("Job paused: run_id=%s", runID)
+	e.logger.Info(cve.LogMsgTFJobPaused, runID)
 
 	return nil
 }
@@ -176,7 +176,7 @@ func (e *JobExecutor) Stop(runID string) error {
 	}
 
 	e.activeRun = nil
-	e.logger.Info("Job stopped: run_id=%s", runID)
+	e.logger.Info(cve.LogMsgTFJobStopped, runID)
 
 	return nil
 }
@@ -225,19 +225,19 @@ func (e *JobExecutor) RecoverRuns(ctx context.Context) error {
 	}
 
 	if activeRun == nil {
-		e.logger.Info("No active runs to recover")
+		e.logger.Info(cve.LogMsgTFNoActiveRuns)
 		return nil
 	}
 
-	e.logger.Info("Found run to recover: id=%s, state=%s", activeRun.ID, activeRun.State)
+	e.logger.Info(cve.LogMsgTFFoundRun, activeRun.ID, activeRun.State)
 
 	// Only auto-recover running jobs (paused jobs stay paused)
 	if activeRun.State == StateRunning {
-		e.logger.Info("Auto-recovering running job: %s", activeRun.ID)
+		e.logger.Info(cve.LogMsgTFAutoRecover, activeRun.ID)
 		return e.Resume(ctx, activeRun.ID)
 	}
 
-	e.logger.Info("Run is %s - manual resume required", activeRun.State)
+	e.logger.Info(cve.LogMsgTFManualResume, activeRun.State)
 	return nil
 }
 
@@ -253,7 +253,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 	// Get run details
 	run, err := e.runStore.GetRun(runID)
 	if err != nil {
-		e.logger.Error("Failed to get run: %v", err)
+		e.logger.Error(cve.LogMsgTFFailedGetRun, err)
 		e.runStore.SetError(runID, fmt.Sprintf("failed to get run: %v", err))
 		return
 	}
@@ -261,7 +261,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 	currentIndex := run.StartIndex
 	batchSize := run.ResultsPerBatch
 
-	e.logger.Info("Job loop starting: run_id=%s, start_index=%d, batch_size=%d",
+	e.logger.Info(cve.LogMsgTFJobLoopStarting,
 		runID, currentIndex, batchSize)
 
 	// Create Taskflow DAG for fetch-and-store loop
@@ -269,7 +269,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 	for {
 		select {
 		case <-ctx.Done():
-			e.logger.Info("Job loop cancelled: run_id=%s", runID)
+			e.logger.Info(cve.LogMsgTFJobLoopCancelled, runID)
 			return
 		default:
 			tf := gotaskflow.NewTaskFlow(fmt.Sprintf("cve-batch-%d", currentIndex))
@@ -281,7 +281,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 
 			// Task 1: Fetch batch from remote
 			fetchTask := tf.NewTask("fetch", func() {
-				e.logger.Debug("Fetching batch: run_id=%s, index=%d, size=%d", runID, currentIndex, batchSize)
+				e.logger.Debug(cve.LogMsgTFFetchingBatch, runID, currentIndex, batchSize)
 
 				params := &rpc.FetchCVEsParams{
 					StartIndex:     currentIndex,
@@ -320,12 +320,12 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 			// Task 2: Store batch to local
 			storeTask := tf.NewTask("store", func() {
 				if fetchErr != nil {
-					e.logger.Error("Skipping store due to fetch error: %v", fetchErr)
+					e.logger.Warn(cve.LogMsgTFSkippingStore, fetchErr)
 					return
 				}
 
 				if len(fetchedVulns) == 0 {
-					e.logger.Info("No more CVEs to fetch. Job completed: run_id=%s", runID)
+					e.logger.Info(cve.LogMsgTFNoMoreCVEs, runID)
 					e.runStore.UpdateState(runID, StateCompleted)
 					return
 				}
@@ -339,14 +339,14 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 					_, err := e.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
 
 					if err != nil {
-						e.logger.Error("Failed to store CVE %s: %v", vuln.CVE.ID, err)
+						e.logger.Warn(cve.LogMsgTFFailedStoreCVE, vuln.CVE.ID, err)
 						errorCount++
 					} else {
 						storedCount++
 					}
 				}
 
-				e.logger.Info("Stored %d/%d CVEs successfully", storedCount, len(fetchedVulns))
+				e.logger.Info(cve.LogMsgTFStoredCVEsSuccess, storedCount, len(fetchedVulns))
 
 				// Update progress
 				e.runStore.UpdateProgress(runID, int64(len(fetchedVulns)), storedCount, errorCount)
@@ -360,7 +360,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 
 			// Check if we should continue
 			if fetchErr != nil {
-				e.logger.Error("Fetch failed: %v", fetchErr)
+				e.logger.Warn(cve.LogMsgTFFetchFailed, fetchErr)
 				e.runStore.UpdateProgress(runID, 0, 0, 1)
 
 				// Wait before retrying
@@ -374,7 +374,7 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 
 			if len(fetchedVulns) == 0 {
 				// Job completed naturally
-				e.logger.Info("Job completed: run_id=%s", runID)
+				e.logger.Info(cve.LogMsgTFJobCompleted, runID)
 				e.runStore.UpdateState(runID, StateCompleted)
 				return
 			}
