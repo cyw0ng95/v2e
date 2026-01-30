@@ -155,19 +155,19 @@ func (b *Broker) ConfigureTransportFromConfig() {
 	if b.config == nil {
 		return
 	}
-	
-	// Default to UDS transport if not specified
+
+	// Default to FD transport if not specified
 	if b.config.Broker.Transport.Type == "" {
-		b.config.Broker.Transport.Type = "uds"
-		b.config.Broker.Transport.EnableUDS = true
-		b.logger.Info("Using default UDS transport")
+		b.config.Broker.Transport.Type = "fd"
+		b.config.Broker.Transport.EnableFD = true
+		b.logger.Info("Using default FD transport")
 	}
-	
+
 	// Set UDS base path if configured
 	if b.config.Broker.Transport.UDSBasePath != "" {
 		b.transportManager.SetUdsBasePath(b.config.Broker.Transport.UDSBasePath)
 	}
-	
+
 	// Enable migration mode if dual mode is enabled
 	if b.config.Broker.Transport.DualMode {
 		b.migrationMode = true

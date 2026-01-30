@@ -122,4 +122,20 @@ const (
 	LogMsgStartingTypedSession     = "[meta] Starting typed session: id=%s, type=%s, index=%d, batch=%d"
 	LogMsgTypedSessionStarted      = "[meta] Typed session started successfully: %s"
 	LogMsgTypedSessionStartFailed  = "[meta] Typed session start failed: %v"
+
+	// Additional RPC communication logging for debugging access service communication
+	LogMsgRPCSendMessageStarted      = "[meta] About to send RPC message: type=%s, id=%s, target=%s, correlationID=%s"
+	LogMsgRPCSendMessageSuccess      = "[meta] Successfully sent RPC message: type=%s, id=%s, target=%s, correlationID=%s"
+	LogMsgRPCSendMessageFailed       = "[meta] Failed to send RPC message: type=%s, id=%s, target=%s, correlationID=%s, error=%v"
+	LogMsgRPCHandlerCalled           = "[meta] RPC handler called: %s"
+	LogMsgRPCRequestReceived         = "[meta] RPC request received: type=%s, id=%s, source=%s, correlationID=%s"
+	LogMsgRPCResponseSent            = "[meta] RPC response sent: type=%s, id=%s, target=%s, correlationID=%s"
+	LogMsgRPCErrorSent               = "[meta] RPC error response sent: type=%s, id=%s, target=%s, correlationID=%s, error=%s"
+	LogMsgSubprocessRunStarted       = "[meta] Subprocess run started"
+	LogMsgSubprocessRunCompleted     = "[meta] Subprocess run completed"
+	LogMsgSubprocessRunError         = "[meta] Subprocess run error: %v"
+	LogMsgBrokerConnectionAttempt    = "[meta] Attempting connection to broker"
+	LogMsgBrokerConnected            = "[meta] Connected to broker successfully"
+	LogMsgBrokerConnectionFailed     = "[meta] Failed to connect to broker: %v"
+	LogMsgRPCClientHandlerRegistered = "[meta] RPC client handler registered: %s"
 )

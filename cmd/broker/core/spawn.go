@@ -102,14 +102,14 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	}
 
 	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
-	
+
 	proc := &Process{
 		info:   info,
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
 	}
-	
+
 	if isRPC {
 		proc.stdin = writeToSubprocess
 		proc.stdout = readFromSubprocess
@@ -299,21 +299,6 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 
 // shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
 func shouldUseUDSTransport(config common.TransportConfigOptions) bool {
-	// If Type is explicitly set to "uds", use UDS
-	if config.Type == "uds" {
-		return true
-	}
-	// If Type is explicitly set to "fd", don't use UDS
-	if config.Type == "fd" {
-		return false
-	}
-	// If Type is "auto" or not set, fall back to EnableUDS flag
-	// If both EnableUDS and EnableFD are set, prioritize UDS unless DualMode is enabled
-	if config.EnableUDS && config.EnableFD {
-		// In dual mode, we might need special handling, but for now default to UDS
-		// If DualMode is enabled, we may want to handle differently
-		return !config.DualMode // If dual mode, prefer FD initially
-	}
-	// Otherwise, use EnableUDS flag
-	return config.EnableUDS
+	// Always use FD transport instead of UDS transport
+	return false
 }

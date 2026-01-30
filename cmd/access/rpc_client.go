@@ -161,6 +161,7 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 		Payload:       payload,
 		Target:        target,
 		CorrelationID: correlationID,
+		Source:        c.sp.ID, // Set the source to this service's process ID
 	}
 
 	// Send request to broker

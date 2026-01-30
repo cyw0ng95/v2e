@@ -103,14 +103,15 @@ func (c *DataPopulationController) startCWEImport(ctx context.Context, sessionID
 	defer cancel()
 
 	paramsObj := &rpc.ImportParams{Path: path}
+	c.logger.Debug("About to invoke RPCImportCWEs on local service")
 	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", paramsObj)
 	if err != nil {
-		c.logger.Warn("Failed to start CWE import: %v", err)
+		c.logger.Error("Failed to start CWE import: %v", err)
 		return "", fmt.Errorf("failed to start CWE import: %w", err)
 	}
 
 	if isErr, errMsg := isErrorResponse(resp); isErr {
-		c.logger.Warn("CWE import returned error: %s", errMsg)
+		c.logger.Error("CWE import returned error: %s", errMsg)
 		return "", fmt.Errorf("CWE import failed: %s", errMsg)
 	}
 
@@ -133,14 +134,15 @@ func (c *DataPopulationController) startCAPECImport(ctx context.Context, session
 	defer cancel()
 
 	paramsObj := &rpc.ImportParams{Path: path, Force: force}
+	c.logger.Debug("About to invoke RPCImportCAPECs on local service")
 	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", paramsObj)
 	if err != nil {
-		c.logger.Warn("Failed to start CAPEC import: %v", err)
+		c.logger.Error("Failed to start CAPEC import: %v", err)
 		return "", fmt.Errorf("failed to start CAPEC import: %w", err)
 	}
 
 	if isErr, errMsg := isErrorResponse(resp); isErr {
-		c.logger.Warn("CAPEC import returned error: %s", errMsg)
+		c.logger.Error("CAPEC import returned error: %s", errMsg)
 		return "", fmt.Errorf("CAPEC import failed: %s", errMsg)
 	}
 
@@ -163,14 +165,15 @@ func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessio
 	defer cancel()
 
 	paramsObj := &rpc.ImportParams{Path: path, Force: force}
+	c.logger.Debug("About to invoke RPCImportATTACKs on local service")
 	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportATTACKs", paramsObj)
 	if err != nil {
-		c.logger.Warn("Failed to start ATT&CK import: %v", err)
+		c.logger.Error("Failed to start ATT&CK import: %v", err)
 		return "", fmt.Errorf("failed to start ATT&CK import: %w", err)
 	}
 
 	if isErr, errMsg := isErrorResponse(resp); isErr {
-		c.logger.Warn("ATT&CK import returned error: %s", errMsg)
+		c.logger.Error("ATT&CK import returned error: %s", errMsg)
 		return "", fmt.Errorf("ATT&CK import failed: %s", errMsg)
 	}
 
@@ -213,6 +216,8 @@ func NewRPCClient(sp *subprocess.Subprocess, logger *common.Logger) *RPCClient {
 
 // handleResponse handles response messages from other services
 func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	c.logger.Debug("Handling response message: correlationID=%s, type=%s, target=%s", msg.CorrelationID, msg.Type, msg.Target)
+
 	// Look up the pending request entry and remove it while holding the lock
 	c.mu.Lock()
 	entry := c.pendingRequests[msg.CorrelationID]
@@ -222,9 +227,10 @@ func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message)
 	c.mu.Unlock()
 
 	if entry != nil {
+		c.logger.Debug("Found pending request for correlation ID: %s, signaling response", msg.CorrelationID)
 		entry.signal(msg)
 	} else {
-		c.logger.Warn("Received response for unknown correlation ID: %s", msg.CorrelationID)
+		c.logger.Warn("Received response for unknown correlation ID: %s, type=%s, target=%s", msg.CorrelationID, msg.Type, msg.Target)
 	}
 
 	return nil, nil // Don't send another response
@@ -233,6 +239,7 @@ func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message)
 // handleError handles error messages from other services (treat them as responses)
 func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 	// Error messages are also valid responses
+	c.logger.Debug("Handling error message: correlationID=%s, error=%s, target=%s", msg.CorrelationID, msg.Error, msg.Target)
 	return c.handleResponse(ctx, msg)
 }
 
@@ -283,11 +290,15 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 	c.logger.Debug("Sending RPC request: method=%s, target=%s, correlationID=%s", method, target, correlationID)
 
 	// Send request to broker (which will route to target)
+	c.logger.Debug(LogMsgRPCSendMessageStarted, msg.Type, msg.ID, msg.Target, msg.CorrelationID)
 	if err := c.sp.SendMessage(msg); err != nil {
+		c.logger.Error(LogMsgRPCSendMessageFailed, msg.Type, msg.ID, msg.Target, msg.CorrelationID, err)
 		return nil, fmt.Errorf("failed to send RPC request: %w", err)
 	}
+	c.logger.Debug(LogMsgRPCSendMessageSuccess, msg.Type, msg.ID, msg.Target, msg.CorrelationID)
 
 	// Wait for response with timeout
+	c.logger.Debug("Waiting for RPC response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
 	select {
 	case response := <-resp:
 		c.logger.Debug("Received RPC response: correlationID=%s, type=%s", correlationID, response.Type)
@@ -297,7 +308,9 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 		c.logger.Debug("RPC invocation timed out: method=%s, target=%s, correlationID=%s", method, target, correlationID)
 		return nil, fmt.Errorf("RPC timeout waiting for response from %s", target)
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		err := ctx.Err()
+		c.logger.Warn("RPC call context canceled while waiting for response: method=%s, target=%s, correlationID=%s, error: %v", method, target, correlationID, err)
+		return nil, err
 	}
 }
 
@@ -384,6 +397,7 @@ func main() {
 
 	// Check if we're running as an RPC subprocess with file descriptors
 	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
+		logger.Info(LogMsgBrokerConnectionAttempt)
 		// Use file descriptors 3 and 4 for RPC communication
 		inputFD := 3
 		outputFD := 4
@@ -401,9 +415,11 @@ func main() {
 		}
 
 		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
+		logger.Info(LogMsgBrokerConnected)
 	} else {
 		// Use default stdin/stdout for non-RPC mode
 		sp = subprocess.New(processID)
+		logger.Info("Using default stdin/stdout for subprocess communication")
 	}
 
 	logger.Info(LogMsgSubprocessCreated, processID)
@@ -436,44 +452,61 @@ func main() {
 	logger.Info("Registering RPC handlers...")
 	sp.RegisterHandler("RPCGetCVE", createGetCVEHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCVE")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCGetCVE")
 	sp.RegisterHandler("RPCCreateCVE", createCreateCVEHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCCreateCVE")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCCreateCVE")
 	sp.RegisterHandler("RPCUpdateCVE", createUpdateCVEHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCUpdateCVE")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCUpdateCVE")
 	sp.RegisterHandler("RPCDeleteCVE", createDeleteCVEHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCDeleteCVE")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCDeleteCVE")
 	sp.RegisterHandler("RPCListCVEs", createListCVEsHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCListCVEs")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCListCVEs")
 	sp.RegisterHandler("RPCCountCVEs", createCountCVEsHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCCountCVEs")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCCountCVEs")
 
 	// Register job control RPC handlers
 	sp.RegisterHandler("RPCStartSession", createStartSessionHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartSession")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartSession")
 	sp.RegisterHandler("RPCStartTypedSession", createStartTypedSessionHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartTypedSession")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartTypedSession")
 	sp.RegisterHandler("RPCStopSession", createStopSessionHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopSession")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStopSession")
 	sp.RegisterHandler("RPCGetSessionStatus", createGetSessionStatusHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetSessionStatus")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCGetSessionStatus")
 	sp.RegisterHandler("RPCPauseJob", createPauseJobHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCPauseJob")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCPauseJob")
 	sp.RegisterHandler("RPCResumeJob", createResumeJobHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCResumeJob")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCResumeJob")
 
 	// Register CWE view job RPC handlers
 	sp.RegisterHandler("RPCStartCWEViewJob", createStartCWEViewJobHandler(cweJobController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCWEViewJob")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartCWEViewJob")
 	sp.RegisterHandler("RPCStopCWEViewJob", createStopCWEViewJobHandler(cweJobController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopCWEViewJob")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStopCWEViewJob")
 
 	// Register data population RPC handlers
 	sp.RegisterHandler("RPCStartCWEImport", createStartCWEImportHandler(dataPopController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCWEImport")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartCWEImport")
 	sp.RegisterHandler("RPCStartCAPECImport", createStartCAPECImportHandler(dataPopController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCAPECImport")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartCAPECImport")
 	sp.RegisterHandler("RPCStartATTACKImport", createStartATTACKImportHandler(dataPopController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartATTACKImport")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartATTACKImport")
 
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)
@@ -533,20 +566,25 @@ func main() {
 
 	// Run with default lifecycle management
 	logger.Info("Starting subprocess with default lifecycle management")
+	logger.Debug(LogMsgSubprocessRunStarted)
 	subprocess.RunWithDefaults(sp, logger)
+	logger.Debug(LogMsgSubprocessRunCompleted)
 	logger.Info(LogMsgServiceShutdownStarting)
 	logger.Info(LogMsgServiceShutdownComplete)
 }
 
 // createErrorResponse creates a properly formatted error response message
 func createErrorResponse(msg *subprocess.Message, errorMsg string) *subprocess.Message {
-	return &subprocess.Message{
+	errorMsgFull := fmt.Sprintf("[meta] RPC error response: %s", errorMsg)
+	resp := &subprocess.Message{
 		Type:          subprocess.MessageTypeError,
 		ID:            msg.ID,
-		Error:         errorMsg,
+		Error:         errorMsgFull,
 		CorrelationID: msg.CorrelationID,
 		Target:        msg.Source,
+		Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 	}
+	return resp
 }
 
 // isErrorResponse checks if an RPC response is an error and returns the error if so
@@ -593,6 +631,7 @@ func createStartCWEImportHandler(controller *DataPopulationController, logger *c
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 			Payload:       jsonData,
 		}
 
@@ -637,6 +676,7 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 			Payload:       jsonData,
 		}
 
@@ -681,6 +721,7 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 			Payload:       jsonData,
 		}
 
@@ -693,6 +734,9 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 // Flow: Check local storage first, if not found fetch from remote and save locally
 func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug(LogMsgRPCHandlerCalled, "RPCGetCVE")
+		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
+
 		// Parse the request payload
 		var req struct {
 			CVEID string `json:"cve_id"`
@@ -811,6 +855,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		// Marshal the result
@@ -847,6 +892,7 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 				ID:            msg.ID,
 				CorrelationID: msg.CorrelationID,
 				Target:        msg.Source,
+				Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 			}
 
 			result := map[string]interface{}{
@@ -865,6 +911,7 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		// Prepare the enhanced result with new data structures
@@ -926,6 +973,7 @@ func createPauseJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Log
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -974,6 +1022,7 @@ func createResumeJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Lo
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1046,6 +1095,7 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1099,6 +1149,7 @@ func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1144,6 +1195,7 @@ func createStartCWEViewJobHandler(controller *cwejob.Controller, logger *common.
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1195,6 +1247,7 @@ func createStopCWEViewJobHandler(controller *cwejob.Controller, logger *common.L
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1216,6 +1269,9 @@ func createStopCWEViewJobHandler(controller *cwejob.Controller, logger *common.L
 // createCreateCVEHandler creates a handler that creates a new CVE
 func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug(LogMsgRPCHandlerCalled, "RPCCreateCVE")
+		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
+
 		// Parse the request payload
 		var req cve.CVEItem
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -1247,6 +1303,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1261,6 +1318,7 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		respMsg.Payload = jsonData
 
 		logger.Info("RPCCreateCVE: Successfully created CVE")
+		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
 		return respMsg, nil
 	}
 }
@@ -1268,6 +1326,9 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 // createUpdateCVEHandler creates a handler that updates an existing CVE
 func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug(LogMsgRPCHandlerCalled, "RPCUpdateCVE")
+		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
+
 		// Parse the request payload
 		var req cve.CVEItem
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
@@ -1299,6 +1360,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1313,6 +1375,7 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		respMsg.Payload = jsonData
 
 		logger.Info("RPCUpdateCVE: Successfully updated CVE")
+		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
 		return respMsg, nil
 	}
 }
@@ -1320,6 +1383,9 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 // createDeleteCVEHandler creates a handler that deletes an existing CVE
 func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug(LogMsgRPCHandlerCalled, "RPCDeleteCVE")
+		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
+
 		// Parse the request payload
 		var req struct {
 			CVEID string `json:"cve_id"`
@@ -1353,6 +1419,7 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
@@ -1367,6 +1434,7 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		respMsg.Payload = jsonData
 
 		logger.Info("RPCDeleteCVE: Successfully deleted CVE")
+		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
 		return respMsg, nil
 	}
 }
@@ -1374,6 +1442,9 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 // createListCVEsHandler creates a handler that lists CVEs
 func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug(LogMsgRPCHandlerCalled, "RPCListCVEs")
+		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
+
 		// Parse the request payload
 		var req struct {
 			Offset int `json:"offset"`
@@ -1413,6 +1484,7 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		jsonData, err := subprocess.MarshalFast(resp.Payload)
@@ -1423,6 +1495,7 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 		respMsg.Payload = jsonData
 
 		logger.Info("RPCListCVEs: Successfully listed CVEs")
+		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
 		return respMsg, nil
 	}
 }
@@ -1430,6 +1503,9 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 // createCountCVEsHandler creates a handler that counts CVEs
 func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug(LogMsgRPCHandlerCalled, "RPCCountCVEs")
+		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
+
 		// Count CVEs
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCountCVEs", nil)
 		if err != nil {
@@ -1449,6 +1525,7 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		jsonData, err := subprocess.MarshalFast(resp.Payload)
@@ -1459,6 +1536,7 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		respMsg.Payload = jsonData
 
 		logger.Info("RPCCountCVEs: Successfully counted CVEs")
+		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
 		return respMsg, nil
 	}
 }
@@ -1513,6 +1591,7 @@ func createStartTypedSessionHandler(jobExecutor *taskflow.JobExecutor, logger *c
 			ID:            msg.ID,
 			CorrelationID: msg.CorrelationID,
 			Target:        msg.Source,
+			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
 		result := map[string]interface{}{
