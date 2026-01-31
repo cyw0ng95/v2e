@@ -17,6 +17,12 @@
       "default": "./logs",
       "method": "ldflags",
       "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogDir"
+    },
+    "CONFIG_USE_LIBXML2": {
+      "description": "Enable libxml2 support for CAPEC parsing",
+      "type": "bool",
+      "default": true,
+      "method": "build-tag"
     }
   }
 }

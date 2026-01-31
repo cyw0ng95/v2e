@@ -1,4 +1,4 @@
-//go:build !libxml2
+//go:build !CONFIG_USE_LIBXML2
 
 package capec
 

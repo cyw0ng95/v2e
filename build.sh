@@ -51,7 +51,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERBOSE=false
 
 # Default Go build tags (can be overridden by setting GO_TAGS env var)
-GO_TAGS="${GO_TAGS:-libxml2}"
+GO_TAGS="${GO_TAGS:-CONFIG_USE_LIBXML2}"
 
 # Check operating system for proper containerization support
 DETECTED_OS="$(uname -s)"
@@ -63,7 +63,7 @@ fi
 log_info "Running on Linux system, proceeding with native build..."
 
 # Default Go build tags (can be overridden by setting GO_TAGS env var)
-GO_TAGS="${GO_TAGS:-libxml2}"
+GO_TAGS="${GO_TAGS:-CONFIG_USE_LIBXML2}"
 
 # Version requirements
 MIN_GO_VERSION="1.21"
