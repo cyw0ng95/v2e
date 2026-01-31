@@ -1,7 +1,4 @@
 {
-  "server": {
-    "address": "0.0.0.0:8080"
-  },
   "broker": {
     "logs_dir": "./logs",
     "log_file": "./logs/broker.log",
@@ -52,8 +49,7 @@
   },
   "access": {
     "rpc_timeout_seconds": 30,
-    "shutdown_timeout_seconds": 10,
-    "static_dir": "website"
+    "shutdown_timeout_seconds": 10
   }
   ,
   "proc": {

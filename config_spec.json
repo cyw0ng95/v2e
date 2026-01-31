@@ -46,6 +46,24 @@
       "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogRefresh",
       "major_class": "logging",
       "minor_class": "path"
+    },
+    "CONFIG_ACCESS_SERVERADDR": {
+      "description": "Server address for access service",
+      "type": "string",
+      "default": "0.0.0.0:8080",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/access.buildServerAddr",
+      "major_class": "access",
+      "minor_class": "network"
+    },
+    "CONFIG_ACCESS_STATICDIR": {
+      "description": "Static directory for access service",
+      "type": "string",
+      "default": "website",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/access.buildStaticDir",
+      "major_class": "access",
+      "minor_class": "path"
     }
   }
 }

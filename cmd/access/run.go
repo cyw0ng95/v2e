@@ -28,9 +28,9 @@ func runAccess() {
 		os.Exit(1)
 	}
 
-	logger.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, config.Access.StaticDir)
+	logger.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, DefaultStaticDir())
 
-	// Configure service timeouts and static dir from config (with defaults)
+	// Configure service timeouts from config (with defaults)
 	rpcTimeout := 30 * time.Second
 	if config.Access.RPCTimeoutSeconds > 0 {
 		rpcTimeout = time.Duration(config.Access.RPCTimeoutSeconds) * time.Second
@@ -43,22 +43,16 @@ func runAccess() {
 		logger.Info(LogMsgShutdownTimeoutConfig, config.Access.ShutdownTimeoutSeconds)
 	}
 
-	staticDir := "website"
-	if config.Access.StaticDir != "" {
-		staticDir = config.Access.StaticDir
-		logger.Info(LogMsgStaticDirConfigured, staticDir)
-	}
+	// Use build-time static dir with environment override
+	staticDir := DefaultStaticDir()
 	// Allow broker to override static dir via environment when running as subprocess
 	if envStatic := os.Getenv("ACCESS_STATIC_DIR"); envStatic != "" {
 		staticDir = envStatic
 		logger.Info(LogMsgStaticDirEnvOverride, staticDir)
 	}
 
-	// Set default address if not configured
-	address := "0.0.0.0:8080"
-	if config.Server.Address != "" {
-		address = config.Server.Address
-	}
+	// Use build-time address
+	address := DefaultServerAddr()
 	logger.Info(LogMsgAddressConfigured, address)
 
 	// Get process ID from environment or use default

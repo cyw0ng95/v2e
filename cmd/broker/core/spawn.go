@@ -248,6 +248,8 @@ func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", config.Remote.ViewFetchURL))
 		}
 	case "access":
+		// Note: Static dir is now build-time config, so broker doesn't override it with runtime config
+		// The access service will use its build-time static dir, but broker can still pass runtime value as override
 		if config.Access.StaticDir != "" {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", config.Access.StaticDir))
 		}
