@@ -79,9 +79,8 @@ func NewRPCClientWithSubprocess(sp *subprocess.Subprocess, logger *common.Logger
 		rpcTimeout:      rpcTimeout,
 	}
 
-	// Register handlers for response and error messages
-	sp.RegisterHandler(string(subprocess.MessageTypeResponse), client.handleResponse)
-	sp.RegisterHandler(string(subprocess.MessageTypeError), client.handleError)
+	// The common rpc.Client already registers its own handlers for response and error messages
+	// No need to register additional handlers here
 
 	return client
 }

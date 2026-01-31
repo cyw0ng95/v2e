@@ -58,9 +58,10 @@ func (s *Subprocess) Run() error {
 			// Send error response
 			// Principle 15: Avoid fmt.Sprintf in hot paths - use direct string concat
 			errMsg := &Message{
-				Type:  MessageTypeError,
-				ID:    "parse-error",
-				Error: "failed to parse message: " + err.Error(),
+				Type:   MessageTypeError,
+				ID:     "parse-error",
+				Error:  "failed to parse message: " + err.Error(),
+				Source: s.ID,
 			}
 			_ = s.sendMessage(errMsg)
 			continue
@@ -111,9 +112,12 @@ func (s *Subprocess) handleMessage(msg *Message) {
 		// No handler found, send error
 		// Principle 15: Avoid fmt.Sprintf in hot paths
 		errMsg := &Message{
-			Type:  MessageTypeError,
-			ID:    msg.ID,
-			Error: "no handler found for message: " + msg.ID,
+			Type:          MessageTypeError,
+			ID:            msg.ID,
+			Error:         "no handler found for message: " + msg.ID,
+			Source:        s.ID,
+			CorrelationID: msg.CorrelationID,
+			Target:        msg.Source,
 		}
 		_ = s.sendMessage(errMsg)
 		return
@@ -124,9 +128,12 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	if err != nil {
 		// Send error response
 		errMsg := &Message{
-			Type:  MessageTypeError,
-			ID:    msg.ID,
-			Error: err.Error(),
+			Type:          MessageTypeError,
+			ID:            msg.ID,
+			Error:         err.Error(),
+			Source:        s.ID,
+			CorrelationID: msg.CorrelationID,
+			Target:        msg.Source,
 		}
 		_ = s.sendMessage(errMsg)
 		return
@@ -134,6 +141,16 @@ func (s *Subprocess) handleMessage(msg *Message) {
 
 	// Send the response if provided
 	if response != nil {
+		// Ensure response has proper metadata if not already set
+		if response.CorrelationID == "" {
+			response.CorrelationID = msg.CorrelationID
+		}
+		if response.Target == "" {
+			response.Target = msg.Source
+		}
+		if response.Source == "" {
+			response.Source = s.ID
+		}
 		_ = s.sendMessage(response)
 	}
 }
