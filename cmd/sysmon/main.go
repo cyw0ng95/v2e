@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -123,53 +121,12 @@ func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params
 }
 
 func main() {
-	processID := os.Getenv("PROCESS_ID")
-	if processID == "" {
-		processID = "sysmon"
+	// Use common startup utility to standardize initialization
+	configStruct := subprocess.StandardStartupConfig{
+		DefaultProcessID: "sysmon",
+		LogPrefix:        "[SYSMON] ",
 	}
-	common.Info(LogMsgProcessIDConfigured, processID)
-
-	// Use a bootstrap logger for initial messages before the full logging system is ready
-	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
-	common.Info(LogMsgBootstrapLoggerCreated)
-
-	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
-	logLevel := subprocess.DefaultBuildLogLevel()
-	logDir := subprocess.DefaultBuildLogDir()
-	logger, err := subprocess.SetupLogging(processID, logDir, logLevel)
-	if err != nil {
-		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
-		os.Exit(1)
-	}
-	common.Info(LogMsgLoggingSetupComplete, logLevel)
-
-	var sp *subprocess.Subprocess
-
-	// Check if we're running as an RPC subprocess with file descriptors
-	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
-		// Use file descriptors 3 and 4 for RPC communication
-		inputFD := 3
-		outputFD := 4
-
-		// Allow environment override for file descriptors
-		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				inputFD = fd
-			}
-		}
-		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				outputFD = fd
-			}
-		}
-
-		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
-	} else {
-		// Use default stdin/stdout for non-RPC mode
-		sp = subprocess.New(processID)
-	}
-
-	logger.Info(LogMsgSubprocessCreated, processID)
+	sp, logger := subprocess.StandardStartup(configStruct)
 
 	// RPC client to query the broker for message statistics
 	logger.Info(LogMsgRPCClientCreated)

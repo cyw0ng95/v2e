@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -340,28 +339,12 @@ func recoverRuns(jobExecutor *taskflow.JobExecutor, logger *common.Logger) {
 
 func main() {
 
-	// Get process ID from environment or use default
-	processID := os.Getenv("PROCESS_ID")
-	if processID == "" {
-		processID = "meta"
+	// Use common startup utility to standardize initialization
+	configStruct := subprocess.StandardStartupConfig{
+		DefaultProcessID: "meta",
+		LogPrefix:        "[META] ",
 	}
-	common.Info(LogMsgProcessIDConfigured, processID)
-
-	// Log minimal startup info only (avoid dumping all environment variables)
-	// Use a bootstrap logger for initial messages before the full logging system is ready
-	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
-	common.Info(LogMsgBootstrapLoggerCreated)
-	bootstrapLogger.Info(LogMsgStartup, os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
-
-	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
-	logLevel := subprocess.DefaultBuildLogLevel()
-	logDir := subprocess.DefaultBuildLogDir()
-	logger, err := subprocess.SetupLogging(processID, logDir, logLevel)
-	if err != nil {
-		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
-		os.Exit(1)
-	}
-	common.Info(LogMsgLoggingSetupComplete, logLevel)
+	sp, logger := subprocess.StandardStartup(configStruct)
 
 	// Get run database path from environment or use default
 	runDBPath := os.Getenv("SESSION_DB_PATH")
@@ -393,38 +376,6 @@ func main() {
 		logger.Info(LogMsgRunStoreClosing)
 		runStore.Close()
 	}()
-
-	// Create subprocess instance
-	var sp *subprocess.Subprocess
-
-	// Check if we're running as an RPC subprocess with file descriptors
-	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
-		logger.Info(LogMsgBrokerConnectionAttempt)
-		// Use file descriptors 3 and 4 for RPC communication
-		inputFD := 3
-		outputFD := 4
-
-		// Allow environment override for file descriptors
-		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				inputFD = fd
-			}
-		}
-		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				outputFD = fd
-			}
-		}
-
-		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
-		logger.Info(LogMsgBrokerConnected)
-	} else {
-		// Use default stdin/stdout for non-RPC mode
-		sp = subprocess.New(processID)
-		logger.Info("Using default stdin/stdout for subprocess communication")
-	}
-
-	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Create RPC client for inter-service communication
 	logger.Info(LogMsgRPCClientCreated)

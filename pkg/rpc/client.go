@@ -132,7 +132,7 @@ func (c *Client) InvokeRPC(ctx context.Context, target, method string, params in
 
 	// Send request to broker (which will route to target)
 	if err := c.sp.SendMessage(msg); err != nil {
-		c.logger.Error("Failed to send RPC request: %w", err)
+		c.logger.Error("Failed to send RPC request: %v", err)
 		return nil, fmt.Errorf("failed to send RPC request: %w", err)
 	}
 

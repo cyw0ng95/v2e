@@ -14,22 +14,19 @@ import (
 
 // runAccess contains the original implementation of main moved here for maintainability
 func runAccess() {
+	// Use common startup utility to standardize initialization
+	configStruct := subprocess.StandardStartupConfig{
+		DefaultProcessID: "access",
+		LogPrefix:        "[ACCESS] ",
+	}
+	sp, logger := subprocess.StandardStartup(configStruct)
+
 	// Load configuration
 	config, err := common.LoadConfig("config.json")
 	if err != nil {
 		common.Warn(LogMsgWarningLoadingConfig, err)
 		os.Exit(1)
 	}
-
-	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
-	logLevel := subprocess.DefaultBuildLogLevel()
-	logDir := subprocess.DefaultBuildLogDir()
-	logger, err := subprocess.SetupLogging("access", logDir, logLevel)
-	if err != nil {
-		common.NewLogger(os.Stderr, "[ACCESS] ", logLevel).Error("Failed to setup logging: %v", err)
-		os.Exit(1)
-	}
-	// The subprocess.SetupLogging already configures the logger properly
 
 	logger.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, config.Access.StaticDir)
 
@@ -71,7 +68,7 @@ func runAccess() {
 	}
 
 	// Create RPC client for broker communication (use configured rpc timeout)
-	rpcClient := NewRPCClient(processID, rpcTimeout)
+	rpcClient := NewRPCClientWithSubprocess(sp, logger, rpcTimeout)
 	logger.Info(LogMsgRPCClientCreated, rpcTimeout)
 
 	// Start RPC client in background

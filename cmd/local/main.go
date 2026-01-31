@@ -15,7 +15,6 @@ package main
 
 import (
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/cyw0ng95/v2e/pkg/attack"
@@ -101,26 +100,12 @@ func importATTACKDataAtStartup(attackStore *attack.LocalAttackStore, logger *com
 }
 
 func main() {
-	// Get process ID from environment or use default
-	processID := os.Getenv("PROCESS_ID")
-	if processID == "" {
-		processID = "local"
+	// Use common startup utility to standardize initialization
+	configStruct := subprocess.StandardStartupConfig{
+		DefaultProcessID: "local",
+		LogPrefix:        "[LOCAL] ",
 	}
-	common.Info(LogMsgProcessIDConfigured, processID)
-
-	// Use a bootstrap logger for initial messages before the full logging system is ready
-	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
-	common.Info(LogMsgBootstrapLoggerCreated)
-
-	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
-	logLevel := subprocess.DefaultBuildLogLevel()
-	logDir := subprocess.DefaultBuildLogDir()
-	logger, err := subprocess.SetupLogging(processID, logDir, logLevel)
-	if err != nil {
-		bootstrapLogger.Error(LogMsgFailedSetupLogging, err)
-		os.Exit(1)
-	}
-	common.Info(LogMsgLoggingSetupComplete, logLevel)
+	sp, logger := subprocess.StandardStartup(configStruct)
 
 	// Get database path from environment or use default
 	dbPath := os.Getenv("CVE_DB_PATH")
@@ -201,35 +186,6 @@ func main() {
 	}
 	logger.Info("Notes service initialized and migrations completed")
 
-	// Create subprocess instance
-	var sp *subprocess.Subprocess
-
-	// Check if we're running as an RPC subprocess with file descriptors
-	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
-		// Use file descriptors 3 and 4 for RPC communication
-		inputFD := 3
-		outputFD := 4
-
-		// Allow environment override for file descriptors
-		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				inputFD = fd
-			}
-		}
-		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				outputFD = fd
-			}
-		}
-
-		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
-	} else {
-		// Use default stdin/stdout for non-RPC mode
-		sp = subprocess.New(processID)
-	}
-
-	logger.Info(LogMsgSubprocessCreated, processID)
-
 	// Register RPC handlers
 	logger.Info("Registering RPC handlers...")
 	sp.RegisterHandler("RPCSaveCVEByID", createSaveCVEByIDHandler(db, logger))
@@ -305,7 +261,7 @@ func main() {
 	notes.NewRPCHandlers(notesServiceContainer, sp, logger)
 	logger.Info("Notes service handlers registered")
 
-	logger.Info(LogMsgServiceStarting, processID)
+	logger.Info(LogMsgServiceStarting, sp.ID)
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)
 

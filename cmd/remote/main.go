@@ -16,36 +16,20 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 func main() {
-	// Get process ID from environment or use default
-	processID := os.Getenv("PROCESS_ID")
-	if processID == "" {
-		processID = "remote"
+	// Use common startup utility to standardize initialization
+	configStruct := subprocess.StandardStartupConfig{
+		DefaultProcessID: "remote",
+		LogPrefix:        "[REMOTE] ",
 	}
-	common.Info(LogMsgProcessIDConfigured, processID)
-
-	// Use a bootstrap logger for initial messages before the full logging system is ready
-	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
-	common.Info(LogMsgBootstrapLoggerCreated)
-
-	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
-	logLevel := subprocess.DefaultBuildLogLevel()
-	logDir := subprocess.DefaultBuildLogDir()
-	logger, err := subprocess.SetupLogging(processID, logDir, logLevel)
-	if err != nil {
-		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
-		os.Exit(1)
-	}
-	common.Info(LogMsgLoggingSetupComplete, logLevel)
+	sp, logger := subprocess.StandardStartup(configStruct)
 
 	// Get API key from environment (optional)
 	apiKey := os.Getenv("NVD_API_KEY")
@@ -58,35 +42,6 @@ func main() {
 	// Create CVE fetcher
 	fetcher := remote.NewFetcher(apiKey)
 	logger.Info(LogMsgFetcherCreated, apiKey != "")
-
-	// Create subprocess instance
-	var sp *subprocess.Subprocess
-
-	// Check if we're running as an RPC subprocess with file descriptors
-	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
-		// Use file descriptors 3 and 4 for RPC communication
-		inputFD := 3
-		outputFD := 4
-
-		// Allow environment override for file descriptors
-		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				inputFD = fd
-			}
-		}
-		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				outputFD = fd
-			}
-		}
-
-		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
-	} else {
-		// Use default stdin/stdout for non-RPC mode
-		sp = subprocess.New(processID)
-	}
-
-	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Register RPC handlers
 	logger.Info("Registering RPC handlers...")
