@@ -29,6 +29,14 @@
       "method": "build-tag",
       "major_class": "parsing",
       "minor_class": "xml"
+    },
+    "CONFIG_USE_SONIC": {
+      "description": "Use Sonic JSON instead of original encoding/json",
+      "type": "bool",
+      "default": true,
+      "method": "build-tag",
+      "major_class": "parsing",
+      "minor_class": "json"
     }
   }
 }

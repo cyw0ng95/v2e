@@ -1,3 +1,5 @@
+//go:build CONFIG_USE_SONIC
+
 package jsonutil
 
 import (

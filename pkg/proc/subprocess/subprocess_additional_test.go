@@ -128,12 +128,18 @@ func TestSendMessage_BatchedWriter_LargePayload(t *testing.T) {
 	go sp.messageWriter()
 
 	// Create a large payload exceeding defaultWriterBufSize
-	large := make([]byte, defaultWriterBufSize*3)
-	for i := range large {
-		large[i] = 'z'
+	// Use valid JSON string data instead of raw 'z' characters
+	largeString := strings.Repeat("x", defaultWriterBufSize*3)
+	largePayload := map[string]string{
+		"data": largeString,
+	}
+	
+	largeJSON, err := json.Marshal(largePayload)
+	if err != nil {
+		t.Fatalf("Failed to marshal large payload: %v", err)
 	}
 
-	msg := &Message{Type: MessageTypeEvent, ID: "large1", Payload: large}
+	msg := &Message{Type: MessageTypeEvent, ID: "large1", Payload: largeJSON}
 	if err := sp.sendMessage(msg); err != nil {
 		t.Fatalf("sendMessage failed: %v", err)
 	}
