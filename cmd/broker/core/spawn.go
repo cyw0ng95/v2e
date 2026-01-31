@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/transport"
@@ -166,51 +168,146 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	return &infoCopy, nil
 }
 
-// LoadProcessesFromConfig loads and starts processes from a configuration.
+// LoadProcessesFromConfig loads and starts processes based on new binary detection logic.
 func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
-	if config == nil || len(config.Broker.Processes) == 0 {
-		b.logger.Info("No processes configured to start")
-		return nil
+	if config == nil {
+		b.logger.Info("No configuration provided, using defaults")
+		// Default to detecting binaries
+		return b.loadProcessesByDetection(true, []string{"access", "remote", "local", "meta", "sysmon"})
 	}
 
-	b.logger.Info("Loading %d processes from configuration", len(config.Broker.Processes))
-
-	for _, procConfig := range config.Broker.Processes {
-		if procConfig.ID == "" || procConfig.Command == "" {
-			b.logger.Warn("Skipping invalid process config: missing ID or command")
-			continue
-		}
-
-		var err error
-		var info *ProcessInfo
-
-		if procConfig.Restart {
-			maxRestarts := procConfig.MaxRestarts
-			if maxRestarts == 0 {
-				maxRestarts = -1
-			}
-
-			if procConfig.RPC {
-				info, err = b.SpawnRPCWithRestart(procConfig.ID, procConfig.Command, maxRestarts, procConfig.Args...)
-			} else {
-				info, err = b.SpawnWithRestart(procConfig.ID, procConfig.Command, maxRestarts, procConfig.Args...)
-			}
-		} else {
-			if procConfig.RPC {
-				info, err = b.SpawnRPC(procConfig.ID, procConfig.Command, procConfig.Args...)
-			} else {
-				info, err = b.Spawn(procConfig.ID, procConfig.Command, procConfig.Args...)
-			}
-		}
-
-		if err != nil {
-			b.logger.Warn("Failed to spawn process %s: %v", procConfig.ID, err)
-			continue
-		}
-
-		b.logger.Info("Started process %s (PID: %d) from configuration", info.ID, info.PID)
+	// Use DetectBins setting from config, default to true if not set
+	detectBins := config.Broker.DetectBins
+	if detectBins == false {
+		// If detectBins is not explicitly set in config, default to true
+		// (this assumes that the default value in the struct is false, so if it's false, it wasn't set)
+		detectBins = true
 	}
 
+	var bootBins []string
+	if config.Broker.BootBins != "" {
+		// Use configured BootBins if provided
+		bootBins = strings.Split(config.Broker.BootBins, ",")
+		// Trim whitespace from each bin
+		for i, bin := range bootBins {
+			bootBins[i] = strings.TrimSpace(bin)
+		}
+	} else {
+		// Use build-time default if no config provided
+		bootBins = DefaultBuildBootBins()
+	}
+
+	return b.loadProcessesByDetection(detectBins, bootBins)
+}
+
+// loadProcessesByDetection implements the core logic for loading processes based on detection settings.
+func (b *Broker) loadProcessesByDetection(detectBins bool, bootBins []string) error {
+	if detectBins {
+		// Detect binaries in the same directory as the broker executable
+		return b.loadDetectedBinaries()
+	} else {
+		// Use the provided list of binaries
+		return b.loadSpecifiedBinaries(bootBins)
+	}
+}
+
+// loadDetectedBinaries detects executables in the same directory as the broker.
+func (b *Broker) loadDetectedBinaries() error {
+	// Get the directory of the current executable
+	execPath, err := os.Executable()
+	if err != nil {
+		b.logger.Error("Failed to get executable path: %v", err)
+		return err
+	}
+
+	execDir := filepath.Dir(execPath)
+	b.logger.Info("Detecting binaries in directory: %s", execDir)
+
+	// Read directory
+	entries, err := os.ReadDir(execDir)
+	if err != nil {
+		b.logger.Error("Failed to read directory %s: %v", execDir, err)
+		return err
+	}
+
+	// Predefined list of expected service names
+	expectedServices := map[string]bool{
+		"access": true,
+		"remote": true,
+		"local":  true,
+		"meta":   true,
+		"sysmon": true,
+	}
+
+	// Track which services we've started
+	startedServices := make(map[string]bool)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue // Skip directories
+		}
+
+		fileName := entry.Name()
+		// Check if this file is one of our expected services
+		if expectedServices[fileName] {
+			// Check if it's executable
+			filePath := filepath.Join(execDir, fileName)
+			if b.isExecutable(filePath) {
+				b.logger.Info("Detected executable: %s", fileName)
+				if err := b.startService(fileName, true); err != nil {
+					b.logger.Warn("Failed to start service %s: %v", fileName, err)
+				} else {
+					startedServices[fileName] = true
+				}
+			}
+		}
+	}
+
+	// Report what we found
+	b.logger.Info("Binary detection complete. Started services: %v", startedServices)
+	return nil
+}
+
+// loadSpecifiedBinaries loads the specified binaries from the list.
+func (b *Broker) loadSpecifiedBinaries(binNames []string) error {
+	b.logger.Info("Loading specified binaries: %v", binNames)
+
+	for _, binName := range binNames {
+		if binName == "" {
+			continue // Skip empty names
+		}
+
+		if err := b.startService(binName, true); err != nil {
+			b.logger.Warn("Failed to start service %s: %v", binName, err)
+			// Continue with other services even if one fails
+		}
+	}
+
+	return nil
+}
+
+// isExecutable checks if a file is executable.
+func (b *Broker) isExecutable(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	// Check if the file mode indicates it's executable
+	mode := info.Mode()
+	return mode&0111 != 0 // Check if any execute bit is set (owner, group, or other)
+}
+
+// startService starts a service by name with RPC capability.
+func (b *Broker) startService(serviceName string, withRPC bool) error {
+	// Start the service with RPC and auto-restart
+	// Default to unlimited restarts (-1)
+	info, err := b.SpawnRPCWithRestart(serviceName, "./"+serviceName, -1)
+	if err != nil {
+		return err
+	}
+
+	b.logger.Info("Started service %s (PID: %d) with RPC and auto-restart", info.ID, info.PID)
 	return nil
 }
 

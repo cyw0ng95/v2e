@@ -82,6 +82,23 @@
       "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildRPCOutputFD",
       "major_class": "proc",
       "minor_class": "fd"
+    },
+    "CONFIG_BROKER_DETECTBINS": {
+      "description": "Enable automatic binary detection for broker processes",
+      "type": "bool",
+      "default": true,
+      "method": "build-tag",
+      "major_class": "broker",
+      "minor_class": "process"
+    },
+    "CONFIG_BROKER_BOOTBINS": {
+      "description": "Comma-separated list of binaries to boot when detect_bins is false",
+      "type": "string",
+      "default": "access,remote,local,meta,sysmon",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/broker.core.buildBootBins",
+      "major_class": "broker",
+      "minor_class": "process"
     }
   }
 }

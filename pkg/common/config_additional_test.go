@@ -9,15 +9,15 @@ import (
 // helper to create a config populated across sections for round-trip testing.
 func buildFullConfig() *Config {
 	return &Config{
-		Server:  ServerConfig{Address: ":8081"},
-		Client:  ClientConfig{URL: "http://client"},
-		Broker:  BrokerConfig{LogFile: "broker.log", LogsDir: "logs"},
-		Proc:    ProcConfig{MaxMessageSizeBytes: 1024, RPCInputFD: 3, RPCOutputFD: 4},
-		Local:   LocalConfig{CVEDBPath: "cve.db", CWEDBPath: "cwe.db", CAPECDBPath: "capec.db"},
-		Meta:    MetaConfig{SessionDBPath: "session.db"},
-		Remote:  RemoteConfig{NVDAPIKey: "key", ViewFetchURL: "http://views"},
-		Assets:  AssetsConfig{CWERawPath: "cwe.json", CAPECXMLPath: "capec.xml", CAPECXSDPath: "capec.xsd"},
-		Capec:   CapecConfig{StrictXSDValidation: true},
+		Server: ServerConfig{Address: ":8081"},
+		Client: ClientConfig{URL: "http://client"},
+		Broker: BrokerConfig{LogFile: "broker.log", LogsDir: "logs", DetectBins: true},
+		Proc:   ProcConfig{MaxMessageSizeBytes: 1024, RPCInputFD: 3, RPCOutputFD: 4},
+		Local:  LocalConfig{CVEDBPath: "cve.db", CWEDBPath: "cwe.db", CAPECDBPath: "capec.db"},
+		Meta:   MetaConfig{SessionDBPath: "session.db"},
+		Remote: RemoteConfig{NVDAPIKey: "key", ViewFetchURL: "http://views"},
+		Assets: AssetsConfig{CWERawPath: "cwe.json", CAPECXMLPath: "capec.xml", CAPECXSDPath: "capec.xsd"},
+		Capec:  CapecConfig{StrictXSDValidation: true},
 
 		Logging: LoggingConfig{Level: "debug", Dir: "logdir"},
 		Access:  AccessConfig{RPCTimeoutSeconds: 5, ShutdownTimeoutSeconds: 2, StaticDir: "site"},

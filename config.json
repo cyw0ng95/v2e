@@ -1,49 +1,7 @@
 {
   "broker": {
     "logs_dir": "./logs",
-    "log_file": "./logs/broker.log",
-    "processes": [
-      {
-        "id": "access",
-        "command": "./access",
-        "args": [],
-        "rpc": true,
-        "restart": true,
-        "max_restarts": -1
-      },
-      {
-        "id": "remote",
-        "command": "./remote",
-        "args": [],
-        "rpc": true,
-        "restart": true,
-        "max_restarts": -1
-      },
-      {
-        "id": "local",
-        "command": "./local",
-        "args": [],
-        "rpc": true,
-        "restart": true,
-        "max_restarts": -1
-      },
-      {
-        "id": "meta",
-        "command": "./meta",
-        "args": [],
-        "rpc": true,
-        "restart": true,
-        "max_restarts": -1
-      },
-      {
-        "id": "sysmon",
-        "command": "./sysmon",
-        "args": [],
-        "rpc": true,
-        "restart": true,
-        "max_restarts": -1
-      }
-    ]
+    "log_file": "./logs/broker.log"
   },
   "access": {
     "rpc_timeout_seconds": 30,

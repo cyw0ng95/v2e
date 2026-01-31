@@ -131,141 +131,48 @@ func TestLoadProcessesFromConfig(t *testing.T) {
 	broker := core.NewBroker()
 	defer broker.Shutdown()
 
-	t.Run("Nil config", func(t *testing.T) {
+	t.Run("Nil config - should use defaults", func(t *testing.T) {
 		err := broker.LoadProcessesFromConfig(nil)
 		if err != nil {
 			t.Errorf("Expected no error for nil config, got: %v", err)
 		}
 	})
 
-	t.Run("Empty processes", func(t *testing.T) {
-		config := &common.Config{}
-		err := broker.LoadProcessesFromConfig(config)
-		if err != nil {
-			t.Errorf("Expected no error for empty processes, got: %v", err)
-		}
-	})
-
-	t.Run("Invalid process config - missing ID", func(t *testing.T) {
+	t.Run("Config with detect_bins=true", func(t *testing.T) {
 		config := &common.Config{
 			Broker: common.BrokerConfig{
-				Processes: []common.ProcessConfig{
-					{
-						// Missing ID
-						Command: "echo",
-						Args:    []string{"test"},
-					},
-				},
-			},
-		}
-		err := broker.LoadProcessesFromConfig(config)
-		// Should not error, just skip the invalid config
-		if err != nil {
-			t.Errorf("Expected no error when skipping invalid config, got: %v", err)
-		}
-	})
-
-	t.Run("Invalid process config - missing command", func(t *testing.T) {
-		config := &common.Config{
-			Broker: common.BrokerConfig{
-				Processes: []common.ProcessConfig{
-					{
-						ID: "test",
-						// Missing Command
-						Args: []string{"test"},
-					},
-				},
-			},
-		}
-		err := broker.LoadProcessesFromConfig(config)
-		// Should not error, just skip the invalid config
-		if err != nil {
-			t.Errorf("Expected no error when skipping invalid config, got: %v", err)
-		}
-	})
-
-	t.Run("Valid process config - non-RPC without restart", func(t *testing.T) {
-		config := &common.Config{
-			Broker: common.BrokerConfig{
-				Processes: []common.ProcessConfig{
-					{
-						ID:      "test-echo",
-						Command: "echo",
-						Args:    []string{"hello"},
-						RPC:     false,
-						Restart: false,
-					},
-				},
+				DetectBins: true,
 			},
 		}
 		err := broker.LoadProcessesFromConfig(config)
 		if err != nil {
-			t.Errorf("Expected no error for valid config, got: %v", err)
-		}
-
-		// Verify process was spawned
-		time.Sleep(100 * time.Millisecond)
-		info, err := broker.GetProcess("test-echo")
-		if err == nil && info != nil {
-			// Process was spawned, clean up
-			broker.Kill("test-echo")
+			t.Errorf("Expected no error when detect_bins=true, got: %v", err)
 		}
 	})
 
-	t.Run("Valid process config - with restart", func(t *testing.T) {
+	t.Run("Config with detect_bins=false and boot_bins", func(t *testing.T) {
 		config := &common.Config{
 			Broker: common.BrokerConfig{
-				Processes: []common.ProcessConfig{
-					{
-						ID:          "test-sleep",
-						Command:     "sleep",
-						Args:        []string{"10"},
-						RPC:         false,
-						Restart:     true,
-						MaxRestarts: 1,
-					},
-				},
+				DetectBins: false,
+				BootBins:   "access,remote",
 			},
 		}
 		err := broker.LoadProcessesFromConfig(config)
 		if err != nil {
-			t.Errorf("Expected no error for valid config with restart, got: %v", err)
-		}
-
-		// Verify process was spawned
-		time.Sleep(100 * time.Millisecond)
-		info, err := broker.GetProcess("test-sleep")
-		if err == nil && info != nil {
-			// Process was spawned, clean up
-			broker.Kill("test-sleep")
+			t.Errorf("Expected no error when detect_bins=false, got: %v", err)
 		}
 	})
 
-	t.Run("Valid RPC process config", func(t *testing.T) {
+	t.Run("Config with boot_bins list", func(t *testing.T) {
 		config := &common.Config{
 			Broker: common.BrokerConfig{
-				Processes: []common.ProcessConfig{
-					{
-						ID:      "test-rpc-sleep",
-						Command: "sleep",
-						Args:    []string{"60"},
-						RPC:     true,
-						Restart: false,
-					},
-				},
+				DetectBins: false,
+				BootBins:   "access,local,meta",
 			},
 		}
 		err := broker.LoadProcessesFromConfig(config)
 		if err != nil {
-			t.Errorf("Expected no error for valid RPC config, got: %v", err)
-		}
-
-		// Verify process was spawned
-		time.Sleep(100 * time.Millisecond)
-		info, err := broker.GetProcess("test-rpc-sleep")
-		if err == nil && info != nil {
-			// Process was spawned, clean up
-			broker.Kill("test-rpc-sleep")
+			t.Errorf("Expected no error when specifying boot_bins, got: %v", err)
 		}
 	})
 }

@@ -257,15 +257,7 @@ func TestConfig_StructureIntegrity(t *testing.T) {
 			URL: "https://api.service.com",
 		},
 		Broker: BrokerConfig{
-			Processes: []ProcessConfig{
-				{
-					ID:      "service-1",
-					Command: "/usr/bin/service",
-					Args:    []string{"--config", "/etc/service.conf"},
-					RPC:     true,
-					Restart: true,
-				},
-			},
+			DetectBins: true,
 			Authentication: AuthenticationConfig{
 				Enabled: true,
 				Tokens: map[string]TokenPermissions{
@@ -338,9 +330,7 @@ func TestConfig_StructureIntegrity(t *testing.T) {
 	if loadedConfig.Client.URL != originalConfig.Client.URL {
 		t.Errorf("Client URL mismatch: expected %s, got %s", originalConfig.Client.URL, loadedConfig.Client.URL)
 	}
-	if len(loadedConfig.Broker.Processes) != len(originalConfig.Broker.Processes) {
-		t.Errorf("Broker processes count mismatch: expected %d, got %d", len(originalConfig.Broker.Processes), len(loadedConfig.Broker.Processes))
-	}
+
 	if loadedConfig.Proc.MaxMessageSizeBytes != originalConfig.Proc.MaxMessageSizeBytes {
 		t.Errorf("Proc MaxMessageSizeBytes mismatch: expected %d, got %d", originalConfig.Proc.MaxMessageSizeBytes, loadedConfig.Proc.MaxMessageSizeBytes)
 	}

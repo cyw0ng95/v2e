@@ -102,8 +102,6 @@ type ClientConfig struct {
 
 // BrokerConfig holds broker-specific configuration
 type BrokerConfig struct {
-	// Processes is a list of processes to manage
-	Processes []ProcessConfig `json:"processes,omitempty"`
 	// LogFile is the path to the log file
 	LogFile string `json:"log_file,omitempty"`
 	// LogsDir is the directory where logs are stored
@@ -127,6 +125,10 @@ type BrokerConfig struct {
 	// Adaptive optimization
 	OptimizerEnableAdaptive   bool `json:"optimizer_enable_adaptive,omitempty"`
 	OptimizerAdaptationFreqMs int  `json:"optimizer_adaptation_freq_ms,omitempty"`
+	// Enable automatic binary detection (default: true)
+	DetectBins bool `json:"detect_bins,omitempty"`
+	// Comma-separated list of binaries to boot when detect_bins is false (default: "access,remote,local,meta,sysmon")
+	BootBins string `json:"boot_bins,omitempty"`
 }
 
 // TransportConfigOptions holds configuration for transport mechanisms

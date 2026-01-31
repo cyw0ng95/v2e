@@ -115,7 +115,7 @@ func main() {
 		optConfig.BatchSize,
 		optConfig.FlushInterval)
 
-	common.Info("Broker started, managing %d processes", len(config.Broker.Processes))
+	common.Info("Broker started, processes will be loaded based on configuration")
 
 	// Start message processing goroutine
 	// This processes RPC requests directed at the broker
