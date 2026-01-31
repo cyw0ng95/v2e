@@ -57,6 +57,10 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 			}
 		}
 		b.logger.Debug("[TRACE] No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
+		// For responses, ensure the source is set to the responding process
+		if msg.Type == proc.MessageTypeResponse && msg.Source == "" {
+			msg.Source = sourceProcess
+		}
 	}
 
 	if msg.Target != "" {

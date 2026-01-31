@@ -87,6 +87,7 @@ func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 		Type:    MessageTypeResponse,
 		ID:      id,
 		Payload: rawPayload,
+		Source:  s.ID,
 	}
 	return s.sendMessage(msg)
 }
@@ -107,6 +108,7 @@ func (s *Subprocess) SendEvent(id string, payload interface{}) error {
 		Type:    MessageTypeEvent,
 		ID:      id,
 		Payload: rawPayload,
+		Source:  s.ID,
 	}
 	return s.sendMessage(msg)
 }
@@ -117,6 +119,7 @@ func (s *Subprocess) SendError(id string, err error) error {
 		Type:  MessageTypeError,
 		ID:    id,
 		Error: err.Error(),
+		Source:  s.ID,
 	}
 	return s.sendMessage(msg)
 }
