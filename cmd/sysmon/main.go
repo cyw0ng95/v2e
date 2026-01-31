@@ -133,12 +133,14 @@ func main() {
 	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
 	common.Info(LogMsgBootstrapLoggerCreated)
 
-	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
+	// Use subprocess package for logging to ensure build-time log level from .config is used
+	logLevel := subprocess.DefaultBuildLogLevel()
+	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, logLevel)
 	if err != nil {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
 	}
-	common.Info(LogMsgLoggingSetupComplete, common.InfoLevel)
+	common.Info(LogMsgLoggingSetupComplete, logLevel)
 
 	var sp *subprocess.Subprocess
 

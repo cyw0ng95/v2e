@@ -353,13 +353,14 @@ func main() {
 	common.Info(LogMsgBootstrapLoggerCreated)
 	bootstrapLogger.Info(LogMsgStartup, os.Getenv("PROCESS_ID"), os.Getenv("SESSION_DB_PATH"))
 
-	// Set up logging using common subprocess framework
-	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, common.InfoLevel)
+	// Use subprocess package for logging to ensure build-time log level from .config is used
+	logLevel := subprocess.DefaultBuildLogLevel()
+	logger, err := subprocess.SetupLogging(processID, common.DefaultLogsDir, logLevel)
 	if err != nil {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)
 		os.Exit(1)
 	}
-	common.Info(LogMsgLoggingSetupComplete, common.InfoLevel)
+	common.Info(LogMsgLoggingSetupComplete, logLevel)
 
 	// Get run database path from environment or use default
 	runDBPath := os.Getenv("SESSION_DB_PATH")

@@ -31,5 +31,7 @@ func SetupLogging(processID string, logsDir string, logLevel common.LogLevel) (*
 	// Create logger with the multi-writer
 	logger := common.NewLogger(multiWriter, fmt.Sprintf("[%s] ", processID), logLevel)
 
+	logger.Debug("Logger initialized with Debug level")
+
 	return logger, nil
 }
