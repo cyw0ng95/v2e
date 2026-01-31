@@ -652,6 +652,49 @@ func (s *MemoryCardServiceRPCClient) UpdateCardAfterReview(ctx context.Context, 
 	return nil
 }
 
+// ListMemoryCards retrieves memory cards with filters via RPC
+func (s *MemoryCardServiceRPCClient) ListMemoryCards(ctx context.Context, bookmarkID *uint, learningState *string, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error) {
+	params := map[string]interface{}{
+		"offset": offset,
+		"limit":  limit,
+	}
+
+	if bookmarkID != nil {
+		params["bookmark_id"] = float64(*bookmarkID)
+	}
+	if learningState != nil {
+		params["learning_state"] = *learningState
+	}
+	if author != nil {
+		params["author"] = *author
+	}
+	if isPrivate != nil {
+		params["is_private"] = *isPrivate
+	}
+
+	var result struct {
+		MemoryCards []*MemoryCardModel `json:"memory_cards"`
+		Offset      int                `json:"offset"`
+		Limit       int                `json:"limit"`
+		Total       int64              `json:"total"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCListMemoryCards", params)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list memory cards via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return nil, 0, fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return nil, 0, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return result.MemoryCards, result.Total, nil
+}
+
 // CrossReferenceServiceRPCClient implements the CrossReferenceService interface using RPC
 type CrossReferenceServiceRPCClient struct {
 	Client *RPCClient

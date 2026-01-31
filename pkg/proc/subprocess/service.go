@@ -46,12 +46,12 @@ func ParseFlags(defaultID string) *Flags {
 		// However, for simplicity and correctness in main(), we assume ParseFlags is called once.
 		// The check above is mainly for tests.
 	}
-	
+
 	// If ID is still default or empty after parsing (or not parsing if defined), ensure we have a valid ID
 	if f.ProcessID == "" {
 		f.ProcessID = defaultID
 	}
-	
+
 	return f
 }
 

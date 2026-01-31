@@ -223,19 +223,19 @@ func (t *UDSTransport) shouldReconnect(err error) bool {
 func (t *UDSTransport) reconnect() error {
 	// Close existing connection and increment counter while holding lock
 	t.mu.Lock()
-	
+
 	// Close existing connection
 	if t.connection != nil {
 		t.connection.Close()
 		t.connection = nil
 	}
-	
+
 	// Reset scanner
 	t.scanner = nil
-	
+
 	// Increment reconnect attempt counter
 	t.reconnectAttempts++
-	
+
 	// Check if we've exceeded max reconnect attempts
 	if t.reconnectAttempts > t.maxReconnectAttempts {
 		if t.reconnectCb != nil {
@@ -246,10 +246,10 @@ func (t *UDSTransport) reconnect() error {
 	}
 
 	t.mu.Unlock()
-	
+
 	// Wait before attempting to reconnect (without holding the lock)
 	time.Sleep(t.reconnectDelay)
-	
+
 	// Try to establish a new connection
 	var conn net.Conn
 	var err error
@@ -275,15 +275,15 @@ func (t *UDSTransport) reconnect() error {
 	// Acquire lock again to update state
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	t.connection = conn
 	t.scanner = bufio.NewScanner(conn)
 	t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
 	t.connected = true
-	
+
 	// Reset reconnect attempts counter on successful reconnection
 	t.reconnectAttempts = 0
-	
+
 	return nil
 }
 
@@ -419,7 +419,7 @@ func (t *UDSTransport) acceptLoop() {
 			if strings.Contains(err.Error(), "use of closed network connection") || strings.Contains(err.Error(), "Listener closed") {
 				return
 			}
-			
+
 			// Log error via callback if set
 			t.mu.RLock()
 			handler := t.errorHandler
@@ -453,4 +453,3 @@ func (t *UDSTransport) handleNewConnection(conn net.Conn) {
 	t.connected = true
 	t.reconnectAttempts = 0
 }
-

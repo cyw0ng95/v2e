@@ -137,11 +137,11 @@ func BenchmarkPayloadHandling(b *testing.B) {
 // BenchmarkMarshalUnmarshalCycles benchmarks different cycles of marshal/unmarshal
 func BenchmarkMarshalUnmarshalCycles(b *testing.B) {
 	type TestData struct {
-		Name     string            `json:"name"`
-		Value    int               `json:"value"`
-		Data     map[string]string `json:"data"`
-		List     []string          `json:"list"`
-		Nested   map[string]interface{} `json:"nested"`
+		Name   string                 `json:"name"`
+		Value  int                    `json:"value"`
+		Data   map[string]string      `json:"data"`
+		List   []string               `json:"list"`
+		Nested map[string]interface{} `json:"nested"`
 	}
 
 	testData := TestData{
@@ -165,17 +165,17 @@ func BenchmarkMarshalUnmarshalCycles(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			// Create message
 			msg, _ := NewRequestMessage("roundtrip-test", testData)
-			
+
 			// Marshal
 			data, _ := msg.Marshal()
-			
+
 			// Unmarshal
 			received, _ := Unmarshal(data)
-			
+
 			// Extract payload
 			var result TestData
 			_ = received.UnmarshalPayload(&result)
-			
+
 			// Cleanup
 			PutMessage(msg)
 			PutMessage(received)
@@ -188,17 +188,17 @@ func BenchmarkMarshalUnmarshalCycles(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			// Create message
 			msg, _ := OptimizedNewRequestMessage("roundtrip-test", testData)
-			
+
 			// Marshal
 			data, _ := msg.OptimizedMarshal()
-			
+
 			// Unmarshal
 			received, _ := OptimizedUnmarshal(data)
-			
+
 			// Extract payload
 			var result TestData
 			_ = received.OptimizedUnmarshalPayload(&result)
-			
+
 			// Cleanup
 			PutOptimizedMessage(msg)
 			PutOptimizedMessage(received)
@@ -211,7 +211,7 @@ func BenchmarkMarshalUnmarshalCycles(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			// Direct marshal
 			data, _ := json.Marshal(testData)
-			
+
 			// Direct unmarshal
 			var result TestData
 			_ = json.Unmarshal(data, &result)
@@ -275,24 +275,24 @@ func itoa(i int) string {
 	if i == 0 {
 		return "0"
 	}
-	
+
 	neg := false
 	if i < 0 {
 		neg = true
 		i = -i
 	}
-	
+
 	s := make([]byte, 0, 10)
 	for i > 0 {
 		s = append(s, byte(i%10)+'0')
 		i /= 10
 	}
-	
+
 	// Reverse the string
 	for j, k := 0, len(s)-1; j < k; j, k = j+1, k-1 {
 		s[j], s[k] = s[k], s[j]
 	}
-	
+
 	if neg {
 		s = append(s, '-')
 		// Reverse again to get correct order
@@ -300,6 +300,6 @@ func itoa(i int) string {
 			s[j], s[k] = s[k], s[j]
 		}
 	}
-	
+
 	return string(s)
 }

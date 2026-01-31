@@ -49,6 +49,7 @@ func NewRPCHandlers(container *ServiceContainer, sp *subprocess.Subprocess, logg
 	sp.RegisterHandler("RPCGetBidirectionalCrossReferences", handlers.handleRPCGetBidirectionalCrossReferences)
 	sp.RegisterHandler("RPCGetHistoryByBookmarkID", handlers.handleRPCGetHistoryByBookmarkID)
 	sp.RegisterHandler("RPCRevertBookmarkState", handlers.handleRPCRevertBookmarkState)
+	sp.RegisterHandler("RPCListMemoryCards", handlers.handleRPCListMemoryCards)
 
 	return handlers
 }
@@ -1172,6 +1173,103 @@ func (h *RPCHandlers) handleRPCRevertBookmarkState(ctx context.Context, msg *sub
 		Success bool `json:"success"`
 	}{
 		Success: true,
+	}
+
+	payload, err := subprocess.MarshalFast(result)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to marshal result: %v", err)), nil
+	}
+
+	return &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            msg.ID,
+		Payload:       payload,
+		Target:        msg.Source,
+		CorrelationID: msg.CorrelationID,
+		Source:        h.sp.ID,
+	}, nil
+}
+
+// handleRPCListMemoryCards handles RPC request to list memory cards with filters
+func (h *RPCHandlers) handleRPCListMemoryCards(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	var params map[string]interface{}
+	if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to unmarshal params: %v", err)), nil
+	}
+
+	// Extract optional parameters with defaults
+	var bookmarkID *uint
+	if bookmarkIDParam, exists := params["bookmark_id"]; exists && bookmarkIDParam != nil {
+		if bookmarkIDFloat, ok := bookmarkIDParam.(float64); ok {
+			id := uint(bookmarkIDFloat)
+			bookmarkID = &id
+		} else {
+			return h.createErrorResponse(msg, "Invalid bookmark_id parameter"), nil
+		}
+	}
+
+	var learningState *string
+	if learningStateParam, exists := params["learning_state"]; exists && learningStateParam != nil {
+		if stateStr, ok := learningStateParam.(string); ok {
+			learningState = &stateStr
+		} else {
+			return h.createErrorResponse(msg, "Invalid learning_state parameter"), nil
+		}
+	}
+
+	var author *string
+	if authorParam, exists := params["author"]; exists && authorParam != nil {
+		if authorStr, ok := authorParam.(string); ok {
+			author = &authorStr
+		} else {
+			return h.createErrorResponse(msg, "Invalid author parameter"), nil
+		}
+	}
+
+	var isPrivate *bool
+	if isPrivateParam, exists := params["is_private"]; exists && isPrivateParam != nil {
+		if privateBool, ok := isPrivateParam.(bool); ok {
+			isPrivate = &privateBool
+		} else {
+			return h.createErrorResponse(msg, "Invalid is_private parameter"), nil
+		}
+	}
+
+	// Extract pagination parameters with defaults
+	offset := 0
+	if offsetParam, exists := params["offset"]; exists {
+		if offsetFloat, ok := offsetParam.(float64); ok {
+			offset = int(offsetFloat)
+		} else {
+			return h.createErrorResponse(msg, "Invalid offset parameter"), nil
+		}
+	}
+
+	limit := 50 // Default limit
+	if limitParam, exists := params["limit"]; exists {
+		if limitFloat, ok := limitParam.(float64); ok {
+			limit = int(limitFloat)
+		} else {
+			return h.createErrorResponse(msg, "Invalid limit parameter"), nil
+		}
+	}
+
+	// Call the service method
+	cards, total, err := h.container.MemoryCardService.ListMemoryCards(ctx, bookmarkID, learningState, author, isPrivate, offset, limit)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to list memory cards: %v", err)), nil
+	}
+
+	result := struct {
+		MemoryCards []*MemoryCardModel `json:"memory_cards"`
+		Offset      int                `json:"offset"`
+		Limit       int                `json:"limit"`
+		Total       int64              `json:"total"`
+	}{
+		MemoryCards: cards,
+		Offset:      offset,
+		Limit:       limit,
+		Total:       total,
 	}
 
 	payload, err := subprocess.MarshalFast(result)

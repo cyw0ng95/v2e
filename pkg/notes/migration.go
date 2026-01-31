@@ -5,7 +5,7 @@ import (
 )
 
 // MigrateNotesTables migrates all notes-related tables into the provided DB.
-// This includes bookmarks, notes, history, memory cards, learning sessions, 
+// This includes bookmarks, notes, history, memory cards, learning sessions,
 // cross-references, and global items tables.
 func MigrateNotesTables(db *gorm.DB) error {
 	return db.AutoMigrate(

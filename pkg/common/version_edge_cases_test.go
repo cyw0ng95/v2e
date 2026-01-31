@@ -97,7 +97,7 @@ func TestVersion_GitFallback(t *testing.T) {
 	resetVersionForTesting()
 
 	version := Version()
-	
+
 	// The version should be some string (could be default or from existing git repo in parent dirs)
 	if version == "" {
 		t.Errorf("Expected non-empty version, got empty string")
@@ -237,7 +237,7 @@ func resetVersionForTesting() {
 	// We can't directly access the unexported versionOnce variable
 	// Instead, we'll use a workaround by calling a test helper if available
 	// or just note that this is difficult to test without exposing internals
-	
+
 	// For now, we'll just note that in a real scenario we'd need to expose this for testing
 	// or restructure the code to be more testable
 }
@@ -247,14 +247,14 @@ func TestVersion_InvalidGitEnv(t *testing.T) {
 	// This test is tricky because the Version function uses os.exec
 	// which executes in the real environment. We can't easily mock it
 	// without changing the function signature.
-	
+
 	// However, we can at least verify the function works and returns a string
 	version := Version()
-	
+
 	if version == "" {
 		t.Error("Version() should never return an empty string")
 	}
-	
+
 	// Version should be either the default or a git tag
 	if version != defaultVersion && !strings.HasPrefix(version, "v") {
 		t.Errorf("Version should either be default (%s) or start with 'v', got: %s", defaultVersion, version)
@@ -264,17 +264,17 @@ func TestVersion_InvalidGitEnv(t *testing.T) {
 // TestDefaultVersionConstant tests that the default version constant is properly formatted
 func TestDefaultVersionConstant(t *testing.T) {
 	defaultVer := defaultVersion
-	
+
 	if defaultVer == "" {
 		t.Error("defaultVersion constant should not be empty")
 	}
-	
+
 	// Should look like a semantic version (x.y.z format)
 	parts := strings.Split(defaultVer, ".")
 	if len(parts) != 3 {
 		t.Errorf("defaultVersion should have 3 parts separated by '.', got %d: %s", len(parts), defaultVer)
 	}
-	
+
 	for i, part := range parts {
 		if i == 2 {
 			// Last part might have suffixes like "-rc1", just check it's not empty
@@ -297,10 +297,10 @@ func TestDefaultVersionConstant(t *testing.T) {
 func TestVersionRaceCondition(t *testing.T) {
 	// This test verifies that multiple goroutines calling Version() simultaneously
 	// won't cause race conditions, thanks to sync.Once
-	
+
 	const numRoutines = 20
 	results := make(chan string, numRoutines)
-	
+
 	for i := 0; i < numRoutines; i++ {
 		go func() {
 			// Add slight delay to increase chance of simultaneous calls
@@ -309,19 +309,19 @@ func TestVersionRaceCondition(t *testing.T) {
 			results <- version
 		}()
 	}
-	
+
 	// Collect all results
 	versions := make(map[string]int)
 	for i := 0; i < numRoutines; i++ {
 		version := <-results
 		versions[version]++
 	}
-	
+
 	// There should be at least one unique version
 	if len(versions) == 0 {
 		t.Error("Expected at least one version, got none")
 	}
-	
+
 	// All versions should be the same (due to sync.Once caching)
 	for version, count := range versions {
 		// The version should be valid
@@ -339,18 +339,18 @@ func TestVersionRaceCondition(t *testing.T) {
 func TestVersion_LongRunningConsistency(t *testing.T) {
 	// Get initial version
 	initialVersion := Version()
-	
+
 	// Simulate a longer running process by calling Version multiple times
 	// with some time between calls
 	for i := 0; i < 5; i++ {
 		time.Sleep(1 * time.Millisecond) // Very short sleep to simulate time passing
 		version := Version()
-		
+
 		if version != initialVersion {
 			t.Errorf("Version changed from %s to %s after time passed", initialVersion, version)
 		}
 	}
-	
+
 	// Final verification
 	finalVersion := Version()
 	if finalVersion != initialVersion {
@@ -368,17 +368,17 @@ func BenchmarkVersion(b *testing.B) {
 // TestVersionCrossPlatform tests version behavior on different platforms
 func TestVersionCrossPlatform(t *testing.T) {
 	platform := runtime.GOOS
-	
+
 	// Just log the platform for information
 	t.Logf("Testing Version function on platform: %s", platform)
-	
+
 	version := Version()
-	
+
 	// Basic sanity checks that should work on all platforms
 	if version == "" {
 		t.Errorf("Version is empty on platform %s", platform)
 	}
-	
+
 	if len(version) > 100 { // Arbitrary limit, git tags shouldn't be this long
 		t.Errorf("Version seems too long on platform %s: %s", platform, version)
 	}

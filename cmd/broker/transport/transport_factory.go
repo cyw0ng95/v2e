@@ -13,8 +13,8 @@ import (
 type TransportType string
 
 const (
-	TransportTypeFD  TransportType = "fd"
-	TransportTypeUDS TransportType = "uds"
+	TransportTypeFD   TransportType = "fd"
+	TransportTypeUDS  TransportType = "uds"
 	TransportTypeAuto TransportType = "auto" // Auto-detect based on configuration or environment
 )
 
@@ -26,8 +26,8 @@ type TransportConfig struct {
 	SocketPath string
 	IsServer   bool
 	BasePath   string
-	UDSEnabled bool  // Flag to enable UDS transport
-	FDEnabled  bool  // Flag to enable FD transport
+	UDSEnabled bool // Flag to enable UDS transport
+	FDEnabled  bool // Flag to enable FD transport
 }
 
 // NewTransport creates a new transport based on the configuration
@@ -42,7 +42,7 @@ func NewTransport(config *TransportConfig) (Transport, error) {
 			config.Type = TransportTypeFD
 		}
 	}
-	
+
 	// Override based on config flags if set
 	if config.UDSEnabled && !config.FDEnabled {
 		config.Type = TransportTypeUDS
@@ -56,7 +56,7 @@ func NewTransport(config *TransportConfig) (Transport, error) {
 			config.Type = TransportTypeFD
 		}
 	}
-	
+
 	switch config.Type {
 	case TransportTypeFD:
 		return NewFDPipeTransport(config.InputFD, config.OutputFD), nil

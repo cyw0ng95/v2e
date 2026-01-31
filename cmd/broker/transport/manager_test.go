@@ -102,10 +102,10 @@ func TestTransportManager_RegisterUDSTransport_ConnectFailure(t *testing.T) {
 	tm := NewTransportManager()
 	// Set a custom base path to control socket path
 	tm.SetUdsBasePath("/tmp/test-uds")
-	
+
 	// Create a mock UDS transport that will fail to connect
 	mockTransport := createMockUDSTransport(errorString("connect failed"))
-	
+
 	// We can't directly test RegisterUDSTransport with a failing connect
 	// since it depends on actual UDS functionality, so we test the general flow
 	// by registering our own mock transport and then trying to send
@@ -127,7 +127,7 @@ func TestTransportManager_RegisterUDSTransport_Success(t *testing.T) {
 	tm := NewTransportManager()
 	// Use a temporary path that likely doesn't exist for this test
 	tm.SetUdsBasePath("/tmp/test-register-success")
-	
+
 	// This will fail to connect, but we're testing the registration path
 	// We'll use a mock transport instead to test success scenario
 	mockTransport := createMockUDSTransport(nil) // No connection error
@@ -155,11 +155,11 @@ func TestTransportManager_SetUdsBasePath(t *testing.T) {
 	// Check that the base path was updated (by creating a new manager and comparing)
 	newTM := NewTransportManager()
 	newTM.SetUdsBasePath(newBasePath)
-	
+
 	if newTM.udsBasePath != newBasePath {
 		t.Fatalf("expected base path to be set to %s, got %s", newBasePath, newTM.udsBasePath)
 	}
-	
+
 	// Reset to original for consistency
 	tm.SetUdsBasePath(originalBasePath)
 }

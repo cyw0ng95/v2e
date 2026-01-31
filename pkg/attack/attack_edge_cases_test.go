@@ -154,7 +154,7 @@ func TestDataTransformation(t *testing.T) {
 			Platform:    "Windows",
 			Created:     "2023-02-01",
 			Modified:    "2023-07-01",
-			Revoked:     true,  // Revoked technique
+			Revoked:     true, // Revoked technique
 			Deprecated:  false,
 		},
 		{
@@ -166,7 +166,7 @@ func TestDataTransformation(t *testing.T) {
 			Created:     "2023-03-01",
 			Modified:    "2023-08-01",
 			Revoked:     false,
-			Deprecated:  true,  // Deprecated technique
+			Deprecated:  true, // Deprecated technique
 		},
 	}
 
@@ -362,7 +362,7 @@ func TestPerformanceBenchmark(t *testing.T) {
 	}
 
 	// Performance thresholds (adjust based on expected performance)
-	maxInsertDuration := time.Second * 5  // Allow up to 5 seconds for insertion
+	maxInsertDuration := time.Second * 5          // Allow up to 5 seconds for insertion
 	maxRetrieveDuration := time.Millisecond * 50  // Allow up to 50ms for retrieval
 	maxPaginateDuration := time.Millisecond * 100 // Allow up to 100ms for pagination
 
@@ -486,8 +486,8 @@ func TestRelationshipFunctionality(t *testing.T) {
 	// Create a relationship between tactic and technique (tactic has sub-technique)
 	relationship := AttackRelationship{
 		ID:               "rel-1",
-		SourceRef:        "TA0005",  // Tactic is the source (has sub-technique)
-		TargetRef:        "T1055",   // Technique is the target (is a sub-technique)
+		SourceRef:        "TA0005", // Tactic is the source (has sub-technique)
+		TargetRef:        "T1055",  // Technique is the target (is a sub-technique)
 		RelationshipType: "has-subtechnique",
 		SourceObjectType: "x-mitre-tactic",
 		TargetObjectType: "attack-pattern",

@@ -2,6 +2,7 @@ package mq
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -19,12 +20,14 @@ func TestBusConcurrentSendReceive(t *testing.T) {
 	var wg sync.WaitGroup
 	// start receivers
 	received := int64(0)
+	recvErrCh := make(chan error, 1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for i := 0; i < senders*perSender; i++ {
 			if _, err := bus.Receive(context.Background()); err != nil {
-				t.Fatalf("receive error: %v", err)
+				recvErrCh <- fmt.Errorf("receive error: %v", err)
+				return
 			}
 			received++
 		}
@@ -32,6 +35,7 @@ func TestBusConcurrentSendReceive(t *testing.T) {
 
 	// start senders
 	var sw sync.WaitGroup
+	sendErrCh := make(chan error, senders)
 	for s := 0; s < senders; s++ {
 		sw.Add(1)
 		go func(si int) {
@@ -39,10 +43,26 @@ func TestBusConcurrentSendReceive(t *testing.T) {
 			for j := 0; j < perSender; j++ {
 				msg := &proc.Message{Type: proc.MessageTypeRequest, ID: "id", Source: "s", Target: "t"}
 				if err := bus.Send(context.Background(), msg); err != nil {
-					t.Fatalf("send error: %v", err)
+					sendErrCh <- fmt.Errorf("send error: %v", err)
+					return
 				}
 			}
 		}(s)
+	}
+
+	// Check for errors from goroutines
+	// Wait for senders first
+	sw.Wait()
+	close(sendErrCh)
+	if err := <-sendErrCh; err != nil {
+		t.Fatal(err)
+	}
+
+	// Then wait for receiver
+	close(recvErrCh)
+	wg.Wait()
+	if err := <-recvErrCh; err != nil {
+		t.Fatal(err)
 	}
 
 	sw.Wait()

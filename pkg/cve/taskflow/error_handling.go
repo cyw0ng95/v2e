@@ -34,12 +34,12 @@ const (
 
 // CircuitBreaker implements the circuit breaker pattern to prevent cascading failures
 type CircuitBreaker struct {
-	mutex         sync.Mutex
-	state         CircuitBreakerState
-	failureCount  int
-	maxFailures   int
-	resetTimeout  time.Duration
-	lastFailure   time.Time
+	mutex        sync.Mutex
+	state        CircuitBreakerState
+	failureCount int
+	maxFailures  int
+	resetTimeout time.Duration
+	lastFailure  time.Time
 }
 
 // NewCircuitBreaker creates a new circuit breaker with the specified parameters
@@ -54,31 +54,31 @@ func NewCircuitBreaker(maxFailures int, resetTimeout time.Duration) *CircuitBrea
 // Call executes the given function with circuit breaker protection
 func (cb *CircuitBreaker) Call(fn func() error) error {
 	cb.mutex.Lock()
-	
+
 	// Check if we should attempt to reset the circuit
 	if cb.state == Open && time.Since(cb.lastFailure) >= cb.resetTimeout {
 		cb.state = HalfOpen
 	}
-	
+
 	// If circuit is open, return error immediately
 	if cb.state == Open {
 		cb.mutex.Unlock()
 		return nil // Circuit is open, operation blocked
 	}
-	
+
 	cb.mutex.Unlock()
-	
+
 	// Execute the function
 	err := fn()
-	
+
 	cb.mutex.Lock()
 	defer cb.mutex.Unlock()
-	
+
 	if err != nil {
 		// Record failure
 		cb.failureCount++
 		cb.lastFailure = time.Now()
-		
+
 		if cb.failureCount >= cb.maxFailures {
 			cb.state = Open
 		}
@@ -87,7 +87,7 @@ func (cb *CircuitBreaker) Call(fn func() error) error {
 		cb.failureCount = 0
 		cb.state = Closed
 	}
-	
+
 	return err
 }
 

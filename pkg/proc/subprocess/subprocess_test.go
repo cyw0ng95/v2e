@@ -27,7 +27,7 @@ func TestNewWithFDs(t *testing.T) {
 	// Passing invalid FDs (like -1 or closed ones) might cause issues when using them,
 	// but NewWithFDs itself should be safe.
 	// Actually, NewWithFDs calls os.NewFile.
-	
+
 	sp := NewWithFDs("test-fds", 0, 1) // 0=stdin, 1=stdout
 	if sp.ID != "test-fds" {
 		t.Errorf("Expected ID to be 'test-fds', got '%s'", sp.ID)

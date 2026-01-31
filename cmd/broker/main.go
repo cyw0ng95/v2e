@@ -135,16 +135,16 @@ func main() {
 	}
 
 	broker.SetOptimizer(opt)
-	
+
 	// Get actual values from optimizer metrics or use config (config might be 0/empty, handled by defaults)
 	// We can trust NewWithConfig set defaults, but we don't have easy access to the final config struct inside opt
 	// except via side channels. For logging, we'll just log what we have or query metrics.
 	metrics := opt.Metrics()
-	common.Info("Optimizer started: buffer=%v workers=%v policy=%s batch=%d flush=%v", 
-		metrics["message_channel_buffer"], 
-		metrics["active_workers"], 
-		optConfig.OfferPolicy, 
-		optConfig.BatchSize, 
+	common.Info("Optimizer started: buffer=%v workers=%v policy=%s batch=%d flush=%v",
+		metrics["message_channel_buffer"],
+		metrics["active_workers"],
+		optConfig.OfferPolicy,
+		optConfig.BatchSize,
 		optConfig.FlushInterval)
 
 	common.Info("Broker started, managing %d processes", len(config.Broker.Processes))

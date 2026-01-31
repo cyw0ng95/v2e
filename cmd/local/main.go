@@ -23,6 +23,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
+	"github.com/cyw0ng95/v2e/pkg/notes"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -188,15 +189,25 @@ func main() {
 	// Log completion of all startup activities
 	logger.Info("All startup import processes completed")
 
+	// Initialize notes service and run migrations
+	logger.Info("Initializing notes service and running migrations...")
+	notesServiceContainer := notes.NewServiceContainer(db.GormDB())
+	// Run the notes table migrations to ensure tables exist
+	if err := notes.MigrateNotesTables(db.GormDB()); err != nil {
+		logger.Error("Failed to migrate notes tables: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("Notes service initialized and migrations completed")
+
 	// Create subprocess instance
 	var sp *subprocess.Subprocess
-	
+
 	// Check if we're running as an RPC subprocess with file descriptors
 	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
 		// Use file descriptors 3 and 4 for RPC communication
 		inputFD := 3
 		outputFD := 4
-		
+
 		// Allow environment override for file descriptors
 		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
 			if fd, err := strconv.Atoi(val); err == nil {
@@ -208,13 +219,13 @@ func main() {
 				outputFD = fd
 			}
 		}
-		
+
 		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
 	} else {
 		// Use default stdin/stdout for non-RPC mode
 		sp = subprocess.New(processID)
 	}
-	
+
 	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// Register RPC handlers
@@ -287,6 +298,10 @@ func main() {
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCListAttackGroups")
 	sp.RegisterHandler("RPCGetAttackImportMetadata", createGetAttackImportMetadataHandler(attackStore, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetAttackImportMetadata")
+
+	// Register Notes service handlers
+	notes.NewRPCHandlers(notesServiceContainer, sp, logger)
+	logger.Info("Notes service handlers registered")
 
 	logger.Info(LogMsgServiceStarting, processID)
 	logger.Info(LogMsgServiceStarted)

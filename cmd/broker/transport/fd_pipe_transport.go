@@ -13,11 +13,11 @@ import (
 
 // FDPipeTransport implements Transport using file descriptors for communication
 type FDPipeTransport struct {
-	inputFD   int
-	outputFD  int
-	inputFile *os.File
+	inputFD    int
+	outputFD   int
+	inputFile  *os.File
 	outputFile *os.File
-	scanner   *bufio.Scanner
+	scanner    *bufio.Scanner
 }
 
 // NewFDPipeTransport creates a new FDPipeTransport with the specified file descriptors

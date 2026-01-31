@@ -124,7 +124,7 @@ func TestOptimizedMessageCreation(t *testing.T) {
 func TestOptimizedMessageCreationErrors(t *testing.T) {
 	// Test with unserializable payload
 	unserializable := func() {}
-	
+
 	_, err := OptimizedNewRequestMessage("test", unserializable)
 	if err == nil {
 		t.Error("Expected error when creating request message with unserializable payload")
@@ -566,48 +566,48 @@ func TestOptimizedMessagePoolRaceCondition(t *testing.T) {
 			for j := 0; j < 80; j++ {
 				// Get message from optimized pool
 				msg := GetOptimizedMessage()
-				
+
 				// Set some fields
 				msg.Type = MessageTypeRequest
 				msg.ID = fmt.Sprintf("opt-req-%d-%d", id, j)
 				msg.Source = fmt.Sprintf("opt-source-%d", id)
-				
+
 				// Create payload
 				payload := map[string]interface{}{
 					"id":    j,
 					"src":   id,
 					"value": fmt.Sprintf("opt-data-%d-%d", id, j),
 				}
-				
+
 				// Marshal payload into message using optimized function
 				payloadData, err := json.Marshal(payload)
 				if err != nil {
 					panic(fmt.Sprintf("Failed to marshal payload: %v", err))
 				}
 				msg.Payload = payloadData
-				
+
 				// Marshal entire message using optimized function
 				fullData, err := msg.OptimizedMarshal()
 				if err != nil {
 					panic(fmt.Sprintf("Failed to optimize-marshal message: %v", err))
 				}
-				
+
 				// Unmarshal back using optimized function
 				newMsg, err := OptimizedUnmarshal(fullData)
 				if err != nil {
 					panic(fmt.Sprintf("Failed to optimize-unmarshal message: %v", err))
 				}
-				
+
 				// Verify data integrity
 				var newPayload map[string]interface{}
 				if err := newMsg.OptimizedUnmarshalPayload(&newPayload); err != nil {
 					panic(fmt.Sprintf("Failed to optimize-unmarshal payload: %v", err))
 				}
-				
+
 				// Put messages back in optimized pool
 				PutOptimizedMessage(msg)
 				PutOptimizedMessage(newMsg)
-				
+
 				// Small delay to increase chance of race conditions
 				time.Sleep(time.Nanosecond * 10)
 			}

@@ -16,7 +16,7 @@ func TestAdaptiveOptimization(t *testing.T) {
 
 	// Create an optimizer with adaptive features enabled
 	opt := New(router)
-	
+
 	// Set up logging for debugging
 	logger := common.NewLogger(os.Stdout, "[TEST] ", common.InfoLevel)
 	opt.SetLogger(logger)
@@ -70,7 +70,7 @@ func (r *testRouter) ProcessBrokerMessage(msg *proc.Message) error {
 func BenchmarkAdaptiveOptimization(b *testing.B) {
 	router := &testRouter{}
 	opt := New(router)
-	
+
 	// Enable adaptive optimization
 	opt.EnableAdaptiveOptimization()
 
@@ -88,7 +88,7 @@ func BenchmarkAdaptiveOptimization(b *testing.B) {
 			b.Logf("Benchmark message %d was dropped", i)
 		}
 	}
-	
+
 	b.StopTimer()
 	opt.Stop()
 }

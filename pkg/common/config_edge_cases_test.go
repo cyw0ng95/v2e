@@ -9,11 +9,11 @@ import (
 // TestLoadConfig_EdgeCases tests edge cases for config loading
 func TestLoadConfig_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name           string
-		setupFunc      func(*testing.T) string
-		expectError    bool
-		expectNil      bool
-		expectAddress  string
+		name          string
+		setupFunc     func(*testing.T) string
+		expectError   bool
+		expectNil     bool
+		expectAddress string
 	}{
 		{
 			name: "empty config file",
@@ -276,8 +276,8 @@ func TestConfig_StructureIntegrity(t *testing.T) {
 				},
 			},
 			Transport: TransportConfigOptions{
-				Type:               "auto",
-				UDSBasePath:        "/tmp/sockets",
+				Type:                 "auto",
+				UDSBasePath:          "/tmp/sockets",
 				UDSReconnectAttempts: 3,
 				UDSReconnectDelayMs:  1000,
 			},

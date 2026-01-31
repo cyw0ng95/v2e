@@ -15,7 +15,7 @@ import (
 func TestViewRendering(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "cwe_view_test.db")
-	
+
 	store, err := NewLocalCWEStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -27,7 +27,7 @@ func TestViewRendering(t *testing.T) {
 
 	// Test that views can be created and migrated properly
 	ctx := context.Background()
-	
+
 	// Create a sample CWE item with all fields populated
 	cweItem := CWEItem{
 		ID:                  "CWE-79",
@@ -150,7 +150,7 @@ func TestViewRendering(t *testing.T) {
 func TestDataRelationships(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "cwe_relationships_test.db")
-	
+
 	store, err := NewLocalCWEStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -243,7 +243,7 @@ func TestErrorHandling(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "cwe_error_test.db")
 	jsonPath := filepath.Join(tempDir, "test_data.json")
-	
+
 	store, err := NewLocalCWEStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -308,7 +308,7 @@ func TestErrorHandling(t *testing.T) {
 func TestPerformanceWithLargeDatasets(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "cwe_performance_test.db")
-	
+
 	store, err := NewLocalCWEStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -330,7 +330,7 @@ func TestPerformanceWithLargeDatasets(t *testing.T) {
 			Name:        "Test CWE " + string(rune(i+48)),
 			Description: "Description for CWE " + string(rune(i+48)),
 		}
-		
+
 		err = store.db.Create(&item).Error
 		if err != nil {
 			t.Fatalf("Failed to create item %d: %v", i, err)
@@ -377,7 +377,7 @@ func TestPerformanceWithLargeDatasets(t *testing.T) {
 func TestFilteringAndSearch(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "cwe_filter_test.db")
-	
+
 	store, err := NewLocalCWEStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -483,7 +483,7 @@ func TestFilteringAndSearch(t *testing.T) {
 func TestConcurrentAccess(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "cwe_concurrent_test.db")
-	
+
 	store, err := NewLocalCWEStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -517,7 +517,7 @@ func TestConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			
+
 			// Perform multiple operations in each goroutine
 			for j := 0; j < 5; j++ {
 				// Test GetByID
@@ -525,13 +525,13 @@ func TestConcurrentAccess(t *testing.T) {
 				if err != nil && !strings.Contains(err.Error(), "record not found") {
 					t.Errorf("Goroutine %d: GetByID failed: %v", goroutineID, err)
 				}
-				
+
 				// Test ListCWEsPaginated
 				_, _, err = store.ListCWEsPaginated(ctx, 0, 10)
 				if err != nil {
 					t.Errorf("Goroutine %d: ListCWEsPaginated failed: %v", goroutineID, err)
 				}
-				
+
 				// Small delay to allow other goroutines to interleave
 				time.Sleep(time.Millisecond * 1)
 			}
@@ -546,7 +546,7 @@ func TestJSONImportFunctionality(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "cwe_import_test.db")
 	jsonPath := filepath.Join(tempDir, "cwe_data.json")
-	
+
 	store, err := NewLocalCWEStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)

@@ -133,8 +133,8 @@ type BrokerConfig struct {
 	OptimizerBatchSize       int `json:"optimizer_batch_size,omitempty"`
 	OptimizerFlushIntervalMs int `json:"optimizer_flush_interval_ms,omitempty"`
 	// Adaptive optimization
-	OptimizerEnableAdaptive     bool `json:"optimizer_enable_adaptive,omitempty"`
-	OptimizerAdaptationFreqMs   int  `json:"optimizer_adaptation_freq_ms,omitempty"`
+	OptimizerEnableAdaptive   bool `json:"optimizer_enable_adaptive,omitempty"`
+	OptimizerAdaptationFreqMs int  `json:"optimizer_adaptation_freq_ms,omitempty"`
 }
 
 // TransportConfigOptions holds configuration for transport mechanisms

@@ -17,6 +17,7 @@ func TestTransportManager_ConcurrentRegisterAndSend(t *testing.T) {
 	const msgsPerWorker = 10
 
 	var wg sync.WaitGroup
+	errCh := make(chan error, workers)
 
 	// Start concurrent registrars and senders
 	for w := 0; w < workers; w++ {
@@ -30,16 +31,24 @@ func TestTransportManager_ConcurrentRegisterAndSend(t *testing.T) {
 			for i := 0; i < msgsPerWorker; i++ {
 				msg, err := proc.NewRequestMessage("m", map[string]string{"i": "v"})
 				if err != nil {
-					t.Fatalf("failed to create message: %v", err)
+					errCh <- fmt.Errorf("failed to create message: %v", err)
+					return
 				}
 				if err := tm.SendToProcess(id, msg); err != nil {
-					t.Fatalf("SendToProcess returned error: %v", err)
+					errCh <- fmt.Errorf("SendToProcess returned error: %v", err)
+					return
 				}
 			}
 		}(w)
 	}
 
 	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	// Verify at least one transport received messages (basic sanity)
 	// We can't easily access all transports here, but ensure no panics/races occurred.

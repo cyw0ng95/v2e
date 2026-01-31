@@ -28,14 +28,14 @@ func TestDatabaseConnectionFailure(t *testing.T) {
 	// Try with a readonly directory if possible (this may not work on all systems)
 	tempDir := t.TempDir()
 	readOnlyFile := filepath.Join(tempDir, "readonly.db")
-	
+
 	// Create the file first
 	file, err := os.Create(readOnlyFile)
 	if err != nil {
 		t.Skipf("Could not create test file: %v", err)
 	}
 	file.Close()
-	
+
 	// Make it read-only temporarily to test error handling
 	err = os.Chmod(readOnlyFile, 0444)
 	if err != nil {
@@ -56,7 +56,7 @@ func TestDatabaseConnectionFailure(t *testing.T) {
 func TestConcurrentAccess(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "capec_concurrent_test.db")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -72,7 +72,7 @@ func TestConcurrentAccess(t *testing.T) {
 		{CAPECID: 2, Name: "Test Attack 2", Summary: "Summary 2"},
 		{CAPECID: 3, Name: "Test Attack 3", Summary: "Summary 3"},
 	}
-	
+
 	for _, item := range testItems {
 		err := store.db.Create(&item).Error
 		if err != nil {
@@ -88,7 +88,7 @@ func TestConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			
+
 			ctx := context.Background()
 			for j := 0; j < 10; j++ {
 				// Test GetByID
@@ -96,7 +96,7 @@ func TestConcurrentAccess(t *testing.T) {
 				if err != nil && !strings.Contains(err.Error(), "record not found") {
 					t.Errorf("Goroutine %d: GetByID failed: %v", goroutineID, err)
 				}
-				
+
 				// Test ListCAPECsPaginated
 				_, _, err = store.ListCAPECsPaginated(ctx, 0, 10)
 				if err != nil {
@@ -113,7 +113,7 @@ func TestConcurrentAccess(t *testing.T) {
 func TestPaginationEdgeCases(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "capec_pagination_test.db")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -211,7 +211,7 @@ func TestMalformedXMLImport(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "capec_malformed_test.db")
 	xmlPath := filepath.Join(tempDir, "malformed.xml")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -230,7 +230,7 @@ func TestMalformedXMLImport(t *testing.T) {
 				<Status>Stable
 			</Description>
 		</Attack_Pattern>`
-	
+
 	err = os.WriteFile(xmlPath, []byte(malformedXML), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write malformed XML: %v", err)
@@ -253,7 +253,7 @@ func TestMalformedXMLImport(t *testing.T) {
 		</Attack_Pattern>
 		<Another_Tag>Invalid content</Another_Tag>
 	</root>`
-	
+
 	xmlPath2 := filepath.Join(tempDir, "malformed2.xml")
 	err = os.WriteFile(xmlPath2, []byte(invalidStructureXML), 0644)
 	if err != nil {
@@ -270,7 +270,7 @@ func TestImportValidation(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "capec_validation_test.db")
 	xmlPath := filepath.Join(tempDir, "valid.xml")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -306,7 +306,7 @@ func TestImportValidation(t *testing.T) {
 			</References>
 		</Attack_Pattern>
 	</Attack_Patterns>`
-	
+
 	err = os.WriteFile(xmlPath, []byte(validXML), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write valid XML: %v", err)
@@ -349,7 +349,7 @@ func TestImportVersionCheck(t *testing.T) {
 	dbPath := filepath.Join(tempDir, "capec_version_test.db")
 	xmlPath1 := filepath.Join(tempDir, "capec_v1.xml")
 	xmlPath2 := filepath.Join(tempDir, "capec_v2.xml")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -373,7 +373,7 @@ func TestImportVersionCheck(t *testing.T) {
 			</Description>
 		</Attack_Pattern>
 	</Attack_Patterns>`
-	
+
 	err = os.WriteFile(xmlPath1, []byte(versionedXML1), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write versioned XML 1: %v", err)
@@ -417,7 +417,7 @@ func TestImportVersionCheck(t *testing.T) {
 			</Description>
 		</Attack_Pattern>
 	</Attack_Patterns>`
-	
+
 	err = os.WriteFile(xmlPath2, []byte(versionedXML2), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write versioned XML 2: %v", err)
@@ -443,7 +443,7 @@ func TestImportVersionCheck(t *testing.T) {
 func TestGetMethods(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "capec_get_methods_test.db")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -606,7 +606,7 @@ func TestRaceConditionDuringImport(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "capec_race_test.db")
 	xmlPath := filepath.Join(tempDir, "race_test.xml")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -625,7 +625,7 @@ func TestRaceConditionDuringImport(t *testing.T) {
 			</Description>
 		</Attack_Pattern>
 	</Attack_Patterns>`
-	
+
 	err = os.WriteFile(xmlPath, []byte(xmlContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write XML: %v", err)
@@ -639,10 +639,10 @@ func TestRaceConditionDuringImport(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			
+
 			// Add slight delay to increase chance of race condition
 			time.Sleep(time.Millisecond * time.Duration(i))
-			
+
 			err := store.ImportFromXML(xmlPath, true)
 			if err != nil {
 				t.Errorf("Import failed in routine %d: %v", i, err)
@@ -651,7 +651,7 @@ func TestRaceConditionDuringImport(t *testing.T) {
 	}
 
 	wg.Wait()
-	
+
 	// Verify that import completed successfully
 	ctx := context.Background()
 	item, err := store.GetByID(ctx, "1")
@@ -668,7 +668,7 @@ func TestTransactionRollbackOnFailure(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "capec_rollback_test.db")
 	xmlPath := filepath.Join(tempDir, "rollback_test.xml")
-	
+
 	store, err := NewLocalCAPECStore(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
@@ -693,7 +693,7 @@ func TestTransactionRollbackOnFailure(t *testing.T) {
 			</Description>
 		</Attack_Pattern>
 	</Attack_Patterns>`
-	
+
 	err = os.WriteFile(xmlPath, []byte(xmlContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write XML: %v", err)

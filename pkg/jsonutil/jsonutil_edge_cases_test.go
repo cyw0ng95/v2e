@@ -60,19 +60,19 @@ func TestUnmarshalFunctionality(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var result interface{}
 			err := Unmarshal([]byte(tt.input), &result)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Unmarshal() error = nil, wantErr %v", tt.wantErr)
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !compareValues(result, tt.expected) {
 				t.Errorf("Unmarshal() = %v, want %v", result, tt.expected)
 			}
@@ -116,7 +116,7 @@ func TestUnmarshalErrorConditions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var result interface{}
 			err := Unmarshal([]byte(tt.input), &result)
-			
+
 			if err == nil {
 				t.Errorf("Unmarshal() error = nil, want error for input: %s", tt.input)
 			}
@@ -174,7 +174,7 @@ func TestPerformanceWithLargeDocuments(t *testing.T) {
 	start := time.Now()
 	data, err := Marshal(largeDoc)
 	duration := time.Since(start)
-	
+
 	if err != nil {
 		t.Fatalf("Marshal failed for large document: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestPerformanceWithLargeDocuments(t *testing.T) {
 	var result map[string]interface{}
 	err = Unmarshal(data, &result)
 	unmarshalDuration := time.Since(start)
-	
+
 	if err != nil {
 		t.Fatalf("Unmarshal failed for large document: %v", err)
 	}

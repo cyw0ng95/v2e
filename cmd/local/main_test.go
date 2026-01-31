@@ -562,8 +562,6 @@ func TestRPCListCVEs(t *testing.T) {
 	})
 }
 
-
-
 func TestMainFunctionInitialization(t *testing.T) {
 	// This test ensures that the main function can initialize all components properly
 	// without actually running the main loop

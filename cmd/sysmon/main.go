@@ -141,13 +141,13 @@ func main() {
 	common.Info(LogMsgLoggingSetupComplete, common.InfoLevel)
 
 	var sp *subprocess.Subprocess
-	
+
 	// Check if we're running as an RPC subprocess with file descriptors
 	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
 		// Use file descriptors 3 and 4 for RPC communication
 		inputFD := 3
 		outputFD := 4
-		
+
 		// Allow environment override for file descriptors
 		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
 			if fd, err := strconv.Atoi(val); err == nil {
@@ -159,13 +159,13 @@ func main() {
 				outputFD = fd
 			}
 		}
-		
+
 		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
 	} else {
 		// Use default stdin/stdout for non-RPC mode
 		sp = subprocess.New(processID)
 	}
-	
+
 	logger.Info(LogMsgSubprocessCreated, processID)
 
 	// RPC client to query the broker for message statistics

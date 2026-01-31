@@ -11,39 +11,39 @@ import (
 
 // SystemMonitor collects system-level metrics
 type SystemMonitor struct {
-	ctx         context.Context
-	cancel      context.CancelFunc
-	interval    time.Duration
-	callback    func(LoadMetrics)
-	
+	ctx      context.Context
+	cancel   context.CancelFunc
+	interval time.Duration
+	callback func(LoadMetrics)
+
 	// Atomic counters for metrics
-	messageQueueDepth int64
-	messageThroughput int64
+	messageQueueDepth    int64
+	messageThroughput    int64
 	lastThroughputSample int64
-	lastThroughputTime time.Time
-	
+	lastThroughputTime   time.Time
+
 	// Latency tracking
 	latencySamples []time.Duration
 	latencyMu      sync.RWMutex
-	
+
 	// Process resource tracking
-	processMetrics map[string]*ProcessResourceMetrics
+	processMetrics   map[string]*ProcessResourceMetrics
 	processMetricsMu sync.RWMutex
-	
+
 	running int32
 }
 
 // NewSystemMonitor creates a new system monitor with the specified sampling interval
 func NewSystemMonitor(interval time.Duration) *SystemMonitor {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &SystemMonitor{
-		ctx:      ctx,
-		cancel:   cancel,
-		interval: interval,
+		ctx:                ctx,
+		cancel:             cancel,
+		interval:           interval,
 		lastThroughputTime: time.Now(),
-		latencySamples: make([]time.Duration, 0),
-		processMetrics: make(map[string]*ProcessResourceMetrics),
+		latencySamples:     make([]time.Duration, 0),
+		processMetrics:     make(map[string]*ProcessResourceMetrics),
 	}
 }
 
@@ -57,7 +57,7 @@ func (sm *SystemMonitor) Start() {
 	if !atomic.CompareAndSwapInt32(&sm.running, 0, 1) {
 		return // Already running
 	}
-	
+
 	go sm.collectLoop()
 }
 
@@ -66,7 +66,7 @@ func (sm *SystemMonitor) Stop() {
 	if !atomic.CompareAndSwapInt32(&sm.running, 1, 0) {
 		return // Already stopped
 	}
-	
+
 	sm.cancel()
 }
 
@@ -74,12 +74,12 @@ func (sm *SystemMonitor) Stop() {
 func (sm *SystemMonitor) collectLoop() {
 	ticker := time.NewTicker(sm.interval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
 			metrics := sm.CollectMetrics()
-			
+
 			if sm.callback != nil {
 				sm.callback(metrics)
 			}
@@ -93,36 +93,36 @@ func (sm *SystemMonitor) collectLoop() {
 func (sm *SystemMonitor) CollectMetrics() LoadMetrics {
 	cpuUtil, memUtil := sm.getSystemMetrics()
 	queueDepth := atomic.LoadInt64(&sm.messageQueueDepth)
-	
+
 	// Calculate throughput (messages per second)
 	now := time.Now()
 	lastSample := atomic.LoadInt64(&sm.lastThroughputSample)
 	currentThroughput := atomic.LoadInt64(&sm.messageThroughput)
 	var calculatedThroughput float64
-	
+
 	timeDiff := now.Sub(sm.lastThroughputTime).Seconds()
 	if timeDiff > 0 {
 		calculatedThroughput = float64(currentThroughput-lastSample) / timeDiff
-		
+
 		// Update for next calculation
 		atomic.StoreInt64(&sm.lastThroughputSample, currentThroughput)
 		sm.lastThroughputTime = now
 	}
-	
+
 	// Calculate average latency from samples
 	avgLatency := sm.calculateAverageLatency()
-	
+
 	// Get process resource usage
 	processUsage := sm.getProcessResourceUsage()
-	
+
 	return LoadMetrics{
-		CPUUtilization:      cpuUtil,
-		MemoryUtilization:   memUtil,
-		MessageQueueDepth:   queueDepth,
-		MessageThroughput:   calculatedThroughput,
-		AverageLatency:      avgLatency,
-		ActiveConnections:   len(processUsage), // Approximation
-		SystemLoadAvg:       sm.getSystemLoadAverage(),
+		CPUUtilization:       cpuUtil,
+		MemoryUtilization:    memUtil,
+		MessageQueueDepth:    queueDepth,
+		MessageThroughput:    calculatedThroughput,
+		AverageLatency:       avgLatency,
+		ActiveConnections:    len(processUsage), // Approximation
+		SystemLoadAvg:        sm.getSystemLoadAverage(),
 		ProcessResourceUsage: processUsage,
 	}
 }
@@ -133,18 +133,18 @@ func (sm *SystemMonitor) getSystemMetrics() (cpuUtil, memUtil float64) {
 	// For now, we'll return dummy values
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	
+
 	// Calculate memory utilization as a percentage of heap usage
 	// This is a simplified approximation
 	memUtil = float64(m.Alloc) / float64(m.Sys) * 100.0
 	if memUtil > 100.0 {
 		memUtil = 100.0
 	}
-	
+
 	// For CPU utilization, we'd typically use platform-specific APIs
 	// Returning a dummy value for now
 	cpuUtil = 50.0 // Placeholder value
-	
+
 	return cpuUtil, memUtil
 }
 
@@ -174,7 +174,7 @@ func (sm *SystemMonitor) GetThroughput() float64 {
 func (sm *SystemMonitor) AddLatencySample(duration time.Duration) {
 	sm.latencyMu.Lock()
 	defer sm.latencyMu.Unlock()
-	
+
 	// Keep only the last N samples to prevent unbounded growth
 	const maxSamples = 100
 	if len(sm.latencySamples) >= maxSamples {
@@ -187,11 +187,11 @@ func (sm *SystemMonitor) AddLatencySample(duration time.Duration) {
 func (sm *SystemMonitor) calculateAverageLatency() time.Duration {
 	sm.latencyMu.RLock()
 	defer sm.latencyMu.RUnlock()
-	
+
 	if len(sm.latencySamples) == 0 {
 		return 0
 	}
-	
+
 	var total time.Duration
 	for _, sample := range sm.latencySamples {
 		total += sample
@@ -203,7 +203,7 @@ func (sm *SystemMonitor) calculateAverageLatency() time.Duration {
 func (sm *SystemMonitor) UpdateProcessMetrics(processID string, metrics ProcessResourceMetrics) {
 	sm.processMetricsMu.Lock()
 	defer sm.processMetricsMu.Unlock()
-	
+
 	sm.processMetrics[processID] = &metrics
 }
 
@@ -211,7 +211,7 @@ func (sm *SystemMonitor) UpdateProcessMetrics(processID string, metrics ProcessR
 func (sm *SystemMonitor) getProcessResourceUsage() map[string]ProcessResourceMetrics {
 	sm.processMetricsMu.RLock()
 	defer sm.processMetricsMu.RUnlock()
-	
+
 	result := make(map[string]ProcessResourceMetrics)
 	for id, metrics := range sm.processMetrics {
 		if metrics != nil {

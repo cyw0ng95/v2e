@@ -2,9 +2,9 @@ package notes
 
 import (
 	"context"
-	"testing"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"testing"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing
@@ -75,7 +75,7 @@ func TestBookmarkService(t *testing.T) {
 
 	t.Run("GetBookmarksByGlobalItemID", func(t *testing.T) {
 		globalItemID := "global-item-789"
-		
+
 		// Create multiple bookmarks with the same global item ID
 		_, err := bookmarkService.CreateBookmark(ctx, globalItemID, "CAPEC", "CAPEC-123", "Test CAPEC 1", "A test CAPEC for bookmarking")
 		if err != nil {
@@ -312,7 +312,7 @@ func TestCrossReferenceService(t *testing.T) {
 
 	t.Run("GetCrossReferencesBySource", func(t *testing.T) {
 		sourceID := "global-source-get-test"
-		
+
 		// Create multiple cross-references from the same source
 		_, err := crossRefService.CreateCrossReference(ctx, sourceID, "global-target-1", "CVE", "CWE", string(RelationshipTypeExploits), 0.7, nil)
 		if err != nil {

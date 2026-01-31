@@ -14,6 +14,7 @@ func TestUnmarshal_Concurrent(t *testing.T) {
 
 	dataTemplate := `{"type":"request","id":"id-%d","payload":{"val":%d}}`
 
+	errCh := make(chan error, goroutines)
 	var wg sync.WaitGroup
 	for g := 0; g < goroutines; g++ {
 		wg.Add(1)
@@ -24,14 +25,22 @@ func TestUnmarshal_Concurrent(t *testing.T) {
 				// Use UnmarshalFast which uses sonic directly
 				var raw Message
 				if err := sonic.Unmarshal(d, &raw); err != nil {
-					t.Fatalf("sonic unmarshal failed: %v", err)
+					errCh <- fmt.Errorf("sonic unmarshal failed: %v", err)
+					return
 				}
 				// basic sanity
 				if raw.Type == "" || raw.ID == "" {
-					t.Fatalf("unexpected empty fields: %+v", raw)
+					errCh <- fmt.Errorf("unexpected empty fields: %+v", raw)
+					return
 				}
 			}
 		}(g)
 	}
 	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }

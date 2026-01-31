@@ -536,48 +536,48 @@ func TestMessageRaceCondition(t *testing.T) {
 			for j := 0; j < 50; j++ {
 				// Get message from pool
 				msg := GetMessage()
-				
+
 				// Set some fields
 				msg.Type = MessageTypeRequest
 				msg.ID = fmt.Sprintf("req-%d-%d", id, j)
 				msg.Source = fmt.Sprintf("source-%d", id)
-				
+
 				// Create payload
 				payload := map[string]interface{}{
 					"id":    j,
 					"src":   id,
 					"value": fmt.Sprintf("data-%d-%d", id, j),
 				}
-				
+
 				// Marshal payload into message
 				payloadData, err := json.Marshal(payload)
 				if err != nil {
 					panic(fmt.Sprintf("Failed to marshal payload: %v", err))
 				}
 				msg.Payload = payloadData
-				
+
 				// Marshal entire message
 				fullData, err := msg.Marshal()
 				if err != nil {
 					panic(fmt.Sprintf("Failed to marshal message: %v", err))
 				}
-				
+
 				// Unmarshal back
 				newMsg, err := Unmarshal(fullData)
 				if err != nil {
 					panic(fmt.Sprintf("Failed to unmarshal message: %v", err))
 				}
-				
+
 				// Verify data integrity
 				var newPayload map[string]interface{}
 				if err := newMsg.UnmarshalPayload(&newPayload); err != nil {
 					panic(fmt.Sprintf("Failed to unmarshal payload: %v", err))
 				}
-				
+
 				// Put messages back in pool
 				PutMessage(msg)
 				PutMessage(newMsg)
-				
+
 				// Small delay to increase chance of race conditions
 				time.Sleep(time.Nanosecond)
 			}

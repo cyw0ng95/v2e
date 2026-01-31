@@ -587,6 +587,46 @@ func (s *MemoryCardService) GetCardsByLearningState(ctx context.Context, state L
 	return cards, nil
 }
 
+// ListMemoryCards retrieves memory cards with optional filters and pagination
+func (s *MemoryCardService) ListMemoryCards(ctx context.Context, bookmarkID *uint, learningState *string, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error) {
+	var cards []*MemoryCardModel
+
+	query := s.db.WithContext(ctx).Table("memory_card_models")
+
+	// Apply filters if provided
+	if bookmarkID != nil {
+		query = query.Where("bookmark_id = ?", *bookmarkID)
+	}
+	if learningState != nil && *learningState != "" {
+		query = query.Joins("JOIN bookmark_models ON memory_card_models.bookmark_id = bookmark_models.id").
+			Where("bookmark_models.learning_state = ?", *learningState)
+	}
+	if author != nil && *author != "" {
+		// Assuming author is stored in a field, adjust as needed
+		query = query.Where("author = ?", *author)
+	}
+	if isPrivate != nil {
+		query = query.Where("is_private = ?", *isPrivate)
+	}
+
+	// Get total count
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count memory cards: %w", err)
+	}
+
+	// Apply pagination
+	if limit > 0 {
+		query = query.Offset(offset).Limit(limit)
+	}
+
+	if err := query.Find(&cards).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list memory cards: %w", err)
+	}
+
+	return cards, total, nil
+}
+
 // Helper function to update bookmark mastery level based on card review
 func updateBookmarkMastery(ctx context.Context, db *gorm.DB, bookmark *BookmarkModel, rating CardRating) {
 	// Get all cards for this bookmark to calculate average mastery

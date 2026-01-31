@@ -49,12 +49,12 @@ type Session struct {
 
 // Manager manages session state in a bbolt database
 type Manager struct {
-	db         *bolt.DB
-	bucketName []byte
-	logger     *common.Logger // Added logger field for logging
-	cacheMu    sync.RWMutex
-	sessionCache *Session // Cache the active session to avoid DB reads
-	lastUpdate   time.Time // Track last cache update time
+	db           *bolt.DB
+	bucketName   []byte
+	logger       *common.Logger // Added logger field for logging
+	cacheMu      sync.RWMutex
+	sessionCache *Session      // Cache the active session to avoid DB reads
+	lastUpdate   time.Time     // Track last cache update time
 	cacheTimeout time.Duration // Timeout for cache invalidation
 }
 
@@ -80,7 +80,7 @@ func NewManager(dbPath string, logger *common.Logger) (*Manager, error) {
 	return &Manager{
 		db:           db,
 		bucketName:   bucketName,
-		logger:       logger, // Initialize logger
+		logger:       logger,          // Initialize logger
 		cacheTimeout: 5 * time.Second, // Cache timeout of 5 seconds
 	}, nil
 }
@@ -119,7 +119,7 @@ func (m *Manager) CreateSession(sessionID string, startIndex, resultsPerBatch in
 	m.sessionCache = session
 	m.lastUpdate = time.Now()
 	m.cacheMu.Unlock()
-	
+
 	return session, nil
 }
 
@@ -171,7 +171,7 @@ func (m *Manager) GetSession() (*Session, error) {
 // Add debug logging to track state updates
 func (m *Manager) UpdateState(state SessionState) error {
 	var updatedSession *Session
-	
+
 	err := m.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(m.bucketName)
 		if b == nil {
@@ -204,29 +204,29 @@ func (m *Manager) UpdateState(state SessionState) error {
 		if err := b.Put(k, data); err != nil {
 			return err
 		}
-		
+
 		// Store the updated session for cache update
 		updatedSession = session
 		return nil
 	})
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	// Update cache with the new session state
 	m.cacheMu.Lock()
 	m.sessionCache = updatedSession
 	m.lastUpdate = time.Now()
 	m.cacheMu.Unlock()
-	
+
 	return nil
 }
 
 // UpdateProgress updates the session progress counters
 func (m *Manager) UpdateProgress(fetched, stored, errors int64) error {
 	var updatedSession *Session
-	
+
 	err := m.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(m.bucketName)
 		if b == nil {
@@ -260,22 +260,22 @@ func (m *Manager) UpdateProgress(fetched, stored, errors int64) error {
 		if err := b.Put(k, data); err != nil {
 			return err
 		}
-		
+
 		// Store the updated session for cache update
 		updatedSession = session
 		return nil
 	})
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	// Update cache with the new session state
 	m.cacheMu.Lock()
 	m.sessionCache = updatedSession
 	m.lastUpdate = time.Now()
 	m.cacheMu.Unlock()
-	
+
 	return nil
 }
 
@@ -296,7 +296,7 @@ func (m *Manager) DeleteSession() error {
 
 		return b.Delete(k)
 	})
-	
+
 	if err == nil {
 		// Clear cache after successful deletion
 		m.cacheMu.Lock()
@@ -304,7 +304,7 @@ func (m *Manager) DeleteSession() error {
 		m.lastUpdate = time.Time{}
 		m.cacheMu.Unlock()
 	}
-	
+
 	return err
 }
 
@@ -324,7 +324,7 @@ func (m *Manager) saveSession(session *Session) error {
 		// Use session ID as key
 		return b.Put([]byte(session.ID), data)
 	})
-	
+
 	if err2 == nil {
 		// Update cache after successful save
 		m.cacheMu.Lock()
@@ -332,7 +332,7 @@ func (m *Manager) saveSession(session *Session) error {
 		m.lastUpdate = time.Now()
 		m.cacheMu.Unlock()
 	}
-	
+
 	return err2
 }
 

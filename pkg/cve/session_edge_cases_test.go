@@ -517,12 +517,12 @@ func TestSessionManager_TimeStamps(t *testing.T) {
 
 	// Verify timestamps are within expected range
 	if sess.CreatedAt.Before(beforeCreate) || sess.CreatedAt.After(afterCreate) {
-		t.Errorf("CreatedAt timestamp is outside expected range: %v (should be between %v and %v)", 
+		t.Errorf("CreatedAt timestamp is outside expected range: %v (should be between %v and %v)",
 			sess.CreatedAt, beforeCreate, afterCreate)
 	}
 
 	if sess.UpdatedAt.Before(beforeCreate) || sess.UpdatedAt.After(afterCreate) {
-		t.Errorf("UpdatedAt timestamp is outside expected range: %v (should be between %v and %v)", 
+		t.Errorf("UpdatedAt timestamp is outside expected range: %v (should be between %v and %v)",
 			sess.UpdatedAt, beforeCreate, afterCreate)
 	}
 
@@ -548,7 +548,7 @@ func TestSessionManager_TimeStamps(t *testing.T) {
 
 	// UpdatedAt should have changed
 	if updatedSess.UpdatedAt.Before(beforeUpdate) || updatedSess.UpdatedAt.After(afterUpdate) {
-		t.Errorf("UpdatedAt timestamp is outside expected range after update: %v (should be between %v and %v)", 
+		t.Errorf("UpdatedAt timestamp is outside expected range after update: %v (should be between %v and %v)",
 			updatedSess.UpdatedAt, beforeUpdate, afterUpdate)
 	}
 }

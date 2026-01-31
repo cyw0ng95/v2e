@@ -184,7 +184,7 @@ func TestBroker_ConcurrentKillAndSpawn(t *testing.T) {
 			defer wg.Done()
 			for i := 0; i < iterations; i++ {
 				id := fmt.Sprintf("kill-proc-%d-%d", workerID, i)
-				
+
 				// Spawn
 				_, err := broker.Spawn(id, cmd, args...)
 				if err != nil {

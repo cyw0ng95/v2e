@@ -55,7 +55,7 @@ type Optimizer struct {
 	lastStatsTimestamp time.Time
 	// logger for structured logging
 	logger *common.Logger
-	
+
 	// Adaptive optimization components
 	monitor        *sched.SystemMonitor
 	adaptiveOpt    *sched.AdaptiveOptimizer
@@ -63,7 +63,6 @@ type Optimizer struct {
 	adaptationFreq time.Duration
 	lastAdaptation time.Time
 }
-
 
 func (o *Optimizer) EnableAdaptiveOptimization() {
 	// Set up callback to receive metrics from the monitor
@@ -73,7 +72,7 @@ func (o *Optimizer) EnableAdaptiveOptimization() {
 		if err != nil && o.logger != nil {
 			o.logger.Warn("Error observing metrics: %v", err)
 		}
-		
+
 		// Check if it's time to adapt parameters
 		o.adaptationMu.Lock()
 		if time.Since(o.lastAdaptation) >= o.adaptationFreq {
@@ -82,21 +81,20 @@ func (o *Optimizer) EnableAdaptiveOptimization() {
 				o.logger.Warn("Error adjusting configuration: %v", err)
 			}
 			o.lastAdaptation = time.Now()
-			
+
 			// Apply the adjusted parameters to the optimizer
 			o.applyAdaptedParameters()
 		}
 		o.adaptationMu.Unlock()
 	})
-	
+
 	// Start the monitor
 	o.monitor.Start()
 }
 
-
 func (o *Optimizer) applyAdaptedParameters() {
 	metrics := o.adaptiveOpt.GetMetrics()
-	
+
 	if bufferCap, ok := metrics["buffer_capacity"].(int); ok {
 		if bufferCap != o.bufferCap {
 			// Note: We can't easily change channel capacity at runtime
@@ -106,25 +104,25 @@ func (o *Optimizer) applyAdaptedParameters() {
 			}
 		}
 	}
-	
+
 	if workerCount, ok := metrics["worker_count"].(int); ok {
 		if workerCount != o.numWorkers {
 			if o.logger != nil {
 				o.logger.Info("Adjusting worker count: %d -> %d", o.numWorkers, workerCount)
 			}
-			
+
 			// Adjust worker count by adding or removing workers
 			o.adjustWorkerCount(workerCount)
 		}
 	}
-	
+
 	if batchSize, ok := metrics["batch_size"].(int); ok {
 		o.batchSize = batchSize
 		if o.logger != nil {
 			o.logger.Info("Adjusted batch size to: %d", batchSize)
 		}
 	}
-	
+
 	if flushInterval, ok := metrics["flush_interval"].(time.Duration); ok {
 		o.flushInterval = flushInterval
 		if o.logger != nil {
@@ -133,10 +131,9 @@ func (o *Optimizer) applyAdaptedParameters() {
 	}
 }
 
-
 func (o *Optimizer) adjustWorkerCount(newCount int) {
 	currentCount := o.numWorkers
-	
+
 	if newCount > currentCount {
 		// Add more workers
 		for i := currentCount; i < newCount; i++ {
@@ -184,14 +181,14 @@ func New(router routing.Router) *Optimizer {
 
 // Config holds the configuration for the Optimizer.
 type Config struct {
-	BufferCap       int
-	NumWorkers      int
-	StatsInterval   time.Duration
-	OfferPolicy     string
-	OfferTimeout    time.Duration
-	BatchSize       int
-	FlushInterval   time.Duration
-	AdaptationFreq  time.Duration
+	BufferCap      int
+	NumWorkers     int
+	StatsInterval  time.Duration
+	OfferPolicy    string
+	OfferTimeout   time.Duration
+	BatchSize      int
+	FlushInterval  time.Duration
+	AdaptationFreq time.Duration
 }
 
 // DefaultConfig returns a Config with default values.
@@ -293,7 +290,7 @@ func (o *Optimizer) worker(id int) {
 		select {
 		case msg := <-o.optimizedMessages:
 			batch = append(batch, msg)
-			
+
 			// Record message arrival in monitor
 			if o.monitor != nil {
 				o.monitor.RecordMessage()
@@ -310,7 +307,7 @@ func (o *Optimizer) worker(id int) {
 				select {
 				case msg := <-o.optimizedMessages:
 					batch = append(batch, msg)
-					
+
 					// Record message arrival in monitor
 					if o.monitor != nil {
 						o.monitor.RecordMessage()
@@ -345,7 +342,7 @@ func (o *Optimizer) worker(id int) {
 			o.updateAtomic(msg, true)
 		}
 		processingDuration := time.Since(startTime)
-		
+
 		// Record processing time in monitor if available
 		if o.monitor != nil {
 			// Calculate average latency per message
@@ -359,7 +356,7 @@ func (o *Optimizer) worker(id int) {
 
 // SetLogger attaches a logger to the optimizer for runtime logging.
 func (o *Optimizer) SetLogger(l *common.Logger) {
-    o.logger = l
+	o.logger = l
 }
 
 func (o *Optimizer) updateAtomic(msg *proc.Message, sent bool) {

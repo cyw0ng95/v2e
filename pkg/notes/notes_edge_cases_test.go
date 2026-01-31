@@ -658,10 +658,10 @@ func TestPerformanceWithLargeDatasets(t *testing.T) {
 	// Measure insertion performance
 	startTime := time.Now()
 	for i := 0; i < numBookmarks; i++ {
-		_, err := service.BookmarkService.CreateBookmark(ctx, 
-			fmt.Sprintf("perf-test-item-%d", i), 
-			string(ItemTypeCVE), 
-			fmt.Sprintf("perf-cve-%d", i), 
+		_, err := service.BookmarkService.CreateBookmark(ctx,
+			fmt.Sprintf("perf-test-item-%d", i),
+			string(ItemTypeCVE),
+			fmt.Sprintf("perf-cve-%d", i),
 			fmt.Sprintf("Performance Test Bookmark %d", i),
 			fmt.Sprintf("Performance test content for bookmark %d", i))
 		if err != nil {
@@ -697,9 +697,9 @@ func TestPerformanceWithLargeDatasets(t *testing.T) {
 	t.Logf("Paginated bookmarks for 5 global item IDs in %v", paginateDuration)
 
 	// Performance thresholds (adjust based on expected performance)
-	maxInsertDuration := time.Second * 5  // Allow up to 5 seconds for insertion
-	maxRetrieveDuration := time.Millisecond * 100  // Allow up to 100ms for retrieval
-	maxPaginateDuration := time.Millisecond * 50 // Allow up to 50ms for pagination
+	maxInsertDuration := time.Second * 5          // Allow up to 5 seconds for insertion
+	maxRetrieveDuration := time.Millisecond * 100 // Allow up to 100ms for retrieval
+	maxPaginateDuration := time.Millisecond * 50  // Allow up to 50ms for pagination
 
 	if insertDuration > maxInsertDuration {
 		t.Logf("Insertion took longer than expected: %v (threshold: %v)", insertDuration, maxInsertDuration)

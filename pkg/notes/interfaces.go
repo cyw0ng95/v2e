@@ -34,6 +34,7 @@ type MemoryCardServiceInterface interface {
 	GetCardsForReview(ctx context.Context) ([]*MemoryCardModel, error)
 	GetCardsByLearningState(ctx context.Context, state LearningState) ([]*MemoryCardModel, error)
 	UpdateCardAfterReview(ctx context.Context, cardID uint, rating CardRating) error
+	ListMemoryCards(ctx context.Context, bookmarkID *uint, learningState *string, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error)
 }
 
 // CrossReferenceServiceInterface defines the interface for the cross-reference service
@@ -53,11 +54,11 @@ type HistoryServiceInterface interface {
 
 // ServiceContainer holds all the service implementations
 type ServiceContainer struct {
-	BookmarkService      BookmarkServiceInterface
-	NoteService          NoteServiceInterface
-	MemoryCardService    MemoryCardServiceInterface
+	BookmarkService       BookmarkServiceInterface
+	NoteService           NoteServiceInterface
+	MemoryCardService     MemoryCardServiceInterface
 	CrossReferenceService CrossReferenceServiceInterface
-	HistoryService       HistoryServiceInterface
+	HistoryService        HistoryServiceInterface
 }
 
 // NewServiceContainer creates a new service container with local implementations
@@ -69,11 +70,11 @@ func NewServiceContainer(db *gorm.DB) *ServiceContainer {
 	historyService := NewHistoryService(db)
 
 	return &ServiceContainer{
-		BookmarkService:      bookmarkService,
-		NoteService:          noteService,
-		MemoryCardService:    memoryCardService,
+		BookmarkService:       bookmarkService,
+		NoteService:           noteService,
+		MemoryCardService:     memoryCardService,
 		CrossReferenceService: crossRefService,
-		HistoryService:       historyService,
+		HistoryService:        historyService,
 	}
 }
 
@@ -82,10 +83,10 @@ func NewRPCServiceContainer(client *RPCClient) *ServiceContainer {
 	bookmarkService, noteService, memoryCardService, crossRefService, historyService := client.GetRPCClients()
 
 	return &ServiceContainer{
-		BookmarkService:      bookmarkService,
-		NoteService:          noteService,
-		MemoryCardService:    memoryCardService,
+		BookmarkService:       bookmarkService,
+		NoteService:           noteService,
+		MemoryCardService:     memoryCardService,
 		CrossReferenceService: crossRefService,
-		HistoryService:       historyService,
+		HistoryService:        historyService,
 	}
 }

@@ -9,16 +9,16 @@ import (
 
 // TransportManager manages communication transports for processes
 type TransportManager struct {
-	transports map[string]Transport
-	udsBasePath string  // Base path for UDS sockets
+	transports            map[string]Transport
+	udsBasePath           string // Base path for UDS sockets
 	transportErrorHandler func(error)
-	mu         sync.RWMutex
+	mu                    sync.RWMutex
 }
 
 // NewTransportManager creates a new TransportManager
 func NewTransportManager() *TransportManager {
 	return &TransportManager{
-		transports: make(map[string]Transport),
+		transports:  make(map[string]Transport),
 		udsBasePath: "/tmp/v2e_uds",
 	}
 }
@@ -41,12 +41,12 @@ func (tm *TransportManager) UnregisterTransport(processID string) {
 func (tm *TransportManager) GetTransport(processID string) (Transport, error) {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
-	
+
 	transport, exists := tm.transports[processID]
 	if !exists {
 		return nil, fmt.Errorf("transport for process '%s' not found", processID)
 	}
-	
+
 	return transport, nil
 }
 
@@ -56,7 +56,7 @@ func (tm *TransportManager) SendToProcess(processID string, msg *proc.Message) e
 	if err != nil {
 		return err
 	}
-	
+
 	return transport.Send(msg)
 }
 
@@ -71,19 +71,19 @@ func (tm *TransportManager) SetTransportErrorHandler(handler func(error)) {
 func (tm *TransportManager) RegisterUDSTransport(processID string, isServer bool) error {
 	socketPath := fmt.Sprintf("%s_%s.sock", tm.udsBasePath, processID)
 	transport := NewUDSTransport(socketPath, isServer)
-	
+
 	tm.mu.RLock()
 	handler := tm.transportErrorHandler
 	tm.mu.RUnlock()
-	
+
 	if handler != nil {
 		transport.SetErrorHandler(handler)
 	}
-	
+
 	if err := transport.Connect(); err != nil {
 		return fmt.Errorf("failed to connect UDS transport for process %s: %w", processID, err)
 	}
-	
+
 	tm.RegisterTransport(processID, transport)
 	return nil
 }
