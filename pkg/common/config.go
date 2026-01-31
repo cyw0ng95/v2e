@@ -32,8 +32,6 @@ type Config struct {
 	Assets AssetsConfig `json:"assets,omitempty"`
 	// CAPEC related toggles
 	Capec CapecConfig `json:"capec,omitempty"`
-	// Website/frontend settings
-	Website WebsiteConfig `json:"website,omitempty"`
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty"`
 	// Access service configuration
@@ -78,12 +76,6 @@ type AssetsConfig struct {
 // CapecConfig holds CAPEC-specific toggles
 type CapecConfig struct {
 	StrictXSDValidation bool `json:"strict_xsd_validation,omitempty"`
-}
-
-// WebsiteConfig holds frontend-related configuration
-type WebsiteConfig struct {
-	APIBaseURL  string `json:"api_base_url,omitempty"`
-	UseMockData bool   `json:"use_mock_data,omitempty"`
 }
 
 // AccessConfig holds configuration for the access (HTTP) service

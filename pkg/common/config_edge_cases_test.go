@@ -307,10 +307,7 @@ func TestConfig_StructureIntegrity(t *testing.T) {
 		Capec: CapecConfig{
 			StrictXSDValidation: true,
 		},
-		Website: WebsiteConfig{
-			APIBaseURL:  "http://localhost:8080/api",
-			UseMockData: false,
-		},
+
 		Access: AccessConfig{
 			RPCTimeoutSeconds:      45,
 			ShutdownTimeoutSeconds: 15,

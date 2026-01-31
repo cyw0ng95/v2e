@@ -18,7 +18,7 @@ func buildFullConfig() *Config {
 		Remote:  RemoteConfig{NVDAPIKey: "key", ViewFetchURL: "http://views"},
 		Assets:  AssetsConfig{CWERawPath: "cwe.json", CAPECXMLPath: "capec.xml", CAPECXSDPath: "capec.xsd"},
 		Capec:   CapecConfig{StrictXSDValidation: true},
-		Website: WebsiteConfig{APIBaseURL: "http://api", UseMockData: true},
+
 		Logging: LoggingConfig{Level: "debug", Dir: "logdir"},
 		Access:  AccessConfig{RPCTimeoutSeconds: 5, ShutdownTimeoutSeconds: 2, StaticDir: "site"},
 	}
