@@ -17,13 +17,5 @@
   "remote": {
     "nvd_api_key": "",
     "view_fetch_url": "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip"
-  },
-  "assets": {
-    "cwe_raw_path": "assets/cwe-raw.json",
-    "capec_xml_path": "assets/capec_contents_latest.xml",
-    "capec_xsd_path": "assets/capec_schema_latest.xsd"
-  },
-  "capec": {
-    "strict_xsd_validation": false
-  }
+}
 }

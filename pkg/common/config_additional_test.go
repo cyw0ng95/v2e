@@ -16,8 +16,8 @@ func buildFullConfig() *Config {
 		Local:  LocalConfig{}, // Local config is now build-time only
 		Meta:   MetaConfig{SessionDBPath: "session.db"},
 		Remote: RemoteConfig{NVDAPIKey: "key", ViewFetchURL: "http://views"},
-		Assets: AssetsConfig{CWERawPath: "cwe.json", CAPECXMLPath: "capec.xml", CAPECXSDPath: "capec.xsd"},
-		Capec:  CapecConfig{StrictXSDValidation: true},
+		Assets: AssetsConfig{}, // Assets config is now build-time only
+		Capec:  CapecConfig{}, // CAPEC config is now build-time only
 
 		Logging: LoggingConfig{Level: "debug", Dir: "logdir"},
 		Access:  AccessConfig{RPCTimeoutSeconds: 5, ShutdownTimeoutSeconds: 2, StaticDir: "site"},

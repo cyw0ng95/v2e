@@ -126,6 +126,42 @@
       "target": "github.com/cyw0ng95/v2e/pkg/capec.buildCAPECDBPath",
       "major_class": "proc",
       "minor_class": "local"
+    },
+    "CONFIG_CWE_RAWPATH": {
+      "description": "Raw path for CWE data",
+      "type": "string",
+      "default": "assets/cwe-raw.json",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/cwe.buildCWERawPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_CAPEC_XMLPATH": {
+      "description": "XML path for CAPEC data",
+      "type": "string",
+      "default": "assets/capec_contents_latest.xml",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildCAPECXMLPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_CAPEC_XSDPATH": {
+      "description": "XSD path for CAPEC data",
+      "type": "string",
+      "default": "assets/capec_schema_latest.xsd",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildCAPECXSDPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_CAPEC_XSDENABLED": {
+      "description": "Enable XSD validation for CAPEC data",
+      "type": "bool",
+      "default": false,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildXSDValidation",
+      "major_class": "proc",
+      "minor_class": "local"
     }
   }
 }

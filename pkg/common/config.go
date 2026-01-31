@@ -66,14 +66,12 @@ type RemoteConfig struct {
 
 // AssetsConfig holds default asset paths used by importers
 type AssetsConfig struct {
-	CWERawPath   string `json:"cwe_raw_path,omitempty"`
-	CAPECXMLPath string `json:"capec_xml_path,omitempty"`
-	CAPECXSDPath string `json:"capec_xsd_path,omitempty"`
+	// Assets config is now build-time only, no runtime config fields
 }
 
 // CapecConfig holds CAPEC-specific toggles
 type CapecConfig struct {
-	StrictXSDValidation bool `json:"strict_xsd_validation,omitempty"`
+	// CAPEC config is now build-time only, no runtime config fields
 }
 
 // AccessConfig holds configuration for the access (HTTP) service

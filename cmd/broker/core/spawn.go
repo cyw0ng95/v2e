@@ -328,7 +328,10 @@ func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", cve.DefaultBuildCVEDBPath()))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", cwe.DefaultBuildCWEDBPath()))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", capec.DefaultBuildCAPECDBPath()))
-		if config.Capec.StrictXSDValidation {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_RAW_PATH=%s", cwe.DefaultBuildCWERawPath()))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_XML_PATH=%s", capec.DefaultBuildCAPECXMLPath()))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_XSD_PATH=%s", capec.DefaultBuildCAPECXSDPath()))
+		if capec.DefaultBuildXSDValidation() {
 			cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
 		}
 	case "meta":

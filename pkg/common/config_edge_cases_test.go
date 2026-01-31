@@ -286,14 +286,8 @@ func TestConfig_StructureIntegrity(t *testing.T) {
 			NVDAPIKey:    "test-api-key",
 			ViewFetchURL: "https://nvd.nist.gov/feeds/json/cve/1.1",
 		},
-		Assets: AssetsConfig{
-			CWERawPath:   "/assets/cwe/raw",
-			CAPECXMLPath: "/assets/capec/xml",
-			CAPECXSDPath: "/assets/capec/xsd",
-		},
-		Capec: CapecConfig{
-			StrictXSDValidation: true,
-		},
+		Assets: AssetsConfig{}, // Assets config is now build-time only
+		Capec: CapecConfig{}, // CAPEC config is now build-time only
 
 		Access: AccessConfig{
 			RPCTimeoutSeconds:      45,
