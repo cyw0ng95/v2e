@@ -51,7 +51,6 @@
     ]
   },
   "logging": {
-    "level": "info",
     "dir": "./logs"
   },
   "access": {

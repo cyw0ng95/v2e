@@ -14,7 +14,6 @@ type Flags struct {
 	ConfigFile  string
 	RPCInputFD  int
 	RPCOutputFD int
-	LogLevel    string
 }
 
 // Service encapsulates the common state for a service
@@ -34,7 +33,7 @@ func ParseFlags(defaultID string) *Flags {
 		flag.StringVar(&f.ConfigFile, "config", common.DefaultConfigFile, "Configuration file path")
 		flag.IntVar(&f.RPCInputFD, "rpc-in", -1, "RPC input file descriptor")
 		flag.IntVar(&f.RPCOutputFD, "rpc-out", -1, "RPC output file descriptor")
-		flag.StringVar(&f.LogLevel, "log-level", "", "Log level override")
+
 		flag.Parse()
 	} else {
 		// If flags are already defined, we need to retrieve their values
@@ -67,13 +66,8 @@ func NewService(defaultID string) (*Service, error) {
 		}
 	}
 
-	// Setup Logger
-	logLevel := common.InfoLevel
-	if flags.LogLevel != "" {
-		logLevel = parseLogLevel(flags.LogLevel)
-	} else if config.Logging.Level != "" {
-		logLevel = parseLogLevel(config.Logging.Level)
-	}
+	// Setup Logger - use build-time configured log level only (no runtime config overrides)
+	logLevel := DefaultBuildLogLevel()
 
 	logDir := common.DefaultLogsDir
 	if config.Logging.Dir != "" {
@@ -108,21 +102,6 @@ func NewService(defaultID string) (*Service, error) {
 		Logger: logger,
 		Proc:   sp,
 	}, nil
-}
-
-func parseLogLevel(level string) common.LogLevel {
-	switch level {
-	case "debug":
-		return common.DebugLevel
-	case "info":
-		return common.InfoLevel
-	case "warn":
-		return common.WarnLevel
-	case "error":
-		return common.ErrorLevel
-	default:
-		return common.InfoLevel
-	}
 }
 
 // Run runs the service subprocess

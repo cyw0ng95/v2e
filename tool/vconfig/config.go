@@ -26,6 +26,8 @@ type ConfigOption struct {
 	Type        string      `json:"type"` // "bool", "string", "int", etc.
 	Default     interface{} `json:"default"`
 	Values      []string    `json:"values,omitempty"` // Available values for selection
+	Method      string      `json:"method,omitempty"` // "build-tag", "ldflags", "c-header", etc.
+	Target      string      `json:"target,omitempty"` // For ldflags: variable path, for build-tag: tag name pattern
 }
 
 func LoadConfig(path string) (*Config, error) {

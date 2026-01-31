@@ -6,16 +6,15 @@ Refer to service.md for details about the RPC API Specification.
 package main
 
 import (
-	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/perf"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // brokerRouteBridge captures the minimal broker surface needed by perf.Optimizer.
@@ -51,46 +50,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set up logger with dual output (stdout + file) if log file is configured
-	var logOutput io.Writer
-	if config.Broker.LogFile != "" {
-		// Ensure parent directory exists so opening the log file won't fail
-		logDir := filepath.Dir(config.Broker.LogFile)
-		if logDir != "." && logDir != "" {
-			if err := os.MkdirAll(logDir, 0755); err != nil {
-				common.Error(LogMsgErrorCreatingLogDir, logDir, err)
-				os.Exit(1)
-			}
-		}
-
-		logFile, err := os.OpenFile(config.Broker.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			common.Error(LogMsgErrorOpeningLogFile, config.Broker.LogFile, err)
-			os.Exit(1)
-		}
-		defer logFile.Close()
-		logOutput = io.MultiWriter(os.Stdout, logFile)
-	} else {
-		logOutput = os.Stdout
+	// Use subprocess package for logging to ensure build-time log level from .config is used
+	logLevel := subprocess.DefaultBuildLogLevel()
+	logDir := common.DefaultLogsDir
+	if config.Broker.LogsDir != "" {
+		logDir = config.Broker.LogsDir
 	}
-
-	// Set default logger output
-	common.SetOutput(logOutput)
-	// Set log level from config if present, default to InfoLevel
-	logLevel := common.InfoLevel
-	if config.Logging.Level != "" {
-		switch config.Logging.Level {
-		case "debug":
-			logLevel = common.DebugLevel
-		case "info":
-			logLevel = common.InfoLevel
-		case "warn":
-			logLevel = common.WarnLevel
-		case "error":
-			logLevel = common.ErrorLevel
-		}
+	logger, err := subprocess.SetupLogging("broker", logDir, logLevel)
+	if err != nil {
+		fallbackLogger := common.NewLogger(os.Stderr, "[BROKER] ", logLevel)
+		fallbackLogger.Error("Failed to setup logging: %v", err)
+		os.Exit(1)
 	}
-	common.SetLevel(logLevel)
+	// Use the logger's output writer
 
 	// Create broker instance
 	broker := NewBroker()
@@ -103,13 +75,12 @@ func main() {
 	broker.SetSpawner(spawnAdapter)
 	defer broker.Shutdown()
 
-	// Set up broker logger with dual output and correct level
-	brokerLogger := common.NewLogger(logOutput, "[BROKER] ", logLevel)
-	broker.SetLogger(brokerLogger)
+	// Use the subprocess logger as the broker logger
+	broker.SetLogger(logger)
 
 	// Load processes from configuration
 	if err := broker.LoadProcessesFromConfig(config); err != nil {
-		common.Error("Error loading processes from config: %v", err)
+		logger.Error("Error loading processes from config: %v", err)
 	}
 
 	// Create and attach an optimizer using broker config (optional tuning)
@@ -127,7 +98,7 @@ func main() {
 	}
 
 	opt := perf.NewWithConfig(routerAdapter, optConfig)
-	opt.SetLogger(brokerLogger)
+	opt.SetLogger(logger)
 
 	if config.Broker.OptimizerEnableAdaptive {
 		opt.EnableAdaptiveOptimization()

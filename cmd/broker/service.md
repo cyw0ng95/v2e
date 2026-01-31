@@ -113,7 +113,6 @@ Central process manager and message router for the v2e system. Spawns and manage
 
 ## Configuration
 - **Log File**: Configurable via `config.json` under `broker.log_file` for dual output (stdout + file)
-- **Log Level**: Configurable via `config.json` under `logging.level` (debug, info, warn, error)
 - **Process Management**: Processes can be configured to auto-restart with configurable max restarts
 - **RPC File Descriptors**: Custom file descriptor numbers for RPC communication can be configured via `proc.rpc_input_fd`, `proc.rpc_output_fd`, `broker.rpc_input_fd`, or `broker.rpc_output_fd`
 

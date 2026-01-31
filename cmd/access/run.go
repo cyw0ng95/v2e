@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // runAccess contains the original implementation of main moved here for maintainability
@@ -22,71 +21,43 @@ func runAccess() {
 		os.Exit(1)
 	}
 
-	// Set up logger with dual output (stdout + file) if logging directory is configured
-	var logOutput io.Writer
+	// Use subprocess package for logging to ensure build-time log level from .config is used
+	logLevel := subprocess.DefaultBuildLogLevel()
+	logDir := common.DefaultLogsDir
 	if config.Logging.Dir != "" {
-		// Create log file path for this service
-		logDir := config.Logging.Dir
-		if logDir != "." && logDir != "" {
-			if err := os.MkdirAll(logDir, 0755); err != nil {
-				common.Error("[ACCESS] Error creating log directory: %v", err)
-				os.Exit(1)
-			}
-		}
-		logFileName := filepath.Join(logDir, "access.log")
-		logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			common.Error("[ACCESS] Error opening log file: %v", err)
-			os.Exit(1)
-		}
-		defer logFile.Close()
-		logOutput = io.MultiWriter(os.Stdout, logFile)
-	} else {
-		logOutput = os.Stdout
+		logDir = config.Logging.Dir
 	}
-
-	// Set default logger output
-	common.SetOutput(logOutput)
-	// Set log level from config if present, default to InfoLevel
-	logLevel := common.InfoLevel
-	if config.Logging.Level != "" {
-		switch config.Logging.Level {
-		case "debug":
-			logLevel = common.DebugLevel
-		case "info":
-			logLevel = common.InfoLevel
-		case "warn":
-			logLevel = common.WarnLevel
-		case "error":
-			logLevel = common.ErrorLevel
-		}
+	logger, err := subprocess.SetupLogging("access", logDir, logLevel)
+	if err != nil {
+		common.NewLogger(os.Stderr, "[ACCESS] ", logLevel).Error("Failed to setup logging: %v", err)
+		os.Exit(1)
 	}
-	common.SetLevel(logLevel)
+	// The subprocess.SetupLogging already configures the logger properly
 
-	common.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, config.Access.StaticDir)
+	logger.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, config.Access.StaticDir)
 
 	// Configure service timeouts and static dir from config (with defaults)
 	rpcTimeout := 30 * time.Second
 	if config.Access.RPCTimeoutSeconds > 0 {
 		rpcTimeout = time.Duration(config.Access.RPCTimeoutSeconds) * time.Second
-		common.Info(LogMsgRPCTimeoutConfigured, config.Access.RPCTimeoutSeconds)
+		logger.Info(LogMsgRPCTimeoutConfigured, config.Access.RPCTimeoutSeconds)
 	}
 
 	shutdownTimeout := 10 * time.Second
 	if config.Access.ShutdownTimeoutSeconds > 0 {
 		shutdownTimeout = time.Duration(config.Access.ShutdownTimeoutSeconds) * time.Second
-		common.Info(LogMsgShutdownTimeoutConfig, config.Access.ShutdownTimeoutSeconds)
+		logger.Info(LogMsgShutdownTimeoutConfig, config.Access.ShutdownTimeoutSeconds)
 	}
 
 	staticDir := "website"
 	if config.Access.StaticDir != "" {
 		staticDir = config.Access.StaticDir
-		common.Info(LogMsgStaticDirConfigured, staticDir)
+		logger.Info(LogMsgStaticDirConfigured, staticDir)
 	}
 	// Allow broker to override static dir via environment when running as subprocess
 	if envStatic := os.Getenv("ACCESS_STATIC_DIR"); envStatic != "" {
 		staticDir = envStatic
-		common.Info(LogMsgStaticDirEnvOverride, staticDir)
+		logger.Info(LogMsgStaticDirEnvOverride, staticDir)
 	}
 
 	// Set default address if not configured
@@ -94,7 +65,7 @@ func runAccess() {
 	if config.Server.Address != "" {
 		address = config.Server.Address
 	}
-	common.Info(LogMsgAddressConfigured, address)
+	logger.Info(LogMsgAddressConfigured, address)
 
 	// Get process ID from environment or use default
 	processID := os.Getenv("PROCESS_ID")
@@ -104,19 +75,19 @@ func runAccess() {
 
 	// Create RPC client for broker communication (use configured rpc timeout)
 	rpcClient := NewRPCClient(processID, rpcTimeout)
-	common.Info(LogMsgRPCClientCreated, rpcTimeout)
+	logger.Info(LogMsgRPCClientCreated, rpcTimeout)
 
 	// Start RPC client in background
 	go func() {
-		common.Info(LogMsgRPCClientStarting)
-		common.Info(LogMsgStartingRPCClient, processID)
+		logger.Info(LogMsgRPCClientStarting)
+		logger.Info(LogMsgStartingRPCClient, processID)
 		if err := rpcClient.Run(context.Background()); err != nil {
-			common.Warn(LogMsgRPCClientError, processID, err)
+			logger.Warn(LogMsgRPCClientError, processID, err)
 		} else {
-			common.Info(LogMsgRPCClientStopped, processID)
+			logger.Info(LogMsgRPCClientStopped, processID)
 		}
 	}()
-	common.Info(LogMsgRPCClientStarted)
+	logger.Info(LogMsgRPCClientStarted)
 
 	// Setup router and server
 	router := setupRouter(rpcClient, int(rpcTimeout.Seconds()), staticDir)
@@ -129,33 +100,33 @@ func runAccess() {
 
 	// Start server in a goroutine
 	go func() {
-		common.Info(LogMsgServerStarting, address)
+		logger.Info(LogMsgServerStarting, address)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			common.Error(LogMsgFailedStartServer, err)
+			logger.Error(LogMsgFailedStartServer, err)
 			return
 		}
-		common.Info(LogMsgServerStarted)
+		logger.Info(LogMsgServerStarted)
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	common.Info("[ACCESS] Waiting for shutdown signal...")
+	logger.Info("[ACCESS] Waiting for shutdown signal...")
 	<-quit
 
-	common.Info(LogMsgShuttingDown)
+	logger.Info(LogMsgShuttingDown)
 
 	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
-	common.Info(LogMsgServerShutdownInitiated)
+	logger.Info(LogMsgServerShutdownInitiated)
 	if err := srv.Shutdown(ctx); err != nil {
-		common.Warn(LogMsgServerForcedShutdown, err)
-		common.Info(LogMsgServerShutdownForced)
+		logger.Warn(LogMsgServerForcedShutdown, err)
+		logger.Info(LogMsgServerShutdownForced)
 		os.Exit(1)
 	}
-	common.Info(LogMsgServerShutdownComplete)
+	logger.Info(LogMsgServerShutdownComplete)
 
-	common.Info(LogMsgServiceStopped)
+	logger.Info(LogMsgServiceStopped)
 }

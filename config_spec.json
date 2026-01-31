@@ -7,7 +7,9 @@
       "description": "Minimum log level for the application",
       "type": "string",
       "default": "INFO",
-      "values": ["DEBUG", "INFO", "WARN", "ERROR"]
+      "values": ["DEBUG", "INFO", "WARN", "ERROR"],
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogLevel"
     }
   }
 }

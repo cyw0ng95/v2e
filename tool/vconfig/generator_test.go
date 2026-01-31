@@ -20,8 +20,8 @@ func TestGenerateBuildFlags(t *testing.T) {
 	}
 }
 
-func TestGenerateBuildFlagsEmpty(t *testing.T) {
-	// Create a config with no enabled boolean features
+func TestGenerateBuildFlagsDefaultConfig(t *testing.T) {
+	// Create a config with no enabled boolean features but with default string features
 	config := GetDefaultConfig()
 
 	// Disable all boolean features
@@ -30,6 +30,8 @@ func TestGenerateBuildFlagsEmpty(t *testing.T) {
 			option.Default = false
 			config.Features[key] = option
 		}
+		// For string features like CONFIG_MIN_LOG_LEVEL, they are now handled via ldflags
+		// so they shouldn't appear in build flags
 	}
 
 	flags, err := GenerateBuildFlags(&config)
@@ -37,7 +39,35 @@ func TestGenerateBuildFlagsEmpty(t *testing.T) {
 		t.Fatalf("Failed to generate build flags: %v", err)
 	}
 
+	// With the updated implementation, string features like CONFIG_MIN_LOG_LEVEL
+	// should not appear in build flags anymore (they're handled via ldflags)
 	if flags != "" {
-		t.Errorf("Expected empty build flags for config with no enabled features, got '%s'", flags)
+		t.Errorf("Expected empty build flags for config with only string features, got '%s'", flags)
+	}
+}
+
+func TestGenerateLdflags(t *testing.T) {
+	config := GetDefaultConfig()
+	
+	// Make sure CONFIG_MIN_LOG_LEVEL has the proper method and target
+	for key, option := range config.Features {
+		if key == "CONFIG_MIN_LOG_LEVEL" {
+			option.Default = "DEBUG"
+			option.Method = "ldflags"
+			option.Target = "subprocess.buildLogLevel"
+			config.Features[key] = option
+			break
+		}
+	}
+
+	ldflags, err := GenerateLdflags(&config)
+	if err != nil {
+		t.Fatalf("Failed to generate ldflags: %v", err)
+	}
+
+	// Expect the ldflags to contain the log level injection
+	expectedLdflag := "-X 'subprocess.buildLogLevel=DEBUG'"
+	if ldflags != expectedLdflag {
+		t.Errorf("Expected '%s' ldflag for config with DEBUG log level, got '%s'", expectedLdflag, ldflags)
 	}
 }

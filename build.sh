@@ -313,6 +313,9 @@ build_project() {
         local binary_path="$BUILD_DIR/v2e"
         local rebuild_needed=true
         
+        # Get ldflags from config
+        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
+        
         # Check if binary exists and if any source files are newer
         if [ -f "$binary_path" ]; then
             local latest_source_time=0
@@ -350,9 +353,17 @@ build_project() {
             fi
             mkdir -p "$BUILD_DIR"
             if [ "$VERBOSE" = true ]; then
-                go build -v -tags "$build_tags" -o "$BUILD_DIR/v2e" ./...
+                if [ -n "$ldflags" ]; then
+                    go build -v -tags "$build_tags" -ldflags "$ldflags" -o "$BUILD_DIR/v2e" ./...
+                else
+                    go build -v -tags "$build_tags" -o "$BUILD_DIR/v2e" ./...
+                fi
             else
-                go build -tags "$build_tags" -o "$BUILD_DIR/v2e" ./...
+                if [ -n "$ldflags" ]; then
+                    go build -tags "$build_tags" -ldflags "$ldflags" -o "$BUILD_DIR/v2e" ./...
+                else
+                    go build -tags "$build_tags" -o "$BUILD_DIR/v2e" ./...
+                fi
             fi
             if [ "$VERBOSE" = true ]; then
                 log_debug "Build completed successfully"
@@ -415,6 +426,9 @@ build_and_package() {
             log_debug "Building all binaries in parallel..."
         fi
         
+        # Get ldflags from config
+        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
+        
         # Build each command in parallel
         declare -a build_pids
         for cmd_dir in cmd/*; do
@@ -424,9 +438,17 @@ build_and_package() {
                     log_debug "Building $cmd_name..."
                 fi
                 if [ "$VERBOSE" = true ]; then
-                    go build -v -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    if [ -n "$ldflags" ]; then
+                        go build -v -tags "$build_tags" -ldflags "$ldflags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    else
+                        go build -v -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    fi
                 else
-                    go build -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    if [ -n "$ldflags" ]; then
+                        go build -tags "$build_tags" -ldflags "$ldflags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    else
+                        go build -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    fi
                 fi
                 build_pids+=($!)
             fi
@@ -547,14 +569,25 @@ run_tests() {
     
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
+        # Get ldflags from config
+        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
+        
         if [ "$VERBOSE" = true ]; then
             log_info "Running go test with verbose output..."
             # Run tests with coverage and verbose output, excluding fuzz tests
-            go test -tags "$build_tags" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            if [ -n "$ldflags" ]; then
+                go test -tags "$build_tags" -ldflags "$ldflags" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            else
+                go test -tags "$build_tags" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            fi
         else
             log_info "Running go test..."
             # Run tests with coverage, excluding fuzz tests
-            go test -tags "$build_tags" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            if [ -n "$ldflags" ]; then
+                go test -tags "$build_tags" -ldflags "$ldflags" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            else
+                go test -tags "$build_tags" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
+            fi
         fi
         TEST_EXIT_CODE=$?
         
@@ -618,12 +651,19 @@ run_fuzz_tests() {
     
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
+        # Get ldflags from config
+        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
+        
         if [ "$VERBOSE" = true ]; then
             log_info "Running Go fuzz tests for $FUZZ_TIME..."
         fi
         
         # Find all fuzz tests
-        FUZZ_TESTS=$(go test -tags "$build_tags" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
+        if [ -n "$ldflags" ]; then
+            FUZZ_TESTS=$(go test -tags "$build_tags" -ldflags "$ldflags" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
+        else
+            FUZZ_TESTS=$(go test -tags "$build_tags" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
+        fi
         
         if [ -z "$FUZZ_TESTS" ]; then
             log_info "No fuzz tests found. Creating report..."
@@ -655,19 +695,34 @@ run_fuzz_tests() {
         
         # Iterate through packages and run fuzz tests
         for PKG in $(go list ./... | grep -E '(pkg/proc|cmd/broker|pkg/cve)'); do
-            PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -tags "$GO_TAGS" -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
+            if [ -n "$ldflags" ]; then
+                PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -tags "$GO_TAGS" -ldflags "$ldflags" -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
+            else
+                PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -tags "$GO_TAGS" -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
+            fi
             
             if [ -n "$PKG_FUZZ_TESTS" ]; then
                 log_info "Fuzzing package: $PKG"
                 for FUZZ_TEST in $PKG_FUZZ_TESTS; do
                     log_info "  Running $FUZZ_TEST for $FUZZ_TIME..."
-                    if go test -tags "$GO_TAGS" -fuzz="^${FUZZ_TEST}$" -fuzztime="$FUZZ_TIME" "$PKG" 2>&1 | tee -a "$BUILD_DIR/fuzz-raw.log"; then
-                        FUZZ_RESULTS="$FUZZ_RESULTS\n  ✓ $PKG/$FUZZ_TEST: PASSED"
-                        log_info "    ✓ PASSED"
+                    if [ -n "$ldflags" ]; then
+                        if go test -tags "$GO_TAGS" -ldflags "$ldflags" -fuzz="^${FUZZ_TEST}$" -fuzztime="$FUZZ_TIME" "$PKG" 2>&1 | tee -a "$BUILD_DIR/fuzz-raw.log"; then
+                            FUZZ_RESULTS="$FUZZ_RESULTS\n  ✓ $PKG/$FUZZ_TEST: PASSED"
+                            log_info "    ✓ PASSED"
+                        else
+                            FUZZ_EXIT_CODE=1
+                            FUZZ_RESULTS="$FUZZ_RESULTS\n  ✗ $PKG/$FUZZ_TEST: FAILED"
+                            log_error "    ✗ FAILED"
+                        fi
                     else
-                        FUZZ_EXIT_CODE=1
-                        FUZZ_RESULTS="$FUZZ_RESULTS\n  ✗ $PKG/$FUZZ_TEST: FAILED"
-                        log_error "    ✗ FAILED"
+                        if go test -tags "$GO_TAGS" -fuzz="^${FUZZ_TEST}$" -fuzztime="$FUZZ_TIME" "$PKG" 2>&1 | tee -a "$BUILD_DIR/fuzz-raw.log"; then
+                            FUZZ_RESULTS="$FUZZ_RESULTS\n  ✓ $PKG/$FUZZ_TEST: PASSED"
+                            log_info "    ✓ PASSED"
+                        else
+                            FUZZ_EXIT_CODE=1
+                            FUZZ_RESULTS="$FUZZ_RESULTS\n  ✗ $PKG/$FUZZ_TEST: FAILED"
+                            log_error "    ✗ FAILED"
+                        fi
                     fi
                 done
             fi
@@ -759,6 +814,9 @@ run_benchmarks() {
 
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
+        # Get ldflags from config
+        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
+        
         BENCHMARK_OUTPUT="$BUILD_DIR/benchmark-raw.txt"
         BENCHMARK_REPORT="$BUILD_DIR/benchmark-report.txt"
         BENCH_BENCHSTAT="$BUILD_DIR/benchmark-benchstat.txt"
@@ -782,10 +840,18 @@ run_benchmarks() {
                 log_info "Benchmarking package: $PKG"
                 if [ "$VERBOSE" = true ]; then
                     # Stream output to console and prefix with package
-                    (go test -tags "$build_tags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") | tee -a "$BENCHMARK_OUTPUT"
+                    if [ -n "$ldflags" ]; then
+                        (go test -tags "$build_tags" -ldflags "$ldflags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") | tee -a "$BENCHMARK_OUTPUT"
+                    else
+                        (go test -tags "$build_tags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") | tee -a "$BENCHMARK_OUTPUT"
+                    fi
                     rc=${PIPESTATUS[0]}
                 else
-                    (go test -tags "$build_tags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") >> "$BENCHMARK_OUTPUT" 2>&1
+                    if [ -n "$ldflags" ]; then
+                        (go test -tags "$build_tags" -ldflags "$ldflags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") >> "$BENCHMARK_OUTPUT" 2>&1
+                    else
+                        (go test -tags "$build_tags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") >> "$BENCHMARK_OUTPUT" 2>&1
+                    fi
                     rc=${PIPESTATUS[0]}
                 fi
                 if [ $rc -ne 0 ]; then

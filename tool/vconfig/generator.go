@@ -17,9 +17,19 @@ func GenerateBuildFlags(config *Config) (string, error) {
 				flags = append(flags, key)
 			}
 		} else {
-			// For non-boolean options, we might create flags differently
-			// For now, we'll skip non-boolean options in build flags
-			continue
+			// For string options, check the method property to decide whether to include in build flags
+			// If method is ldflags or something else, don't add to build flags
+			if option.Method != "build-tag" {
+				// Skip string options that use other methods like ldflags
+				continue
+			} else {
+				// If explicitly marked as build-tag, add it using the target pattern or key as fallback
+				if option.Target != "" {
+					flags = append(flags, option.Target)
+				} else {
+					flags = append(flags, key)
+				}
+			}
 		}
 	}
 
@@ -42,6 +52,27 @@ func GenerateGoBuildTags(config *Config) (string, error) {
 	}
 
 	return "-tags " + flags, nil
+}
+
+// GenerateLdflags creates linker flags from the configuration
+func GenerateLdflags(config *Config) (string, error) {
+	var ldflags []string
+
+	for _, option := range config.Features {
+		// Handle string options that should be injected via ldflags
+		if strVal, ok := option.Default.(string); ok {
+			if option.Method == "ldflags" && option.Target != "" {
+				// Inject the value via ldflags using the specified target: -X 'target=value'
+				ldflags = append(ldflags, fmt.Sprintf("-X '%s=%s'", option.Target, strVal))
+			}
+		}
+	}
+
+	if len(ldflags) == 0 {
+		return "", nil
+	}
+
+	return strings.Join(ldflags, " "), nil
 }
 
 // GenerateCHeader creates a C header file from the configuration
@@ -103,4 +134,41 @@ func GenerateSimpleConfig(config *Config, outputPath string) error {
 	}
 
 	return os.WriteFile(outputPath, []byte(content.String()), 0644)
+}
+
+// GenerateDetailedConfigMapping creates a detailed mapping of config options to build flags
+func GenerateDetailedConfigMapping(config *Config) (string, error) {
+	var result strings.Builder
+	result.WriteString("Config to Build Flags Mapping:\n")
+	result.WriteString("==============================\n")
+
+	for key, option := range config.Features {
+		if val, ok := option.Default.(bool); ok {
+			if val {
+				result.WriteString(fmt.Sprintf("%s (%s) -> INCLUDED in build flags\n", key, option.Description))
+			} else {
+				result.WriteString(fmt.Sprintf("%s (%s) -> NOT included in build flags\n", key, option.Description))
+			}
+		} else {
+			// Check if it's a string option that gets converted based on method
+			if strVal, ok := option.Default.(string); ok {
+				method := option.Method
+				if method == "" {
+					method = "not-used" // default if no method specified
+				}
+
+				if option.Method == "ldflags" {
+					result.WriteString(fmt.Sprintf("%s (%s) -> Type: %T, Value: %s -> Method: %s, Target: %s\n", key, option.Description, option.Default, strVal, option.Method, option.Target))
+				} else if option.Method == "build-tag" {
+					result.WriteString(fmt.Sprintf("%s (%s) -> Type: %T, Value: %s -> Method: %s, Target: %s\n", key, option.Description, option.Default, strVal, option.Method, option.Target))
+				} else {
+					result.WriteString(fmt.Sprintf("%s (%s) -> Type: %T, Value: %v -> Method: %s (not used in build flags)\n", key, option.Description, option.Default, option.Default, method))
+				}
+			} else {
+				result.WriteString(fmt.Sprintf("%s (%s) -> Type: %T, Value: %v -> Method: %s (not used in build flags)\n", key, option.Description, option.Default, option.Default, option.Method))
+			}
+		}
+	}
+
+	return result.String(), nil
 }
