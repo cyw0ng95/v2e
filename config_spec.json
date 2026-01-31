@@ -9,20 +9,26 @@
       "default": "INFO",
       "values": ["DEBUG", "INFO", "WARN", "ERROR"],
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogLevel"
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogLevel",
+      "major_class": "logging",
+      "minor_class": "level"
     },
     "CONFIG_LOGGING_DIR": {
       "description": "Directory for log files",
       "type": "string",
       "default": "./logs",
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogDir"
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogDir",
+      "major_class": "logging",
+      "minor_class": "path"
     },
     "CONFIG_USE_LIBXML2": {
       "description": "Enable libxml2 support for CAPEC parsing",
       "type": "bool",
       "default": true,
-      "method": "build-tag"
+      "method": "build-tag",
+      "major_class": "parsing",
+      "minor_class": "xml"
     }
   }
 }

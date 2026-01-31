@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gizak/termui/v3"
@@ -81,29 +82,84 @@ func runTUIInteractive() error {
 	title.TextStyle.Fg = termui.ColorGreen
 	title.Border = false
 
-	// Create ordered list of feature keys to maintain consistent ordering
-	featureKeys := make([]string, 0, len(config.Features))
+	// Group features by major and minor class
+	groups := make(map[string]map[string][]string)
+	groupOrder := make([]string, 0)         // Track order of major classes
+	minorOrder := make(map[string][]string) // Track order of minor classes within each major class
+
+	// Create original ordered list of feature keys to maintain consistent ordering
+	originalFeatureKeys := make([]string, 0, len(config.Features))
 	for key := range config.Features {
-		featureKeys = append(featureKeys, key)
+		originalFeatureKeys = append(originalFeatureKeys, key)
 	}
 
-	// Create a list of configuration options
-	list := widgets.NewList()
-	list.Title = "Configuration Options"
-	list.Rows = make([]string, 0, len(config.Features))
-
-	// Add all features to the list in consistent order
-	for _, key := range featureKeys {
+	for _, key := range originalFeatureKeys {
 		option := config.Features[key]
-		status := "disabled"
-		if val, ok := option.Default.(bool); ok && val {
-			status = "enabled"
-		} else if strVal, ok := option.Default.(string); ok {
-			status = strVal
-		} else if intVal, ok := option.Default.(int); ok {
-			status = fmt.Sprintf("%d", intVal)
+		majorClass := option.MajorClass
+		if majorClass == "" {
+			majorClass = "Uncategorized" // Default group if no major class specified
 		}
-		list.Rows = append(list.Rows, fmt.Sprintf("[%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, status))
+		minorClass := option.MinorClass
+		if minorClass == "" {
+			minorClass = "General" // Default minor class if none specified
+		}
+
+		// Initialize major class group if it doesn't exist
+		if groups[majorClass] == nil {
+			groups[majorClass] = make(map[string][]string)
+			groupOrder = append(groupOrder, majorClass)
+		}
+
+		// Add to minor class within major class
+		groups[majorClass][minorClass] = append(groups[majorClass][minorClass], key)
+
+		// Track minor class order within major class
+		found := false
+		for _, existingMinor := range minorOrder[majorClass] {
+			if existingMinor == minorClass {
+				found = true
+				break
+			}
+		}
+		if !found {
+			minorOrder[majorClass] = append(minorOrder[majorClass], minorClass)
+		}
+	}
+
+	// Create a list of configuration options organized by major/minor class
+	list := widgets.NewList()
+	list.Title = "Configuration Options (Grouped by Class)"
+	list.Rows = make([]string, 0)
+
+	// Add features grouped by major and minor class
+	for _, majorClass := range groupOrder {
+		list.Rows = append(list.Rows, fmt.Sprintf("[=== %s ===](fg:green)", majorClass))
+		for _, minorClass := range minorOrder[majorClass] {
+			list.Rows = append(list.Rows, fmt.Sprintf("  [--- %s ---](fg:cyan)", minorClass))
+			for _, key := range groups[majorClass][minorClass] {
+				option := config.Features[key]
+				status := "disabled"
+				if val, ok := option.Default.(bool); ok && val {
+					status = "enabled"
+				} else if strVal, ok := option.Default.(string); ok {
+					status = strVal
+				} else if intVal, ok := option.Default.(int); ok {
+					status = fmt.Sprintf("%d", intVal)
+				}
+				list.Rows = append(list.Rows, fmt.Sprintf("    [%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, status))
+			}
+		}
+		list.Rows = append(list.Rows, "") // Add blank line between major groups
+	}
+
+	// Update featureKeys to match the new ordering for navigation purposes
+	featureKeys := make([]string, 0)
+	for _, majorClass := range groupOrder {
+		for _, minorClass := range minorOrder[majorClass] {
+			for _, key := range groups[majorClass][minorClass] {
+				featureKeys = append(featureKeys, key)
+			}
+		}
 	}
 
 	list.SelectedRowStyle = termui.NewStyle(termui.ColorWhite, termui.ColorBlue)
@@ -148,46 +204,68 @@ func runTUIInteractive() error {
 		case " ", "<Enter>":
 			// Toggle the selected option using the ordered featureKeys
 			if len(list.Rows) > 0 && selectedIndex < len(featureKeys) {
-				key := featureKeys[selectedIndex]
-				option := config.Features[key]
-
-				// Toggle based on type
-				if val, ok := option.Default.(bool); ok {
-					newVal := !val
-					option.Default = newVal
-
-					// Update the list display
-					status := "disabled"
-					if newVal {
-						status = "enabled"
+				// Filter out the group header entries to get the actual config key
+				actualConfigIndex := 0
+				for i, rowText := range list.Rows {
+					if i == selectedIndex {
+						break
 					}
-					list.Rows[selectedIndex] = fmt.Sprintf("[%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, status)
+					// Skip group headers and empty lines
+					if !strings.HasPrefix(rowText, "[=== ") && !strings.HasPrefix(rowText, "  [--- ") && rowText != "" {
+						actualConfigIndex++
+					}
+				}
 
-					// Update the config
-					config.Features[key] = option
-				} else if option.Type == "string" {
-					// For string options, cycle through available values if any
-					if len(option.Values) > 0 {
-						currentStr := option.Default.(string)
-						nextIndex := 0
-						// Find current value index
-						for i, v := range option.Values {
-							if v == currentStr {
-								nextIndex = (i + 1) % len(option.Values)
-								break
-							}
-						}
-						newValue := option.Values[nextIndex]
-						option.Default = newValue
+				// Get the key from our reordered list
+				if actualConfigIndex >= 0 && actualConfigIndex < len(featureKeys) {
+					key := featureKeys[actualConfigIndex]
+					option := config.Features[key]
+
+					// Toggle based on type
+					if val, ok := option.Default.(bool); ok {
+						newVal := !val
+						option.Default = newVal
 
 						// Update the list display
-						list.Rows[selectedIndex] = fmt.Sprintf("[%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, newValue)
+						status := "disabled"
+						if newVal {
+							status = "enabled"
+						}
+						// Find the correct row to update based on the actual config index
+						rowIndex := findActualRowIndex(list.Rows, actualConfigIndex)
+						if rowIndex >= 0 && rowIndex < len(list.Rows) {
+							list.Rows[rowIndex] = fmt.Sprintf("[%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, status)
+						}
 
 						// Update the config
 						config.Features[key] = option
+					} else if option.Type == "string" {
+						// For string options, cycle through available values if any
+						if len(option.Values) > 0 {
+							currentStr := option.Default.(string)
+							nextIndex := 0
+							// Find current value index
+							for i, v := range option.Values {
+								if v == currentStr {
+									nextIndex = (i + 1) % len(option.Values)
+									break
+								}
+							}
+							newValue := option.Values[nextIndex]
+							option.Default = newValue
+
+							// Update the list display
+							rowIndex := findActualRowIndex(list.Rows, actualConfigIndex)
+							if rowIndex >= 0 && rowIndex < len(list.Rows) {
+								list.Rows[rowIndex] = fmt.Sprintf("[%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, newValue)
+							}
+
+							// Update the config
+							config.Features[key] = option
+						}
 					}
+					termui.Render(grid)
 				}
-				termui.Render(grid)
 			}
 		case "s":
 			// Save the configuration
@@ -344,4 +422,19 @@ func runTUIInteractive() error {
 			}
 		}
 	}
+}
+
+// findActualRowIndex finds the actual row index in the list for a given config option index
+func findActualRowIndex(rows []string, configIndex int) int {
+	actualIndex := 0
+	for i, rowText := range rows {
+		// Skip group headers and empty lines
+		if !strings.HasPrefix(rowText, "[=== ") && !strings.HasPrefix(rowText, "  [--- ") && rowText != "" {
+			if actualIndex == configIndex {
+				return i
+			}
+			actualIndex++
+		}
+	}
+	return -1 // Not found
 }
