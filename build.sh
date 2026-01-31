@@ -282,8 +282,21 @@ build_project() {
     
     setup_build_dir
     
-    # Check if config file exists and generate build tags
+    # Ensure config file exists and generate build tags
     local build_tags="$GO_TAGS"
+    if [ ! -f ".build/.config" ]; then
+        log_info "No config file found, generating default .build/.config..."
+        mkdir -p .build
+        if [ -f "tool/vconfig/main.go" ]; then
+            # Build vconfig tool if not already built
+            if [ ! -f ".build/vconfig" ]; then
+                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
+            fi
+        fi
+        # Generate default config file
+        .build/vconfig -generate-defaults -config .build/.config
+    fi
+    
     if [ -f ".build/.config" ]; then
         log_debug "Using configuration from .build/.config"
         local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
@@ -370,8 +383,21 @@ build_and_package() {
     setup_build_dir
     mkdir -p "$PACKAGE_DIR"
     
-    # Check if config file exists and generate build tags
+    # Ensure config file exists and generate build tags
     local build_tags="$GO_TAGS"
+    if [ ! -f ".build/.config" ]; then
+        log_info "No config file found, generating default .build/.config..."
+        mkdir -p .build
+        if [ -f "tool/vconfig/main.go" ]; then
+            # Build vconfig tool if not already built
+            if [ ! -f ".build/vconfig" ]; then
+                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
+            fi
+        fi
+        # Generate default config file
+        .build/vconfig -generate-defaults -config .build/.config
+    fi
+    
     if [ -f ".build/.config" ]; then
         log_debug "Using configuration from .build/.config"
         local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
@@ -493,8 +519,21 @@ run_tests() {
     
     setup_build_dir
     
-    # Check if config file exists and generate build tags
+    # Ensure config file exists and generate build tags
     local build_tags="$GO_TAGS"
+    if [ ! -f ".build/.config" ]; then
+        log_info "No config file found, generating default .build/.config..."
+        mkdir -p .build
+        if [ -f "tool/vconfig/main.go" ]; then
+            # Build vconfig tool if not already built
+            if [ ! -f ".build/vconfig" ]; then
+                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
+            fi
+        fi
+        # Generate default config file
+        .build/vconfig -generate-defaults -config .build/.config
+    fi
+    
     if [ -f ".build/.config" ]; then
         log_debug "Using configuration from .build/.config for tests"
         local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
@@ -547,8 +586,21 @@ run_fuzz_tests() {
     log_info "Running fuzz tests on key interfaces..."
     setup_build_dir
     
-    # Check if config file exists and generate build tags
+    # Ensure config file exists and generate build tags
     local build_tags="$GO_TAGS"
+    if [ ! -f ".build/.config" ]; then
+        log_info "No config file found, generating default .build/.config..."
+        mkdir -p .build
+        if [ -f "tool/vconfig/main.go" ]; then
+            # Build vconfig tool if not already built
+            if [ ! -f ".build/vconfig" ]; then
+                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
+            fi
+        fi
+        # Generate default config file
+        .build/vconfig -generate-defaults -config .build/.config
+    fi
+    
     if [ -f ".build/.config" ]; then
         log_debug "Using configuration from .build/.config for fuzz tests"
         local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
@@ -679,8 +731,21 @@ run_benchmarks() {
     log_info "Running performance benchmarks..."
     setup_build_dir
     
-    # Check if config file exists and generate build tags
+    # Ensure config file exists and generate build tags
     local build_tags="$GO_TAGS"
+    if [ ! -f ".build/.config" ]; then
+        log_info "No config file found, generating default .build/.config..."
+        mkdir -p .build
+        if [ -f "tool/vconfig/main.go" ]; then
+            # Build vconfig tool if not already built
+            if [ ! -f ".build/vconfig" ]; then
+                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
+            fi
+        fi
+        # Generate default config file
+        .build/vconfig -generate-defaults -config .build/.config
+    fi
+    
     if [ -f ".build/.config" ]; then
         log_debug "Using configuration from .build/.config for benchmarks"
         local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
@@ -893,7 +958,7 @@ main() {
         if [ "$VCONFIG_SRC_CHANGED" = true ]; then
             log_info "Building vconfig tool..."
             mkdir -p .build
-            (cd tool/vconfig && go build -o ../../.build/vconfig .)
+            go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
         fi
         # When -c flag is used, always run TUI regardless of existing config
         log_info "Running vconfig TUI..."
