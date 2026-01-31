@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
@@ -173,3 +176,64 @@ func (s *Subprocess) HandleMessage(ctx context.Context, msg *Message) (*Message,
 // SetupLogging moved to logging.go
 
 // RunWithDefaults moved to lifecycle.go
+
+// StandardStartupConfig holds configuration for standard subprocess startup
+type StandardStartupConfig struct {
+	DefaultProcessID string
+	LogPrefix        string
+}
+
+// StandardStartup performs the standard startup sequence for subprocesses
+func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger) {
+	// Get process ID from environment or use default
+	processID := os.Getenv("PROCESS_ID")
+	if processID == "" {
+		processID = config.DefaultProcessID
+	}
+	common.Info("%sProcess ID configured: %s", config.LogPrefix, processID)
+
+	// Use a bootstrap logger for initial messages before the full logging system is ready
+	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+	common.Info("%sBootstrap logger created", config.LogPrefix)
+
+	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
+	logLevel := DefaultBuildLogLevel()
+	logDir := DefaultBuildLogDir()
+	logger, err := SetupLogging(processID, logDir, logLevel)
+	if err != nil {
+		bootstrapLogger.Error("%sFailed to setup logging: %v", config.LogPrefix, err)
+		os.Exit(1)
+	}
+	common.Info("%sLogging setup complete with level: %s", config.LogPrefix, logLevel)
+
+	// Create subprocess instance
+	var sp *Subprocess
+
+	// Check if we're running as an RPC subprocess with file descriptors
+	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
+		// Use file descriptors 3 and 4 for RPC communication
+		inputFD := 3
+		outputFD := 4
+
+		// Allow environment override for file descriptors
+		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				inputFD = fd
+			}
+		}
+		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
+			if fd, err := strconv.Atoi(val); err == nil {
+				outputFD = fd
+			}
+		}
+
+		sp = NewWithFDs(processID, inputFD, outputFD)
+	} else {
+		// Use default stdin/stdout for non-RPC mode
+		sp = New(processID)
+	}
+
+	logger.Info("%sSubprocess created with ID: %s", config.LogPrefix, processID)
+
+	return sp, logger
+}
