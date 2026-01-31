@@ -37,6 +37,15 @@
       "method": "build-tag",
       "major_class": "parsing",
       "minor_class": "json"
+    },
+    "CONFIG_LOGGING_REFRESH": {
+      "description": "Remove log directory first to ensure fresh logs",
+      "type": "bool",
+      "default": true,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogRefresh",
+      "major_class": "logging",
+      "minor_class": "path"
     }
   }
 }

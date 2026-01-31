@@ -6,8 +6,9 @@ import (
 
 // These variables are injected at build time via ldflags
 var (
-	buildLogLevel = "INFO"   // Default log level, can be overridden with -ldflags "-X subprocess.buildLogLevel=DEBUG"
-	buildLogDir   = "./logs" // Default log directory, can be overridden with -ldflags "-X subprocess.buildLogDir=/custom/logs"
+	buildLogLevel   = "INFO"   // Default log level, can be overridden with -ldflags "-X subprocess.buildLogLevel=DEBUG"
+	buildLogDir     = "./logs" // Default log directory, can be overridden with -ldflags "-X subprocess.buildLogDir=/custom/logs"
+	buildLogRefresh = "true"   // Default log refresh behavior, can be overridden with -ldflags "-X subprocess.buildLogRefresh=true"
 )
 
 // DefaultBuildLogLevel returns the default log level based on build configuration
@@ -34,4 +35,9 @@ func DefaultBuildLogLevel() common.LogLevel {
 // DefaultBuildLogDir returns the default log directory based on build configuration
 func DefaultBuildLogDir() string {
 	return buildLogDir
+}
+
+// DefaultBuildLogRefresh returns the default log refresh behavior based on build configuration
+func DefaultBuildLogRefresh() bool {
+	return buildLogRefresh == "true"
 }
