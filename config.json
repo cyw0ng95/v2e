@@ -2,8 +2,6 @@
   "broker": {
     "logs_dir": "./logs",
     "log_file": "./logs/broker.log",
-    "rpc_input_fd": 3,
-    "rpc_output_fd": 4,
     "processes": [
       {
         "id": "access",
@@ -53,9 +51,7 @@
   }
   ,
   "proc": {
-    "max_message_size_bytes": 10485760,
-    "rpc_input_fd": 3,
-    "rpc_output_fd": 4
+    "max_message_size_bytes": 10485760
   },
   "local": {
     "cve_db_path": "cve.db",

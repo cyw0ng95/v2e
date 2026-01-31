@@ -9,6 +9,7 @@ import (
 
 	"github.com/cyw0ng95/v2e/cmd/broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // Spawn starts a new subprocess with the given command and arguments.
@@ -257,9 +258,11 @@ func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
 }
 
 // getRPCFileDescriptors returns the configured input and output file descriptor numbers for RPC communication.
-// Defaults to 3 (input) and 4 (output) if not configured.
+// Uses build-time configuration as default if not configured in runtime config.
 func (b *Broker) getRPCFileDescriptors() (inputFD, outputFD int) {
-	inputFD, outputFD = 3, 4
+	// Use build-time defaults as the base defaults
+	inputFD = subprocess.DefaultBuildRPCInputFD()
+	outputFD = subprocess.DefaultBuildRPCOutputFD()
 	if b.config == nil {
 		return
 	}

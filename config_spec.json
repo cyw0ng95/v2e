@@ -64,6 +64,24 @@
       "target": "github.com/cyw0ng95/v2e/cmd/access.buildStaticDir",
       "major_class": "access",
       "minor_class": "path"
+    },
+    "CONFIG_PROC_INPUTFD": {
+      "description": "File descriptor for RPC input",
+      "type": "string",
+      "default": "3",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildRPCInputFD",
+      "major_class": "proc",
+      "minor_class": "fd"
+    },
+    "CONFIG_PROC_OUTPUTFD": {
+      "description": "File descriptor for RPC output",
+      "type": "string",
+      "default": "4",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildRPCOutputFD",
+      "major_class": "proc",
+      "minor_class": "fd"
     }
   }
 }
