@@ -162,6 +162,24 @@
       "target": "github.com/cyw0ng95/v2e/pkg/capec.buildXSDValidation",
       "major_class": "proc",
       "minor_class": "local"
+    },
+    "CONFIG_SESSION_DBPATH": {
+      "description": "Database path for session data",
+      "type": "string",
+      "default": "session.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/meta.buildSessionDBPath",
+      "major_class": "proc",
+      "minor_class": "meta"
+    },
+    "CONFIG_CWE_VIEWURL": {
+      "description": "URL for fetching CWE view data",
+      "type": "string",
+      "default": "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/cwe.buildViewURL",
+      "major_class": "proc",
+      "minor_class": "remote"
     }
   }
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
+	"github.com/cyw0ng95/v2e/pkg/meta"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -335,16 +336,10 @@ func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
 			cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
 		}
 	case "meta":
-		if config.Meta.SessionDBPath != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", config.Meta.SessionDBPath))
-		}
+		cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", meta.DefaultBuildSessionDBPath()))
 	case "remote":
-		if config.Remote.NVDAPIKey != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("NVD_API_KEY=%s", config.Remote.NVDAPIKey))
-		}
-		if config.Remote.ViewFetchURL != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", config.Remote.ViewFetchURL))
-		}
+		// NVD_API_KEY is no longer supported
+		cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", cwe.DefaultBuildViewURL()))
 	case "access":
 		// Note: Static dir is now build-time config, so broker doesn't override it with runtime config
 		// The access service will use its build-time static dir, but broker can still pass runtime value as override

@@ -133,7 +133,7 @@ func TestSendMessage_BatchedWriter_LargePayload(t *testing.T) {
 	largePayload := map[string]string{
 		"data": largeString,
 	}
-	
+
 	largeJSON, err := json.Marshal(largePayload)
 	if err != nil {
 		t.Fatalf("Failed to marshal large payload: %v", err)

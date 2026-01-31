@@ -55,13 +55,12 @@ type LocalConfig struct {
 
 // MetaConfig holds meta service settings
 type MetaConfig struct {
-	SessionDBPath string `json:"session_db_path,omitempty"`
+	// Session DB path is now build-time only, no runtime config fields
 }
 
 // RemoteConfig holds remote service settings
 type RemoteConfig struct {
-	NVDAPIKey    string `json:"nvd_api_key,omitempty"`
-	ViewFetchURL string `json:"view_fetch_url,omitempty"`
+	// Remote config is now build-time only, no runtime config fields
 }
 
 // AssetsConfig holds default asset paths used by importers
@@ -98,10 +97,6 @@ type ClientConfig struct {
 
 // BrokerConfig holds broker-specific configuration
 type BrokerConfig struct {
-	// LogFile is the path to the log file
-	LogFile string `json:"log_file,omitempty"`
-	// LogsDir is the directory where logs are stored
-	LogsDir string `json:"logs_dir,omitempty"`
 	// Authentication settings for RPC endpoints
 	Authentication AuthenticationConfig `json:"authentication,omitempty"`
 	// Optional RPC file descriptor overrides for broker-managed processes
