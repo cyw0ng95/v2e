@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/transport"
+	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -322,15 +325,9 @@ func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
 	}
 	switch processID {
 	case "local":
-		if config.Local.CVEDBPath != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", config.Local.CVEDBPath))
-		}
-		if config.Local.CWEDBPath != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", config.Local.CWEDBPath))
-		}
-		if config.Local.CAPECDBPath != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", config.Local.CAPECDBPath))
-		}
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", cve.DefaultBuildCVEDBPath()))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", cwe.DefaultBuildCWEDBPath()))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", capec.DefaultBuildCAPECDBPath()))
 		if config.Capec.StrictXSDValidation {
 			cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
 		}

@@ -87,8 +87,7 @@ func TestLoadConfig_EdgeCases(t *testing.T) {
 				tmpDir := t.TempDir()
 				configFile := filepath.Join(tmpDir, "config.json")
 				configData := `{
-					"server": {"address": ":9000"},
-					"local": {"cve_db_path": "/path/to/数据库.db", "cwe_db_path": "/path/to/数据.cwe"}
+					"server": {"address": ":9000"}
 				}`
 				if err := os.WriteFile(configFile, []byte(configData), 0644); err != nil {
 					t.Fatalf("Failed to create unicode config file: %v", err)
@@ -279,11 +278,7 @@ func TestConfig_StructureIntegrity(t *testing.T) {
 			RPCInputFD:          3,
 			RPCOutputFD:         4,
 		},
-		Local: LocalConfig{
-			CVEDBPath:   "/data/cve.db",
-			CWEDBPath:   "/data/cwe.db",
-			CAPECDBPath: "/data/capec.db",
-		},
+		Local: LocalConfig{}, // Local config is now build-time only
 		Meta: MetaConfig{
 			SessionDBPath: "/data/session.db",
 		},
@@ -334,9 +329,7 @@ func TestConfig_StructureIntegrity(t *testing.T) {
 	if loadedConfig.Proc.MaxMessageSizeBytes != originalConfig.Proc.MaxMessageSizeBytes {
 		t.Errorf("Proc MaxMessageSizeBytes mismatch: expected %d, got %d", originalConfig.Proc.MaxMessageSizeBytes, loadedConfig.Proc.MaxMessageSizeBytes)
 	}
-	if loadedConfig.Local.CVEDBPath != originalConfig.Local.CVEDBPath {
-		t.Errorf("Local CVEDBPath mismatch: expected %s, got %s", originalConfig.Local.CVEDBPath, loadedConfig.Local.CVEDBPath)
-	}
+	// Skip local config checks as they are now build-time only
 	if loadedConfig.Logging.Level != originalConfig.Logging.Level {
 		t.Errorf("Logging Level mismatch: expected %s, got %s", originalConfig.Logging.Level, loadedConfig.Logging.Level)
 	}

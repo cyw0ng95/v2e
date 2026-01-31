@@ -99,6 +99,33 @@
       "target": "github.com/cyw0ng95/v2e/cmd/broker.core.buildBootBins",
       "major_class": "broker",
       "minor_class": "process"
+    },
+    "CONFIG_CVE_DBPATH": {
+      "description": "Database path for CVE data",
+      "type": "string",
+      "default": "cve.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/cve.buildCVEDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_CWE_DBPATH": {
+      "description": "Database path for CWE data",
+      "type": "string",
+      "default": "cwe.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/cwe.buildCWEDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_CAPEC_DBPATH": {
+      "description": "Database path for CAPEC data",
+      "type": "string",
+      "default": "capec.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildCAPECDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
     }
   }
 }

@@ -13,7 +13,7 @@ func buildFullConfig() *Config {
 		Client: ClientConfig{URL: "http://client"},
 		Broker: BrokerConfig{LogFile: "broker.log", LogsDir: "logs", DetectBins: true},
 		Proc:   ProcConfig{MaxMessageSizeBytes: 1024, RPCInputFD: 3, RPCOutputFD: 4},
-		Local:  LocalConfig{CVEDBPath: "cve.db", CWEDBPath: "cwe.db", CAPECDBPath: "capec.db"},
+		Local:  LocalConfig{}, // Local config is now build-time only
 		Meta:   MetaConfig{SessionDBPath: "session.db"},
 		Remote: RemoteConfig{NVDAPIKey: "key", ViewFetchURL: "http://views"},
 		Assets: AssetsConfig{CWERawPath: "cwe.json", CAPECXMLPath: "capec.xml", CAPECXSDPath: "capec.xsd"},

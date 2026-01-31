@@ -11,11 +11,6 @@
   "proc": {
     "max_message_size_bytes": 10485760
   },
-  "local": {
-    "cve_db_path": "cve.db",
-    "cwe_db_path": "cwe.db",
-    "capec_db_path": "capec.db"
-  },
   "meta": {
     "session_db_path": "session.db"
   },

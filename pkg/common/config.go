@@ -50,9 +50,7 @@ type ProcConfig struct {
 
 // LocalConfig holds local service settings such as DB paths
 type LocalConfig struct {
-	CVEDBPath   string `json:"cve_db_path,omitempty"`
-	CWEDBPath   string `json:"cwe_db_path,omitempty"`
-	CAPECDBPath string `json:"capec_db_path,omitempty"`
+	// Local config is now build-time only, no runtime config fields
 }
 
 // MetaConfig holds meta service settings

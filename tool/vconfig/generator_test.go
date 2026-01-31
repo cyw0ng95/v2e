@@ -48,7 +48,7 @@ func TestGenerateBuildFlagsDefaultConfig(t *testing.T) {
 
 func TestGenerateLdflags(t *testing.T) {
 	config := GetDefaultConfig()
-	
+
 	// Make sure CONFIG_MIN_LOG_LEVEL has the proper method and target
 	for key, option := range config.Features {
 		if key == "CONFIG_MIN_LOG_LEVEL" {
@@ -67,7 +67,7 @@ func TestGenerateLdflags(t *testing.T) {
 
 	// Expect the ldflags to contain the log level injection
 	expectedLdflag := "-X 'subprocess.buildLogLevel=DEBUG'"
-	if ldflags != expectedLdflag {
-		t.Errorf("Expected '%s' ldflag for config with DEBUG log level, got '%s'", expectedLdflag, ldflags)
+	if !strings.Contains(ldflags, expectedLdflag) {
+		t.Errorf("Expected ldflags to contain '%s', got '%s'", expectedLdflag, ldflags)
 	}
 }
