@@ -16,3 +16,14 @@ func TestDefaultBuildLogLevel(t *testing.T) {
 		t.Errorf("Expected default log level to be INFO, got %v", level)
 	}
 }
+
+func TestDefaultBuildLogDir(t *testing.T) {
+	// This test verifies that the default log directory is ./logs
+	// In a real build with ldflags, this could be different
+	dir := DefaultBuildLogDir()
+
+	// By default, without ldflags injection, it should be ./logs
+	if dir != "./logs" {
+		t.Errorf("Expected default log directory to be ./logs, got %s", dir)
+	}
+}

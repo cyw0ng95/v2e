@@ -10,6 +10,13 @@
       "values": ["DEBUG", "INFO", "WARN", "ERROR"],
       "method": "ldflags",
       "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogLevel"
+    },
+    "CONFIG_LOGGING_DIR": {
+      "description": "Directory for log files",
+      "type": "string",
+      "default": "./logs",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogDir"
     }
   }
 }

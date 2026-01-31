@@ -66,14 +66,17 @@ func NewService(defaultID string) (*Service, error) {
 		}
 	}
 
-	// Setup Logger - use build-time configured log level only (no runtime config overrides)
+	// Setup Logger - use build-time configured log level and directory (no runtime config overrides for these)
 	logLevel := DefaultBuildLogLevel()
+	logDir := DefaultBuildLogDir()
 
-	logDir := common.DefaultLogsDir
-	if config.Logging.Dir != "" {
-		logDir = config.Logging.Dir
-	} else if config.Broker.LogsDir != "" {
-		logDir = config.Broker.LogsDir
+	// Only use runtime config if build-time config is default
+	if DefaultBuildLogDir() == "./logs" {
+		if config.Logging.Dir != "" {
+			logDir = config.Logging.Dir
+		} else if config.Broker.LogsDir != "" {
+			logDir = config.Broker.LogsDir
+		}
 	}
 
 	logger, err := SetupLogging(flags.ProcessID, logDir, logLevel)
