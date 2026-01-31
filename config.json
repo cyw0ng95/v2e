@@ -50,9 +50,6 @@
       }
     ]
   },
-  "logging": {
-    "dir": "./logs"
-  },
   "access": {
     "rpc_timeout_seconds": 30,
     "shutdown_timeout_seconds": 10,

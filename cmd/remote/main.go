@@ -40,10 +40,6 @@ func main() {
 	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
 	logLevel := subprocess.DefaultBuildLogLevel()
 	logDir := subprocess.DefaultBuildLogDir()
-	// Only use runtime config if build-time config is default
-	if subprocess.DefaultBuildLogDir() == "./logs" {
-		// No runtime config for remote service, just use the default
-	}
 	logger, err := subprocess.SetupLogging(processID, logDir, logLevel)
 	if err != nil {
 		bootstrapLogger.Error(LogMsgFailedToSetupLogging, err)

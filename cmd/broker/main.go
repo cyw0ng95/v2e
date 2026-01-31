@@ -53,12 +53,6 @@ func main() {
 	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
 	logLevel := subprocess.DefaultBuildLogLevel()
 	logDir := subprocess.DefaultBuildLogDir()
-	// Only use runtime config if build-time config is default
-	if subprocess.DefaultBuildLogDir() == "./logs" {
-		if config.Broker.LogsDir != "" {
-			logDir = config.Broker.LogsDir
-		}
-	}
 	logger, err := subprocess.SetupLogging("broker", logDir, logLevel)
 	if err != nil {
 		fallbackLogger := common.NewLogger(os.Stderr, "[BROKER] ", logLevel)

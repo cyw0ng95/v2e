@@ -70,15 +70,6 @@ func NewService(defaultID string) (*Service, error) {
 	logLevel := DefaultBuildLogLevel()
 	logDir := DefaultBuildLogDir()
 
-	// Only use runtime config if build-time config is default
-	if DefaultBuildLogDir() == "./logs" {
-		if config.Logging.Dir != "" {
-			logDir = config.Logging.Dir
-		} else if config.Broker.LogsDir != "" {
-			logDir = config.Broker.LogsDir
-		}
-	}
-
 	logger, err := SetupLogging(flags.ProcessID, logDir, logLevel)
 	if err != nil {
 		// Fallback to stderr logger

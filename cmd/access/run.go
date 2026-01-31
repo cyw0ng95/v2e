@@ -24,12 +24,6 @@ func runAccess() {
 	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
 	logLevel := subprocess.DefaultBuildLogLevel()
 	logDir := subprocess.DefaultBuildLogDir()
-	// Only use runtime config if build-time config is default
-	if subprocess.DefaultBuildLogDir() == "./logs" {
-		if config.Logging.Dir != "" {
-			logDir = config.Logging.Dir
-		}
-	}
 	logger, err := subprocess.SetupLogging("access", logDir, logLevel)
 	if err != nil {
 		common.NewLogger(os.Stderr, "[ACCESS] ", logLevel).Error("Failed to setup logging: %v", err)
