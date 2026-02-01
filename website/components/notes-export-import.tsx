@@ -159,8 +159,8 @@ const NotesExportImport: React.FC = () => {
       for (const card of importData.memoryCards) {
         await rpcClient.createMemoryCard({
           bookmark_id: card.bookmark_id,
-          front_content: card.front_content,
-          back_content: card.back_content,
+          front: card.front_content,
+          back: card.back_content,
           card_type: card.card_type,
           author: card.author,
           is_private: card.is_private,
