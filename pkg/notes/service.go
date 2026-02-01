@@ -666,6 +666,8 @@ func (s *MemoryCardService) CreateMemoryCard(ctx context.Context, bookmarkID uin
 		BookmarkID: bookmarkID,
 		Front:      front,
 		Back:       back,
+		Status:     string(StatusNew),
+		Content:    "{}",
 		EaseFactor: 2.5,
 		Interval:   1,
 		Repetition: 0,
@@ -773,13 +775,34 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 	nextReview := time.Now().AddDate(0, 0, card.Interval)
 	card.NextReview = &nextReview
 
-	// Determine logical next status from repetition/mastery
+	// Determine logical next status from current state and repetition
 	var nextStatus CardStatus
-	// Simple rule: if repetition >= 5 -> mastered, else reviewed
-	if card.Repetition >= 5 {
-		nextStatus = StatusMastered
+	currentStatus := CardStatus(card.Status)
+
+	// For new cards, move to learning state
+	if currentStatus == StatusNew {
+		nextStatus = StatusLearning
+	} else if currentStatus == StatusLearning {
+		// Cards in learning transition to reviewed or mastered if enough repetitions
+		if card.Repetition >= 5 {
+			nextStatus = StatusMastered
+		} else {
+			nextStatus = StatusReviewed
+		}
+	} else if currentStatus == StatusReviewed {
+		// Reviewed cards can go back to learning (more practice) or mastered (if enough repetitions)
+		if card.Repetition >= 5 {
+			nextStatus = StatusMastered
+		} else {
+			nextStatus = StatusLearning
+		}
 	} else {
-		nextStatus = StatusReviewed
+		// Default fallback for other states
+		if card.Repetition >= 5 {
+			nextStatus = StatusMastered
+		} else {
+			nextStatus = StatusReviewed
+		}
 	}
 
 	// Persist changes transactionally using optimistic version bump

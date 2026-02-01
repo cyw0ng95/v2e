@@ -456,11 +456,11 @@ func TestMemoryCardService(t *testing.T) {
 	})
 
 	t.Run("CreateMemoryCardFull and CRUD fields", func(t *testing.T) {
-		card, err := memoryCardService.CreateMemoryCardFull(ctx, bookmark.ID, "FrontQ", "BackA", "Major", "Minor", "active", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hello TipTap"}]}]}`, "basic", "author1", false, map[string]any{"foo": "bar"})
+		card, err := memoryCardService.CreateMemoryCardFull(ctx, bookmark.ID, "FrontQ", "BackA", "Major", "Minor", "new", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hello TipTap"}]}]}`, "basic", "author1", false, map[string]any{"foo": "bar"})
 		if err != nil {
 			t.Fatalf("Failed to create memory card (full): %v", err)
 		}
-		if card.MajorClass != "Major" || card.MinorClass != "Minor" || card.Status != "active" {
+		if card.MajorClass != "Major" || card.MinorClass != "Minor" || card.Status != "new" {
 			t.Errorf("Classification fields not set correctly: %+v", card)
 		}
 		if card.Content == "" {

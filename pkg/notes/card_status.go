@@ -29,6 +29,8 @@ var allowedTransitions = map[CardStatus]map[CardStatus]bool{
 	},
 	StatusLearning: {
 		StatusDue:      true,
+		StatusReviewed: true,
+		StatusMastered: true,
 		StatusArchived: true,
 	},
 	StatusDue: {
