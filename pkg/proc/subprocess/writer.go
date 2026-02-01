@@ -69,9 +69,9 @@ func (s *Subprocess) messageWriter() {
 	}
 }
 
-// flushBatch writes all batched messages in a single operation
-// Principle 13: Use bufio.Writer for efficient batch writing
-// Principle 14: Pool bufio.Writers to reduce allocations
+// flushBatch writes all batched messages in a single operation.
+// Uses bufio.Writer for efficient batch writing (Principle 13).
+// Pools bufio.Writers to reduce allocations (Principle 14).
 func (s *Subprocess) flushBatch(batch [][]byte) {
 	if len(batch) == 0 {
 		return
@@ -85,20 +85,15 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	writer.Reset(s.output)
 	defer writerPool.Put(writer)
 
-	// Compute total and max sizes to decide strategy
+	// Compute total size to decide strategy
 	totalSize := 0
-	maxMsgSize := 0
 	for _, b := range batch {
-		sz := len(b) + 1 // include newline
-		totalSize += sz
-		if sz > maxMsgSize {
-			maxMsgSize = sz
-		}
+		totalSize += len(b) + 1 // include newline
 	}
 
-	// If any single message is very large, or totalSize exceeds writer buffer,
-	// write messages directly to avoid allocating a joined buffer (which copies data).
-	if maxMsgSize >= defaultWriterBufSize || totalSize >= 4*defaultWriterBufSize {
+	// If total size exceeds 4x writer buffer, write directly to avoid large allocations.
+	// This handles the edge case of very large messages or batches.
+	if totalSize >= 4*defaultWriterBufSize {
 		for _, data := range batch {
 			if _, err := writer.Write(data); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to write message: %v\n", err)
@@ -108,43 +103,24 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 				fmt.Fprintf(os.Stderr, "Failed to write newline: %v\n", err)
 			}
 		}
-
 		if err := writer.Flush(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to flush batch: %v\n", err)
 		}
 		return
 	}
 
-	// For small batches, write directly to avoid allocation from joining
-	if len(batch) <= 4 {
-		for _, data := range batch {
-			if _, err := writer.Write(data); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to write message: %v\n", err)
-				continue
-			}
-			if err := writer.WriteByte('\n'); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to write newline: %v\n", err)
-			}
-		}
-
-		if err := writer.Flush(); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to flush batch: %v\n", err)
-		}
-		return
-	}
-
-	// Attempt to join batch into a single buffer and write once.
+	// Normal case: join batch into single buffer for efficient writing.
 	// Use a pooled buffer to avoid allocating on each flush.
 	bufPtr := batchJoinPool.Get().(*[]byte)
 	buf := *bufPtr
+
+	// Pre-allocate with known size to avoid reslices
+	if cap(buf) < totalSize {
+		buf = make([]byte, 0, totalSize)
+	}
 	buf = buf[:0]
 
-	// Pre-allocate an estimate to reduce reslices
-	estSize := totalSize
-	if cap(buf) < estSize {
-		buf = make([]byte, 0, estSize)
-	}
-
+	// Join all messages with newlines
 	for i, b := range batch {
 		buf = append(buf, b...)
 		if i < len(batch)-1 {
@@ -157,7 +133,6 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 	// Write the joined buffer in a single call
 	if _, err := writer.Write(buf); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write batch: %v\n", err)
-		// Return the buffer to pool and continue
 		batchJoinPool.Put(bufPtr)
 		return
 	}
@@ -166,7 +141,7 @@ func (s *Subprocess) flushBatch(batch [][]byte) {
 		fmt.Fprintf(os.Stderr, "Failed to flush batch: %v\n", err)
 	}
 
-	// Reset and return buffer to pool (reuse underlying array)
+	// Reset and return buffer to pool for reuse
 	*bufPtr = buf[:0]
 	batchJoinPool.Put(bufPtr)
 }

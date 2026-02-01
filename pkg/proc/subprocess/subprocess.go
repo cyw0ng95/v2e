@@ -115,6 +115,19 @@ func (s *Subprocess) lookupHandler(msg *Message) (Handler, bool) {
 	return handler, exists
 }
 
+// newErrorResponse creates an error message response for a given request message.
+// It copies CorrelationID from the original message and sets Target to the original Source.
+func (s *Subprocess) newErrorResponse(originalMsg *Message, errMsg string) *Message {
+	return &Message{
+		Type:          MessageTypeError,
+		ID:            originalMsg.ID,
+		Error:         errMsg,
+		Source:        s.ID,
+		CorrelationID: originalMsg.CorrelationID,
+		Target:        originalMsg.Source,
+	}
+}
+
 // handleMessage processes a single message
 func (s *Subprocess) handleMessage(msg *Message) {
 	defer s.wg.Done()
@@ -122,15 +135,7 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	handler, exists := s.lookupHandler(msg)
 	if !exists {
 		// No handler found, send error
-		// Principle 15: Avoid fmt.Sprintf in hot paths
-		errMsg := &Message{
-			Type:          MessageTypeError,
-			ID:            msg.ID,
-			Error:         "no handler found for message: " + msg.ID,
-			Source:        s.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
+		errMsg := s.newErrorResponse(msg, "no handler found for message: "+msg.ID)
 		_ = s.sendMessage(errMsg)
 		return
 	}
@@ -139,14 +144,7 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	response, err := handler(s.ctx, msg)
 	if err != nil {
 		// Send error response
-		errMsg := &Message{
-			Type:          MessageTypeError,
-			ID:            msg.ID,
-			Error:         err.Error(),
-			Source:        s.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
+		errMsg := s.newErrorResponse(msg, err.Error())
 		_ = s.sendMessage(errMsg)
 		return
 	}

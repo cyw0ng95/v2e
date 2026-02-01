@@ -13,28 +13,8 @@ import (
 
 	"github.com/cyw0ng95/v2e/cmd/broker/perf"
 	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/proc"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
-
-// brokerRouteBridge captures the minimal broker surface needed by perf.Optimizer.
-type brokerRouteBridge interface {
-	RouteMessage(msg *proc.Message, sourceProcess string) error
-	ProcessMessage(msg *proc.Message) error
-}
-
-// brokerRouter adapts the core Broker to the routing.Router interface used by perf.Optimizer.
-type brokerRouter struct {
-	b brokerRouteBridge
-}
-
-func (r *brokerRouter) Route(msg *proc.Message, sourceProcess string) error {
-	return r.b.RouteMessage(msg, sourceProcess)
-}
-
-func (r *brokerRouter) ProcessBrokerMessage(msg *proc.Message) error {
-	return r.b.ProcessMessage(msg)
-}
 
 func main() {
 	// No config needed since runtime config is disabled
@@ -68,7 +48,7 @@ func main() {
 	}
 
 	// Create and attach an optimizer using broker config (optional tuning)
-	routerAdapter := &brokerRouter{b: broker}
+	// Broker directly satisfies routing.Router interface
 
 	optConfig := perf.Config{
 		BufferCap:      1000,                   // Default buffer capacity
@@ -81,7 +61,7 @@ func main() {
 		AdaptationFreq: 10 * time.Second,       // Default adaptation frequency
 	}
 
-	opt := perf.NewWithConfig(routerAdapter, optConfig)
+	opt := perf.NewWithConfig(broker, optConfig)
 	opt.SetLogger(logger)
 
 	if false { // Adaptive optimization disabled by default

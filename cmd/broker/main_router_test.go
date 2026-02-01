@@ -6,7 +6,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
-// stubCoreBroker captures calls for brokerRouter delegation tests.
+// stubCoreBroker captures calls for broker routing tests.
 type stubCoreBroker struct {
 	routeCalled   bool
 	processCalled bool
@@ -27,22 +27,32 @@ func (s *stubCoreBroker) ProcessMessage(msg *proc.Message) error {
 	return nil
 }
 
-func TestBrokerRouterDelegates(t *testing.T) {
+func (s *stubCoreBroker) ProcessBrokerMessage(msg *proc.Message) error {
+	s.processCalled = true
+	s.lastMsg = msg
+	return nil
+}
+
+func TestBrokerRoutingSatisfiesRouterInterface(t *testing.T) {
 	stub := &stubCoreBroker{}
-	r := &brokerRouter{b: stub}
 	msg := &proc.Message{ID: "123", Target: "broker"}
 
-	if err := r.Route(msg, "source-proc"); err != nil {
-		t.Fatalf("Route returned error: %v", err)
+	// Test Route method
+	if err := stub.RouteMessage(msg, "source-proc"); err != nil {
+		t.Fatalf("RouteMessage returned error: %v", err)
 	}
 	if !stub.routeCalled || stub.lastSource != "source-proc" || stub.lastMsg != msg {
 		t.Fatalf("RouteMessage not invoked as expected: %+v", stub)
 	}
 
-	if err := r.ProcessBrokerMessage(msg); err != nil {
+	// Reset and test ProcessBrokerMessage
+	stub.routeCalled = false
+	stub.processCalled = false
+
+	if err := stub.ProcessBrokerMessage(msg); err != nil {
 		t.Fatalf("ProcessBrokerMessage returned error: %v", err)
 	}
 	if !stub.processCalled || stub.lastMsg != msg {
-		t.Fatalf("ProcessMessage not invoked as expected: %+v", stub)
+		t.Fatalf("ProcessBrokerMessage not invoked as expected: %+v", stub)
 	}
 }

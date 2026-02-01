@@ -65,56 +65,72 @@ func (b *Broker) reapProcess(p *Process) {
 	b.sendMessageInternal(event)
 	p.mu.Lock()
 
+	// Handle restart if configured
 	if p.restartConfig != nil && p.restartConfig.Enabled {
-		if p.restartConfig.MaxRestarts >= 0 && p.restartConfig.RestartCount >= p.restartConfig.MaxRestarts {
-			b.logger.Warn("Max restarts exceeded for process %s (%d), stopping restarts", p.info.ID, p.restartConfig.MaxRestarts)
-			p.mu.Unlock()
-			return
-		}
-
-		p.restartConfig.RestartCount++
-
-		processID := p.info.ID
-		command := p.restartConfig.Command
-		args := p.restartConfig.Args
-		isRPC := p.restartConfig.IsRPC
-		maxRestarts := p.restartConfig.MaxRestarts
-		restartCount := p.restartConfig.RestartCount
-
 		p.mu.Unlock()
-
-		b.logger.Info("Restarting process %s: attempt %d/%d", processID, restartCount, maxRestarts)
-
-		b.mu.Lock()
-		delete(b.processes, processID)
-		b.mu.Unlock()
-
-		time.Sleep(1 * time.Second)
-
-		var restartErr error
-		if isRPC {
-			_, restartErr = b.SpawnRPCWithRestart(processID, command, maxRestarts, args...)
-		} else {
-			_, restartErr = b.SpawnWithRestart(processID, command, maxRestarts, args...)
-		}
-
-		if restartErr != nil {
-			b.logger.Warn("Failed to restart process %s: %v", processID, restartErr)
-		} else {
-			b.mu.RLock()
-			if newProc, exists := b.processes[processID]; exists {
-				newProc.mu.Lock()
-				if newProc.restartConfig != nil {
-					newProc.restartConfig.RestartCount = restartCount
-				}
-				newProc.mu.Unlock()
-			}
-			b.mu.RUnlock()
-		}
+		b.restartProcess(p)
 		return
 	}
 
 	p.mu.Unlock()
+}
+
+// restartProcess attempts to restart a process according to its restart configuration.
+func (b *Broker) restartProcess(p *Process) {
+	p.mu.Lock()
+
+	// Check if max restarts exceeded
+	if p.restartConfig.MaxRestarts >= 0 && p.restartConfig.RestartCount >= p.restartConfig.MaxRestarts {
+		b.logger.Warn("Max restarts exceeded for process %s (%d), stopping restarts", p.info.ID, p.restartConfig.MaxRestarts)
+		p.mu.Unlock()
+		return
+	}
+
+	p.restartConfig.RestartCount++
+
+	// Capture restart config before unlocking
+	processID := p.info.ID
+	command := p.restartConfig.Command
+	args := p.restartConfig.Args
+	isRPC := p.restartConfig.IsRPC
+	maxRestarts := p.restartConfig.MaxRestarts
+	restartCount := p.restartConfig.RestartCount
+
+	p.mu.Unlock()
+
+	b.logger.Info("Restarting process %s: attempt %d/%d", processID, restartCount, maxRestarts)
+
+	// Delete old process from map
+	b.mu.Lock()
+	delete(b.processes, processID)
+	b.mu.Unlock()
+
+	// Delay before restart
+	time.Sleep(1 * time.Second)
+
+	// Spawn new process
+	var restartErr error
+	if isRPC {
+		_, restartErr = b.SpawnRPCWithRestart(processID, command, maxRestarts, args...)
+	} else {
+		_, restartErr = b.SpawnWithRestart(processID, command, maxRestarts, args...)
+	}
+
+	if restartErr != nil {
+		b.logger.Warn("Failed to restart process %s: %v", processID, restartErr)
+		return
+	}
+
+	// Copy restart count to new process
+	b.mu.RLock()
+	if newProc, exists := b.processes[processID]; exists {
+		newProc.mu.Lock()
+		if newProc.restartConfig != nil {
+			newProc.restartConfig.RestartCount = restartCount
+		}
+		newProc.mu.Unlock()
+	}
+	b.mu.RUnlock()
 }
 
 // Kill terminates a process by ID.

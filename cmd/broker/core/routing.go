@@ -30,6 +30,7 @@ func (b *Broker) ReceiveMessage(ctx context.Context) (*proc.Message, error) {
 }
 
 // RouteMessage routes a message to its target process or handles it locally.
+// Satisfies routing.Router interface via Route() alias below.
 func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 	if msg.Source == "" {
 		msg.Source = sourceProcess
@@ -76,6 +77,13 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 	return b.SendMessage(msg)
 }
 
+// Route satisfies the routing.Router interface.
+// It routes a message to its target process or handles it locally.
+// Delegates to RouteMessage to maintain backward compatibility.
+func (b *Broker) Route(msg *proc.Message, sourceProcess string) error {
+	return b.RouteMessage(msg, sourceProcess)
+}
+
 // ProcessMessage processes a message directed at the broker.
 func (b *Broker) ProcessMessage(msg *proc.Message) error {
 	if msg.Type != proc.MessageTypeRequest {
@@ -111,4 +119,10 @@ func (b *Broker) ProcessMessage(msg *proc.Message) error {
 	}
 
 	return b.RouteMessage(respMsg, "broker")
+}
+
+// ProcessBrokerMessage processes a message directed at the broker.
+// Satisfies routing.Router interface. Delegates to ProcessMessage.
+func (b *Broker) ProcessBrokerMessage(msg *proc.Message) error {
+	return b.ProcessMessage(msg)
 }
