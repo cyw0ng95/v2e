@@ -16,8 +16,15 @@ v2e (Vulnerabilities Viewer Engine) is a broker-first microservices system for m
 ./build.sh -f     # Fuzz tests (5 seconds per target)
 ./build.sh -m     # Benchmarks with reporting
 ./build.sh -p     # Build and package binaries + assets
-./build.sh -r     # Development mode (auto-restart on changes)
+./build.sh -r     # Run full system: broker + all subprocesses + frontend dev server
 ./build.sh -c     # Run vconfig TUI for configuration
+
+# Development and testing with ./build.sh -r
+# This command starts:
+#   - Broker with all subprocesses (access, local, meta, remote, sysmon)
+#   - Frontend dev server (npm run dev in website/)
+#   - All services run together for integration testing and log analysis
+# Press Ctrl+C to stop all services cleanly
 
 # Containerized development (macOS always uses container)
 ./runenv.sh -t    # Run tests in container
@@ -119,6 +126,14 @@ func main() {
 - **Must** start broker/access gateway - never spawn subprocesses directly
 - Test via `/restful/rpc` endpoint
 - **NO remote API calls** - use test fixtures and mock data
+
+### Running Full System for Testing
+Use `./build.sh -r` to run the complete system for integration testing and log analysis:
+- Broker spawns all subprocesses (access, local, meta, remote, sysmon)
+- Frontend dev server runs on http://localhost:3000
+- Logs are written to `.build/package/logs/` for analysis
+- Press Ctrl+C to stop all services cleanly
+- This is the recommended way to verify changes before committing
 
 ### CI Configuration
 `.github/workflows/test.yml` defines: unit-tests, fuzz-tests, build-and-package, performance-benchmarks jobs.
@@ -256,3 +271,4 @@ Located in `tool/migrations/` with:
 | Service RPC specs | `cmd/*/service.md` |
 | Migrations | `tool/migrations/` |
 | Assets (data files) | `assets/` |
+| Runtime logs | `.build/package/logs/` |
