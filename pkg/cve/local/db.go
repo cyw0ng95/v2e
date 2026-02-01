@@ -65,7 +65,7 @@ func NewOptimizedDB(dbPath string) (*DB, error) {
 	}
 
 	// Set connection pool parameters
-	sqlDB.SetMaxIdleConns(20)   // Increased idle connections for concurrent requests
+	sqlDB.SetMaxIdleConns(20) // Increased idle connections for concurrent requests
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
@@ -112,7 +112,7 @@ func NewDB(dbPath string) (*DB, error) {
 	}
 
 	// Set connection pool parameters
-	sqlDB.SetMaxIdleConns(20)   // Increased idle connections for concurrent requests
+	sqlDB.SetMaxIdleConns(20) // Increased idle connections for concurrent requests
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
@@ -256,7 +256,7 @@ func (d *DB) GetCVE(cveID string) (*cve.CVEItem, error) {
 // ListCVEs retrieves CVEs with pagination
 func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 	var records []CVERecord
-	
+
 	// Retry logic for database locking issues
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -272,7 +272,7 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 		// For other errors or final attempt, return immediately
 		return nil, err
 	}
-	
+
 	// Pre-allocate with exact capacity to avoid re-allocations
 	cves := make([]cve.CVEItem, len(records))
 	for i, record := range records {
@@ -280,14 +280,14 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 			return nil, err
 		}
 	}
-	
+
 	return cves, nil
 }
 
 // Count returns the total number of CVEs in the database
 func (d *DB) Count() (int64, error) {
 	var count int64
-	
+
 	// Retry logic for database locking issues
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -303,7 +303,7 @@ func (d *DB) Count() (int64, error) {
 		// For other errors or final attempt, return immediately
 		return 0, err
 	}
-	
+
 	return count, nil
 }
 

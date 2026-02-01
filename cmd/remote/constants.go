@@ -4,7 +4,7 @@ const (
 	// Log messages
 	LogMsgFailedToSetupLogging = "[remote] Failed to setup logging: %v"
 	LogMsgServiceStarted       = "[remote] CVE remote service started"
-	
+
 	// Error messages
 	ErrMsgFailedDownloadArchive = "failed to download archive: %v"
 	ErrMsgUnexpectedHTTPStatus  = "unexpected HTTP status: %s"
@@ -18,26 +18,26 @@ const (
 	ErrMsgFailedFetchCount      = "failed to fetch CVE count: %v"
 	ErrMsgFailedMarshalResult   = "failed to marshal result: %v"
 	ErrMsgFailedFetchCVEs       = "failed to fetch CVEs: %v"
-	
+
 	// Service lifecycle messages
 	LogMsgServiceReady            = "[remote] Remote service ready and accepting requests"
 	LogMsgServiceShutdownStarting = "[remote] Remote service shutdown starting"
 	LogMsgServiceShutdownComplete = "[remote] Remote service shutdown completed"
-	
+
 	// Process configuration messages
 	LogMsgProcessIDConfigured    = "[remote] Process ID configured: %s"
 	LogMsgBootstrapLoggerCreated = "[remote] Bootstrap logger created"
 	LogMsgLoggingSetupComplete   = "[remote] Logging setup completed with level: %v"
 	LogMsgSubprocessCreated      = "[remote] Subprocess created with ID: %s"
-	
+
 	// API configuration messages
 	LogMsgAPIKeyDetected = "[remote] NVD API key detected in environment"
 	LogMsgAPIKeyNotSet   = "[remote] NVD API key not set in environment"
 	LogMsgFetcherCreated = "[remote] CVE fetcher created with API key: %t"
-	
+
 	// RPC handler messages
 	LogMsgRPCHandlerRegistered = "[remote] RPC handler registered: %s"
-	
+
 	// CVE operation messages
 	LogMsgStartingGetCVEByID = "[remote] Starting RPCGetCVEByID request for CVE ID: %s"
 	LogMsgGetCVEByIDSuccess  = "[remote] RPCGetCVEByID completed successfully for CVE ID: %s"
@@ -51,7 +51,7 @@ const (
 	LogMsgStartingFetchViews = "[remote] Starting RPCFetchViews request with startIndex: %d, resultsPerPage: %d"
 	LogMsgFetchViewsSuccess  = "[remote] RPCFetchViews completed successfully, returned: %d views"
 	LogMsgFetchViewsFailed   = "[remote] RPCFetchViews failed, error: %v"
-	
+
 	// NVD API interaction messages
 	LogMsgDownloadingArchive   = "[remote] Downloading archive from URL: %s"
 	LogMsgDownloadSuccess      = "[remote] Archive downloaded successfully"
@@ -79,7 +79,7 @@ const (
 	LogMsgRateLimitEncountered = "[remote] Rate limit encountered, waiting before retry"
 	LogMsgRateLimitRetry       = "[remote] Retrying after rate limit delay"
 	LogMsgRateLimitExceeded    = "[remote] Rate limit exceeded permanently"
-	
+
 	// Caching messages
 	LogMsgCacheHit   = "[remote] Cache hit for request: %s"
 	LogMsgCacheMiss  = "[remote] Cache miss for request: %s"

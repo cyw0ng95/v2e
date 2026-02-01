@@ -141,7 +141,7 @@ func (ldb *LearningDB) RateLearningItem(id uint, rating string) error {
 	history.Ratings = append(history.Ratings, rating)
 	history.Intervals = append(history.Intervals, item.Interval)
 	history.Timestamps = append(history.Timestamps, time.Now().Unix())
-	
+
 	// Limit history size to prevent unbounded growth
 	if len(history.Ratings) > 50 {
 		history.Ratings = history.Ratings[len(history.Ratings)-50:]
@@ -163,7 +163,7 @@ func (ldb *LearningDB) RateLearningItem(id uint, rating string) error {
 func (ldb *LearningDB) applyAdaptiveRating(item *LearningItem, rating string, history *LearningHistory) {
 	// Calculate performance trend for dynamic adjustment
 	trend := ldb.calculatePerformanceTrend(history)
-	
+
 	switch rating {
 	case "again": // Failed to recall
 		item.Repetition = 0
@@ -224,7 +224,7 @@ func (ldb *LearningDB) applyAdaptiveRating(item *LearningItem, rating string, hi
 	// Update timestamps
 	item.LastReviewed = time.Now()
 	item.NextReview = time.Now().AddDate(0, 0, item.Interval)
-	
+
 	// Enhanced progress calculation using confidence and repetition
 	baseProgress := float64(item.Repetition) / 10.0
 	confidenceBoost := history.Confidence * 0.3
@@ -247,10 +247,10 @@ func (ldb *LearningDB) calculatePerformanceTrend(history *LearningHistory) float
 	if recentCount > 10 {
 		recentCount = 10
 	}
-	
+
 	startIndex := len(history.Ratings) - recentCount
 	recentRatings := history.Ratings[startIndex:]
-	
+
 	// Convert ratings to numerical scores
 	scores := make([]float64, len(recentRatings))
 	for i, rating := range recentRatings {
@@ -265,7 +265,7 @@ func (ldb *LearningDB) calculatePerformanceTrend(history *LearningHistory) float
 			scores[i] = 1.0
 		}
 	}
-	
+
 	// Calculate weighted average (more recent ratings weighted higher)
 	var sum, weightSum float64
 	for i, score := range scores {
@@ -273,11 +273,11 @@ func (ldb *LearningDB) calculatePerformanceTrend(history *LearningHistory) float
 		sum += score * weight
 		weightSum += weight
 	}
-	
+
 	if weightSum == 0 {
 		return 0.5
 	}
-	
+
 	return sum / weightSum
 }
 
@@ -291,7 +291,7 @@ func (ldb *LearningDB) parseHistory(historyJSON string) (*LearningHistory, error
 			Confidence: 0.0,
 		}, nil
 	}
-	
+
 	var history LearningHistory
 	if err := sonic.Unmarshal([]byte(historyJSON), &history); err != nil {
 		// Return empty history on parse error
@@ -302,7 +302,7 @@ func (ldb *LearningDB) parseHistory(historyJSON string) (*LearningHistory, error
 			Confidence: 0.0,
 		}, nil
 	}
-	
+
 	return &history, nil
 }
 
@@ -424,7 +424,7 @@ func (ldb *LearningDB) GetLearningItemWithDB(db *gorm.DB, id uint) (*LearningIte
 // GetLearningTrends returns performance trends over time
 func (ldb *LearningDB) GetLearningTrends(days int) (map[string]interface{}, error) {
 	cutoff := time.Now().AddDate(0, 0, -days)
-	
+
 	var items []LearningItem
 	if err := ldb.db.Where("last_reviewed >= ?", cutoff).Find(&items).Error; err != nil {
 		return nil, err
@@ -433,7 +433,7 @@ func (ldb *LearningDB) GetLearningTrends(days int) (map[string]interface{}, erro
 	trends := make(map[string]interface{})
 	totalReviews := len(items)
 	trends["total_reviews"] = totalReviews
-	
+
 	if totalReviews == 0 {
 		trends["average_confidence"] = 0.0
 		trends["success_rate"] = 0.0
@@ -483,7 +483,7 @@ func (ldb *LearningDB) PredictMasteryTimeline(itemType LearningItemType, itemID 
 
 	// Simple prediction model based on current trend
 	trend := ldb.calculatePerformanceTrend(history)
-	
+
 	// Estimate days until mastery (confidence >= 0.8)
 	confidenceNeeded := 0.8 - history.Confidence
 	if confidenceNeeded <= 0 {
@@ -498,7 +498,7 @@ func (ldb *LearningDB) PredictMasteryTimeline(itemType LearningItemType, itemID 
 
 	prediction["current_confidence"] = history.Confidence
 	prediction["performance_trend"] = trend
-	
+
 	return prediction, nil
 }
 

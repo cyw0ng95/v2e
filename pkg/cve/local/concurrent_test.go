@@ -79,7 +79,7 @@ func TestConcurrentDatabaseAccess(t *testing.T) {
 	// Check for any database locking errors
 	databaseLockErrors := 0
 	otherErrors := 0
-	
+
 	for err := range errors {
 		if err != nil {
 			t.Logf("Error occurred: %v", err)
@@ -95,7 +95,7 @@ func TestConcurrentDatabaseAccess(t *testing.T) {
 	if databaseLockErrors > 0 {
 		t.Errorf("Expected 0 database lock errors, got %d", databaseLockErrors)
 	}
-	
+
 	// Report other errors if any
 	if otherErrors > 0 {
 		t.Logf("Note: %d other errors occurred (not related to database locking)", otherErrors)
@@ -118,7 +118,7 @@ func containsDatabaseLockedError(err error) bool {
 		return false
 	}
 	return err.Error() == "database is locked" ||
-		   err.Error() == "[meta] RPC error response: failed to list CVEs: failed to list CVEs: database is locked"
+		err.Error() == "[meta] RPC error response: failed to list CVEs: failed to list CVEs: database is locked"
 }
 
 // TestRetryLogic verifies that the retry mechanism works for database locking
@@ -144,7 +144,7 @@ func TestRetryLogic(t *testing.T) {
 			{Lang: "en", Value: "Test CVE"},
 		},
 	}
-	
+
 	if err := db.SaveCVE(testCVE); err != nil {
 		t.Fatalf("Failed to save test CVE: %v", err)
 	}

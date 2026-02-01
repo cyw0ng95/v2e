@@ -265,8 +265,6 @@ func (m *MockSysmonRPCClient) handleResponse(_ context.Context, _ *subprocess.Me
 	return nil, nil
 }
 
-
-
 func TestRPCClient_HandleResponse(t *testing.T) {
 	sp := subprocess.New("test")
 	logger := common.NewLogger(io.Discard, "test", common.InfoLevel)

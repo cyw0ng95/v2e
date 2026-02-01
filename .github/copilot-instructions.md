@@ -7,8 +7,8 @@ to be productive in this repo. Keep edits small, preserve broker-first rules.
    only process that spawns and manages subprocesses. Do not add process management
    into services under `cmd/*` (they are subprocesses).
 
-- **Where to look first:** [cmd/broker](cmd/broker), [cmd/access](cmd/access),
-   [pkg/proc/subprocess](pkg/proc/subprocess), `config.json`, and the per-service
+ - **Where to look first:** [cmd/broker](../cmd/broker), [cmd/access](../cmd/access),
+    [pkg/proc/subprocess](../pkg/proc/subprocess), `config.json`, and the per-service
    `service.md` files under `cmd/*`.
 
 - **Subprocess rules (must follow):** use `pkg/proc/subprocess`, call
