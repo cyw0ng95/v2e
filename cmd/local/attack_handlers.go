@@ -17,46 +17,22 @@ func createImportATTACKsHandler(store *attack.LocalAttackStore, logger *common.L
 			Path  string `json:"path"`
 			Force bool   `json:"force,omitempty"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn(LogMsgFailedParseReq, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn(LogMsgFailedParseReq, errResp.Error)
+			return errResp, nil
 		}
 		logger.Debug(LogMsgImportATTACKReceivedPath, req.Path)
-		if req.Path == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "path is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.Path, "path"); errResp != nil {
+			return errResp, nil
 		}
 		if err := store.ImportFromXLSX(req.Path, req.Force); err != nil {
 			logger.Warn(LogMsgFailedImportATTACKXLSX, err, req.Path)
 			if _, statErr := os.Stat(req.Path); statErr != nil {
 				logger.Warn(LogMsgATTACKImportStatError, statErr, req.Path)
 			}
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to import ATT&CKs",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to import ATT&CKs"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       []byte(`{"success":true}`),
-		}, nil
+		return subprocess.NewSuccessResponse(msg, map[string]bool{"success": true})
 	}
 }
 
@@ -66,36 +42,18 @@ func createGetAttackTechniqueByIDHandler(store *attack.LocalAttackStore, logger 
 		var req struct {
 			ID string `json:"id"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
 		}
-		if req.ID == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Debug(LogMsgGetAttackTechniqueByIDReq, req.ID)
 		item, err := store.GetTechniqueByID(ctx, req.ID)
 		if err != nil {
 			logger.Warn(LogMsgFailedGetAttackTechnique, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "ATT&CK technique not found",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "ATT&CK technique not found"), nil
 		}
 
 		// Build a client-friendly payload
@@ -110,24 +68,12 @@ func createGetAttackTechniqueByIDHandler(store *attack.LocalAttackStore, logger 
 			"revoked":     item.Revoked,
 			"deprecated":  item.Deprecated,
 		}
-		jsonData, err := subprocess.MarshalFast(payload)
+		resp, err := subprocess.NewSuccessResponse(msg, payload)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalAttackTechnique, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK technique",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK technique"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return resp, nil
 	}
 }
 
@@ -137,36 +83,18 @@ func createGetAttackTacticByIDHandler(store *attack.LocalAttackStore, logger *co
 		var req struct {
 			ID string `json:"id"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
 		}
-		if req.ID == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Debug(LogMsgGetAttackTacticByIDReq, req.ID)
 		item, err := store.GetTacticByID(ctx, req.ID)
 		if err != nil {
 			logger.Warn(LogMsgFailedGetAttackTactic, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "ATT&CK tactic not found",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "ATT&CK tactic not found"), nil
 		}
 
 		// Build a client-friendly payload
@@ -178,24 +106,12 @@ func createGetAttackTacticByIDHandler(store *attack.LocalAttackStore, logger *co
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := subprocess.MarshalFast(payload)
+		resp, err := subprocess.NewSuccessResponse(msg, payload)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalAttackTactic, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK tactic",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK tactic"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return resp, nil
 	}
 }
 
@@ -205,36 +121,18 @@ func createGetAttackMitigationByIDHandler(store *attack.LocalAttackStore, logger
 		var req struct {
 			ID string `json:"id"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
 		}
-		if req.ID == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Debug(LogMsgGetAttackMitigationByIDReq, req.ID)
 		item, err := store.GetMitigationByID(ctx, req.ID)
 		if err != nil {
 			logger.Warn(LogMsgFailedGetAttackMitigation, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "ATT&CK mitigation not found",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "ATT&CK mitigation not found"), nil
 		}
 
 		// Build a client-friendly payload
@@ -246,24 +144,12 @@ func createGetAttackMitigationByIDHandler(store *attack.LocalAttackStore, logger
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := subprocess.MarshalFast(payload)
+		resp, err := subprocess.NewSuccessResponse(msg, payload)
 		if err != nil {
 			logger.Error(LogMsgFailedMarshalAttackMitigation, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK mitigation",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK mitigation"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return resp, nil
 	}
 }
 
@@ -273,36 +159,18 @@ func createGetAttackSoftwareByIDHandler(store *attack.LocalAttackStore, logger *
 		var req struct {
 			ID string `json:"id"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
 		}
-		if req.ID == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Debug(LogMsgGetAttackSoftwareByIDReq, req.ID)
 		item, err := store.GetSoftwareByID(ctx, req.ID)
 		if err != nil {
 			logger.Warn(LogMsgFailedGetAttackSoftware, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "ATT&CK software not found",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "ATT&CK software not found"), nil
 		}
 
 		// Build a client-friendly payload
@@ -315,24 +183,12 @@ func createGetAttackSoftwareByIDHandler(store *attack.LocalAttackStore, logger *
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := subprocess.MarshalFast(payload)
+		resp, err := subprocess.NewSuccessResponse(msg, payload)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalAttackSoftware, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK software",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK software"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return resp, nil
 	}
 }
 
@@ -342,36 +198,18 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 		var req struct {
 			ID string `json:"id"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			logger.Warn("Failed to parse request: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to parse request",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
 		}
-		if req.ID == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Debug(LogMsgGetAttackGroupByIDReq, req.ID)
 		item, err := store.GetGroupByID(ctx, req.ID)
 		if err != nil {
 			logger.Warn(LogMsgFailedGetAttackGroup, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "ATT&CK group not found",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "ATT&CK group not found"), nil
 		}
 
 		// Build a client-friendly payload
@@ -383,24 +221,12 @@ func createGetAttackGroupByIDHandler(store *attack.LocalAttackStore, logger *com
 			"created":     item.Created,
 			"modified":    item.Modified,
 		}
-		jsonData, err := subprocess.MarshalFast(payload)
+		resp, err := subprocess.NewSuccessResponse(msg, payload)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalAttackGroup, err, req.ID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK group",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK group"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return resp, nil
 	}
 }
 
@@ -413,16 +239,10 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedParseListAttackTechniques, msg.ID, msg.CorrelationID, err)
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn(LogMsgFailedParseListAttackTechniques, msg.ID, msg.CorrelationID, errResp.Error)
 				logger.Debug(LogMsgProcessingListAttackTechniquesFailed, msg.ID, string(msg.Payload))
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request: " + err.Error(),
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+				return errResp, nil
 			}
 		}
 		if req.Limit <= 0 || req.Limit > 1000 {
@@ -436,13 +256,7 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 		if err != nil {
 			logger.Warn(LogMsgFailedListAttackTechniques, msg.ID, msg.CorrelationID, err)
 			logger.Debug(LogMsgProcessingListAttackTechniquesError, msg.ID, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to list ATT&CK techniques: " + err.Error(),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to list ATT&CK techniques: "+err.Error()), nil
 		}
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
@@ -468,26 +282,14 @@ func createListAttackTechniquesHandler(store *attack.LocalAttackStore, logger *c
 			"total":      total,
 		}
 
-		jsonData, err := subprocess.MarshalFast(resp)
+		msgResp, err := subprocess.NewSuccessResponse(msg, resp)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalListAttackTechniques, msg.ID, msg.CorrelationID, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK techniques list: " + err.Error(),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK techniques list: "+err.Error()), nil
 		}
 
 		logger.Info(LogMsgSuccessListAttackTechniques, msg.ID, msg.CorrelationID, len(items), total)
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return msgResp, nil
 	}
 }
 
@@ -500,15 +302,9 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedParseReq, err)
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request",
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn(LogMsgFailedParseReq, errResp.Error)
+				return errResp, nil
 			}
 		}
 		if req.Limit <= 0 || req.Limit > 1000 {
@@ -521,13 +317,7 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 		items, total, err := store.ListTacticsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
 			logger.Warn(LogMsgFailedListAttackTactics, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to list ATT&CK tactics",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to list ATT&CK tactics"), nil
 		}
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
@@ -549,25 +339,13 @@ func createListAttackTacticsHandler(store *attack.LocalAttackStore, logger *comm
 			"total":   total,
 		}
 
-		jsonData, err := subprocess.MarshalFast(resp)
+		msgResp, err := subprocess.NewSuccessResponse(msg, resp)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalListAttackTactics, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK tactics list",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK tactics list"), nil
 		}
 
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return msgResp, nil
 	}
 }
 
@@ -580,15 +358,9 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedParseReq, err)
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request",
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn(LogMsgFailedParseReq, errResp.Error)
+				return errResp, nil
 			}
 		}
 		if req.Limit <= 0 || req.Limit > 1000 {
@@ -601,13 +373,7 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 		items, total, err := store.ListMitigationsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
 			logger.Warn(LogMsgFailedListAttackMitigations, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to list ATT&CK mitigations",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to list ATT&CK mitigations"), nil
 		}
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
@@ -629,25 +395,13 @@ func createListAttackMitigationsHandler(store *attack.LocalAttackStore, logger *
 			"total":       total,
 		}
 
-		jsonData, err := subprocess.MarshalFast(resp)
+		msgResp, err := subprocess.NewSuccessResponse(msg, resp)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalListAttackMitigations, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK mitigations list",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK mitigations list"), nil
 		}
 
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return msgResp, nil
 	}
 }
 
@@ -660,15 +414,9 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedParseReq, err)
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request",
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn(LogMsgFailedParseReq, errResp.Error)
+				return errResp, nil
 			}
 		}
 		if req.Limit <= 0 || req.Limit > 1000 {
@@ -681,13 +429,7 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 		items, total, err := store.ListSoftwarePaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
 			logger.Warn(LogMsgFailedListAttackSoftware, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to list ATT&CK software",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to list ATT&CK software"), nil
 		}
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
@@ -710,25 +452,13 @@ func createListAttackSoftwareHandler(store *attack.LocalAttackStore, logger *com
 			"total":    total,
 		}
 
-		jsonData, err := subprocess.MarshalFast(resp)
+		msgResp, err := subprocess.NewSuccessResponse(msg, resp)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalListAttackSoftware, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK software list",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK software list"), nil
 		}
 
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return msgResp, nil
 	}
 }
 
@@ -741,15 +471,9 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedParseReq, err)
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request",
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn(LogMsgFailedParseReq, errResp.Error)
+				return errResp, nil
 			}
 		}
 		if req.Limit <= 0 || req.Limit > 1000 {
@@ -762,13 +486,7 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 		items, total, err := store.ListGroupsPaginated(ctx, req.Offset, req.Limit)
 		if err != nil {
 			logger.Warn(LogMsgFailedListAttackGroups, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to list ATT&CK groups",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to list ATT&CK groups"), nil
 		}
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
@@ -790,25 +508,13 @@ func createListAttackGroupsHandler(store *attack.LocalAttackStore, logger *commo
 			"total":  total,
 		}
 
-		jsonData, err := subprocess.MarshalFast(resp)
+		msgResp, err := subprocess.NewSuccessResponse(msg, resp)
 		if err != nil {
 			logger.Warn(LogMsgFailedMarshalListAttackGroups, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK groups list",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK groups list"), nil
 		}
 
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return msgResp, nil
 	}
 }
 
@@ -820,13 +526,7 @@ func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger
 		meta, err := store.GetImportMetadata(ctx)
 		if err != nil {
 			logger.Warn(LogMsgFailedGetAttackImportMetadata, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "ATT&CK import metadata not found",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "ATT&CK import metadata not found"), nil
 		}
 
 		// Build a client-friendly payload
@@ -837,24 +537,12 @@ func createGetAttackImportMetadataHandler(store *attack.LocalAttackStore, logger
 			"total_records":  meta.TotalRecords,
 			"import_version": meta.ImportVersion,
 		}
-		jsonData, err := subprocess.MarshalFast(payload)
+		resp, err := subprocess.NewSuccessResponse(msg, payload)
 		if err != nil {
 			logger.Error(LogMsgFailedMarshalAttackImportMetadata, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal ATT&CK import metadata",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal ATT&CK import metadata"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return resp, nil
 	}
 }
 

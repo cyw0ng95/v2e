@@ -26,16 +26,17 @@ func createMemoryCardHandler(service *notes.MemoryCardService, logger *common.Lo
 			IsPrivate  bool            `json:"is_private"`
 			Metadata   map[string]any  `json:"metadata"`
 		}
-		if err := json.Unmarshal(msg.Payload, &params); err != nil {
-			return nil, err
+		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
 		}
 		card, err := service.CreateMemoryCardFull(ctx, params.BookmarkID, params.Front, params.Back, params.MajorClass, params.MinorClass, params.Status, string(params.Content), params.CardType, params.Author, params.IsPrivate, params.Metadata)
 		if err != nil {
-			return nil, err
+			logger.Warn("Failed to create memory card: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to create memory card: %v", err)), nil
 		}
 		resp := map[string]any{"success": true, "memory_card": card}
-		payload, _ := json.Marshal(resp)
-		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: payload}, nil
+		return subprocess.NewSuccessResponse(msg, resp)
 	}
 }
 
@@ -45,16 +46,21 @@ func getMemoryCardHandler(service *notes.MemoryCardService, logger *common.Logge
 		var params struct {
 			ID uint `json:"id"`
 		}
-		if err := json.Unmarshal(msg.Payload, &params); err != nil {
-			return nil, err
+		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
+		}
+		if errResp := subprocess.RequireField(msg, params.ID, "id"); errResp != nil {
+			logger.Warn("id is required")
+			return errResp, nil
 		}
 		card, err := service.GetMemoryCardByID(ctx, params.ID)
 		if err != nil {
-			return nil, err
+			logger.Warn("Failed to get memory card: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get memory card: %v", err)), nil
 		}
 		resp := map[string]any{"memory_card": card}
-		payload, _ := json.Marshal(resp)
-		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: payload}, nil
+		return subprocess.NewSuccessResponse(msg, resp)
 	}
 }
 
@@ -62,27 +68,30 @@ func getMemoryCardHandler(service *notes.MemoryCardService, logger *common.Logge
 func updateMemoryCardHandler(service *notes.MemoryCardService, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params map[string]any
-		if err := json.Unmarshal(msg.Payload, &params); err != nil {
-			return nil, err
+		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
 		}
 		// Defensive: validate status if provided
 		if raw, ok := params["status"]; ok {
 			if sstr, ok := raw.(string); ok {
 				if _, err := notes.ParseCardStatus(sstr); err != nil {
-					return nil, err
+					logger.Warn("Invalid status value: %v", err)
+					return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid status: %v", err)), nil
 				}
 			} else {
-				return nil, fmt.Errorf("status must be a string")
+				logger.Warn("status must be a string")
+				return subprocess.NewErrorResponse(msg, "status must be a string"), nil
 			}
 		}
 
 		card, err := service.UpdateMemoryCardFields(ctx, params)
 		if err != nil {
-			return nil, err
+			logger.Warn("Failed to update memory card: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to update memory card: %v", err)), nil
 		}
 		resp := map[string]any{"success": true, "memory_card": card}
-		payload, _ := json.Marshal(resp)
-		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: payload}, nil
+		return subprocess.NewSuccessResponse(msg, resp)
 	}
 }
 
@@ -92,16 +101,21 @@ func deleteMemoryCardHandler(service *notes.MemoryCardService, logger *common.Lo
 		var params struct {
 			ID uint `json:"id"`
 		}
-		if err := json.Unmarshal(msg.Payload, &params); err != nil {
-			return nil, err
+		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
+		}
+		if errResp := subprocess.RequireField(msg, params.ID, "id"); errResp != nil {
+			logger.Warn("id is required")
+			return errResp, nil
 		}
 		err := service.DeleteMemoryCard(ctx, params.ID)
 		if err != nil {
-			return nil, err
+			logger.Warn("Failed to delete memory card: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to delete memory card: %v", err)), nil
 		}
 		resp := map[string]any{"success": true}
-		payload, _ := json.Marshal(resp)
-		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: payload}, nil
+		return subprocess.NewSuccessResponse(msg, resp)
 	}
 }
 
@@ -118,15 +132,25 @@ func listMemoryCardsHandler(service *notes.MemoryCardService, logger *common.Log
 			Offset     int     `json:"offset"`
 			Limit      int     `json:"limit"`
 		}
-		if err := json.Unmarshal(msg.Payload, &params); err != nil {
-			return nil, err
+		if msg.Payload != nil {
+			if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
+				logger.Warn("Failed to parse request: %v", errResp.Error)
+				return errResp, nil
+			}
+		}
+		// Set defaults
+		if params.Limit <= 0 || params.Limit > 1000 {
+			params.Limit = 100
+		}
+		if params.Offset < 0 {
+			params.Offset = 0
 		}
 		cards, total, err := service.ListMemoryCardsFull(ctx, params.BookmarkID, params.MajorClass, params.MinorClass, params.Status, params.Author, params.IsPrivate, params.Offset, params.Limit)
 		if err != nil {
-			return nil, err
+			logger.Warn("Failed to list memory cards: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list memory cards: %v", err)), nil
 		}
 		resp := map[string]any{"memory_cards": cards, "total": total, "offset": params.Offset, "limit": params.Limit}
-		payload, _ := json.Marshal(resp)
-		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: payload}, nil
+		return subprocess.NewSuccessResponse(msg, resp)
 	}
 }

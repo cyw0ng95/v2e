@@ -36,26 +36,14 @@ func createImportCAPECsHandler(store capecStore, logger *common.Logger) subproce
 			Force bool   `json:"force,omitempty"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request",
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn("Failed to parse request: %v", errResp.Error)
+				return errResp, nil
 			}
 		}
 		logger.Debug("RPCImportCAPECs received path: %s", req.Path)
-		if req.Path == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "path is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.Path, "path"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Info("Starting CAPEC import from path: %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		if err := store.ImportFromXML(req.Path, req.Force); err != nil {
@@ -63,23 +51,11 @@ func createImportCAPECsHandler(store capecStore, logger *common.Logger) subproce
 			if _, statErr := os.Stat(req.Path); statErr != nil {
 				logger.Warn("CAPEC import file stat error: %v (path: %s)", statErr, req.Path)
 			}
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to import CAPECs",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to import CAPECs"), nil
 		}
 		logger.Info(LogMsgImportCAPECCompleted, req.Path)
 		logger.Debug("Processing ImportCAPECs request completed successfully for path %s. correlation_id=%s", req.Path, msg.CorrelationID)
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       []byte(`{"success":true}`),
-		}, nil
+		return subprocess.NewSuccessResponse(msg, map[string]bool{"success": true})
 	}
 }
 
@@ -113,46 +89,22 @@ func createForceImportCAPECsHandler(store capecStore, logger *common.Logger) sub
 			XSD  string `json:"xsd,omitempty"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request",
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn("Failed to parse request: %v", errResp.Error)
+				return errResp, nil
 			}
 		}
-		if req.Path == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "path is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.Path, "path"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Info("Starting force CAPEC import from path: %s. correlation_id=%s", req.Path, msg.CorrelationID)
 		if err := store.ImportFromXML(req.Path, true); err != nil {
 			logger.Warn("Failed to import CAPEC from XML (force): %v (path: %s)", err, req.Path)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to import CAPECs",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to import CAPECs"), nil
 		}
 		logger.Info(LogMsgForceImportCAPECCompleted, req.Path)
 		logger.Debug("Processing ForceImportCAPECs request completed successfully for path %s. correlation_id=%s", req.Path, msg.CorrelationID)
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       []byte(`{"success":true}`),
-		}, nil
+		return subprocess.NewSuccessResponse(msg, map[string]bool{"success": true})
 	}
 }
 
@@ -163,37 +115,19 @@ func createGetCAPECByIDHandler(store capecStore, logger *common.Logger) subproce
 			CAPECID string `json:"capec_id"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse request: %v", err)
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         "failed to parse request",
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn("Failed to parse request: %v", errResp.Error)
+				return errResp, nil
 			}
 		}
-		if req.CAPECID == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "capec_id is required",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errResp := subprocess.RequireField(msg, req.CAPECID, "capec_id"); errResp != nil {
+			return errResp, nil
 		}
 		logger.Debug("GetCAPECByID request: capec_id=%s", req.CAPECID)
 		item, err := store.GetByID(ctx, req.CAPECID)
 		if err != nil {
 			logger.Warn("Failed to get CAPEC: %v (capec_id=%s)", err, req.CAPECID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "CAPEC not found",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "CAPEC not found"), nil
 		}
 		// Fetch related data (weaknesses, examples, mitigations, references)
 		var weaknesses []string
@@ -241,24 +175,12 @@ func createGetCAPECByIDHandler(store capecStore, logger *common.Logger) subproce
 			"mitigations":      mitigations,
 			"references":       references,
 		}
-		jsonData, err := subprocess.MarshalFast(payload)
+		resp, err := subprocess.NewSuccessResponse(msg, payload)
 		if err != nil {
 			logger.Warn("Failed to marshal CAPEC: %v (capec_id=%s)", err, req.CAPECID)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal CAPEC",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal CAPEC"), nil
 		}
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return resp, nil
 	}
 }
 
@@ -274,13 +196,7 @@ func createGetCAPECCatalogMetaHandler(store capecStore, logger *common.Logger) s
 		if err != nil {
 			logger.Warn("No CAPEC catalog metadata: %v", err)
 			logger.Debug("GetCAPECCatalogMeta failed to retrieve metadata: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "no catalog metadata",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "no catalog metadata"), nil
 		}
 
 		logger.Debug("CAPEC catalog metadata retrieved successfully: version=%s, source=%s", meta.Version, meta.Source)
@@ -289,26 +205,14 @@ func createGetCAPECCatalogMetaHandler(store capecStore, logger *common.Logger) s
 			"source":      meta.Source,
 			"imported_at": meta.ImportedAtUTC,
 		}
-		data, err := subprocess.MarshalFast(resp)
+		msgResp, err := subprocess.NewSuccessResponse(msg, resp)
 		if err != nil {
 			logger.Warn("Failed to marshal catalog meta: %v", err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "failed to marshal meta",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "failed to marshal meta"), nil
 		}
 		logger.Info(LogMsgGetCAPECMetaCompleted)
 		logger.Debug("RPCGetCAPECCatalogMeta completed successfully. correlation_id=%s", msg.CorrelationID)
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       data,
-		}, nil
+		return msgResp, nil
 	}
 }
 
@@ -321,16 +225,10 @@ func createListCAPECsHandler(store capecStore, logger *common.Logger) subprocess
 			Limit  int `json:"limit"`
 		}
 		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn("Failed to parse ListCAPECs request - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn("Failed to parse ListCAPECs request - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, errResp.Error)
 				logger.Debug("Processing ListCAPECs request failed due to malformed payload - Message ID: %s, Payload: %s", msg.ID, string(msg.Payload))
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         fmt.Sprintf("failed to parse request: %v", err),
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+				return errResp, nil
 			}
 		}
 		if req.Limit <= 0 || req.Limit > 1000 {
@@ -344,13 +242,7 @@ func createListCAPECsHandler(store capecStore, logger *common.Logger) subprocess
 		if err != nil {
 			logger.Warn("Failed to list CAPECs from store - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
 			logger.Debug("Processing ListCAPECs request failed - Message ID: %s, Error details: %v", msg.ID, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to list CAPECs: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list CAPECs: %v", err)), nil
 		}
 		// Map DB models to client-friendly objects
 		mapped := make([]map[string]interface{}, 0, len(items))
@@ -414,24 +306,12 @@ func createListCAPECsHandler(store capecStore, logger *common.Logger) subprocess
 			"limit":  req.Limit,
 			"total":  total,
 		}
-		jsonData, err := subprocess.MarshalFast(resp)
+		msgResp, err := subprocess.NewSuccessResponse(msg, resp)
 		if err != nil {
 			logger.Warn("Failed to marshal ListCAPECs response - Message ID: %s, Correlation ID: %s, Error: %v", msg.ID, msg.CorrelationID, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf("failed to marshal CAPECs: %v", err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to marshal CAPECs: %v", err)), nil
 		}
 		logger.Info("Successfully processed ListCAPECs request - Message ID: %s, Correlation ID: %s, Returned: %d, Total: %d", msg.ID, msg.CorrelationID, len(items), total)
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return msgResp, nil
 	}
 }
