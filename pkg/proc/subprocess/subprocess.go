@@ -9,6 +9,7 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
+	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
 // The core types, constants and pools (Message, MessageType, Handler, Subprocess,
@@ -38,7 +39,7 @@ func (s *Subprocess) Run() error {
 	bufPtr := bufferPool.Get().(*[]byte)
 	defer bufferPool.Put(bufPtr)
 	buf := *bufPtr
-	scanner.Buffer(buf, MaxMessageSize)
+	scanner.Buffer(buf, proc.MaxMessageSize)
 
 	for scanner.Scan() {
 		select {
@@ -85,14 +86,13 @@ func (s *Subprocess) Run() error {
 	return nil
 }
 
-// handleMessage processes a single message
-func (s *Subprocess) handleMessage(msg *Message) {
-	defer s.wg.Done()
-
-	// Find the appropriate handler
-	// For response and error messages, prioritize type-based lookup
-	// to ensure they go to the correct response handler
+// lookupHandler finds the appropriate handler for a message.
+// For response and error messages, it prioritizes type-based lookup.
+// For other message types (requests, events), it prioritizes ID-based lookup.
+func (s *Subprocess) lookupHandler(msg *Message) (Handler, bool) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var handler Handler
 	var exists bool
 
@@ -111,8 +111,15 @@ func (s *Subprocess) handleMessage(msg *Message) {
 			handler, exists = s.handlers[string(msg.Type)]
 		}
 	}
-	s.mu.RUnlock()
 
+	return handler, exists
+}
+
+// handleMessage processes a single message
+func (s *Subprocess) handleMessage(msg *Message) {
+	defer s.wg.Done()
+
+	handler, exists := s.lookupHandler(msg)
 	if !exists {
 		// No handler found, send error
 		// Principle 15: Avoid fmt.Sprintf in hot paths
@@ -162,26 +169,7 @@ func (s *Subprocess) handleMessage(msg *Message) {
 
 // HandleMessage is a public wrapper for the unexported handleMessage method
 func (s *Subprocess) HandleMessage(ctx context.Context, msg *Message) (*Message, error) {
-	// Use the existing handleMessage lookup logic but only hold the
-	// read-lock while performing the lookup. Release the lock before
-	// invoking the handler to avoid holding locks during handler execution.
-	s.mu.RLock()
-	var handler Handler
-	var exists bool
-
-	if msg.Type == MessageTypeResponse || msg.Type == MessageTypeError {
-		handler, exists = s.handlers[string(msg.Type)]
-		if !exists {
-			handler, exists = s.handlers[msg.ID]
-		}
-	} else {
-		handler, exists = s.handlers[msg.ID]
-		if !exists {
-			handler, exists = s.handlers[string(msg.Type)]
-		}
-	}
-	s.mu.RUnlock()
-
+	handler, exists := s.lookupHandler(msg)
 	if !exists {
 		return nil, fmt.Errorf("no handler found for message: %s", msg.ID)
 	}

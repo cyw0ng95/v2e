@@ -295,19 +295,19 @@ func TestMarshalFast(t *testing.T) {
 		ID:   "test-id",
 	}
 
-	data, err := msg.MarshalFast()
+	data, err := msg.Marshal()
 	if err != nil {
-		t.Fatalf("MarshalFast failed: %v", err)
+		t.Fatalf("Marshal failed: %v", err)
 	}
 
 	if len(data) == 0 {
-		t.Error("MarshalFast returned empty data")
+		t.Error("Marshal returned empty data")
 	}
 
 	// Verify it's valid JSON
 	var parsed Message
-	if err := sonic.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("Failed to unmarshal fast-marshaled data: %v", err)
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("Failed to unmarshal marshaled data: %v", err)
 	}
 
 	if parsed.Type != msg.Type {

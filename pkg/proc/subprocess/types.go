@@ -3,21 +3,31 @@ package subprocess
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"sync"
+
+	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
-// MaxMessageSize is the maximum size of a message that can be sent between processes
-// This is set to 10MB to accommodate large CVE data from NVD API
-var MaxMessageSize = 10 * 1024 * 1024 // 10MB
+// Re-export Message and MessageType from parent proc package
+type Message = proc.Message
+type MessageType = proc.MessageType
+type Handler func(ctx context.Context, msg *Message) (*Message, error)
+
+// Re-export MessageType constants for convenience
+const (
+	MessageTypeRequest    = proc.MessageTypeRequest
+	MessageTypeResponse   = proc.MessageTypeResponse
+	MessageTypeEvent      = proc.MessageTypeEvent
+	MessageTypeError      = proc.MessageTypeError
+)
 
 // bufferPool is a sync.Pool for scanner buffers to reduce allocations
 var bufferPool = sync.Pool{
 	New: func() interface{} {
-		buf := make([]byte, 0, MaxMessageSize)
+		buf := make([]byte, 0, proc.MaxMessageSize)
 		return &buf
 	},
 }
@@ -28,42 +38,6 @@ var writerPool = sync.Pool{
 		return bufio.NewWriterSize(nil, defaultWriterBufSize) // tuned buffer size
 	},
 }
-
-// MessageType represents the type of message being sent
-type MessageType string
-
-const (
-	// MessageTypeRequest represents a request message
-	MessageTypeRequest MessageType = "request"
-	// MessageTypeResponse represents a response message
-	MessageTypeResponse MessageType = "response"
-	// MessageTypeEvent represents an event message
-	MessageTypeEvent MessageType = "event"
-	// MessageTypeError represents an error message
-	MessageTypeError MessageType = "error"
-)
-
-// Message represents a message that can be passed between processes
-// This is a copy to avoid depending on the broker package
-type Message struct {
-	// Type is the type of message
-	Type MessageType `json:"type"`
-	// ID is a unique identifier for the message
-	ID string `json:"id"`
-	// Payload is the message data
-	Payload json.RawMessage `json:"payload,omitempty"`
-	// Error contains error information if Type is MessageTypeError
-	Error string `json:"error,omitempty"`
-	// Source is the process ID of the message sender (for routing)
-	Source string `json:"source,omitempty"`
-	// Target is the process ID of the message recipient (for routing)
-	Target string `json:"target,omitempty"`
-	// CorrelationID is used to match responses to requests
-	CorrelationID string `json:"correlation_id,omitempty"`
-}
-
-// Handler is a function that handles incoming messages
-type Handler func(ctx context.Context, msg *Message) (*Message, error)
 
 // Subprocess represents a subprocess with a message-driven lifecycle
 type Subprocess struct {

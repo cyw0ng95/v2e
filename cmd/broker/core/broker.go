@@ -34,9 +34,6 @@ type Broker struct {
 	optimizer OptimizerInterface
 	// transportManager manages communication transports for processes
 	transportManager *transport.TransportManager
-	// migrationMode indicates if the broker is in migration mode for transitioning between transport types
-	// Planned use: Will be used to handle dual-mode transport during migration from one transport type to another
-	migrationMode bool
 }
 
 // NewBroker creates a new Broker instance.
@@ -62,9 +59,6 @@ func NewBroker() *Broker {
 			b.logger.Warn("Transport background error: %v", err)
 		}
 	})
-
-	// Configure transport based on configuration
-	b.ConfigureTransportFromConfig()
 
 	// Ensure transport manager uses the same UDS base path as subprocesses
 	b.transportManager.SetUdsBasePath(subprocess.DefaultProcUDSBasePath())
@@ -144,18 +138,6 @@ func (b *Broker) SetOptimizer(o OptimizerInterface) {
 // Context returns the broker's context.
 func (b *Broker) Context() context.Context {
 	return b.ctx
-}
-
-// ConfigureTransportFromConfig configures the transport based on build-time configuration
-func (b *Broker) ConfigureTransportFromConfig() {
-	// Default to FD transport as build-time default
-	b.logger.Info("Using default FD transport")
-
-	// Set UDS base path if configured at build time
-	// (no runtime config override available)
-
-	// Migration mode is disabled by default
-	b.migrationMode = false
 }
 
 // OptimizerInterface is a lightweight interface used by Broker to avoid

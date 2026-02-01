@@ -97,7 +97,7 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 		inputFD, outputFD = b.getRPCFileDescriptors()
 	}
 
-	setProcessEnv(cmd, id, nil)
+	setProcessEnv(cmd, id)
 	// Do not inject PROCESS_ID or RPC-related environment variables. Processes
 	// compute their own IDs and transport paths deterministically from
 	// build-time defaults (ldflags). This avoids runtime env coordination.
@@ -240,7 +240,7 @@ func (b *Broker) loadDetectedBinaries() error {
 			filePath := filepath.Join(execDir, fileName)
 			if b.isExecutable(filePath) {
 				b.logger.Info("Detected executable: %s", fileName)
-				if err := b.startService(fileName, true); err != nil {
+				if err := b.startService(fileName); err != nil {
 					b.logger.Warn("Failed to start service %s: %v", fileName, err)
 				} else {
 					startedServices[fileName] = true
@@ -263,7 +263,7 @@ func (b *Broker) loadSpecifiedBinaries(binNames []string) error {
 			continue // Skip empty names
 		}
 
-		if err := b.startService(binName, true); err != nil {
+		if err := b.startService(binName); err != nil {
 			b.logger.Warn("Failed to start service %s: %v", binName, err)
 			// Continue with other services even if one fails
 		}
@@ -285,7 +285,7 @@ func (b *Broker) isExecutable(path string) bool {
 }
 
 // startService starts a service by name with RPC capability.
-func (b *Broker) startService(serviceName string, _ bool) error {
+func (b *Broker) startService(serviceName string) error {
 	// Start the service with RPC and auto-restart
 	// Default to unlimited restarts (-1)
 	info, err := b.SpawnRPCWithRestart(serviceName, "./"+serviceName, -1)
@@ -299,7 +299,7 @@ func (b *Broker) startService(serviceName string, _ bool) error {
 
 // setProcessEnv configures environment variables for a process based on its ID and build-time config.
 // This consolidates the repeated env setup logic from Spawn, SpawnRPC, SpawnWithRestart, and SpawnRPCWithRestart.
-func setProcessEnv(cmd *exec.Cmd, processID string, _ interface{}) {
+func setProcessEnv(cmd *exec.Cmd, processID string) {
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
