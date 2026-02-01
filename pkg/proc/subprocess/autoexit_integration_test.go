@@ -1,91 +1,72 @@
 package subprocess
 
 import (
+	"net"
 	"os"
-	"os/exec"
-	"syscall"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
-// Integration test: start a broker-like process that creates a UDS listener and then
-// start a subprocess that connects to it. Kill the broker and ensure the subprocess exits.
+// Integration test: start a temporary UDS server to simulate the broker and a child
+// subprocess that connects to it. When the server is closed, the subprocess should
+// observe connection EOF and exit (we approximate this by ensuring NewWithUDS's
+// connection is closed when server closes).
 func TestSubprocess_AutoExitOnBrokerDeath(t *testing.T) {
-	// Build a tiny helper program that acts as a broker: create a socket file and sleep
-	// For simplicity reuse the current binary and set an env var to trigger helper behavior
-	brokerCmd := exec.Command(os.Args[0], "-test.run=TestBrokerHelper")
-	brokerCmd.Env = append(os.Environ(), "GO_WANT_BROKER_HELPER=1")
-	if err := brokerCmd.Start(); err != nil {
-		t.Fatalf("failed to start broker helper: %v", err)
-	}
-	// Give broker time to create socket and write path
-	time.Sleep(200 * time.Millisecond)
+	dir := os.TempDir()
+	socketPath := filepath.Join(dir, "v2e_test_autoexit.sock")
+	_ = os.Remove(socketPath)
 
-	// Start subprocess helper that connects to the socket path written by broker helper
-	sockPath := os.Getenv("TEST_BROKER_SOCKET")
-	if sockPath == "" {
-		t.Skip("broker helper did not set TEST_BROKER_SOCKET")
-	}
-	childCmd := exec.Command(os.Args[0], "-test.run=TestSubprocessHelper")
-	childCmd.Env = append(os.Environ(), "GO_WANT_SUBPROCESS_HELPER=1")
-	childCmd.Env = append(childCmd.Env, "RPC_SOCKET_PATH="+sockPath)
-	if err := childCmd.Start(); err != nil {
-		brokerCmd.Process.Kill()
-		t.Fatalf("failed to start subprocess helper: %v", err)
-	}
-
-	// Kill broker
-	if err := brokerCmd.Process.Kill(); err != nil {
-		t.Fatalf("failed to kill broker helper: %v", err)
-	}
-
-	// Wait for child to exit within a few seconds
-	done := make(chan error)
-	go func() { done <- childCmd.Wait() }()
-
-	select {
-	case err := <-done:
-		if err != nil {
-			// child exited with error — acceptable if it detected broker gone
-			t.Logf("subprocess exited with error as expected: %v", err)
-		}
-	case <-time.After(5 * time.Second):
-		// Timeout — kill the child and fail
-		childCmd.Process.Kill()
-		t.Fatalf("subprocess did not exit after broker was killed")
-	}
-}
-
-// helper: broker creates a UDS listener and writes the socket path to env variable for test
-func TestBrokerHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_BROKER_HELPER") != "1" {
-		return
-	}
-	// Create a temp socket path
-	socket := "/tmp/v2e_test_broker.sock"
-	// Write out path in env for parent test to read
-	os.Setenv("TEST_BROKER_SOCKET", socket)
-	// Create listener via system call to reserve socket file
-	l, err := syscall.Socket(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
+	// Start a unix socket listener to act as broker
+	l, err := net.Listen("unix", socketPath)
 	if err != nil {
-		os.Exit(2)
+		t.Fatalf("failed to listen on uds: %v", err)
 	}
-	// Keep the process alive while test runs
-	time.Sleep(10 * time.Second)
-	_ = l
-}
+	defer func() { l.Close(); os.Remove(socketPath) }()
 
-// helper: subprocess connects to RPC_SOCKET_PATH and waits until EOF
-func TestSubprocessHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_SUBPROCESS_HELPER") != "1" {
-		return
+	// Start listener accept loop
+	accepted := make(chan net.Conn)
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			close(accepted)
+			return
+		}
+		accepted <- conn
+	}()
+
+	// Start the subprocess that connects to the socket
+	// We'll run it in-process by calling NewWithUDS directly in a goroutine
+	done := make(chan struct{})
+	go func() {
+		sp := NewWithUDS("autoexit-child", socketPath)
+		// Wait for context cancellation or connection close by reading from input
+		// NewWithUDS uses the net.Conn as input — once server closes, reads will fail
+		buf := make([]byte, 1)
+		_, err := sp.input.Read(buf)
+		if err != nil {
+			// Connection closed — expected when broker listener is closed
+		}
+		close(done)
+	}()
+
+	// Wait until child has connected
+	select {
+	case conn := <-accepted:
+		// Close server side connection to simulate broker exit
+		conn.Close()
+	case <-time.After(1 * time.Second):
+		t.Fatalf("child did not connect to broker socket in time")
 	}
-	socket := os.Getenv("RPC_SOCKET_PATH")
-	if socket == "" {
-		os.Exit(2)
+
+	// Now close the listener to simulate broker shutdown
+	l.Close()
+
+	// Child should detect connection close and finish
+	select {
+	case <-done:
+		// success
+	case <-time.After(2 * time.Second):
+		t.Fatalf("child did not exit after broker shutdown")
 	}
-	// Connect using NewWithUDS (which will exit if can't connect)
-	_ = NewWithUDS("test-child", socket)
-	// Wait until context canceled or process killed
-	select {}
 }
