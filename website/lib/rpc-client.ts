@@ -315,6 +315,13 @@ const cachedCall = React.cache(async function (
         rpcResponse.payload = convertKeysToCamelCase(rpcResponse.payload);
       }
 
+      // Log failed RPC calls for debugging/bugfix purposes
+      if (rpcResponse.retcode !== 0) {
+        console.log('[rpc-error] Failed RPC call:\n' +
+          'REQUEST: ' + JSON.stringify({ method, params, target }) + '\n' +
+          'RESPONSE: ' + JSON.stringify({ retcode: rpcResponse.retcode, message: rpcResponse.message, payload: rpcResponse.payload }));
+      }
+
       console.debug('[rpc-client] Request completed:', { method, retcode: rpcResponse.retcode });
       return rpcResponse;
     } catch (error) {
