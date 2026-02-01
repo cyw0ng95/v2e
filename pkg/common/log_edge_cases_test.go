@@ -414,7 +414,7 @@ func TestLogger_FatalDoesNotPanic(t *testing.T) {
 }
 
 // Helper method to allow testing Fatal without os.Exit
-func (l *Logger) fatalForTest(format string, w *bytes.Buffer) {
+func (l *Logger) fatalForTest(format string, _ *bytes.Buffer) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	message := "test " + format
