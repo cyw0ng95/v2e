@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"sync"
+)
 )
 
 // MaxMessageSize is the maximum size of a message that can be sent between processes
@@ -129,18 +131,41 @@ func NewWithFDs(id string, inputFD, outputFD int) *Subprocess {
 	inputFile := os.NewFile(uintptr(inputFD), "rpc-input")
 	outputFile := os.NewFile(uintptr(outputFD), "rpc-output")
 
+	// Runtime check: verify fds are valid (not closed)
+	var inputValid, outputValid bool
 	if inputFile != nil {
-		sp.input = inputFile
-	} else {
-		sp.input = os.Stdin
+		var b [1]byte
+		n, err := inputFile.Read(b[:])
+		if err == nil || n == 0 || err == io.EOF {
+			inputValid = true
+		}
+		// Reset file offset if possible (not needed for pipes)
+		inputFile.Seek(0, io.SeekStart)
 	}
-
 	if outputFile != nil {
-		sp.output = outputFile
-	} else {
-		sp.output = os.Stdout
+		// Try a non-blocking write (will fail if closed)
+		n, err := outputFile.Write([]byte{})
+		if err == nil || n == 0 {
+			outputValid = true
+		}
 	}
 
+	if !inputValid || !outputValid {
+		// Log to stderr since logger may not be ready
+		msg := "[FATAL] Subprocess: invalid RPC file descriptors: "
+		if !inputValid {
+			msg += "inputFD=" + fmt.Sprint(inputFD) + " "
+		}
+		if !outputValid {
+			msg += "outputFD=" + fmt.Sprint(outputFD) + " "
+		}
+		msg += "\n"
+		os.Stderr.WriteString(msg)
+		os.Exit(254)
+	}
+
+	sp.input = inputFile
+	sp.output = outputFile
 	return sp
 }
 
