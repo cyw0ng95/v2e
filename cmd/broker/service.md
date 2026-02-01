@@ -108,3 +108,9 @@ Central process manager and message router for the v2e system. Spawns and manage
 - Routes messages between services using a correlation ID mechanism for request-response matching
 - Supports graceful shutdown of all managed processes
 - Handles process restart policies with configurable limits
+
+## Implementation Notes (2024-04)
+- **Runtime FD Validity Check**: As of April 2024, all subprocesses now perform a runtime check to ensure the input/output file descriptors passed for RPC are valid (not closed or invalid). If an invalid fd is detected, the subprocess logs a fatal error and exits with code 254. This prevents cryptic errors such as `epollwait on fd N failed with 9` and improves diagnosability of broker/subprocess startup issues.
+
+## Benchmarks
+_No broker-specific benchmarks for subprocess startup or fd validation as of April 2024. Add here if/when available._
