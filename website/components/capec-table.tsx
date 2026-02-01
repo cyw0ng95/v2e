@@ -45,51 +45,49 @@ export function CAPECTable() {
           />
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-0 overflow-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left p-2">ID</th>
-                <th className="text-left p-2">Name</th>
-                <th className="text-left p-2">Summary</th>
-                <th className="text-left p-2">Actions</th>
+      <CardContent className="flex-1 min-h-0 overflow-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left p-2">ID</th>
+              <th className="text-left p-2">Name</th>
+              <th className="text-left p-2">Summary</th>
+              <th className="text-left p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td colSpan={4} className="p-4 text-sm text-muted-foreground">Loading...</td>
               </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={4} className="p-4 text-sm text-muted-foreground">Loading...</td>
+            ) : capecs.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="p-4 text-sm text-muted-foreground">No CAPEC entries</td>
+              </tr>
+            ) : (
+              capecs.map((c: any) => (
+                <tr key={c.id || c.CAPECID} className="hover:bg-muted">
+                  <td className="p-2 font-mono">{c.id}</td>
+                  <td className="p-2">{c.name}</td>
+                  <td className="p-2 max-w-xs truncate" title={c.summary || c.description}>{c.summary || c.description}</td>
+                  <td className="p-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedRow(c);
+                        setSelectedCapecId(c.id || c.CAPECID);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      View Detail
+                    </Button>
+                  </td>
                 </tr>
-              ) : capecs.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="p-4 text-sm text-muted-foreground">No CAPEC entries</td>
-                </tr>
-              ) : (
-                capecs.map((c: any) => (
-                  <tr key={c.id || c.CAPECID} className="hover:bg-muted">
-                    <td className="p-2 font-mono">{c.id}</td>
-                    <td className="p-2">{c.name}</td>
-                    <td className="p-2 max-w-xs truncate" title={c.summary || c.description}>{c.summary || c.description}</td>
-                    <td className="p-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedRow(c);
-                          setSelectedCapecId(c.id || c.CAPECID);
-                          setDialogOpen(true);
-                        }}
-                      >
-                        View Detail
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
         
         <div className="pt-2 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">

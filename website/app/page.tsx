@@ -160,7 +160,7 @@ const RightColumn = memo(function RightColumn({
             <TabsContent value="cwe" className="h-full">
               <div className="h-full flex flex-col">
                 <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <CWETable />
+                  <CWETable viewMode={viewMode} />
                 </Suspense>
               </div>
             </TabsContent>
