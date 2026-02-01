@@ -1,3 +1,77 @@
+### Memory Card Operations
+
+#### 20. RPCCreateMemoryCard
+- **Description**: Creates a new memory card (delegates to local service)
+- **Request Parameters**:
+  - `bookmark_id` (int, required): The bookmark ID to associate
+  - `front_content` (string, required): Front/question content
+  - `back_content` (string, required): Back/answer content
+  - `major_class` (string, required): Major class/category
+  - `minor_class` (string, required): Minor class/category
+  - `status` (string, required): Status (e.g., active, archived)
+  - `content` (object, required): TipTap JSON content
+  - `card_type` (string, optional): Card type (basic, cloze, etc.)
+  - `author` (string, optional): Author
+  - `is_private` (bool, optional): Privacy flag
+  - `metadata` (object, optional): Additional metadata
+- **Response**:
+  - `success` (bool): true if created
+  - `memory_card` (object): The created memory card
+- **Errors**:
+  - Missing/invalid parameters
+  - RPC/local service error
+
+#### 21. RPCGetMemoryCard
+- **Description**: Retrieves a memory card by ID (delegates to local service)
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+- **Response**:
+  - `memory_card` (object): The memory card
+- **Errors**:
+  - Not found
+  - RPC/local service error
+
+#### 22. RPCUpdateMemoryCard
+- **Description**: Updates a memory card by ID (delegates to local service)
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+  - Any updatable field (see Create)
+- **Response**:
+  - `success` (bool): true if updated
+  - `memory_card` (object): The updated memory card
+- **Errors**:
+  - Not found
+  - RPC/local service error
+
+#### 23. RPCDeleteMemoryCard
+- **Description**: Deletes a memory card by ID (delegates to local service)
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+- **Response**:
+  - `success` (bool): true if deleted
+- **Errors**:
+  - Not found
+  - RPC/local service error
+
+#### 24. RPCListMemoryCards
+- **Description**: Lists memory cards with optional filters and pagination (delegates to local service)
+- **Request Parameters**:
+  - `bookmark_id` (int, optional): Filter by bookmark
+  - `major_class` (string, optional): Filter by major class
+  - `minor_class` (string, optional): Filter by minor class
+  - `status` (string, optional): Filter by status
+  - `author` (string, optional): Filter by author
+  - `is_private` (bool, optional): Filter by privacy
+  - `offset` (int, optional): Pagination offset
+  - `limit` (int, optional): Pagination limit
+- **Response**:
+  - `memory_cards` (array): List of memory cards
+  - `total` (int): Total count
+  - `offset` (int): Offset used
+  - `limit` (int): Limit used
+- **Errors**:
+  - RPC/local service error
+
 # CVE Meta Service
 
 ## Service Type
@@ -21,9 +95,6 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - Missing CVE ID: `cve_id` parameter is required
   - Not found: CVE not found in local or remote sources
   - RPC error: Failed to communicate with backend services
-- **Example**:
-  - **Request**: {"cve_id": "CVE-2021-44228"}
-  - **Response**: {"cve": {"id": "CVE-2021-44228", ...}, "source": "local"}
 
 #### 2. RPCCreateCVE
 - **Description**: Creates a new CVE record in local storage by fetching from remote
@@ -177,6 +248,8 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
 - **Errors**:
   - No running job: No job is currently running
   - RPC error: Failed to communicate with backend services
+
+---
 
 ## Configuration
 - **Session Database Path**: Configurable via `SESSION_DB_PATH` environment variable (default: "session.db")

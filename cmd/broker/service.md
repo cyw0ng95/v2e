@@ -1,3 +1,4 @@
+
 # Broker Service
 
 ## Service Type
@@ -22,9 +23,6 @@ Central process manager and message router for the v2e system. Spawns and manage
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
-- **Example**:
-  - **Request**: {"id": "worker-1", "command": "./worker", "args": ["--config", "config.json"]}
-  - **Response**: {"id": "worker-1", "pid": 12345, "status": "running"}
 
 ### 2. RPCSpawnRPC
 - **Description**: Spawns a subprocess with RPC support (custom file descriptors for message passing)
@@ -40,9 +38,6 @@ Central process manager and message router for the v2e system. Spawns and manage
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
-- **Example**:
-  - **Request**: {"id": "worker-1", "command": "./worker", "args": ["--config", "config.json"]}
-  - **Response**: {"id": "worker-1", "pid": 12345, "status": "running"}
 
 ### 3. RPCSpawnWithRestart
 - **Description**: Spawns a subprocess with auto-restart capability
@@ -59,9 +54,6 @@ Central process manager and message router for the v2e system. Spawns and manage
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
-- **Example**:
-  - **Request**: {"id": "worker-1", "command": "./worker", "max_restarts": 5, "args": ["--config", "config.json"]}
-  - **Response**: {"id": "worker-1", "pid": 12345, "status": "running"}
 
 ### 4. RPCSpawnRPCWithRestart
 - **Description**: Spawns a subprocess with RPC support and auto-restart capability
@@ -78,9 +70,6 @@ Central process manager and message router for the v2e system. Spawns and manage
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
-- **Example**:
-  - **Request**: {"id": "worker-1", "command": "./worker", "max_restarts": 5, "args": ["--config", "config.json"]}
-  - **Response**: {"id": "worker-1", "pid": 12345, "status": "running"}
 
 ### 5. RPCGetMessageStats
 - **Description**: Retrieves message statistics for the broker and all managed processes
@@ -97,9 +86,6 @@ Central process manager and message router for the v2e system. Spawns and manage
     - `last_message_time` (string): Time of last message (RFC3339 format)
   - `per_process` (object): Message statistics broken down by process ID
 - **Errors**: None
-- **Example**:
-  - **Request**: {}
-  - **Response**: {"total": {"total_sent": 100, "total_received": 95, ...}, "per_process": {"local": {...}, "remote": {...}}}
 
 ### 6. RPCGetMessageCount
 - **Description**: Retrieves the total number of messages processed by the broker
@@ -107,9 +93,8 @@ Central process manager and message router for the v2e system. Spawns and manage
 - **Response**:
   - `count` (int): Total number of messages processed (sent + received)
 - **Errors**: None
-- **Example**:
-  - **Request**: {}
-  - **Response**: {"count": 195}
+
+---
 
 ## Configuration
 - **Log File**: Configurable via `config.json` under `broker.log_file` for dual output (stdout + file)

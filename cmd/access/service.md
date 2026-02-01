@@ -39,10 +39,74 @@ RESTful API gateway service that provides external access to the v2e system. For
 - **Static Directory**: Configurable via `config.json` under `access.static_dir` (default: "website")
 - **Server Address**: Configurable via `config.json` under `server.address` (default: "0.0.0.0:8080")
 
+# Access Service
+
+## Service Type
+RPC/REST (HTTP + message passing)
+
+## Description
+Acts as the main entry point for all external API requests. Handles authentication, request routing, and response formatting. Forwards RPC calls to the correct backend service and returns results to the client.
+
+## Available RPC Methods
+
+### 1. RPCEcho
+- **Description**: Returns the input string for testing connectivity
+- **Request Parameters**:
+  - `message` (string, required): The message to echo
+- **Response**:
+  - `message` (string): The echoed message
+- **Errors**:
+  - None
+
+### 2. RPCProxy
+- **Description**: Proxies an RPC call to a target backend service
+- **Request Parameters**:
+  - `target` (string, required): Target service name
+  - `method` (string, required): RPC method to call
+  - `params` (object, optional): Parameters for the RPC call
+- **Response**:
+  - `result` (object): The result from the backend service
+- **Errors**:
+  - Invalid target or method: Target service or method does not exist
+  - RPC error: Error returned from backend service
+
+### 3. RPCGetServiceList
+- **Description**: Returns a list of available backend services
+- **Request Parameters**: None
+- **Response**:
+  - `services` ([]string): List of service names
+- **Errors**:
+  - None
+
+### 4. RPCGetServiceSpec
+- **Description**: Returns the API specification for a given service
+- **Request Parameters**:
+  - `service` (string, required): Service name
+- **Response**:
+  - `spec` (object): The API specification for the service
+- **Errors**:
+  - Service not found: The specified service does not exist
+
+### 5. RPCGetHealth
+- **Description**: Returns health status of the access service
+- **Request Parameters**: None
+- **Response**:
+  - `status` (string): Health status (e.g., "ok")
+- **Errors**:
+  - None
+
+### 6. RPCGetVersion
+- **Description**: Returns the version of the access service
+- **Request Parameters**: None
+- **Response**:
+  - `version` (string): Version string
+- **Errors**:
+  - None
+
+---
+
 ## Notes
-- All RPC requests are forwarded through the broker for security and routing
-- Default RPC timeout is 30 seconds but configurable
-- Service runs as a subprocess managed by the broker
-- Uses stdin/stdout for RPC communication with broker
-- External clients access via HTTP on configured address (default: 0.0.0.0:8080)
-- Static files served from configured directory for frontend applications
+- Forwards all RPC calls to the broker for routing
+- Handles authentication and request validation
+- Provides RESTful API for external clients
+- Returns standardized error responses

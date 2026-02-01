@@ -1,3 +1,74 @@
+### 50. RPCCreateMemoryCard
+- **Description**: Creates a new memory card for a bookmark with TipTap content and classification fields
+- **Request Parameters**:
+  - `bookmark_id` (int, required): The bookmark ID to associate
+  - `front_content` (string, required): Front/question content
+  - `back_content` (string, required): Back/answer content
+  - `major_class` (string, required): Major class/category
+  - `minor_class` (string, required): Minor class/category
+  - `status` (string, required): Status (e.g., active, archived)
+  - `content` (object, required): TipTap JSON content
+  - `card_type` (string, optional): Card type (basic, cloze, etc.)
+  - `author` (string, optional): Author
+  - `is_private` (bool, optional): Privacy flag
+  - `metadata` (object, optional): Additional metadata
+- **Response**:
+  - `success` (bool): true if created
+  - `memory_card` (object): The created memory card
+- **Errors**:
+  - Missing/invalid parameters
+  - Database error
+
+### 51. RPCGetMemoryCard
+- **Description**: Retrieves a memory card by ID
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+- **Response**:
+  - `memory_card` (object): The memory card
+- **Errors**:
+  - Not found
+  - Database error
+
+### 52. RPCUpdateMemoryCard
+- **Description**: Updates a memory card by ID
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+  - Any updatable field (see Create)
+- **Response**:
+  - `success` (bool): true if updated
+  - `memory_card` (object): The updated memory card
+- **Errors**:
+  - Not found
+  - Database error
+
+### 53. RPCDeleteMemoryCard
+- **Description**: Deletes a memory card by ID
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+- **Response**:
+  - `success` (bool): true if deleted
+- **Errors**:
+  - Not found
+  - Database error
+
+### 54. RPCListMemoryCards
+- **Description**: Lists memory cards with optional filters and pagination
+- **Request Parameters**:
+  - `bookmark_id` (int, optional): Filter by bookmark
+  - `major_class` (string, optional): Filter by major class
+  - `minor_class` (string, optional): Filter by minor class
+  - `status` (string, optional): Filter by status
+  - `author` (string, optional): Filter by author
+  - `is_private` (bool, optional): Filter by privacy
+  - `offset` (int, optional): Pagination offset
+  - `limit` (int, optional): Pagination limit
+- **Response**:
+  - `memory_cards` (array): List of memory cards
+  - `total` (int): Total count
+  - `offset` (int): Offset used
+  - `limit` (int): Limit used
+- **Errors**:
+  - Database error
 # CVE & CWE Local Service
 
 ## Service Type
@@ -416,6 +487,42 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, and ATT&CK data using SQ
 - **CAPEC Database Path**: Configurable via `CAPEC_DB_PATH` environment variable (default: "capec.db")
 - **ATT&CK Database Path**: Configurable via `ATTACK_DB_PATH` environment variable (default: "attack.db")
 - **CAPEC Strict XSD Validation**: Enabled via `CAPEC_STRICT_XSD` environment variable (default: disabled)
+
+
+## CWE Views (V) — Design
+
+This section documents the CWE "View" feature and how it is implemented in the local service.
+
+**Purpose**
+- Persist and serve CWE view resources (OpenAPI `V` views) for UI and API consumers.
+- Provide CRUD and paginated listing; reserve job-controller integration for future website operations.
+
+**Storage**
+- Normalized SQLite tables prefixed `cwe_*`:
+  - `cwe_views` (id TEXT PK, name, type, status, objective, raw BLOB)
+  - `cwe_view_members`, `cwe_view_audience`, `cwe_view_references`, `cwe_view_notes`, `cwe_view_content_history`
+- Nested arrays stored in separate tables linked by `view_id`.
+- `raw` JSON blob stored on `cwe_views` for forward compatibility.
+
+**RPC Surface (local subprocess)**
+- `RPCSaveCWEView` (payload: `CWEView`)
+- `RPCGetCWEViewByID` (payload: `{id}`)
+- `RPCListCWEViews` (payload: `{offset,limit}`)
+- `RPCDeleteCWEView` (payload: `{id}`)
+
+**Job Controller (future)**
+- A `pkg/cwe/job` controller will be added in a later tier to handle long-running view-generation/import jobs.
+- It will persist session/progress and invoke local RPCs via the broker.
+
+**Testing**
+- Unit tests for store methods and handlers are provided (`pkg/cwe/local_views_test.go` and `cmd/local/cwe_handlers_views_test.go`).
+- Integration with website and meta job orchestration will be tested in later tiers; integration tests remain unchanged.
+
+**Notes**
+- To enable migrations, call `AutoMigrateViews(db)` (function provided in `pkg/cwe/local_views.go`) from `NewLocalCWEStore`'s `AutoMigrate` list or manually where appropriate.
+- Handler registration helper `RegisterCWEViewHandlers(sp, store, logger)` is provided; add calls in `cmd/local/main.go` where `sp` is available.
+
+---
 
 ## Notes
 - Uses SQLite databases for local storage of CVE, CWE, CAPEC, and ATT&CK data
