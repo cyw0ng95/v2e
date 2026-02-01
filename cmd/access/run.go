@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -21,27 +20,14 @@ func runAccess() {
 	}
 	sp, logger := subprocess.StandardStartup(configStruct)
 
-	// Load configuration
-	config, err := common.LoadConfig("config.json")
-	if err != nil {
-		common.Warn(LogMsgWarningLoadingConfig, err)
-		os.Exit(1)
-	}
+	logger.Info(LogMsgConfigLoaded, 30, 10, DefaultStaticDir())
 
-	logger.Info(LogMsgConfigLoaded, config.Access.RPCTimeoutSeconds, config.Access.ShutdownTimeoutSeconds, DefaultStaticDir())
-
-	// Configure service timeouts from config (with defaults)
+	// Use build-time defaults for timeouts
 	rpcTimeout := 30 * time.Second
-	if config.Access.RPCTimeoutSeconds > 0 {
-		rpcTimeout = time.Duration(config.Access.RPCTimeoutSeconds) * time.Second
-		logger.Info(LogMsgRPCTimeoutConfigured, config.Access.RPCTimeoutSeconds)
-	}
+	logger.Info(LogMsgRPCTimeoutConfigured, 30)
 
 	shutdownTimeout := 10 * time.Second
-	if config.Access.ShutdownTimeoutSeconds > 0 {
-		shutdownTimeout = time.Duration(config.Access.ShutdownTimeoutSeconds) * time.Second
-		logger.Info(LogMsgShutdownTimeoutConfig, config.Access.ShutdownTimeoutSeconds)
-	}
+	logger.Info(LogMsgShutdownTimeoutConfig, 10)
 
 	// Use build-time static dir with environment override
 	staticDir := DefaultStaticDir()

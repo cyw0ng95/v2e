@@ -37,18 +37,8 @@ func (r *brokerRouter) ProcessBrokerMessage(msg *proc.Message) error {
 }
 
 func main() {
-	// Get config file from argv[1] or use default
-	configFile := "config.json"
-	if len(os.Args) > 1 {
-		configFile = os.Args[1]
-	}
-
-	// Load configuration
-	config, err := common.LoadConfig(configFile)
-	if err != nil {
-		common.Error(LogMsgErrorLoadingConfig, err)
-		os.Exit(1)
-	}
+	// Use empty config since runtime config is disabled
+	config := &common.Config{}
 
 	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
 	logLevel := subprocess.DefaultBuildLogLevel()
@@ -99,7 +89,7 @@ func main() {
 
 	if config.Broker.OptimizerEnableAdaptive {
 		opt.EnableAdaptiveOptimization()
-		common.Info("Adaptive optimization enabled (freq=%v)", optConfig.AdaptationFreq)
+		logger.Info("Adaptive optimization enabled (freq=%v)", optConfig.AdaptationFreq)
 	}
 
 	broker.SetOptimizer(opt)
@@ -108,14 +98,14 @@ func main() {
 	// We can trust NewWithConfig set defaults, but we don't have easy access to the final config struct inside opt
 	// except via side channels. For logging, we'll just log what we have or query metrics.
 	metrics := opt.Metrics()
-	common.Info("Optimizer started: buffer=%v workers=%v policy=%s batch=%d flush=%v",
+	logger.Info("Optimizer started: buffer=%v workers=%v policy=%s batch=%d flush=%v",
 		metrics["message_channel_buffer"],
 		metrics["active_workers"],
 		optConfig.OfferPolicy,
 		optConfig.BatchSize,
 		optConfig.FlushInterval)
 
-	common.Info("Broker started, processes will be loaded based on configuration")
+	logger.Info("Broker started, processes will be loaded based on configuration")
 
 	// Start message processing goroutine
 	// This processes RPC requests directed at the broker
@@ -127,9 +117,9 @@ func main() {
 			}
 			// Process messages directed at the broker
 			if err := broker.ProcessMessage(msg); err != nil {
-				common.Warn("Error processing broker message - Message ID: %s, Source: %s, Target: %s, Error: %v", msg.ID, msg.Source, msg.Target, err)
+				logger.Warn("Error processing broker message - Message ID: %s, Source: %s, Target: %s, Error: %v", msg.ID, msg.Source, msg.Target, err)
 			} else {
-				common.Debug("Successfully processed broker message - Message ID: %s, Source: %s, Target: %s", msg.ID, msg.Source, msg.Target)
+				logger.Debug("Successfully processed broker message - Message ID: %s, Source: %s, Target: %s", msg.ID, msg.Source, msg.Target)
 			}
 		}
 	}()
@@ -140,5 +130,5 @@ func main() {
 
 	// Wait for signal
 	<-sigChan
-	common.Info("Shutdown signal received, stopping broker...")
+	logger.Info("Shutdown signal received, stopping broker...")
 }

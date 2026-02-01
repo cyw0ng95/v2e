@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/transport"
@@ -100,12 +99,10 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 		cmd.Env = append(cmd.Env, "BROKER_PASSING_RPC_FDS=1")
 	}
 
-	setProcessEnv(cmd, id, b.config)
+	setProcessEnv(cmd, id, nil)
 	if isRPC {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
-		if b.config != nil && b.config.Proc.MaxMessageSizeBytes != 0 {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("SUBPROCESS_MAX_MESSAGE_SIZE=%d", b.config.Proc.MaxMessageSizeBytes))
-		}
+		// MaxMessageSize is now configured at build-time, no runtime override
 	}
 
 	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
@@ -174,34 +171,10 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 
 // LoadProcessesFromConfig loads and starts processes based on new binary detection logic.
 func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
-	if config == nil {
-		b.logger.Info("No configuration provided, using defaults")
-		// Default to detecting binaries
-		return b.loadProcessesByDetection(true, []string{"access", "remote", "local", "meta", "sysmon"})
-	}
-
-	// Use DetectBins setting from config, default to true if not set
-	detectBins := config.Broker.DetectBins
-	if detectBins == false {
-		// If detectBins is not explicitly set in config, default to true
-		// (this assumes that the default value in the struct is false, so if it's false, it wasn't set)
-		detectBins = true
-	}
-
-	var bootBins []string
-	if config.Broker.BootBins != "" {
-		// Use configured BootBins if provided
-		bootBins = strings.Split(config.Broker.BootBins, ",")
-		// Trim whitespace from each bin
-		for i, bin := range bootBins {
-			bootBins[i] = strings.TrimSpace(bin)
-		}
-	} else {
-		// Use build-time default if no config provided
-		bootBins = DefaultBuildBootBins()
-	}
-
-	return b.loadProcessesByDetection(detectBins, bootBins)
+	// Use build-time defaults since runtime config is disabled
+	b.logger.Info("Using build-time defaults for process loading")
+	// Default to detecting binaries
+	return b.loadProcessesByDetection(true, []string{"access", "remote", "local", "meta", "sysmon"})
 }
 
 // loadProcessesByDetection implements the core logic for loading processes based on detection settings.
@@ -315,12 +288,9 @@ func (b *Broker) startService(serviceName string, withRPC bool) error {
 	return nil
 }
 
-// setProcessEnv configures environment variables for a process based on its ID and the broker config.
+// setProcessEnv configures environment variables for a process based on its ID and build-time config.
 // This consolidates the repeated env setup logic from Spawn, SpawnRPC, SpawnWithRestart, and SpawnRPCWithRestart.
 func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
-	if config == nil {
-		return
-	}
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
@@ -342,32 +312,17 @@ func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", cwe.DefaultBuildViewURL()))
 	case "access":
 		// Note: Static dir is now build-time config, so broker doesn't override it with runtime config
-		// The access service will use its build-time static dir, but broker can still pass runtime value as override
-		if config.Access.StaticDir != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("ACCESS_STATIC_DIR=%s", config.Access.StaticDir))
-		}
+		// The access service will use its build-time static dir
+		// No runtime config override is applied
 	}
 }
 
 // getRPCFileDescriptors returns the configured input and output file descriptor numbers for RPC communication.
-// Uses build-time configuration as default if not configured in runtime config.
+// Uses build-time configuration as default since runtime config is disabled.
 func (b *Broker) getRPCFileDescriptors() (inputFD, outputFD int) {
-	// Use build-time defaults as the base defaults
+	// Use build-time defaults since runtime config is disabled
 	inputFD = subprocess.DefaultBuildRPCInputFD()
 	outputFD = subprocess.DefaultBuildRPCOutputFD()
-	if b.config == nil {
-		return
-	}
-	if b.config.Proc.RPCInputFD != 0 {
-		inputFD = b.config.Proc.RPCInputFD
-	} else if b.config.Broker.RPCInputFD != 0 {
-		inputFD = b.config.Broker.RPCInputFD
-	}
-	if b.config.Proc.RPCOutputFD != 0 {
-		outputFD = b.config.Proc.RPCOutputFD
-	} else if b.config.Broker.RPCOutputFD != 0 {
-		outputFD = b.config.Broker.RPCOutputFD
-	}
 	return
 }
 
@@ -377,7 +332,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 	if b.transportManager == nil {
 		return
 	}
-	if b.config != nil && shouldUseUDSTransport(b.config.Broker.Transport) {
+	if shouldUseUDSTransport(common.TransportConfigOptions{}) {
 		if err := b.transportManager.RegisterUDSTransport(processID, true); err == nil {
 			b.logger.Debug("Registered UDS transport for process %s", processID)
 			return

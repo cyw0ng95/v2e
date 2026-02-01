@@ -14,14 +14,14 @@ import (
 
 // Broker manages subprocesses and message passing.
 type Broker struct {
-	processes       map[string]*Process
-	messages        chan *proc.Message
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
-	logger          *common.Logger
-	config          *common.Config
+	processes map[string]*Process
+	messages  chan *proc.Message
+	mu        sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+	logger    *common.Logger
+
 	bus             *mq.Bus
 	rpcEndpoints    map[string][]string
 	endpointsMu     sync.RWMutex
@@ -48,7 +48,6 @@ func NewBroker() *Broker {
 		ctx:              ctx,
 		cancel:           cancel,
 		logger:           common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
-		config:           nil,
 		bus:              bus,
 		rpcEndpoints:     make(map[string][]string),
 		pendingRequests:  make(map[string]*PendingRequest),
@@ -105,13 +104,6 @@ func (b *Broker) AddPendingRequest(correlationID string, pending *PendingRequest
 	b.pendingMu.Unlock()
 }
 
-// SetConfig sets the broker-level configuration used when spawning processes.
-func (b *Broker) SetConfig(cfg *common.Config) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.config = cfg
-}
-
 // SetLogger sets the logger for the broker.
 func (b *Broker) SetLogger(logger *common.Logger) {
 	b.mu.Lock()
@@ -150,29 +142,16 @@ func (b *Broker) Context() context.Context {
 	return b.ctx
 }
 
-// ConfigureTransportFromConfig configures the transport based on the configuration
+// ConfigureTransportFromConfig configures the transport based on build-time configuration
 func (b *Broker) ConfigureTransportFromConfig() {
-	if b.config == nil {
-		return
-	}
+	// Default to FD transport as build-time default
+	b.logger.Info("Using default FD transport")
 
-	// Default to FD transport if not specified
-	if b.config.Broker.Transport.Type == "" {
-		b.config.Broker.Transport.Type = "fd"
-		b.config.Broker.Transport.EnableFD = true
-		b.logger.Info("Using default FD transport")
-	}
+	// Set UDS base path if configured at build time
+	// (no runtime config override available)
 
-	// Set UDS base path if configured
-	if b.config.Broker.Transport.UDSBasePath != "" {
-		b.transportManager.SetUdsBasePath(b.config.Broker.Transport.UDSBasePath)
-	}
-
-	// Enable migration mode if dual mode is enabled
-	if b.config.Broker.Transport.DualMode {
-		b.migrationMode = true
-		b.logger.Info("Enabled dual-mode transport for migration")
-	}
+	// Migration mode is disabled by default
+	b.migrationMode = false
 }
 
 // OptimizerInterface is a lightweight interface used by Broker to avoid

@@ -11,7 +11,6 @@ import (
 // Flags holds the parsed command-line flags
 type Flags struct {
 	ProcessID   string
-	ConfigFile  string
 	RPCInputFD  int
 	RPCOutputFD int
 }
@@ -30,7 +29,7 @@ func ParseFlags(defaultID string) *Flags {
 	// Check if flags are already defined to avoid redefinition panic in tests or if called multiple times
 	if flag.Lookup("id") == nil {
 		flag.StringVar(&f.ProcessID, "id", defaultID, "Process ID")
-		flag.StringVar(&f.ConfigFile, "config", common.DefaultConfigFile, "Configuration file path")
+		
 		flag.IntVar(&f.RPCInputFD, "rpc-in", -1, "RPC input file descriptor")
 		flag.IntVar(&f.RPCOutputFD, "rpc-out", -1, "RPC output file descriptor")
 
@@ -39,7 +38,6 @@ func ParseFlags(defaultID string) *Flags {
 		// If flags are already defined, we need to retrieve their values
 		// This is a bit hacky but safe for our use case where we control the main entry point
 		f.ProcessID = flag.Lookup("id").Value.String()
-		f.ConfigFile = flag.Lookup("config").Value.String()
 		// For int flags, it's more complex to get typed value back without reflection or type assertion,
 		// but since we are the ones defining them, we can assume standard usage.
 		// However, for simplicity and correctness in main(), we assume ParseFlags is called once.
@@ -58,13 +56,8 @@ func ParseFlags(defaultID string) *Flags {
 func NewService(defaultID string) (*Service, error) {
 	flags := ParseFlags(defaultID)
 
-	// Load configuration
-	config, err := common.LoadConfig(flags.ConfigFile)
-	if err != nil {
-		if config == nil {
-			config = &common.Config{}
-		}
-	}
+	// Use empty config since runtime config is disabled
+	config := &common.Config{}
 
 	// Setup Logger - use build-time configured log level and directory (no runtime config overrides for these)
 	logLevel := DefaultBuildLogLevel()
@@ -86,9 +79,7 @@ func NewService(defaultID string) (*Service, error) {
 	}
 
 	logger.Info(common.LogMsgServiceStarted, flags.ProcessID)
-	if flags.ConfigFile != "" {
-		logger.Info(common.LogMsgConfigLoaded, flags.ConfigFile)
-	}
+	logger.Info(common.LogMsgConfigLoaded, "build-time (runtime config disabled)")
 
 	return &Service{
 		ID:     flags.ProcessID,

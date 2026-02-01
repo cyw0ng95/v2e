@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/bytedance/sonic/decoder"
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
@@ -17,18 +16,6 @@ func init() {
 	// Use fastest configuration for zero-copy parsing
 	fastDecoder.UseInt64()
 	fastDecoder.UseNumber()
-
-	// Load config and allow overriding MaxMessageSize if configured
-	cfg, err := common.LoadConfig("")
-	if err != nil {
-		// If config cannot be loaded, keep default
-		return
-	}
-	if cfg != nil {
-		if cfg.Proc.MaxMessageSizeBytes > 0 {
-			MaxMessageSize = cfg.Proc.MaxMessageSizeBytes
-		}
-	}
 }
 
 // MessageType represents the type of message being sent

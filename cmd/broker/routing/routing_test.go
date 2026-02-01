@@ -131,48 +131,18 @@ func TestLoadProcessesFromConfig(t *testing.T) {
 	broker := core.NewBroker()
 	defer broker.Shutdown()
 
-	t.Run("Nil config - should use defaults", func(t *testing.T) {
+	t.Run("Config loading - should use build-time defaults", func(t *testing.T) {
+		config := &common.Config{}
+		err := broker.LoadProcessesFromConfig(config)
+		if err != nil {
+			t.Errorf("Expected no error with config, got: %v", err)
+		}
+	})
+
+	t.Run("Nil config - should use build-time defaults", func(t *testing.T) {
 		err := broker.LoadProcessesFromConfig(nil)
 		if err != nil {
 			t.Errorf("Expected no error for nil config, got: %v", err)
-		}
-	})
-
-	t.Run("Config with detect_bins=true", func(t *testing.T) {
-		config := &common.Config{
-			Broker: common.BrokerConfig{
-				DetectBins: true,
-			},
-		}
-		err := broker.LoadProcessesFromConfig(config)
-		if err != nil {
-			t.Errorf("Expected no error when detect_bins=true, got: %v", err)
-		}
-	})
-
-	t.Run("Config with detect_bins=false and boot_bins", func(t *testing.T) {
-		config := &common.Config{
-			Broker: common.BrokerConfig{
-				DetectBins: false,
-				BootBins:   "access,remote",
-			},
-		}
-		err := broker.LoadProcessesFromConfig(config)
-		if err != nil {
-			t.Errorf("Expected no error when detect_bins=false, got: %v", err)
-		}
-	})
-
-	t.Run("Config with boot_bins list", func(t *testing.T) {
-		config := &common.Config{
-			Broker: common.BrokerConfig{
-				DetectBins: false,
-				BootBins:   "access,local,meta",
-			},
-		}
-		err := broker.LoadProcessesFromConfig(config)
-		if err != nil {
-			t.Errorf("Expected no error when specifying boot_bins, got: %v", err)
 		}
 	})
 }

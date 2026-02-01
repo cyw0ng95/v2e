@@ -3,6 +3,7 @@
  * Implements the Service-Consumer pattern to bridge UI and backend
  */
 
+import React from 'react';
 import type {
   RPCRequest,
   RPCResponse,
@@ -244,6 +245,203 @@ function convertKeysToSnakeCase<T>(obj: unknown): T {
 // RPC Client Class
 // ============================================================================
 
+// Create a cache for RPC calls to deduplicate requests
+const cachedCall = React.cache(async function (
+  baseUrl: string,
+  method: string,
+  params: any,
+  target: string,
+  timeout: number,
+  useMock: boolean
+): Promise<RPCResponse<unknown>> {
+  if (useMock) {
+    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
+    return getMockResponseForCache(method, params);
+  }
+
+  const request: RPCRequest<unknown> = {
+    method,
+    params: params ? convertKeysToSnakeCase(params) : undefined,
+    target,
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(`${baseUrl}/restful/rpc`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    const raw = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    let rpcResponse: RPCResponse<unknown>;
+    try {
+      rpcResponse = JSON.parse(raw);
+    } catch (err) {
+      throw new Error('Invalid JSON response from RPC endpoint');
+    }
+
+    if (rpcResponse.payload) {
+      rpcResponse.payload = convertKeysToCamelCase(rpcResponse.payload);
+    }
+
+    return rpcResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        retcode: 500,
+        message: 'Request timeout',
+        payload: null,
+      };
+    }
+    return {
+      retcode: 500,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      payload: null,
+    };
+  }
+});
+
+function getMockResponseForCache<TResponse>(
+  method: string,
+  params?: unknown
+): RPCResponse<TResponse> {
+  switch (method) {
+    case 'RPCGetCVE':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          cve: MOCK_CVE_DATA,
+          source: 'local',
+        } as TResponse,
+      };
+
+    case 'RPCListCVEs':
+      const listParams = params as ListCVEsRequest | undefined;
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          cves: [MOCK_CVE_DATA, { ...MOCK_CVE_DATA, id: 'CVE-2021-44229' }],
+          total: 2,
+          offset: listParams?.offset || 0,
+          limit: listParams?.limit || 10,
+        } as TResponse,
+      };
+
+    case 'RPCCountCVEs':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          count: 150,
+        } as TResponse,
+      };
+
+    case 'RPCGetSessionStatus':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          hasSession: false,
+        } as TResponse,
+      };
+
+    case 'RPCListCWEViews': {
+      const lp = params as ListCWEViewsRequest | undefined;
+      const sample: CWEView[] = [
+        { id: 'V-1', name: 'View One', type: 'catalog', status: 'active', objective: 'Sample objective', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} },
+        { id: 'V-2', name: 'View Two', type: 'catalog', status: 'deprecated', objective: 'Second view', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} },
+      ];
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          views: sample.slice(0, lp?.limit || sample.length),
+          offset: lp?.offset || 0,
+          limit: lp?.limit || sample.length,
+          total: sample.length,
+        } as TResponse,
+      };
+    }
+
+    case 'RPCGetCWEViewByID': {
+      const req = params as { id?: string } | undefined;
+      const id = req?.id || 'V-1';
+      const view: CWEView = { id, name: `View ${id}`, type: 'catalog', status: 'active', objective: 'Mocked view detail', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} };
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: { view } as TResponse,
+      };
+    }
+
+    case 'RPCListCAPECs': {
+      const lp = params as { offset?: number; limit?: number } | undefined;
+      const sample: any[] = [
+        { id: 'CAPEC-1', name: 'Example CAPEC One', summary: 'Example attack pattern one', description: 'Detailed description 1' },
+        { id: 'CAPEC-2', name: 'Example CAPEC Two', summary: 'Example attack pattern two', description: 'Detailed description 2' },
+      ];
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          capecs: sample.slice(0, lp?.limit || sample.length),
+          offset: lp?.offset || 0,
+          limit: lp?.limit || sample.length,
+          total: sample.length,
+        } as unknown as TResponse,
+      };
+    }
+
+    case 'RPCGetCAPECByID': {
+      const req = params as { capecId?: string } | undefined;
+      const id = req?.capecId || 'CAPEC-1';
+      const item = { id, name: `CAPEC ${id}`, summary: 'Mocked CAPEC summary', description: 'Mocked CAPEC details' };
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: item as unknown as TResponse,
+      };
+    }
+
+    case 'RPCStartCWEViewJob':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: { success: true, sessionId: `mock-session-${Date.now()}` } as TResponse,
+      };
+
+    case 'RPCStopCWEViewJob':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: { success: true, sessionId: undefined } as TResponse,
+      };
+
+    default:
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {} as TResponse,
+      };
+  }
+}
+
 export class RPCClient {
   private baseUrl: string;
   private timeout: number;
@@ -267,83 +465,21 @@ export class RPCClient {
     params?: TRequest,
     target: string = 'meta'
   ): Promise<RPCResponse<TResponse>> {
-    // Mock mode: return simulated data
-    if (this.useMock) {
-      await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-      return this.getMockResponse<TResponse>(method, params);
-    }
-
-    // Real mode: make HTTP request
-    const request: RPCRequest<unknown> = {
+    // Use the cached call function to deduplicate requests
+    const result = await cachedCall(
+      this.baseUrl,
       method,
-      params: params ? convertKeysToSnakeCase(params) : undefined,
+      params ? convertKeysToSnakeCase(params) : undefined,
       target,
-    };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
-    try {
-      // Debug: log request details
-      console.debug('[rpc-client] RPC request', { url: `${this.baseUrl}/restful/rpc`, method, target, params: request.params });
-
-      const response = await fetch(`${this.baseUrl}/restful/rpc`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      // Read raw response text so we can log invalid JSON bodies as well
-      const raw = await response.text();
-
-      if (!response.ok) {
-        console.error('[rpc-client] HTTP error response', { status: response.status, body: raw });
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      let rpcResponse: RPCResponse<unknown>;
-      try {
-        rpcResponse = JSON.parse(raw);
-      } catch (err) {
-        console.error('[rpc-client] Failed to parse JSON response', { raw, err });
-        throw new Error('Invalid JSON response from RPC endpoint');
-      }
-
-      // Debug: log parsed RPC response
-      console.debug('[rpc-client] RPC response', rpcResponse);
-
-      // Convert response payload keys to camelCase
-      if (rpcResponse.payload) {
-        rpcResponse.payload = convertKeysToCamelCase(rpcResponse.payload);
-      }
-
-      return rpcResponse as RPCResponse<TResponse>;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error('[rpc-client] request aborted (timeout)', { method, target });
-        return {
-          retcode: 500,
-          message: 'Request timeout',
-          payload: null,
-        };
-      }
-      console.error('[rpc-client] request failed', {
-        method,
-        target,
-        error: error instanceof Error ? error.message : error,
-      });
-      return {
-        retcode: 500,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        payload: null,
-      };
-    }
+      this.timeout,
+      this.useMock
+    );
+    
+    // Log for debugging purposes
+    console.debug('[rpc-client] RPC request', { url: `${this.baseUrl}/restful/rpc`, method, target, params: params ? convertKeysToSnakeCase(params) : undefined });
+    console.debug('[rpc-client] RPC response', result);
+    
+    return result as RPCResponse<TResponse>;
   }
 
   /**
