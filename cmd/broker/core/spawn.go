@@ -102,6 +102,10 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	// compute their own IDs and transport paths deterministically from
 	// build-time defaults (ldflags). This avoids runtime env coordination.
 
+	// Track if UDS transport was successfully registered, so we don't
+	// overwrite it with an FD transport later.
+	udsTransportRegistered := false
+
 	// If this is an RPC process and transport manager exists, register a UDS
 	// transport before starting the process. The socket path is deterministic
 	// and based on the build-time UDS base path so the subprocess can compute
@@ -109,6 +113,7 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	if isRPC && b.transportManager != nil {
 		if _, err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
 			b.logger.Debug("Registered UDS transport for process %s before start", id)
+			udsTransportRegistered = true
 		} else {
 			b.logger.Warn("Failed to register UDS transport for process %s before start: %v", id, err)
 		}
@@ -165,10 +170,25 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 
 	if isRPC {
 		b.logger.Info("Spawned RPC process: id=%s pid=%d cmd=%s (fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
-		b.registerProcessTransport(id, inputFD, outputFD)
-		proc.readLoopWg.Add(1)
-		b.wg.Add(1)
-		go b.readProcessMessages(proc)
+		// Only register FD transport if UDS transport was not registered.
+		// UDS transport is the default and preferred communication method.
+		if !udsTransportRegistered {
+			b.registerProcessTransport(id, inputFD, outputFD)
+			// For FD transport, we need to read from the process's stdout pipe
+			proc.readLoopWg.Add(1)
+			b.wg.Add(1)
+			go b.readProcessMessages(proc)
+		} else {
+			// For UDS transport, start a receive loop to read messages from the UDS transport
+			udsTransport, err := b.transportManager.GetTransport(id)
+			if err != nil {
+				b.logger.Warn("Failed to get UDS transport for process %s: %v", id, err)
+			} else {
+				b.wg.Add(1)
+				go b.readUDSMessages(id, udsTransport)
+				b.logger.Debug("Started UDS message reading for process %s", id)
+			}
+		}
 	} else {
 		b.logger.Info("Spawned process: id=%s pid=%d cmd=%s", id, info.PID, command)
 	}
