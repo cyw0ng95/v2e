@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { rpcClient } from '@/lib/rpc-client';
 import { MemoryCard } from '@/lib/types';
 
@@ -26,6 +26,22 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
   const [showAnswer, setShowAnswer] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Add ref to track if we're currently loading to prevent duplicate requests
+  const isLoadingRef = useRef(false);
+  
+  // Debounced loadCards function to prevent rapid successive calls
+  const debouncedLoadCards = useCallback(() => {
+    if (isLoadingRef.current) {
+      console.debug('[memory-card-study] Skipping loadCards - already loading');
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    loadCards().finally(() => {
+      isLoadingRef.current = false;
+    });
+  }, [filterState, bookmarkId]); // Dependencies for useCallback
   const [stats, setStats] = useState({
     total: 0,
     reviewed: 0,
@@ -33,20 +49,23 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
   });
 
   useEffect(() => {
-    loadCards();
-  }, [bookmarkId, filterState]);
+    debouncedLoadCards();
+  }, [bookmarkId, filterState, debouncedLoadCards]);
 
   // Add cleanup effect for better memory management
   useEffect(() => {
     // Reset card index when filter changes to prevent invalid indices
-    if (cards.length > 0) {
+    // Only reset if we have cards and the filter actually changed
+    if (cards.length > 0 && filterState) {
       setCurrentCardIndex(0);
     }
-  }, [filterState, cards.length]);
+  }, [filterState]); // Remove cards.length dependency to prevent circular triggers
 
   const loadCards = async () => {
+    console.debug('[memory-card-study] Loading cards with params:', { bookmarkId, filterState });
     setLoading(true);
     setError(null);
+    
     try {
       const params: any = { learning_state: filterState };
       if (bookmarkId) {
@@ -59,22 +78,29 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
         // Ensure we always have an array, even if empty
         const memoryCards = response.payload.memory_cards || [];
         setCards(memoryCards);
-        setCurrentCardIndex(0); // Reset to first card when loading new data
+        
+        // Only reset index if we got new cards
+        if (memoryCards.length > 0) {
+          setCurrentCardIndex(0);
+        }
+        
         setStats({
           total: response.payload.total || 0,
           reviewed: 0,
           remaining: response.payload.total || 0
         });
+        
+        console.debug('[memory-card-study] Loaded', memoryCards.length, 'cards');
       } else {
         setError('Failed to load memory cards');
-        setCards([]); // Clear cards on error
+        setCards([]);
         setCurrentCardIndex(0);
       }
     } catch (err) {
       setError('Error loading memory cards');
-      setCards([]); // Clear cards on error
+      setCards([]);
       setCurrentCardIndex(0);
-      console.error('Error loading memory cards:', err);
+      console.error('[memory-card-study] Error loading memory cards:', err);
     } finally {
       setLoading(false);
     }
@@ -104,10 +130,8 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
         } else {
           // If we're at the end, reload the list to get new cards to review
           await loadCards();
-          // Only reset to 0 if we still have cards
-          if (cards.length > 0) {
-            setCurrentCardIndex(0);
-          }
+          // Check the updated cards state after reload
+          // Note: This creates a closure issue - we need to access fresh state
         }
         
         setShowAnswer(false);

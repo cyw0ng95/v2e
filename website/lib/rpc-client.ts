@@ -245,6 +245,9 @@ function convertKeysToSnakeCase<T>(obj: unknown): T {
 // RPC Client Class
 // ============================================================================
 
+// Track pending requests to prevent duplicates
+const pendingRequests = new Map<string, Promise<RPCResponse<unknown>>>();
+
 // Create a cache for RPC calls to deduplicate requests
 const cachedCall = React.cache(async function (
   baseUrl: string,
@@ -254,9 +257,20 @@ const cachedCall = React.cache(async function (
   timeout: number,
   useMock: boolean
 ): Promise<RPCResponse<unknown>> {
+  // Create a unique key for this request
+  const requestKey = `${method}:${JSON.stringify(params || {})}:${target}`;
+  
+  // Check if we already have a pending request for this key
+  if (pendingRequests.has(requestKey)) {
+    console.debug('[rpc-client] Deduplicating request:', requestKey);
+    return pendingRequests.get(requestKey)!;
+  }
+  
   if (useMock) {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-    return getMockResponseForCache(method, params);
+    const result = getMockResponseForCache(method, params);
+    pendingRequests.delete(requestKey); // Clean up
+    return result;
   }
 
   const request: RPCRequest<unknown> = {
@@ -265,54 +279,67 @@ const cachedCall = React.cache(async function (
     target,
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  // Create promise for this request
+  const requestPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  try {
-    const response = await fetch(`${baseUrl}/restful/rpc`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    const raw = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    let rpcResponse: RPCResponse<unknown>;
     try {
-      rpcResponse = JSON.parse(raw);
-    } catch (err) {
-      throw new Error('Invalid JSON response from RPC endpoint');
-    }
+      console.debug('[rpc-client] Making request:', { method, target, params });
+      
+      const response = await fetch(`${baseUrl}/restful/rpc`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      });
 
-    if (rpcResponse.payload) {
-      rpcResponse.payload = convertKeysToCamelCase(rpcResponse.payload);
-    }
+      clearTimeout(timeoutId);
 
-    return rpcResponse;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
+      const raw = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      let rpcResponse: RPCResponse<unknown>;
+      try {
+        rpcResponse = JSON.parse(raw);
+      } catch (err) {
+        throw new Error('Invalid JSON response from RPC endpoint');
+      }
+
+      if (rpcResponse.payload) {
+        rpcResponse.payload = convertKeysToCamelCase(rpcResponse.payload);
+      }
+
+      console.debug('[rpc-client] Request completed:', { method, retcode: rpcResponse.retcode });
+      return rpcResponse;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        return {
+          retcode: 500,
+          message: 'Request timeout',
+          payload: null,
+        };
+      }
       return {
         retcode: 500,
-        message: 'Request timeout',
+        message: error instanceof Error ? error.message : 'Unknown error',
         payload: null,
       };
+    } finally {
+      // Clean up pending request
+      pendingRequests.delete(requestKey);
     }
-    return {
-      retcode: 500,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      payload: null,
-    };
-  }
+  })();
+  
+  // Store the promise
+  pendingRequests.set(requestKey, requestPromise);
+  return requestPromise;
 });
 
 function getMockResponseForCache<TResponse>(
@@ -475,9 +502,7 @@ export class RPCClient {
       this.useMock
     );
     
-    // Log for debugging purposes
-    console.debug('[rpc-client] RPC request', { url: `${this.baseUrl}/restful/rpc`, method, target, params: params ? convertKeysToSnakeCase(params) : undefined });
-    console.debug('[rpc-client] RPC response', result);
+    // Log moved to cachedCall function for better timing
     
     return result as RPCResponse<TResponse>;
   }
