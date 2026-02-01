@@ -19,7 +19,7 @@ type TransportManager struct {
 func NewTransportManager() *TransportManager {
 	return &TransportManager{
 		transports:  make(map[string]Transport),
-		udsBasePath: "/tmp/v2e_uds",
+		udsBasePath: buildUDSBasePathValue(),
 	}
 }
 

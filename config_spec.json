@@ -226,6 +226,61 @@
       "target": "github.com/cyw0ng95/v2e/pkg/cve.local.buildLearningDBPath",
       "major_class": "proc",
       "minor_class": "local"
+    },
+    "CONFIG_BROKER_UDS_BASEPATH": {
+      "description": "Base path for Unix Domain Socket files for broker transport manager",
+      "type": "string",
+      "default": "/tmp/v2e_uds",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/broker/transport.manager.buildUDSBasePath",
+      "major_class": "broker",
+      "minor_class": "transport"
+    },
+    "CONFIG_OPTIMIZER_BATCH": {
+      "description": "Batch size for message batching",
+      "type": "int",
+      "default": 1,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerBatch",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_BUFFER": {
+      "description": "Message channel buffer capacity for the broker optimizer",
+      "type": "int",
+      "default": 1000,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerBuffer",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_FLUSH": {
+      "description": "Flush interval for message batching (milliseconds)",
+      "type": "int",
+      "default": 10,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerFlush",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_POLICY": {
+      "description": "Offer policy for message handling when buffer is full (drop, wait, or reject)",
+      "type": "string",
+      "default": "drop",
+      "values": ["drop", "wait", "reject"],
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerPolicy",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_WORKERS": {
+      "description": "Number of worker goroutines for message processing",
+      "type": "int",
+      "default": 4,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerWorkers",
+      "major_class": "broker",
+      "minor_class": "optimizer"
     }
   }
 }

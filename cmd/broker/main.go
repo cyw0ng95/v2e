@@ -49,16 +49,17 @@ func main() {
 
 	// Create and attach an optimizer using broker config (optional tuning)
 	// Broker directly satisfies routing.Router interface
+	// Configuration values come from build-time ldflags set by vconfig
 
 	optConfig := perf.Config{
-		BufferCap:      1000,                   // Default buffer capacity
-		NumWorkers:     4,                      // Default number of workers
+		BufferCap:      buildOptimizerBufferValue(),    // Build-time configurable
+		NumWorkers:     buildOptimizerWorkersValue(),   // Build-time configurable
 		StatsInterval:  100 * time.Millisecond, // Default stats interval
-		OfferPolicy:    "drop",                 // Default offer policy
-		OfferTimeout:   0,                      // Default offer timeout
-		BatchSize:      1,                      // Default batch size
-		FlushInterval:  10 * time.Millisecond,  // Default flush interval
-		AdaptationFreq: 10 * time.Second,       // Default adaptation frequency
+		OfferPolicy:    buildOptimizerPolicyValue(),    // Build-time configurable
+		OfferTimeout:   0,                         // Default offer timeout
+		BatchSize:      buildOptimizerBatchValue(),     // Build-time configurable
+		FlushInterval: buildOptimizerFlushValue(),     // Build-time configurable
+		AdaptationFreq: 10 * time.Second,         // Default adaptation frequency
 	}
 
 	opt := perf.NewWithConfig(broker, optConfig)
