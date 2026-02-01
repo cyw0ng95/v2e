@@ -15,6 +15,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// HTTP response helpers for reducing boilerplate in handlers
+
+// httpErrorResponse sends an error response with the given code and message.
+func httpErrorResponse(c *gin.Context, code int, message string) {
+	c.JSON(code, gin.H{
+		"retcode": code,
+		"message": message,
+		"payload": nil,
+	})
+}
+
+// httpSuccessResponse sends a success response with the given payload.
+func httpSuccessResponse(c *gin.Context, payload interface{}) {
+	c.JSON(http.StatusOK, gin.H{
+		"retcode": 0,
+		"message":  "success",
+		"payload":  payload,
+	})
+}
+
 // registerHandlers registers the REST endpoints on the provided router group
 func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 	// Health check endpoint
@@ -38,11 +58,7 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 
 		if err := c.ShouldBindJSON(&request); err != nil {
 			common.Warn(LogMsgRequestParsingError, err)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"retcode": 400,
-				"message": fmt.Sprintf("Invalid request: %v", err),
-				"payload": nil,
-			})
+			httpErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, http.StatusBadRequest)
 			return
 		}
@@ -68,11 +84,7 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 		case <-requestCtx.Done():
 			err := requestCtx.Err()
 			common.Error("HTTP request context already canceled before RPC call: %v", err)
-			c.JSON(http.StatusOK, gin.H{
-				"retcode": 500,
-				"message": fmt.Sprintf("Request context canceled: %v", err),
-				"payload": nil,
-			})
+			httpErrorResponse(c, http.StatusOK, fmt.Sprintf("Request context canceled: %v", err))
 			return
 		default:
 			// Context is not done, proceed with RPC
@@ -97,23 +109,15 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 
 		if err != nil {
 			common.Error(LogMsgRPCForwardingError, err)
-			c.JSON(http.StatusOK, gin.H{
-				"retcode": 500,
-				"message": fmt.Sprintf("RPC error: %v", err),
-				"payload": nil,
-			})
+			httpErrorResponse(c, http.StatusOK, fmt.Sprintf("RPC error: %v", err))
 			common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, 200)
 			return
 		}
 
-		// Check response type
-		if response.Type == subprocess.MessageTypeError {
-			common.Warn("RPC response is an error: %s", response.Error)
-			c.JSON(http.StatusOK, gin.H{
-				"retcode": 500,
-				"message": response.Error,
-				"payload": nil,
-			})
+		// Check response type using subprocess helper
+		if isError, errMsg := subprocess.IsErrorResponse(response); isError {
+			common.Warn("RPC response is an error: %s", errMsg)
+			httpErrorResponse(c, http.StatusOK, errMsg)
 			common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, 200)
 			return
 		}
@@ -124,11 +128,7 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 			common.Debug(LogMsgRPCResponseParsing)
 			if err := subprocess.UnmarshalFast(response.Payload, &payload); err != nil {
 				common.Error(LogMsgRPCResponseParseError, err)
-				c.JSON(http.StatusOK, gin.H{
-					"retcode": 500,
-					"message": fmt.Sprintf("Failed to parse response: %v", err),
-					"payload": nil,
-				})
+				httpErrorResponse(c, http.StatusOK, fmt.Sprintf("Failed to parse response: %v", err))
 				common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, 200)
 				return
 			}
@@ -136,11 +136,7 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 		}
 
 		// Return success response
-		c.JSON(http.StatusOK, gin.H{
-			"retcode": 0,
-			"message": "success",
-			"payload": payload,
-		})
+		httpSuccessResponse(c, payload)
 		common.Info(LogMsgRPCForwardingComplete, request.Method, target)
 		common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, http.StatusOK)
 	})
