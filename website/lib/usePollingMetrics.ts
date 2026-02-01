@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { rpcClient } from "./rpc-client";
 import type { SysMetrics } from "./types";
+import { createLogger } from "./logger";
+
+const logger = createLogger("usePollingMetrics");
 
 export interface SysMetricsPoint {
   ts: number;
@@ -27,7 +30,7 @@ export function usePollingMetrics(intervalMs = 3000, maxPoints = 60, autoStart =
       }
     } catch (err) {
       // swallow - consumer can surface errors if needed
-      console.error("usePollingMetrics fetch error", err);
+      logger.error("Metrics fetch error", err, { intervalMs, maxPoints });
     }
   }, [maxPoints]);
 

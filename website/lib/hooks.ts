@@ -1,5 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { rpcClient } from './rpc-client';
+import { createLogger } from './logger';
+
+// Create logger for hooks
+const logger = createLogger('hooks');
 
 interface AttackQueryParams {
   offset?: number;
@@ -28,7 +32,7 @@ export function useAttackTechniques(params: AttackQueryParams = {}) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching ATT&CK techniques:', err);
+        logger.error('Error fetching ATT&CK techniques', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -64,7 +68,7 @@ export function useAttackTactics(params: AttackQueryParams = {}) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching ATT&CK tactics:', err);
+        logger.error('Error fetching ATT&CK tactics', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -100,7 +104,7 @@ export function useAttackMitigations(params: AttackQueryParams = {}) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching ATT&CK mitigations:', err);
+        logger.error('Error fetching ATT&CK mitigations', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -140,7 +144,7 @@ export function useCAPEC(capecId?: string) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching CAPEC:', err);
+        logger.error('Error fetching CAPEC', err, { capecId });
       } finally {
         setIsLoading(false);
       }
@@ -174,7 +178,7 @@ export function useCAPECList(offset: number = 0, limit: number = 100) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching CAPEC list:', err);
+        logger.error('Error fetching CAPEC list', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -209,7 +213,7 @@ export function useSessionStatus() {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching session status:', err);
+        logger.error('Error fetching session status', err);
       } finally {
         setIsLoading(false);
       }
@@ -245,7 +249,7 @@ export function useStartSession() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error starting session:', err);
+      logger.error('Error starting session', err, { sessionId, startIndex, resultsPerBatch });
       if (options?.onError) {
         options.onError(err);
       }
@@ -278,7 +282,7 @@ export function useStartTypedSession() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error starting typed session:', err);
+      logger.error('Error starting typed session', err, { sessionId, dataType, startIndex, resultsPerBatch });
       if (options?.onError) {
         options.onError(err);
       }
@@ -310,7 +314,7 @@ export function useStartCWEImport() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error starting CWE import:', err);
+      logger.error('Error starting CWE import', err);
       if (options?.onError) {
         options.onError(err);
       }
@@ -342,7 +346,7 @@ export function useStartCAPECImport() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error starting CAPEC import:', err);
+      logger.error('Error starting CAPEC import', err);
       if (options?.onError) {
         options.onError(err);
       }
@@ -374,7 +378,7 @@ export function useStartATTACKImport() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error starting ATT&CK import:', err);
+      logger.error('Error starting ATT&CK import', err);
       if (options?.onError) {
         options.onError(err);
       }
@@ -396,7 +400,7 @@ export function useStopSession() {
     try {
       // Prevent retries if we've already seen the "run not active" error
       if (seenInactiveError) {
-        console.warn('Skipping stop session request - already saw "run not active" error');
+        logger.warn('Skipping stop session request - already saw "run not active" error');
         return;
       }
       
@@ -414,11 +418,11 @@ export function useStopSession() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error stopping session:', err);
+      logger.error('Error stopping session', err);
       
       // Prevent infinite retry loop for "run not active" errors
       if (err.message && err.message.includes('run not active')) {
-        console.warn('Session already inactive, preventing future retries');
+        logger.warn('Session already inactive, preventing future retries');
         setSeenInactiveError(true);
         // Don't call onError for this specific error to prevent retry loops
         return;
@@ -461,7 +465,7 @@ export function usePauseJob() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error pausing job:', err);
+      logger.error('Error pausing job', err);
       if (options?.onError) {
         options.onError(err);
       }
@@ -493,7 +497,7 @@ export function useResumeJob() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error resuming job:', err);
+      logger.error('Error resuming job', err);
       if (options?.onError) {
         options.onError(err);
       }
@@ -525,7 +529,7 @@ export function useCWEViews(offset: number = 0, limit: number = 100) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching CWE views:', err);
+        logger.error('Error fetching CWE views', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -579,7 +583,7 @@ export function useCWEJobStatus() {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching CWE job status:', err);
+        logger.error('Error fetching CWE job status', err);
       } finally {
         setIsLoading(false);
       }
@@ -615,7 +619,7 @@ export function useStartCWEViewJob() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error starting CWE view job:', err);
+      logger.error('Error starting CWE view job', err, { sessionId, startIndex, resultsPerBatch });
       if (options?.onError) {
         options.onError(err);
       }
@@ -648,7 +652,7 @@ export function useStopCWEViewJob() {
       }
     } catch (err: any) {
       setError(err);
-      console.error('Error stopping CWE view job:', err);
+      logger.error('Error stopping CWE view job', err, { sessionId });
       if (options?.onError) {
         options.onError(err);
       }
@@ -680,7 +684,7 @@ export function useSysMetrics() {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching system metrics:', err);
+        logger.error('Error fetching system metrics', err);
       } finally {
         setIsLoading(false);
       }
@@ -715,7 +719,7 @@ export function useCVEList(offset: number = 0, limit: number = 100) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching CVE list:', err);
+        logger.error('Error fetching CVE list', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -758,7 +762,7 @@ export function useCVECount() {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching CVE count:', err);
+        logger.error('Error fetching CVE count', err);
       } finally {
         setIsLoading(false);
       }
@@ -795,7 +799,7 @@ export function useAttackSoftware(params: AttackQueryParams = {}) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching ATT&CK software:', err);
+        logger.error('Error fetching ATT&CK software', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -832,7 +836,7 @@ export function useAttackGroups(params: AttackQueryParams = {}) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Failed to fetch ATT&CK groups:', err);
+        logger.error('Failed to fetch ATT&CK groups', err, { offset, limit });
       } finally {
         setIsLoading(false);
       }
@@ -869,7 +873,7 @@ export function useCWEList(params: { offset?: number; limit?: number; search?: s
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching CWE list:', err);
+        logger.error('Error fetching CWE list', err, { offset, limit, search });
       } finally {
         setIsLoading(false);
       }
@@ -909,7 +913,7 @@ export function useAttackTechnique(id: string) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching attack technique:', err);
+        logger.error('Error fetching attack technique', err, { id });
       } finally {
         setIsLoading(false);
       }
@@ -948,7 +952,7 @@ export function useAttackTactic(id: string) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching attack tactic:', err);
+        logger.error('Error fetching attack tactic', err, { id });
       } finally {
         setIsLoading(false);
       }
@@ -987,7 +991,7 @@ export function useAttackMitigation(id: string) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching attack mitigation:', err);
+        logger.error('Error fetching attack mitigation', err, { id });
       } finally {
         setIsLoading(false);
       }
@@ -1026,7 +1030,7 @@ export function useAttackSoftwareById(id: string) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching attack software:', err);
+        logger.error('Error fetching attack software', err, { id });
       } finally {
         setIsLoading(false);
       }
@@ -1065,7 +1069,7 @@ export function useAttackGroupById(id: string) {
         setError(null);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching attack group:', err);
+        logger.error('Error fetching attack group', err, { id });
       } finally {
         setIsLoading(false);
       }

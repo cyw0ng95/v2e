@@ -10,8 +10,12 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error('Global error:', error);
+    // Log the error with full details for debugging
+    const timestamp = new Date().toISOString();
+    console.error(`[${timestamp}] [ERROR] [GlobalError] Next.js global error\n` +
+      `Message: ${error.message}\n` +
+      `Digest: ${error.digest || 'N/A'}\n` +
+      `Stack: ${error.stack}`);
   }, [error]);
 
   return (

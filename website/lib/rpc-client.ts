@@ -94,14 +94,18 @@ import type {
   RevertBookmarkStateRequest,
   RevertBookmarkStateResponse,
 } from './types';
+import { logError, logWarn, logDebug, createLogger } from './logger';
+
+// Create component-specific logger
+const logger = createLogger('rpc-client');
 
 // ============================================================================
-// Configuration
+// Default Configuration
 // ============================================================================
 
 const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
-const MOCK_DELAY_MS = 500; // Simulate network delay in mock mode
+const MOCK_DELAY_MS = 500; // 500ms delay for mock responses
 
 // ============================================================================
 // Mock Data for Development
@@ -262,7 +266,7 @@ const cachedCall = React.cache(async function (
   
   // Check if we already have a pending request for this key
   if (pendingRequests.has(requestKey)) {
-    console.debug('[rpc-client] Deduplicating request:', requestKey);
+    logger.debug('Deduplicating request', { requestKey });
     return pendingRequests.get(requestKey)!;
   }
   
@@ -285,8 +289,8 @@ const cachedCall = React.cache(async function (
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      console.debug('[rpc-client] Making request:', { method, target, params });
-      
+      logger.debug('Making RPC request', { method, target, params });
+
       const response = await fetch(`${baseUrl}/restful/rpc`, {
         method: 'POST',
         headers: {
@@ -301,6 +305,15 @@ const cachedCall = React.cache(async function (
       const raw = await response.text();
 
       if (!response.ok) {
+        // HTTP-level error with full details for debugging
+        logger.error(`HTTP error: ${response.status} ${response.statusText}`, new Error(`HTTP ${response.status}`), {
+          url: `${baseUrl}/restful/rpc`,
+          method,
+          target,
+          status: response.status,
+          statusText: response.statusText,
+          responseBody: raw.substring(0, 500), // First 500 chars
+        });
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -308,6 +321,11 @@ const cachedCall = React.cache(async function (
       try {
         rpcResponse = JSON.parse(raw);
       } catch (err) {
+        logger.error('Invalid JSON response from RPC endpoint', err, {
+          responseBody: raw.substring(0, 500),
+          method,
+          target,
+        });
         throw new Error('Invalid JSON response from RPC endpoint');
       }
 
@@ -317,22 +335,29 @@ const cachedCall = React.cache(async function (
 
       // Log failed RPC calls for debugging/bugfix purposes
       if (rpcResponse.retcode !== 0) {
-        console.log('[rpc-error] Failed RPC call:\n' +
-          'REQUEST: ' + JSON.stringify({ method, params, target }) + '\n' +
-          'RESPONSE: ' + JSON.stringify({ retcode: rpcResponse.retcode, message: rpcResponse.message, payload: rpcResponse.payload }));
+        logger.error(`RPC call failed with retcode=${rpcResponse.retcode}`, new Error(rpcResponse.message || 'Unknown RPC error'), {
+          request: { method, params, target },
+          response: {
+            retcode: rpcResponse.retcode,
+            message: rpcResponse.message,
+            payload: rpcResponse.payload,
+          },
+        });
       }
 
-      console.debug('[rpc-client] Request completed:', { method, retcode: rpcResponse.retcode });
+      logger.debug('RPC request completed', { method, retcode: rpcResponse.retcode });
       return rpcResponse;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('Request timeout', error, { method, target, timeout });
         return {
           retcode: 500,
           message: 'Request timeout',
           payload: null,
         };
       }
+      logger.error('RPC request failed', error, { method, target });
       return {
         retcode: 500,
         message: error instanceof Error ? error.message : 'Unknown error',

@@ -23,7 +23,11 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    const timestamp = new Date().toISOString();
+    console.error(`[${timestamp}] [ERROR] [ErrorBoundary] React component error caught\n` +
+      `Error: ${error.message}\n` +
+      `Stack: ${error.stack}\n` +
+      `Component Stack: ${errorInfo.componentStack}`);
   }
 
   render() {
@@ -41,8 +45,8 @@ class ErrorBoundary extends React.Component<
             <p className="text-muted-foreground mb-4">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
-            <Button 
-              onClick={() => window.location.reload()} 
+            <Button
+              onClick={() => window.location.reload()}
               variant="outline"
             >
               Reload Page
