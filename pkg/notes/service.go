@@ -40,15 +40,64 @@ func (s *MemoryCardService) UpdateMemoryCardFields(ctx context.Context, fields m
 	if !ok {
 		return nil, fmt.Errorf("invalid id type")
 	}
-	var card MemoryCardModel
-	if err := s.db.WithContext(ctx).First(&card, uint(id)).Error; err != nil {
+	// Perform updates transactionally and validate status transitions
+	var updated MemoryCardModel
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var card MemoryCardModel
+		if err := tx.First(&card, uint(id)).Error; err != nil {
+			return err
+		}
+
+		// Handle status transition specially
+		if rawStatus, ok := fields["status"]; ok {
+			if statusStr, ok := rawStatus.(string); ok {
+				parsed, perr := ParseCardStatus(statusStr)
+				if perr != nil {
+					return perr
+				}
+				cur := CardStatus(card.Status)
+				if !CanTransition(cur, parsed) {
+					return ErrInvalidTransition
+				}
+				// Use optimistic update for status + version
+				// Attempt to update row where version matches
+				res := tx.Model(&MemoryCardModel{}).
+					Where("id = ? AND version = ?", card.ID, card.Version).
+					Updates(map[string]any{"status": string(parsed), "version": card.Version + 1})
+				if res.Error != nil {
+					return res.Error
+				}
+				if res.RowsAffected == 0 {
+					return fmt.Errorf("concurrent update detected")
+				}
+				// reflect new values locally for further updates
+				card.Status = string(parsed)
+				card.Version = card.Version + 1
+			} else {
+				return fmt.Errorf("status must be a string")
+			}
+			delete(fields, "status")
+		}
+
+		// Delete id from fields map and apply other updates
+		delete(fields, "id")
+		if len(fields) > 0 {
+			if err := tx.Model(&card).Updates(fields).Error; err != nil {
+				return err
+			}
+		}
+
+		// Reload the updated card to return
+		if err := tx.First(&updated, card.ID).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	delete(fields, "id")
-	if err := s.db.WithContext(ctx).Model(&card).Updates(fields).Error; err != nil {
-		return nil, err
-	}
-	return &card, nil
+	return &updated, nil
 }
 
 // DeleteMemoryCard deletes a memory card by ID
@@ -738,13 +787,54 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 	nextReview := time.Now().AddDate(0, 0, card.Interval)
 	card.NextReview = &nextReview
 
-	// Update card in database
-	if err := s.db.WithContext(ctx).Save(card).Error; err != nil {
-		return fmt.Errorf("failed to update memory card: %w", err)
+	// Determine logical next status from repetition/mastery
+	var nextStatus CardStatus
+	// Simple rule: if repetition >= 5 -> mastered, else reviewed
+	if card.Repetition >= 5 {
+		nextStatus = StatusMastered
+	} else {
+		nextStatus = StatusReviewed
 	}
 
-	// Update bookmark's mastery level based on review
-	updateBookmarkMastery(ctx, s.db, &bookmark, rating)
+	// Persist changes transactionally using optimistic version bump
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Refresh within transaction
+		var cur MemoryCardModel
+		if err := tx.First(&cur, card.ID).Error; err != nil {
+			return err
+		}
+
+		// Validate transition
+		if !CanTransition(CardStatus(cur.Status), nextStatus) {
+			return ErrInvalidTransition
+		}
+
+		// Attempt update with version check
+		res := tx.Model(&MemoryCardModel{}).
+			Where("id = ? AND version = ?", cur.ID, cur.Version).
+			Updates(map[string]any{
+				"ease_factor": card.EaseFactor,
+				"interval":    card.Interval,
+				"repetition":  card.Repetition,
+				"next_review": card.NextReview,
+				"status":      string(nextStatus),
+				"version":     cur.Version + 1,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("concurrent update detected")
+		}
+
+		// Update bookmark mastery (no error return value)
+		updateBookmarkMastery(ctx, tx, &bookmark, rating)
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

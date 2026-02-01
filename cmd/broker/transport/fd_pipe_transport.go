@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 
 	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/proc"
@@ -30,19 +29,8 @@ func NewFDPipeTransport(inputFD, outputFD int) *FDPipeTransport {
 
 // Connect initializes the file descriptors for communication
 func (t *FDPipeTransport) Connect() error {
-	// Get file descriptors from environment if available, otherwise use defaults
-	if val := os.Getenv("RPC_INPUT_FD"); val != "" {
-		if fd, err := strconv.Atoi(val); err == nil {
-			t.inputFD = fd
-		}
-	}
-	if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
-		if fd, err := strconv.Atoi(val); err == nil {
-			t.outputFD = fd
-		}
-	}
-
-	// Open the file descriptors
+	// Use configured file descriptor numbers provided when the transport
+	// instance was created. Do not consult runtime environment variables.
 	t.inputFile = os.NewFile(uintptr(t.inputFD), "input")
 	if t.inputFile == nil {
 		return fmt.Errorf("failed to open input file descriptor %d", t.inputFD)

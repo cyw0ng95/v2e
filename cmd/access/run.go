@@ -41,11 +41,8 @@ func runAccess() {
 	address := DefaultServerAddr()
 	logger.Info(LogMsgAddressConfigured, address)
 
-	// Get process ID from environment or use default
-	processID := os.Getenv("PROCESS_ID")
-	if processID == "" {
-		processID = "access"
-	}
+	// Use the process ID that was configured at startup (StandardStartup sets it)
+	processID := sp.ID
 
 	// Create RPC client for broker communication (use configured rpc timeout)
 	rpcClient := NewRPCClientWithSubprocess(sp, logger, rpcTimeout)

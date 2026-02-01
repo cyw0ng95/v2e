@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -37,15 +36,11 @@ func TestCustomFileDescriptors(t *testing.T) {
 	inFd := int(inF.Fd())
 	outFd := int(outF.Fd())
 
-	os.Setenv("RPC_INPUT_FD", strconv.Itoa(inFd))
-	os.Setenv("RPC_OUTPUT_FD", strconv.Itoa(outFd))
-	defer func() {
-		os.Unsetenv("RPC_INPUT_FD")
-		os.Unsetenv("RPC_OUTPUT_FD")
-	}()
-
-	sp := New("fdsvc")
-	// The New() should set input/output to opened files
+	// Construct a Subprocess using the NewWithFDs helper directly so tests
+	// don't rely on environment variables. Use the temp file descriptors
+	// created above.
+	sp := NewWithFDs("fdsvc", inFd, outFd)
+	// The NewWithFDs should set input/output to opened files
 	if sp.input == nil || sp.output == nil {
 		t.Fatalf("expected input/output to be set from fds")
 	}

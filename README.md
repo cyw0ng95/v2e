@@ -148,7 +148,7 @@ The system uses a sophisticated, hybrid RPC communication mechanism designed for
 - **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching.
 - **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs.
 - **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process.
-- **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables (for FD Pipe transport)
+ - **Build-time Configuration**: File descriptor numbers for FD Pipe transport are configured at build time (ldflags). Runtime environment variables are no longer used for RPC transport configuration.
 - **Message Pooling**: Optimized message allocation using sync.Pool for reduced garbage collection
 
 The communication pattern follows this flow:
