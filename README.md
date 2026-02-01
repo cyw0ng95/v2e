@@ -25,12 +25,12 @@ graph TB
     subgraph "Frontend Layer"
         A[Next.js Web App]
     end
-    
+
     subgraph "Broker Layer"
         B[Broker Service]
         Opt[Adaptive Optimizer]
     end
-    
+
     subgraph "Backend Services"
         C[Access Service]
         D[Meta Service]
@@ -38,12 +38,11 @@ graph TB
         F[Remote Service]
         G[SysMon Service]
     end
-    
+
     subgraph "Transport Layer"
         UDS[Unix Domain Sockets]
-        FDP[FD Pipes]
     end
-    
+
     A <--> C
     C <--> B
     B <--> D
@@ -52,20 +51,14 @@ graph TB
     B <--> G
     B <--> Opt
     B <--> UDS
-    B <--> FDP
     UDS <--> C
     UDS <--> D
     UDS <--> E
     UDS <--> F
     UDS <--> G
-    FDP <--> C
-    FDP <--> D
-    FDP <--> E
-    FDP <--> F
-    FDP <--> G
 ```
 
-The system utilizes a sophisticated dual-mode transport layer with both Unix Domain Sockets (UDS) as the default and File Descriptor Pipes (FD Pipes) as a fallback mechanism. The broker incorporates an advanced adaptive optimizer that dynamically adjusts performance parameters based on system load and message throughput.
+The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permissions for secure inter-process communication. The broker incorporates an advanced adaptive optimizer that dynamically adjusts performance parameters based on system load and message throughput.
 
 ## Component Breakdown
 
@@ -73,7 +66,7 @@ The system utilizes a sophisticated dual-mode transport layer with both Unix Dom
 
 - **Broker Service** ([cmd/broker](cmd/broker)): The central orchestrator responsible for:
   - Spawning and managing all subprocess services with robust supervision and restart policies
-  - Routing RPC messages via a high-performance, dual-mode transport layer (Unix Domain Sockets & FD Pipes)
+  - Routing RPC messages via a high-performance Unix Domain Sockets (UDS) transport layer
   - Utilizing `bytedance/sonic` for zero-copy JSON serialization/deserialization
   - Implementing an adaptive traffic optimizer with configurable batching, buffering, and backpressure
   - Maintaining process lifecycle, health checks, and zombie process reaping
@@ -143,7 +136,6 @@ Run `./build.sh -c` to access the interactive configuration manager.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `CONFIG_PROC_COMMTYPE` | string | `uds` | Communication transport type (uds or fd) |
 | `CONFIG_PROC_UDS_BASEPATH` | string | `/tmp/v2e_uds` | Base path for subprocess UDS sockets |
 | `CONFIG_BROKER_UDS_BASEPATH` | string | `/tmp/v2e_uds` | Base path for broker UDS sockets |
 
@@ -159,21 +151,14 @@ Run `./build.sh -c` to access the interactive configuration manager.
 
 ## Transport & Communication
 
-The system uses a dual-mode RPC communication mechanism designed for high throughput and low latency.
-
-### Transport Modes
-
-| Mode | Description | Status | Configuration |
-|------|-------------|--------|---------------|
-| **Unix Domain Sockets (UDS)** | High-performance IPC with 0600 permissions | Default | `CONFIG_PROC_COMMTYPE=uds` |
-| **FD Pipes** | Legacy transport using inherited file descriptors | Fallback | `CONFIG_PROC_COMMTYPE=fd` |
+The system uses a Unix Domain Sockets (UDS) RPC communication mechanism designed for high throughput and low latency.
 
 ### Transport Architecture
 
 ```
 Frontend → Access Service → Broker → Backend Services
                       ↓           ↓
-                HTTP/REST      UDS/FD Pipes
+                HTTP/REST      UDS
                                     ↓
                             Subprocess Services
 ```
@@ -181,7 +166,7 @@ Frontend → Access Service → Broker → Backend Services
 ### Message Flow
 
 1. **External requests** → Access REST API (`/restful/rpc`) → Broker
-2. **Broker routing** → Backend Services via UDS or FD Pipes
+2. **Broker routing** → Backend Services via UDS
 3. **Response path** → Broker → Access Service → Frontend
 4. **No direct subprocess-to-subprocess communication** is allowed
 
@@ -420,7 +405,6 @@ The broker supports the following configuration parameters in `config.json`:
 - `broker.log_file`: Path to log file for dual output (stdout + file)
 - `broker.logs_dir`: Directory where logs are stored
 - `broker.authentication`: Authentication settings for RPC endpoints
-- `broker.rpc_input_fd` / `broker.rpc_output_fd`: Optional overrides for RPC file descriptor numbers
 - `broker.optimizer_*`: Various optimization parameters including buffer capacity, worker count, batching, and timeouts
 
 ## Performance Characteristics
@@ -509,7 +493,6 @@ Handles low-level communication mechanics.
   - `Send(msg *proc.Message) error`: Sends a structured message.
   - `Receive() (*proc.Message, error)`: Reads a structured message.
 - **UDSTransport**: High-performance implementation using Unix Domain Sockets.
-- **FDPipeTransport**: Legacy implementation using inherited file descriptors (3 & 4).
 
 ### 3. Performance Layer (`cmd/broker/perf`)
 Decoupled optimization module for high-throughput message handling.
@@ -528,38 +511,36 @@ graph TB
         P[Process Map]
         R[Router]
     end
-    
+
     subgraph "Transport Layer"
         TI{Transport Interface}
         UDS[UDSTransport]
-        FDP[FDPipeTransport]
     end
-    
+
     subgraph "Performance Layer"
         OPT[Optimizer]
         AO[Adaptive Optimizer]
         SM[System Monitor]
     end
-    
+
     subgraph "Subprocesses"
         S1[Service 1]
         S2[Service 2]
     end
-    
+
     B --> P
     B --> R
     B --> OPT
-    
+
     OPT --> AO
     AO --> SM
-    
+
     P --> TI
     TI -.-> UDS
-    TI -.-> FDP
-    
+
     UDS <==> S1
-    FDP <==> S2
-    
+    UDS <==> S2
+
     style B fill:#4e8cff,stroke:#333,stroke-width:2px,color:#fff
     style OPT fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
     style TI fill:#66cc99,stroke:#333,stroke-width:2px,color:#fff

@@ -61,15 +61,14 @@ Frontend (Next.js) → Access Service (/restful/rpc) → Broker → Backend Serv
 8. **NO new documentation files** - only update existing `README.md` or `cmd/*/service.md`. Never create new markdown files.
 
 ### Transport Layer
-- **Default**: Unix Domain Sockets (UDS) with 0600 permissions
-- **Fallback**: File Descriptor Pipes (configured via build-time ldflags)
+- **Transport**: Unix Domain Sockets (UDS) with 0600 permissions
 - Message types: Request, Response, Event, Error (with correlation IDs)
 
 ### Key Packages
 - `pkg/proc/subprocess` - Subprocess lifecycle framework, provides `SetupLogging()`, `RunWithDefaults()`, `RegisterHandler()`
 - `pkg/proc/message` - Message types with `sync.Pool` optimization
 - `cmd/broker/core` - Broker orchestrator, Process, Router interfaces
-- `cmd/broker/transport` - UDS and FD Pipe transport implementations
+- `cmd/broker/transport` - UDS transport implementation
 - `cmd/broker/perf` - Optimizer with adaptive tuning, message batching, worker pools
 - `pkg/cve/taskflow` - Taskflow-based job executor with BoltDB persistence
 
@@ -265,7 +264,6 @@ Every service must have a `service.md` file that documents its complete RPC API 
 ### Broker Configuration
 `config.json` controls:
 - Process definitions with IDs, commands, arguments, restart policies
-- Transport mode (`uds` or `fd_pipe`)
 - Optimizer parameters: buffer capacity, worker count, batch size, flush interval, offer policy
 - Logging configuration and output destinations
 

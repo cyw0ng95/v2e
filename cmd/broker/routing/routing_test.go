@@ -1,7 +1,6 @@
 package routing
 
 import (
-	"io"
 	"testing"
 	"time"
 

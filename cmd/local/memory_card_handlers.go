@@ -50,9 +50,9 @@ func getMemoryCardHandler(service *notes.MemoryCardService, logger *common.Logge
 			logger.Warn("Failed to parse request: %v", errResp.Error)
 			return errResp, nil
 		}
-		if errResp := subprocess.RequireField(msg, params.ID, "id"); errResp != nil {
+		if params.ID == 0 {
 			logger.Warn("id is required")
-			return errResp, nil
+			return subprocess.NewErrorResponse(msg, "id is required"), nil
 		}
 		card, err := service.GetMemoryCardByID(ctx, params.ID)
 		if err != nil {
@@ -105,9 +105,9 @@ func deleteMemoryCardHandler(service *notes.MemoryCardService, logger *common.Lo
 			logger.Warn("Failed to parse request: %v", errResp.Error)
 			return errResp, nil
 		}
-		if errResp := subprocess.RequireField(msg, params.ID, "id"); errResp != nil {
+		if params.ID == 0 {
 			logger.Warn("id is required")
-			return errResp, nil
+			return subprocess.NewErrorResponse(msg, "id is required"), nil
 		}
 		err := service.DeleteMemoryCard(ctx, params.ID)
 		if err != nil {

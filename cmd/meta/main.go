@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -31,8 +30,6 @@ import (
 )
 
 const (
-	// DefaultRPCTimeout is the default timeout for RPC requests to other services
-	DefaultRPCTimeout = 60 * time.Second
 	// DefaultSessionDBPath is the default path for the session database
 	DefaultSessionDBPath = "session.db"
 )
@@ -50,23 +47,14 @@ const (
 // Alias the DataType from the taskflow package so local code can use it directly
 type DataType = taskflow.DataType
 
-// RPCClient handles RPC communication with other services through the broker
-type RPCClient struct {
-	sp              *subprocess.Subprocess
-	pendingRequests map[string]*requestEntry
-	mu              sync.RWMutex
-	correlationSeq  uint64
-	logger          *common.Logger
-}
-
 // DataPopulationController manages data population for different data types
 type DataPopulationController struct {
-	rpcClient *RPCClient
+	rpcClient *rpc.Client
 	logger    *common.Logger
 }
 
 // NewDataPopulationController creates a new controller for data population
-func NewDataPopulationController(rpcClient *RPCClient, logger *common.Logger) *DataPopulationController {
+func NewDataPopulationController(rpcClient *rpc.Client, logger *common.Logger) *DataPopulationController {
 	return &DataPopulationController{
 		rpcClient: rpcClient,
 		logger:    logger,
@@ -109,7 +97,7 @@ func (c *DataPopulationController) startCWEImport(ctx context.Context, sessionID
 		return "", fmt.Errorf("failed to start CWE import: %w", err)
 	}
 
-	if isErr, errMsg := isErrorResponse(resp); isErr {
+	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 		c.logger.Error("CWE import returned error: %s", errMsg)
 		return "", fmt.Errorf("CWE import failed: %s", errMsg)
 	}
@@ -140,7 +128,7 @@ func (c *DataPopulationController) startCAPECImport(ctx context.Context, session
 		return "", fmt.Errorf("failed to start CAPEC import: %w", err)
 	}
 
-	if isErr, errMsg := isErrorResponse(resp); isErr {
+	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 		c.logger.Error("CAPEC import returned error: %s", errMsg)
 		return "", fmt.Errorf("CAPEC import failed: %s", errMsg)
 	}
@@ -171,7 +159,7 @@ func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessio
 		return "", fmt.Errorf("failed to start ATT&CK import: %w", err)
 	}
 
-	if isErr, errMsg := isErrorResponse(resp); isErr {
+	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 		c.logger.Error("ATT&CK import returned error: %s", errMsg)
 		return "", fmt.Errorf("ATT&CK import failed: %s", errMsg)
 	}
@@ -180,139 +168,9 @@ func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessio
 	return sessionID, nil
 }
 
-type requestEntry struct {
-	resp chan *subprocess.Message
-	once sync.Once
-}
-
-func (e *requestEntry) signal(m *subprocess.Message) {
-	e.once.Do(func() {
-		e.resp <- m
-		close(e.resp)
-	})
-}
-
-func (e *requestEntry) close() {
-	e.once.Do(func() {
-		close(e.resp)
-	})
-}
-
-// NewRPCClient creates a new RPC client for inter-service communication
-func NewRPCClient(sp *subprocess.Subprocess, logger *common.Logger) *RPCClient {
-	client := &RPCClient{
-		sp:              sp,
-		pendingRequests: make(map[string]*requestEntry),
-		logger:          logger,
-	}
-
-	// Register handlers for response and error messages
-	sp.RegisterHandler(string(subprocess.MessageTypeResponse), client.handleResponse)
-	sp.RegisterHandler(string(subprocess.MessageTypeError), client.handleError)
-
-	return client
-}
-
-// handleResponse handles response messages from other services
-func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	c.logger.Debug("Handling response message: correlationID=%s, type=%s, target=%s", msg.CorrelationID, msg.Type, msg.Target)
-
-	// Look up the pending request entry (don't delete - defer in InvokeRPC handles cleanup)
-	c.mu.Lock()
-	entry := c.pendingRequests[msg.CorrelationID]
-	c.mu.Unlock()
-
-	if entry != nil {
-		c.logger.Debug("Found pending request for correlation ID: %s, signaling response", msg.CorrelationID)
-		entry.signal(msg)
-	} else {
-		c.logger.Warn("Received response for unknown correlation ID: %s, type=%s, target=%s", msg.CorrelationID, msg.Type, msg.Target)
-	}
-
-	return nil, nil // Don't send another response
-}
-
-// handleError handles error messages from other services (treat them as responses)
-func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	// Error messages are also valid responses
-	c.logger.Debug("Handling error message: correlationID=%s, error=%s, target=%s", msg.CorrelationID, msg.Error, msg.Target)
-	return c.handleResponse(ctx, msg)
-}
-
-// InvokeRPC invokes an RPC method on another service through the broker
-func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error) {
-	// Generate correlation ID
-	c.mu.Lock()
-	c.correlationSeq++
-	correlationID := fmt.Sprintf("meta-rpc-%d-%d", time.Now().UnixNano(), c.correlationSeq)
-	c.mu.Unlock()
-
-	// Create response channel and entry
-	resp := make(chan *subprocess.Message, 1)
-	entry := &requestEntry{resp: resp}
-
-	// Register pending request
-	c.mu.Lock()
-	c.pendingRequests[correlationID] = entry
-	c.mu.Unlock()
-
-	// Clean up on exit: remove from map and close entry
-	defer func() {
-		c.mu.Lock()
-		delete(c.pendingRequests, correlationID)
-		c.mu.Unlock()
-		entry.close()
-	}()
-
-	// Create request message
-	var payload []byte
-	if params != nil {
-		data, err := subprocess.MarshalFast(params)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal params: %w", err)
-		}
-		payload = data
-	}
-
-	msg := &subprocess.Message{
-		Type:          subprocess.MessageTypeRequest,
-		ID:            method,
-		Payload:       payload,
-		Target:        target,
-		CorrelationID: correlationID,
-		Source:        c.sp.ID,
-	}
-
-	c.logger.Debug("Sending RPC request: method=%s, target=%s, correlationID=%s", method, target, correlationID)
-
-	// Send request to broker (which will route to target)
-	c.logger.Debug(LogMsgRPCSendMessageStarted, msg.Type, msg.ID, msg.Target, msg.CorrelationID)
-	if err := c.sp.SendMessage(msg); err != nil {
-		c.logger.Error(LogMsgRPCSendMessageFailed, msg.Type, msg.ID, msg.Target, msg.CorrelationID, err)
-		return nil, fmt.Errorf("failed to send RPC request: %w", err)
-	}
-	c.logger.Debug(LogMsgRPCSendMessageSuccess, msg.Type, msg.ID, msg.Target, msg.CorrelationID)
-
-	// Wait for response with timeout
-	c.logger.Debug("Waiting for RPC response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
-	select {
-	case response := <-resp:
-		c.logger.Debug("Received RPC response: correlationID=%s, type=%s", correlationID, response.Type)
-		return response, nil
-	case <-time.After(DefaultRPCTimeout):
-		c.logger.Warn("RPC timeout waiting for response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
-		c.logger.Debug("RPC invocation timed out: method=%s, target=%s, correlationID=%s", method, target, correlationID)
-		return nil, fmt.Errorf("RPC timeout waiting for response from %s", target)
-	case <-ctx.Done():
-		err := ctx.Err()
-		c.logger.Warn("RPC call context canceled while waiting for response: method=%s, target=%s, correlationID=%s, error: %v", method, target, correlationID, err)
-		return nil, err
-	}
-}
-
-// RPCClientAdapter adapts RPCClient to job.RPCInvoker interface
+// RPCClientAdapter adapts rpc.Client to job.RPCInvoker interface
 type RPCClientAdapter struct {
-	client *RPCClient
+	client *rpc.Client
 }
 
 // InvokeRPC implements job.RPCInvoker interface
@@ -376,7 +234,7 @@ func main() {
 
 	// Create RPC client for inter-service communication
 	logger.Info(LogMsgRPCClientCreated)
-	rpcClient := NewRPCClient(sp, logger)
+	rpcClient := rpc.NewClient(sp, logger, 60*time.Second)
 	rpcAdapter := &RPCClientAdapter{client: rpcClient}
 	logger.Info(LogMsgRPCAdapterCreated)
 
@@ -526,28 +384,6 @@ func main() {
 	logger.Info(LogMsgServiceShutdownComplete)
 }
 
-// createErrorResponse creates a properly formatted error response message
-func createErrorResponse(msg *subprocess.Message, errorMsg string) *subprocess.Message {
-	errorMsgFull := fmt.Sprintf("[meta] RPC error response: %s", errorMsg)
-	resp := &subprocess.Message{
-		Type:          subprocess.MessageTypeError,
-		ID:            msg.ID,
-		Error:         errorMsgFull,
-		CorrelationID: msg.CorrelationID,
-		Target:        msg.Source,
-		Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-	}
-	return resp
-}
-
-// isErrorResponse checks if an RPC response is an error and returns the error if so
-func isErrorResponse(response *subprocess.Message) (bool, string) {
-	if response.Type == subprocess.MessageTypeError {
-		return true, response.Error
-	}
-	return false, ""
-}
-
 // createStartCWEImportHandler creates a handler for starting CWE import
 func createStartCWEImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
@@ -557,14 +393,14 @@ func createStartCWEImportHandler(controller *DataPopulationController, logger *c
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 				logger.Warn(LogMsgFailedToParseRequest, err)
-				return createErrorResponse(msg, "failed to parse request"), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to parse request"), nil
 			}
 		}
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCWE, req)
 		if err != nil {
 			logger.Error(LogMsgFailedToStartCWEImport, err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to start CWE import: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start CWE import: %v", err)), nil
 		}
 
 		result := map[string]interface{}{
@@ -573,19 +409,10 @@ func createStartCWEImportHandler(controller *DataPopulationController, logger *c
 			"data_type":  string(DataTypeCWE),
 		}
 
-		jsonData, err := subprocess.MarshalFast(result)
+		respMsg, err := subprocess.NewSuccessResponse(msg, result)
 		if err != nil {
 			logger.Error(LogMsgFailedToMarshalResponse, err)
-			return createErrorResponse(msg, "failed to marshal response"), nil
-		}
-
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-			Payload:       jsonData,
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to marshal response"), nil
 		}
 
 		logger.Info(LogMsgSuccessStartCWEImport, sessionID)
@@ -602,14 +429,14 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 				logger.Warn(LogMsgFailedToParseRequest, err)
-				return createErrorResponse(msg, "failed to parse request"), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to parse request"), nil
 			}
 		}
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCAPEC, req)
 		if err != nil {
 			logger.Warn(LogMsgFailedToStartCAPECImport, err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to start CAPEC import: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start CAPEC import: %v", err)), nil
 		}
 
 		result := map[string]interface{}{
@@ -618,19 +445,10 @@ func createStartCAPECImportHandler(controller *DataPopulationController, logger 
 			"data_type":  string(DataTypeCAPEC),
 		}
 
-		jsonData, err := subprocess.MarshalFast(result)
+		respMsg, err := subprocess.NewSuccessResponse(msg, result)
 		if err != nil {
 			logger.Warn(LogMsgFailedToMarshalResponse, err)
-			return createErrorResponse(msg, "failed to marshal response"), nil
-		}
-
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-			Payload:       jsonData,
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to marshal response"), nil
 		}
 
 		logger.Info(LogMsgSuccessStartCAPECImport, sessionID)
@@ -647,14 +465,14 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 		if msg.Payload != nil {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 				logger.Warn(LogMsgFailedToParseRequest, err)
-				return createErrorResponse(msg, "failed to parse request"), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to parse request"), nil
 			}
 		}
 
 		sessionID, err := controller.StartDataPopulation(ctx, DataTypeATTACK, req)
 		if err != nil {
 			logger.Warn(LogMsgFailedToStartATTACKImport, err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to start ATT&CK import: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start ATT&CK import: %v", err)), nil
 		}
 
 		result := map[string]interface{}{
@@ -663,19 +481,10 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 			"data_type":  string(DataTypeATTACK),
 		}
 
-		jsonData, err := subprocess.MarshalFast(result)
+		respMsg, err := subprocess.NewSuccessResponse(msg, result)
 		if err != nil {
 			logger.Warn(LogMsgFailedToMarshalResponse, err)
-			return createErrorResponse(msg, "failed to marshal response"), nil
-		}
-
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-			Payload:       jsonData,
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to marshal response"), nil
 		}
 
 		logger.Info(LogMsgSuccessStartATTACKImport, sessionID)
@@ -685,7 +494,7 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 
 // createGetCVEHandler creates a handler that retrieves CVE data
 // Flow: Check local storage first, if not found fetch from remote and save locally
-func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
+func createGetCVEHandler(rpcClient *rpc.Client, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug(LogMsgRPCHandlerCalled, "RPCGetCVE")
 		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
@@ -697,12 +506,12 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
 			logger.Debug("Processing GetCVE request failed due to malformed payload: %s", string(msg.Payload))
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		if req.CVEID == "" {
 			logger.Warn("cve_id is required but was empty or missing")
-			return createErrorResponse(msg, "cve_id is required"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "cve_id is required"), nil
 		}
 
 		logger.Info("RPCGetCVE: Processing request for CVE %s", req.CVEID)
@@ -713,14 +522,14 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		if err != nil {
 			logger.Warn("Failed to check local storage: %v", err)
 			logger.Debug("GetCVE local storage check failed for CVE ID %s: %v", req.CVEID, err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to check local storage: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to check local storage: %v", err)), nil
 		}
 
 		// Check if the response is an error
-		if isErr, errMsg := isErrorResponse(checkResp); isErr {
+		if isErr, errMsg := subprocess.IsErrorResponse(checkResp); isErr {
 			logger.Warn("Error checking local storage: %s", errMsg)
 			logger.Debug("GetCVE local storage check returned error for CVE ID %s: %s", req.CVEID, errMsg)
-			return createErrorResponse(msg, fmt.Sprintf("failed to check local storage: %s", errMsg)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to check local storage: %s", errMsg)), nil
 		}
 
 		// Parse the check response
@@ -731,7 +540,7 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 		if err := subprocess.UnmarshalPayload(checkResp, &checkResult); err != nil {
 			logger.Warn("Failed to parse check response: %v", err)
 			logger.Debug("GetCVE failed to parse local storage check response for CVE ID %s: %v", req.CVEID, err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse check response: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse check response: %v", err)), nil
 		}
 
 		var cveData *cve.CVEItem
@@ -743,20 +552,20 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			if err != nil {
 				logger.Warn("Failed to get CVE from local storage: %v", err)
 				logger.Debug("GetCVE failed to retrieve CVE from local storage for CVE ID %s: %v", req.CVEID, err)
-				return createErrorResponse(msg, fmt.Sprintf("failed to get CVE from local storage: %v", err)), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get CVE from local storage: %v", err)), nil
 			}
 
 			// Check if the response is an error
-			if isErr, errMsg := isErrorResponse(getResp); isErr {
+			if isErr, errMsg := subprocess.IsErrorResponse(getResp); isErr {
 				logger.Warn("Error getting CVE from local storage: %s", errMsg)
 				logger.Debug("GetCVE local storage retrieval returned error for CVE ID %s: %s", req.CVEID, errMsg)
-				return createErrorResponse(msg, fmt.Sprintf("failed to get CVE from local storage: %s", errMsg)), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get CVE from local storage: %s", errMsg)), nil
 			}
 
 			if err := subprocess.UnmarshalPayload(getResp, &cveData); err != nil {
 				logger.Warn("Failed to parse local CVE data: %v", err)
 				logger.Debug("GetCVE failed to parse local CVE data for CVE ID %s: %v", req.CVEID, err)
-				return createErrorResponse(msg, fmt.Sprintf("failed to parse local CVE data: %v", err)), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse local CVE data: %v", err)), nil
 			}
 		} else {
 			// Step 2b: CVE not found locally, fetch from remote
@@ -765,14 +574,14 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			if err != nil {
 				logger.Warn("Failed to fetch CVE from remote: %v", err)
 				logger.Debug("GetCVE failed to fetch CVE from remote for CVE ID %s: %v", req.CVEID, err)
-				return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %v", err)), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to fetch CVE from remote: %v", err)), nil
 			}
 
 			// Check if the response is an error
-			if isErr, errMsg := isErrorResponse(remoteResp); isErr {
+			if isErr, errMsg := subprocess.IsErrorResponse(remoteResp); isErr {
 				logger.Warn("Error fetching CVE from remote: %s", errMsg)
 				logger.Debug("GetCVE remote fetch returned error for CVE ID %s: %s", req.CVEID, errMsg)
-				return createErrorResponse(msg, fmt.Sprintf("failed to fetch CVE from remote: %s", errMsg)), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to fetch CVE from remote: %s", errMsg)), nil
 			}
 
 			// Parse remote response (NVD API format)
@@ -780,14 +589,14 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			if err := subprocess.UnmarshalPayload(remoteResp, &remoteResult); err != nil {
 				logger.Warn("Failed to parse remote CVE response: %v", err)
 				logger.Debug("GetCVE failed to parse remote CVE response for CVE ID %s: %v", req.CVEID, err)
-				return createErrorResponse(msg, fmt.Sprintf("failed to parse remote CVE response: %v", err)), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse remote CVE response: %v", err)), nil
 			}
 
 			// Extract CVE data from response
 			if len(remoteResult.Vulnerabilities) == 0 {
 				logger.Warn("CVE %s not found in NVD", req.CVEID)
 				logger.Debug("GetCVE remote fetch found no vulnerabilities for CVE ID %s", req.CVEID)
-				return createErrorResponse(msg, fmt.Sprintf("CVE %s not found", req.CVEID)), nil
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("CVE %s not found", req.CVEID)), nil
 			}
 
 			cveData = &remoteResult.Vulnerabilities[0].CVE
@@ -802,27 +611,9 @@ func createGetCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess
 			}
 		}
 
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		// Marshal the result
-		jsonData, err := subprocess.MarshalFast(cveData)
-		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
-			logger.Debug("GetCVE failed to marshal response for CVE ID %s: %v", req.CVEID, err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
-
 		logger.Info("RPCGetCVE: Successfully retrieved CVE %s", req.CVEID)
 		logger.Debug("GetCVE request completed successfully for CVE ID %s", req.CVEID)
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, cveData)
 	}
 }
 
@@ -835,36 +626,14 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
 			logger.Warn("Failed to get active run: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
 		if run == nil {
 			// No active run - return empty status
-			respMsg := &subprocess.Message{
-				Type:          subprocess.MessageTypeResponse,
-				ID:            msg.ID,
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-				Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-			}
-
-			result := map[string]interface{}{
+			return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 				"has_session": false,
-			}
-
-			jsonData, _ := subprocess.MarshalFast(result)
-			respMsg.Payload = jsonData
-
-			return respMsg, nil
-		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
+			})
 		}
 
 		// Prepare the enhanced result with new data structures
@@ -886,14 +655,8 @@ func createGetSessionStatusHandler(jobExecutor *taskflow.JobExecutor, logger *co
 			"params":   run.Params,
 		}
 
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 		logger.Debug("RPCGetSessionStatus: Successfully retrieved run status")
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, result)
 	}
 }
 
@@ -906,43 +669,25 @@ func createPauseJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Log
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
 			logger.Warn("Failed to get active run: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
 		if run == nil {
 			logger.Warn("No active run to pause")
-			return createErrorResponse(msg, "no active run"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "no active run"), nil
 		}
 
 		err = jobExecutor.Pause(run.ID)
 		if err != nil {
 			logger.Warn("Failed to pause job: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to pause job: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to pause job: %v", err)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success": true,
-			"state":   "paused",
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCPauseJob: Successfully paused job")
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+			"state":   "paused",
+		})
 	}
 }
 
@@ -955,43 +700,25 @@ func createResumeJobHandler(jobExecutor *taskflow.JobExecutor, logger *common.Lo
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
 			logger.Warn("Failed to get active run: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
 		if run == nil {
 			logger.Warn("No active run to resume")
-			return createErrorResponse(msg, "no active run"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "no active run"), nil
 		}
 
 		err = jobExecutor.Resume(ctx, run.ID)
 		if err != nil {
 			logger.Warn("Failed to resume job: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to resume job: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to resume job: %v", err)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success": true,
-			"state":   "running",
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCResumeJob: Successfully resumed job")
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+			"state":   "running",
+		})
 	}
 }
 
@@ -1007,24 +734,24 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		logger.Info("RPCStartSession: Starting new job session with data type %s", req.DataType)
 
 		if req.DataType == "" {
 			logger.Warn("data_type is required but was empty or missing")
-			return createErrorResponse(msg, "data_type is required"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "data_type is required"), nil
 		}
 
 		if req.StartIndex < 0 {
 			logger.Warn("start_index must be non-negative")
-			return createErrorResponse(msg, "start_index must be non-negative"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "start_index must be non-negative"), nil
 		}
 
 		if req.ResultsPerBatch <= 0 {
 			logger.Warn("results_per_batch must be positive")
-			return createErrorResponse(msg, "results_per_batch must be positive"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "results_per_batch must be positive"), nil
 		}
 
 		sessionID := fmt.Sprintf("%s-%d", req.DataType, time.Now().Unix())
@@ -1032,26 +759,18 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 		err := jobExecutor.StartTyped(ctx, sessionID, req.StartIndex, req.ResultsPerBatch, req.DataType)
 		if err != nil {
 			logger.Warn("Failed to start job session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to start job session: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start job session: %v", err)), nil
 		}
 
 		// Get updated run state
 		run, err := jobExecutor.GetStatus(sessionID)
 		if err != nil {
 			logger.Warn("Failed to get run status: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get run status: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get run status: %v", err)), nil
 		}
 
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
+		logger.Info("RPCStartSession: Successfully started job session: %s", run.ID)
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"success":     true,
 			"session_id":  run.ID,
 			"data_type":   string(run.DataType),
@@ -1059,17 +778,7 @@ func createStartSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common
 			"created_at":  run.CreatedAt,
 			"start_index": run.StartIndex,
 			"batch_size":  run.ResultsPerBatch,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
-
-		logger.Info("RPCStartSession: Successfully started job session: %s", run.ID)
-		return respMsg, nil
+		})
 	}
 }
 
@@ -1082,42 +791,24 @@ func createStopSessionHandler(jobExecutor *taskflow.JobExecutor, logger *common.
 		run, err := jobExecutor.GetActiveRun()
 		if err != nil {
 			logger.Warn("Failed to get active run: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get active run: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get active run: %v", err)), nil
 		}
 
 		if run == nil {
 			logger.Warn("No active run to stop")
-			return createErrorResponse(msg, "no active run"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "no active run"), nil
 		}
 
 		err = jobExecutor.Stop(run.ID)
 		if err != nil {
 			logger.Warn("Failed to stop job session: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to stop job session: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to stop job session: %v", err)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success": true,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCStopSession: Successfully stopped job session")
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+		})
 	}
 }
 
@@ -1132,39 +823,21 @@ func createStartCWEViewJobHandler(controller *cwejob.Controller, logger *common.
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		// Start the CWE view job
 		sessionID, err := controller.Start(ctx, req.Params)
 		if err != nil {
 			logger.Warn("Failed to start CWE view job: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to start CWE view job: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start CWE view job: %v", err)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success":    true,
-			"session_id": sessionID,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Warn("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCStartCWEViewJob: Successfully started CWE view job: %s", sessionID)
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success":    true,
+			"session_id": sessionID,
+		})
 	}
 }
 
@@ -1179,48 +852,30 @@ func createStopCWEViewJobHandler(controller *cwejob.Controller, logger *common.L
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		if req.SessionID == "" {
 			logger.Error("session_id is required but was empty or missing")
-			return createErrorResponse(msg, "session_id is required"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "session_id is required"), nil
 		}
 
 		// Stop the CWE view job
 		err := controller.Stop(ctx, req.SessionID)
 		if err != nil {
 			logger.Error("Failed to stop CWE view job: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to stop CWE view job: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to stop CWE view job: %v", err)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success": true,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCStopCWEViewJob: Successfully stopped CWE view job: %s", req.SessionID)
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+		})
 	}
 }
 
 // createCreateCVEHandler creates a handler that creates a new CVE
-func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
+func createCreateCVEHandler(rpcClient *rpc.Client, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug(LogMsgRPCHandlerCalled, "RPCCreateCVE")
 		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
@@ -1229,55 +884,36 @@ func createCreateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		var req cve.CVEItem
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		// Create the CVE
 		// Validate required fields before making RPC calls
 		if req.ID == "" {
 			logger.Error("cve_id is required but was empty or missing")
-			return createErrorResponse(msg, "cve_id is required"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "cve_id is required"), nil
 		}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCreateCVE", &req)
 		if err != nil {
 			logger.Warn("Failed to create CVE: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to create CVE: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to create CVE: %v", err)), nil
 		}
 
 		// Check if the response is an error
-		if isErr, errMsg := isErrorResponse(resp); isErr {
+		if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 			logger.Warn("Error creating CVE: %s", errMsg)
-			return createErrorResponse(msg, fmt.Sprintf("failed to create CVE: %s", errMsg)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to create CVE: %s", errMsg)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success": true,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCCreateCVE: Successfully created CVE")
-		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+		})
 	}
 }
 
 // createUpdateCVEHandler creates a handler that updates an existing CVE
-func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
+func createUpdateCVEHandler(rpcClient *rpc.Client, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug(LogMsgRPCHandlerCalled, "RPCUpdateCVE")
 		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
@@ -1286,55 +922,36 @@ func createUpdateCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		var req cve.CVEItem
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		// Update the CVE
 		// Validate required fields before making RPC calls
 		if req.ID == "" {
 			logger.Error("cve_id is required but was empty or missing")
-			return createErrorResponse(msg, "cve_id is required"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "cve_id is required"), nil
 		}
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCUpdateCVE", &req)
 		if err != nil {
 			logger.Warn("Failed to update CVE: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to update CVE: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to update CVE: %v", err)), nil
 		}
 
 		// Check if the response is an error
-		if isErr, errMsg := isErrorResponse(resp); isErr {
+		if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 			logger.Warn("Error updating CVE: %s", errMsg)
-			return createErrorResponse(msg, fmt.Sprintf("failed to update CVE: %s", errMsg)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to update CVE: %s", errMsg)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success": true,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCUpdateCVE: Successfully updated CVE")
-		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+		})
 	}
 }
 
 // createDeleteCVEHandler creates a handler that deletes an existing CVE
-func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
+func createDeleteCVEHandler(rpcClient *rpc.Client, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug(LogMsgRPCHandlerCalled, "RPCDeleteCVE")
 		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
@@ -1345,55 +962,36 @@ func createDeleteCVEHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		if req.CVEID == "" {
 			logger.Error("cve_id is required but was empty or missing")
-			return createErrorResponse(msg, "cve_id is required"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "cve_id is required"), nil
 		}
 
 		// Delete the CVE
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCDeleteCVE", &rpc.CVEIDParams{CVEID: req.CVEID})
 		if err != nil {
 			logger.Warn("Failed to delete CVE: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to delete CVE: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to delete CVE: %v", err)), nil
 		}
 
 		// Check if the response is an error
-		if isErr, errMsg := isErrorResponse(resp); isErr {
+		if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 			logger.Warn("Error deleting CVE: %s", errMsg)
-			return createErrorResponse(msg, fmt.Sprintf("failed to delete CVE: %s", errMsg)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to delete CVE: %s", errMsg)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
-			"success": true,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
 
 		logger.Info("RPCDeleteCVE: Successfully deleted CVE")
-		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+		})
 	}
 }
 
 // createListCVEsHandler creates a handler that lists CVEs
-func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
+func createListCVEsHandler(rpcClient *rpc.Client, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug(LogMsgRPCHandlerCalled, "RPCListCVEs")
 		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
@@ -1405,52 +1003,40 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 		}
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Warn("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		if req.Offset < 0 {
 			logger.Error("offset must be non-negative")
-			return createErrorResponse(msg, "offset must be non-negative"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "offset must be non-negative"), nil
 		}
 
 		if req.Limit <= 0 {
 			logger.Error("limit must be positive")
-			return createErrorResponse(msg, "limit must be positive"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "limit must be positive"), nil
 		}
 
 		// List CVEs
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCListCVEs", &req)
 		if err != nil {
 			logger.Warn("Failed to list CVEs: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to list CVEs: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to list CVEs: %v", err)), nil
 		}
 
 		// Check if the response is an error
-		if isErr, errMsg := isErrorResponse(resp); isErr {
+		if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 			logger.Warn("Error listing CVEs: %s", errMsg)
-			return createErrorResponse(msg, fmt.Sprintf("failed to list CVEs: %s", errMsg)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to list CVEs: %s", errMsg)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		// Forward payload directly from local service response (already JSON)
-		respMsg.Payload = resp.Payload
 
 		logger.Info("RPCListCVEs: Successfully listed CVEs")
-		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
-		return respMsg, nil
+		// Forward the response directly (payload is already marshaled)
+		return resp, nil
 	}
 }
 
 // createCountCVEsHandler creates a handler that counts CVEs
-func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subprocess.Handler {
+func createCountCVEsHandler(rpcClient *rpc.Client, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Debug(LogMsgRPCHandlerCalled, "RPCCountCVEs")
 		logger.Debug(LogMsgRPCRequestReceived, msg.Type, msg.ID, msg.Source, msg.CorrelationID)
@@ -1459,30 +1045,18 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCCountCVEs", nil)
 		if err != nil {
 			logger.Warn("Failed to count CVEs: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to count CVEs: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to count CVEs: %v", err)), nil
 		}
 
 		// Check if the response is an error
-		if isErr, errMsg := isErrorResponse(resp); isErr {
+		if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
 			logger.Warn("Error counting CVEs: %s", errMsg)
-			return createErrorResponse(msg, fmt.Sprintf("failed to count CVEs: %s", errMsg)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to count CVEs: %s", errMsg)), nil
 		}
-
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		// Forward payload directly from local service response (already JSON)
-		respMsg.Payload = resp.Payload
 
 		logger.Info("RPCCountCVEs: Successfully counted CVEs")
-		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
-		return respMsg, nil
+		// Forward the response directly (payload is already marshaled)
+		return resp, nil
 	}
 }
 
@@ -1500,7 +1074,7 @@ func createStartTypedSessionHandler(jobExecutor *taskflow.JobExecutor, logger *c
 
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Error("Failed to parse request: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to parse request: %v", err)), nil
 		}
 
 		// Set defaults only if not provided (after unmarshaling)
@@ -1516,7 +1090,7 @@ func createStartTypedSessionHandler(jobExecutor *taskflow.JobExecutor, logger *c
 
 		if req.SessionID == "" {
 			logger.Error("session_id is required")
-			return createErrorResponse(msg, "session_id is required"), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "session_id is required"), nil
 		}
 
 		logger.Info("RPCStartTypedSession: Starting job run %s (data_type=%s, start_index=%d, batch_size=%d)",
@@ -1526,26 +1100,18 @@ func createStartTypedSessionHandler(jobExecutor *taskflow.JobExecutor, logger *c
 		err := jobExecutor.StartTyped(ctx, req.SessionID, req.StartIndex, req.ResultsPerBatch, req.DataType)
 		if err != nil {
 			logger.Error("Failed to start job: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to start job: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start job: %v", err)), nil
 		}
 
 		// Get updated run state
 		run, err := jobExecutor.GetStatus(req.SessionID)
 		if err != nil {
 			logger.Error("Failed to get run status: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to get run status: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to get run status: %v", err)), nil
 		}
 
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
-		}
-
-		result := map[string]interface{}{
+		logger.Info("RPCStartTypedSession: Successfully started job run %s (type: %s)", run.ID, run.DataType)
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"success":     true,
 			"session_id":  run.ID,
 			"state":       run.State,
@@ -1554,22 +1120,12 @@ func createStartTypedSessionHandler(jobExecutor *taskflow.JobExecutor, logger *c
 			"start_index": run.StartIndex,
 			"batch_size":  run.ResultsPerBatch,
 			"params":      req.Params,
-		}
-
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
-
-		logger.Info("RPCStartTypedSession: Successfully started job run %s (type: %s)", run.ID, run.DataType)
-		return respMsg, nil
+		})
 	}
 }
 
 // createProxyHandler returns a handler that proxies the RPC call to the given target and method.
-func createProxyHandler(rpcClient *RPCClient, logger *common.Logger, target, method string) subprocess.Handler {
+func createProxyHandler(rpcClient *rpc.Client, logger *common.Logger, target, method string) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		// Forward the payload as-is to the target service/method
 		var params interface{}
@@ -1579,14 +1135,14 @@ func createProxyHandler(rpcClient *RPCClient, logger *common.Logger, target, met
 		resp, err := rpcClient.InvokeRPC(ctx, target, method, params)
 		if err != nil {
 			logger.Warn("Proxy handler failed: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("proxy handler failed: %v", err)), nil
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("proxy handler failed: %v", err)), nil
 		}
 		return resp, nil
 	}
 }
 
 // Memory Card RPC handlers
-func registerMemoryCardProxyHandlers(sp *subprocess.Subprocess, rpcClient *RPCClient, logger *common.Logger) {
+func registerMemoryCardProxyHandlers(sp *subprocess.Subprocess, rpcClient *rpc.Client, logger *common.Logger) {
 	sp.RegisterHandler("RPCCreateMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCCreateMemoryCard"))
 	sp.RegisterHandler("RPCGetMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCGetMemoryCard"))
 	sp.RegisterHandler("RPCUpdateMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCUpdateMemoryCard"))
