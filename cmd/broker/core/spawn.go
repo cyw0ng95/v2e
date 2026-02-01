@@ -10,7 +10,6 @@ import (
 
 	"github.com/cyw0ng95/v2e/cmd/broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/capec"
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/meta"
@@ -170,7 +169,7 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 }
 
 // LoadProcessesFromConfig loads and starts processes based on new binary detection logic.
-func (b *Broker) LoadProcessesFromConfig(config *common.Config) error {
+func (b *Broker) LoadProcessesFromConfig(config interface{}) error {
 	// Use build-time defaults since runtime config is disabled
 	b.logger.Info("Using build-time defaults for process loading")
 	// Default to detecting binaries
@@ -290,7 +289,7 @@ func (b *Broker) startService(serviceName string, withRPC bool) error {
 
 // setProcessEnv configures environment variables for a process based on its ID and build-time config.
 // This consolidates the repeated env setup logic from Spawn, SpawnRPC, SpawnWithRestart, and SpawnRPCWithRestart.
-func setProcessEnv(cmd *exec.Cmd, processID string, config *common.Config) {
+func setProcessEnv(cmd *exec.Cmd, processID string, config interface{}) {
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
@@ -332,7 +331,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 	if b.transportManager == nil {
 		return
 	}
-	if shouldUseUDSTransport(common.TransportConfigOptions{}) {
+	if shouldUseUDSTransport(struct{UseUDS bool}{UseUDS: false}) {
 		if err := b.transportManager.RegisterUDSTransport(processID, true); err == nil {
 			b.logger.Debug("Registered UDS transport for process %s", processID)
 			return
@@ -350,7 +349,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 }
 
 // shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
-func shouldUseUDSTransport(config common.TransportConfigOptions) bool {
+func shouldUseUDSTransport(config struct{UseUDS bool}) bool {
 	// Always use FD transport instead of UDS transport
 	return false
 }

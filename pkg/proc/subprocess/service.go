@@ -18,7 +18,7 @@ type Flags struct {
 // Service encapsulates the common state for a service
 type Service struct {
 	ID     string
-	Config *common.Config
+	Config interface{}
 	Logger *common.Logger
 	Proc   *Subprocess
 }
@@ -57,7 +57,7 @@ func NewService(defaultID string) (*Service, error) {
 	flags := ParseFlags(defaultID)
 
 	// Use empty config since runtime config is disabled
-	config := &common.Config{}
+	config := struct{}{}
 
 	// Setup Logger - use build-time configured log level and directory (no runtime config overrides for these)
 	logLevel := DefaultBuildLogLevel()

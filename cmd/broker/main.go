@@ -37,8 +37,7 @@ func (r *brokerRouter) ProcessBrokerMessage(msg *proc.Message) error {
 }
 
 func main() {
-	// Use empty config since runtime config is disabled
-	config := &common.Config{}
+	// No config needed since runtime config is disabled
 
 	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
 	logLevel := subprocess.DefaultBuildLogLevel()
@@ -53,8 +52,8 @@ func main() {
 
 	// Create broker instance
 	broker := NewBroker()
-	// Provide loaded config to broker so it can use configured settings when spawning
-	broker.SetConfig(config)
+	// Placeholder for config if needed in future
+	// Currently no config is passed to broker
 	// Configure transport based on configuration
 	broker.ConfigureTransportFromConfig()
 	// Install a default SpawnAdapter that delegates to existing spawn methods.
@@ -66,7 +65,7 @@ func main() {
 	broker.SetLogger(logger)
 
 	// Load processes from configuration
-	if err := broker.LoadProcessesFromConfig(config); err != nil {
+	if err := broker.LoadProcessesFromConfig(nil); err != nil {
 		logger.Error("Error loading processes from config: %v", err)
 	}
 
@@ -74,20 +73,20 @@ func main() {
 	routerAdapter := &brokerRouter{b: broker}
 
 	optConfig := perf.Config{
-		BufferCap:      config.Broker.OptimizerBufferCap,
-		NumWorkers:     config.Broker.OptimizerNumWorkers,
-		StatsInterval:  time.Duration(config.Broker.OptimizerStatsIntervalMs) * time.Millisecond,
-		OfferPolicy:    config.Broker.OptimizerOfferPolicy,
-		OfferTimeout:   time.Duration(config.Broker.OptimizerOfferTimeoutMs) * time.Millisecond,
-		BatchSize:      config.Broker.OptimizerBatchSize,
-		FlushInterval:  time.Duration(config.Broker.OptimizerFlushIntervalMs) * time.Millisecond,
-		AdaptationFreq: time.Duration(config.Broker.OptimizerAdaptationFreqMs) * time.Millisecond,
+		BufferCap:      1000, // Default buffer capacity
+		NumWorkers:     4,    // Default number of workers
+		StatsInterval:  100 * time.Millisecond, // Default stats interval
+		OfferPolicy:    "drop", // Default offer policy
+		OfferTimeout:   0,    // Default offer timeout
+		BatchSize:      1,    // Default batch size
+		FlushInterval:  10 * time.Millisecond, // Default flush interval
+		AdaptationFreq: 10 * time.Second, // Default adaptation frequency
 	}
 
 	opt := perf.NewWithConfig(routerAdapter, optConfig)
 	opt.SetLogger(logger)
 
-	if config.Broker.OptimizerEnableAdaptive {
+	if false { // Adaptive optimization disabled by default
 		opt.EnableAdaptiveOptimization()
 		logger.Info("Adaptive optimization enabled (freq=%v)", optConfig.AdaptationFreq)
 	}

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/broker/core"
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
@@ -132,8 +131,7 @@ func TestLoadProcessesFromConfig(t *testing.T) {
 	defer broker.Shutdown()
 
 	t.Run("Config loading - should use build-time defaults", func(t *testing.T) {
-		config := &common.Config{}
-		err := broker.LoadProcessesFromConfig(config)
+		err := broker.LoadProcessesFromConfig(nil)
 		if err != nil {
 			t.Errorf("Expected no error with config, got: %v", err)
 		}
