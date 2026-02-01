@@ -251,7 +251,7 @@ const NotesDashboard: React.FC = () => {
             {recentItems.length > 0 ? (
               recentItems.map((item, index) => (
                 <div key={index} className="flex items-start">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     {item.type === 'bookmark' && (
                       <div className="bg-blue-100 rounded-full p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

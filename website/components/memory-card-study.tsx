@@ -257,7 +257,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
 
       <div className="mb-6">
         <div className="text-sm text-gray-500 mb-1">Learning State: {currentCard.learning_state}</div>
-        <div className="text-lg font-medium bg-gray-50 p-4 rounded mb-2 min-h-[100px] flex items-center">
+        <div className="text-lg font-medium bg-gray-50 p-4 rounded mb-2 min-h-25 flex items-center">
           {currentCard.front_content}
         </div>
       </div>
@@ -265,7 +265,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
       {showAnswer && (
         <div className="mb-6 animate-fade-in">
           <div className="text-sm text-gray-500 mb-1">Answer:</div>
-          <div className="bg-yellow-50 p-4 rounded border border-yellow-200 min-h-[100px] flex items-center">
+          <div className="bg-yellow-50 p-4 rounded border border-yellow-200 min-h-25 flex items-center">
             {currentCard.back_content}
           </div>
         </div>

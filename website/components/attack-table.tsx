@@ -133,7 +133,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
       case 'software':
         return (
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
+            <TableHead className="w-25">ID</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Domain</TableHead>
@@ -144,7 +144,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
       case 'groups':
         return (
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
+            <TableHead className="w-25">ID</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Domain</TableHead>
             <TableHead>Description</TableHead>
@@ -154,7 +154,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
       default:
         return (
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
+            <TableHead className="w-25">ID</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Domain</TableHead>
             <TableHead>Platform</TableHead>
