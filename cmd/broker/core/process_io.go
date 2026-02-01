@@ -55,7 +55,7 @@ func (b *Broker) readProcessMessages(p *Process) {
 				}
 				go func() {
 					if sendErr := b.SendToProcess(msg.Source, errorMsg); sendErr != nil {
-						b.logger.Debug("Failed to send error response back to %s: %v", msg.Source, sendErr)
+						b.logger.Debug("Failed to send error response to %s: %v", msg.Source, sendErr)
 					}
 				}()
 			}

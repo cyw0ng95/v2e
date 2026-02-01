@@ -116,9 +116,9 @@ func main() {
 			}
 			// Process messages directed at the broker
 			if err := broker.ProcessMessage(msg); err != nil {
-				logger.Warn("Error processing broker message - Message ID: %s, Source: %s, Target: %s, Error: %v", msg.ID, msg.Source, msg.Target, err)
+				logger.Warn("Error processing broker message: id=%s source=%s target=%s error=%v", msg.ID, msg.Source, msg.Target, err)
 			} else {
-				logger.Debug("Successfully processed broker message - Message ID: %s, Source: %s, Target: %s", msg.ID, msg.Source, msg.Target)
+				logger.Debug("Successfully processed broker message: id=%s source=%s target=%s", msg.ID, msg.Source, msg.Target)
 			}
 		}
 	}()

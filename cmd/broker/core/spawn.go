@@ -154,12 +154,12 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	infoCopy := *info
 
 	if isRPC {
-		b.logger.Info("Spawned RPC process: id=%s pid=%d command=%s (advertised fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
+		b.logger.Info("Spawned RPC process: id=%s pid=%d cmd=%s (fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
 		b.registerProcessTransport(id, inputFD, outputFD)
 		b.wg.Add(1)
 		go b.readProcessMessages(proc)
 	} else {
-		b.logger.Info("Spawned process: id=%s pid=%d command=%s", id, info.PID, command)
+		b.logger.Info("Spawned process: id=%s pid=%d cmd=%s", id, info.PID, command)
 	}
 
 	b.wg.Add(1)
