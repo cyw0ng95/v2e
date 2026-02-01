@@ -1,3 +1,80 @@
+// CreateMemoryCardFull creates a new memory card with all fields
+func (s *MemoryCardService) CreateMemoryCardFull(ctx context.Context, bookmarkID uint, front, back, majorClass, minorClass, status, content, cardType, author string, isPrivate bool, metadata map[string]any) (*MemoryCardModel, error) {
+	card := &MemoryCardModel{
+		BookmarkID: bookmarkID,
+		Front:      front,
+		Back:       back,
+		MajorClass: majorClass,
+		MinorClass: minorClass,
+		Status:     status,
+		Content:    content,
+		EaseFactor: 2.5,
+		Interval:   1,
+		Repetition: 0,
+		// TODO: CardType, Author, IsPrivate, Metadata (if you add to model)
+	}
+	if err := s.db.WithContext(ctx).Create(card).Error; err != nil {
+		return nil, fmt.Errorf("failed to create memory card: %w", err)
+	}
+	return card, nil
+}
+
+// UpdateMemoryCardFields updates a memory card by ID and arbitrary fields
+func (s *MemoryCardService) UpdateMemoryCardFields(ctx context.Context, fields map[string]any) (*MemoryCardModel, error) {
+	idAny, ok := fields["id"]
+	if !ok {
+		return nil, fmt.Errorf("missing id field")
+	}
+	id, ok := idAny.(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid id type")
+	}
+	var card MemoryCardModel
+	if err := s.db.WithContext(ctx).First(&card, uint(id)).Error; err != nil {
+		return nil, err
+	}
+	delete(fields, "id")
+	if err := s.db.WithContext(ctx).Model(&card).Updates(fields).Error; err != nil {
+		return nil, err
+	}
+	return &card, nil
+}
+
+// DeleteMemoryCard deletes a memory card by ID
+func (s *MemoryCardService) DeleteMemoryCard(ctx context.Context, id uint) error {
+	return s.db.WithContext(ctx).Delete(&MemoryCardModel{}, id).Error
+}
+
+// ListMemoryCardsFull lists memory cards with new filters
+func (s *MemoryCardService) ListMemoryCardsFull(ctx context.Context, bookmarkID *uint, majorClass, minorClass, status, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error) {
+	var cards []*MemoryCardModel
+	query := s.db.WithContext(ctx).Model(&MemoryCardModel{})
+	if bookmarkID != nil {
+		query = query.Where("bookmark_id = ?", *bookmarkID)
+	}
+	if majorClass != nil && *majorClass != "" {
+		query = query.Where("major_class = ?", *majorClass)
+	}
+	if minorClass != nil && *minorClass != "" {
+		query = query.Where("minor_class = ?", *minorClass)
+	}
+	if status != nil && *status != "" {
+		query = query.Where("status = ?", *status)
+	}
+	// TODO: author, is_private if added to model
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if limit > 0 {
+		query = query.Offset(offset).Limit(limit)
+	}
+	if err := query.Find(&cards).Error; err != nil {
+		return nil, 0, err
+	}
+	return cards, total, nil
+}
+
 package notes
 
 import (
