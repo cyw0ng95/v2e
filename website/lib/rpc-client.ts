@@ -651,10 +651,26 @@ export class RPCClient {
           updated_at: new Date().toISOString(),
           metadata: req?.metadata || {},
         };
+        const mockMemoryCard: MemoryCard = {
+          id: Math.floor(Math.random() * 10000),
+          bookmark_id: mockBookmark.id,
+          front_content: mockBookmark.title,
+          back_content: mockBookmark.description,
+          card_type: 'basic',
+          learning_state: 'to_review',
+          is_private: false,
+          interval: 1,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          next_review_at: new Date().toISOString(),
+          metadata: {},
+        };
         return {
           retcode: 0,
           message: 'success',
-          payload: { success: true, bookmark: mockBookmark } as unknown as TResponse,
+          payload: { success: true, bookmark: mockBookmark, memoryCard: mockMemoryCard } as unknown as TResponse,
         };
       }
 
