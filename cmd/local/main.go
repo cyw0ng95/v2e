@@ -176,11 +176,25 @@ func main() {
 	// Log completion of all startup activities
 	logger.Info("All startup import processes completed")
 
-	// Initialize notes service and run migrations
-	logger.Info("Initializing notes service and running migrations...")
-	notesServiceContainer := notes.NewServiceContainer(db.GormDB())
+	// Initialize notes/bookmark DB from CONFIG_BOOKMARK_DBPATH
+	bookmarkDBPath := os.Getenv("BOOKMARK_DB_PATH")
+	if bookmarkDBPath == "" {
+		bookmarkDBPath = "bookmark.db"
+	}
+	logger.Info("Bookmark DB path configured: %s", bookmarkDBPath)
+	bookmarkDB, err := local.NewDB(bookmarkDBPath)
+	if err != nil {
+		logger.Error("Failed to open bookmark DB: %v", err)
+		os.Exit(1)
+	}
+	defer func() {
+		logger.Info("Bookmark DB closing: %s", bookmarkDBPath)
+		bookmarkDB.Close()
+	}()
 	// Run the notes table migrations to ensure tables exist
-	if err := notes.MigrateNotesTables(db.GormDB()); err != nil {
+	logger.Info("Initializing notes service and running migrations...")
+	notesServiceContainer := notes.NewServiceContainer(bookmarkDB.GormDB())
+	if err := notes.MigrateNotesTables(bookmarkDB.GormDB()); err != nil {
 		logger.Error("Failed to migrate notes tables: %v", err)
 		os.Exit(1)
 	}

@@ -35,6 +35,8 @@ func NewRPCHandlers(container *ServiceContainer, sp *subprocess.Subprocess, logg
 	sp.RegisterHandler("RPCAddNote", handlers.handleRPCAddNote)
 	sp.RegisterHandler("RPCGetNoteByID", handlers.handleRPCGetNoteByID)
 	sp.RegisterHandler("RPCGetNotesByBookmarkID", handlers.handleRPCGetNotesByBookmarkID)
+	// Alias for compatibility with clients using the alternate method name
+	sp.RegisterHandler("RPCGetNotesByBookmark", handlers.handleRPCGetNotesByBookmarkID)
 	sp.RegisterHandler("RPCUpdateNote", handlers.handleRPCUpdateNote)
 	sp.RegisterHandler("RPCDeleteNote", handlers.handleRPCDeleteNote)
 	sp.RegisterHandler("RPCCreateMemoryCard", handlers.handleRPCCreateMemoryCard)

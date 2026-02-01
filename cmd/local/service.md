@@ -6,7 +6,21 @@ RPC (stdin/stdout message passing)
 ## Description
 Manages local storage and retrieval of CVE, CWE, CAPEC, and ATT&CK data using SQLite databases. Provides CRUD operations for CVE records and read/import operations for CWE, CAPEC, and ATT&CK records.
 
+
 ## Available RPC Methods
+
+### X. RPCGetNotesByBookmark (alias for RPCGetNotesByBookmarkID)
+- **Description**: Retrieves all notes for a given bookmark ID (alias for `RPCGetNotesByBookmarkID`)
+- **Request Parameters**:
+  - `bookmark_id` (int, required): The bookmark ID to retrieve notes for
+- **Response**:
+  - `notes` ([]object): Array of note objects for the bookmark
+- **Errors**:
+  - Missing or invalid bookmark_id: `bookmark_id` parameter is required and must be a valid integer
+  - Database error: Failed to query notes for the bookmark
+- **Example**:
+  - **Request**: {"bookmark_id": 1}
+  - **Response**: {"notes": [ ... ]}
 
 ### 1. RPCSaveCVEByID
 - **Description**: Saves a CVE record to the local database

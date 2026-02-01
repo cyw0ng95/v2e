@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { rpcClient } from '@/lib/rpc-client';
-import { Bookmark, NoteModel as Note, MemoryCard } from '@/lib/types';
 
 const NotesDashboard: React.FC = () => {
   const [stats, setStats] = useState({
@@ -50,9 +49,12 @@ const NotesDashboard: React.FC = () => {
           const cardsResponse = await rpcClient.listMemoryCards({
             bookmark_id: bookmark.id
           });
-          if (cardsResponse.retcode === 0 && cardsResponse.payload) {
+          if (
+            cardsResponse.retcode === 0 &&
+            cardsResponse.payload &&
+            Array.isArray(cardsResponse.payload.memory_cards)
+          ) {
             totalMemoryCards += cardsResponse.payload.total;
-            
             // Count by learning state
             cardsResponse.payload.memory_cards.forEach(card => {
               switch (card.learning_state) {
@@ -95,14 +97,18 @@ const NotesDashboard: React.FC = () => {
         }
       }
 
+      // Defensive: ensure all values are numbers and not NaN
+      function safeNumber(val: any) {
+        return typeof val === 'number' && !isNaN(val) ? val : 0;
+      }
       setStats({
-        totalBookmarks,
-        totalNotes,
-        totalMemoryCards,
-        toReviewCards,
-        learningCards,
-        masteredCards,
-        todayReviews,
+        totalBookmarks: safeNumber(totalBookmarks),
+        totalNotes: safeNumber(totalNotes),
+        totalMemoryCards: safeNumber(totalMemoryCards),
+        toReviewCards: safeNumber(toReviewCards),
+        learningCards: safeNumber(learningCards),
+        masteredCards: safeNumber(masteredCards),
+        todayReviews: safeNumber(todayReviews),
       });
       setRecentItems(recentItemsData);
     } catch (err) {
@@ -270,42 +276,6 @@ const NotesDashboard: React.FC = () => {
               <p className="text-sm text-gray-500">No recent activity</p>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow p-6 border">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <div className="bg-blue-100 p-3 rounded-full mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <span className="font-medium text-gray-900">Create Bookmark</span>
-            <span className="text-sm text-gray-500 mt-1">Save an item for later</span>
-          </button>
-          
-          <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <div className="bg-green-100 p-3 rounded-full mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <span className="font-medium text-gray-900">Add Note</span>
-            <span className="text-sm text-gray-500 mt-1">Create a new note</span>
-          </button>
-          
-          <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <div className="bg-yellow-100 p-3 rounded-full mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-            </div>
-            <span className="font-medium text-gray-900">Study Cards</span>
-            <span className="text-sm text-gray-500 mt-1">Review memory cards</span>
-          </button>
         </div>
       </div>
     </div>

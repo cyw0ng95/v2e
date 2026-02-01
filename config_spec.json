@@ -3,6 +3,15 @@
     "config_file": ".config"
   },
   "features": {
+        "CONFIG_BOOKMARK_DBPATH": {
+          "description": "Database path for bookmarks and memory cards",
+          "type": "string",
+          "default": "bookmark.db",
+          "method": "ldflags",
+          "target": "github.com/cyw0ng95/v2e/pkg/notes.buildBookmarkDBPath",
+          "major_class": "proc",
+          "minor_class": "local"
+        },
     "CONFIG_MIN_LOG_LEVEL": {
       "description": "Minimum log level for the application",
       "type": "string",

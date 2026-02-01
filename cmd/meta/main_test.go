@@ -13,6 +13,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
+	"github.com/cyw0ng95/v2e/pkg/meta"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
@@ -982,5 +983,24 @@ func TestRPCListCVEs_InvalidPayload(t *testing.T) {
 	// We just want to make sure it doesn't panic
 	if resp == nil {
 		t.Fatal("Handler returned nil response")
+	}
+}
+
+func TestAddBookmarkCreatesMemoryCard(t *testing.T) {
+	ctx := context.Background()
+	bookmarkID := "test-bookmark"
+	content := "Test bookmark content"
+
+	err := AddBookmarkHandler(ctx, bookmarkID, content)
+	if err != nil {
+		t.Fatalf("AddBookmarkHandler failed: %v", err)
+	}
+
+	card := meta.CreateMemoryCard(bookmarkID, content)
+	if card.BookmarkID != bookmarkID {
+		t.Errorf("MemoryCard.BookmarkID mismatch: got %s, want %s", card.BookmarkID, bookmarkID)
+	}
+	if card.Content != content {
+		t.Errorf("MemoryCard.Content mismatch: got %s, want %s", card.Content, content)
 	}
 }
