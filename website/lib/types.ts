@@ -679,6 +679,7 @@ export interface CreateBookmarkRequest {
 export interface CreateBookmarkResponse {
   success: boolean;
   bookmark: Bookmark;
+  memoryCard?: MemoryCard;
 }
 
 export interface GetBookmarkRequest {
