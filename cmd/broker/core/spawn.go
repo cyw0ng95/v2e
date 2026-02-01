@@ -98,10 +98,9 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	}
 
 	setProcessEnv(cmd, id, nil)
-	if isRPC {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("PROCESS_ID=%s", id))
-		// MaxMessageSize is now configured at build-time, no runtime override
-	}
+	// Do not inject PROCESS_ID or RPC-related environment variables. Processes
+	// compute their own IDs and transport paths deterministically from
+	// build-time defaults (ldflags). This avoids runtime env coordination.
 
 	// If this is an RPC process and transport manager exists, register a UDS
 	// transport before starting the process. The socket path is deterministic

@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -25,27 +25,15 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 	// For now, we'll create it here as before but eventually it should come from standard startup
 	var sp *subprocess.Subprocess
 
-	// Check if we're running as an RPC subprocess with file descriptors
-	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
-		// Use file descriptors 3 and 4 for RPC communication
-		inputFD := 3
-		outputFD := 4
-
-		// Allow environment override for file descriptors
-		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				inputFD = fd
-			}
-		}
-		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				outputFD = fd
-			}
-		}
-
-		sp = subprocess.NewWithFDs(processID, inputFD, outputFD)
-	} else {
-		// Use default stdin/stdout for non-RPC mode
+	// Create subprocess based on build-time default communication type
+	switch subprocess.DefaultProcCommType() {
+	case "fd":
+		sp = subprocess.NewWithFDs(processID, subprocess.DefaultBuildRPCInputFD(), subprocess.DefaultBuildRPCOutputFD())
+	case "uds":
+		// Use deterministic UDS path based on build-time base path and process ID
+		socketPath := fmt.Sprintf("%s_%s.sock", subprocess.DefaultProcUDSBasePath(), processID)
+		sp = subprocess.NewWithUDS(processID, socketPath)
+	default:
 		sp = subprocess.New(processID)
 	}
 
