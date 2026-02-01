@@ -8,8 +8,10 @@ v2e (Vulnerabilities Viewer Engine) is a broker-first microservices system for m
 
 ## Build & Development Commands
 
+**IMPORTANT: All build and test operations MUST use `build.sh` wrapper script.** Do not use direct `go build` or `go test` commands - the wrapper handles build tags, environment setup, and proper test configuration.
+
 ```bash
-# Primary build script
+# Primary build script (REQUIRED for all builds/tests)
 ./build.sh -t     # Unit tests (excludes fuzz tests, uses -run='^Test')
 ./build.sh -f     # Fuzz tests (5 seconds per target)
 ./build.sh -m     # Benchmarks with reporting
@@ -26,10 +28,6 @@ cd website
 npm run dev       # Development server
 npm run build     # Static export to out/
 npm run lint      # ESLint
-
-# Manual builds
-go build ./cmd/...                              # Build all services
-go test -tags="$GO_TAGS" -race ./...            # Unit tests with race detector
 ```
 
 **Build Tags**: Default `GO_TAGS=CONFIG_USE_LIBXML2`. Override via environment variable.
@@ -49,6 +47,8 @@ Frontend (Next.js) → Access Service (/restful/rpc) → Broker → Backend Serv
 1. **Only broker spawns subprocesses** - never add process management to `cmd/*` services
 2. **RPC-only inter-service communication** - no direct subprocess-to-subprocess interaction
 3. **Subprocess I/O constraint** - services must only read stdin / write stdout for broker-controlled RPC
+4. **Use `build.sh` wrapper** - all builds and tests must use `./build.sh`, never direct `go build`/`go test`
+5. **Document RPC APIs in `service.md`** - every RPC handler must be documented in the service's `service.md` file
 
 ### Transport Layer
 - **Default**: Unix Domain Sockets (UDS) with 0600 permissions
@@ -158,15 +158,28 @@ Mock mode: NEXT_PUBLIC_USE_MOCK_DATA=true
 
 ## Service Documentation
 
-Each service has a `service.md` file documenting its RPC API:
+**CRITICAL: All RPC APIs MUST be documented in `service.md` inside each `cmd/*/` directory.**
+
+Every service must have a `service.md` file that documents its complete RPC API specification:
 - `cmd/broker/service.md` - Broker process management and routing
 - `cmd/access/service.md` - REST gateway endpoints
-- `cmd/local/service.md` - CVE/CWE/CAPEC/ATT&CK data storage (50+ RPC methods)
+- `cmd/local/service.md` - CVE/CWE/CAPEC/ATT&CK data storage
 - `cmd/remote/service.md` - External API fetching
 - `cmd/meta/service.md` - Job orchestration with go-taskflow
 - `cmd/sysmon/service.md` - System monitoring
 
-**Always update `service.md` when adding RPC handlers.**
+**RPC API Documentation Requirements:**
+1. **Mandatory for all RPC methods** - Every `RPC*` handler must be documented
+2. **Include complete specification**:
+   - Method name and description
+   - Request parameters (name, type, required/optional, description)
+   - Response fields (name, type, description)
+   - Error conditions and messages
+   - Example request/response
+3. **Update before or with code** - Documentation must be updated when adding or modifying RPC handlers
+4. **Single source of truth** - The `service.md` file is the authoritative API specification
+
+**Always update `service.md` when adding RPC handlers. Never commit new RPC methods without documentation.**
 
 ## Configuration
 
@@ -191,10 +204,11 @@ Run `./build.sh -c` to access the TUI configuration manager for build flags and 
 ## Commit Workflow
 
 Per `.github/agents/v2e-go.agent.md`:
-1. **Commit at each milestone** - incremental, clean commits
-2. **Exclude binaries and databases** - never commit `.db`, `.db-wal`, `.db-shm`, compiled binaries
-3. **Update existing `service.md`** - only update, never create new markdown files
-4. **Include tests** - table-driven unit tests and `testing.B` benchmarks for performance-critical paths
+1. **Use `build.sh` for all builds and tests** - never use direct `go build` or `go test`
+2. **Commit at each milestone** - incremental, clean commits
+3. **Exclude binaries and databases** - never commit `.db`, `.db-wal`, `.db-shm`, compiled binaries
+4. **Document all RPC APIs in `service.md`** - update existing `service.md` files before committing new RPC handlers
+5. **Include tests** - table-driven unit tests and `testing.B` benchmarks for performance-critical paths
 
 ## Job Session Management
 
