@@ -87,46 +87,22 @@ func createFetchViewsHandler() subprocess.Handler {
 		}
 		resp, err := http.Get(zipURL)
 		if err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedDownloadArchive, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedDownloadArchive, err)), nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgUnexpectedHTTPStatus, resp.Status),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgUnexpectedHTTPStatus, resp.Status)), nil
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedReadBody, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedReadBody, err)), nil
 		}
 
 		zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
 		if err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedOpenZip, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedOpenZip, err)), nil
 		}
 
 		var allViews []cwe.CWEView
@@ -190,24 +166,7 @@ func createFetchViewsHandler() subprocess.Handler {
 			"views": allViews[start:end],
 		}
 
-		jsonData, err := subprocess.MarshalFast(respPayload)
-		if err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedMarshalResp, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-			Payload:       jsonData,
-		}, nil
+		return subprocess.NewSuccessResponse(msg, respPayload)
 	}
 }
 
@@ -218,24 +177,13 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		var req struct {
 			CVEID string `json:"cve_id"`
 		}
-		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedParseReq, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		if errMsg := subprocess.ParseRequest(msg, &req); errMsg != nil {
+			return errMsg, nil
 		}
 
-		if req.CVEID == "" {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         ErrMsgCVEIDRequired,
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+		// Validate required field
+		if errMsg := subprocess.RequireField(msg, req.CVEID, "cve_id"); errMsg != nil {
+			return errMsg, nil
 		}
 
 		// Fetch CVE from NVD
@@ -243,45 +191,12 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		if err != nil {
 			// Check if this is a rate limit error
 			if err == remote.ErrRateLimited {
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         ErrMsgNVDRateLimited,
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+				return subprocess.NewErrorResponse(msg, ErrMsgNVDRateLimited), nil
 			}
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedFetchCVE, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedFetchCVE, err)), nil
 		}
 
-		// Create response
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the response
-		jsonData, err := subprocess.MarshalFast(response)
-		if err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedMarshalResp, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, response)
 	}
 }
 
@@ -308,21 +223,9 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		if err != nil {
 			// Check if this is a rate limit error
 			if err == remote.ErrRateLimited {
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         ErrMsgNVDRateLimited,
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+				return subprocess.NewErrorResponse(msg, ErrMsgNVDRateLimited), nil
 			}
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedFetchCount, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedFetchCount, err)), nil
 		}
 
 		// Create response with count
@@ -330,28 +233,7 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			"total_results": response.TotalResults,
 		}
 
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the result
-		jsonData, err := subprocess.MarshalFast(result)
-		if err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedMarshalResult, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, result)
 	}
 }
 
@@ -378,44 +260,11 @@ func createFetchCVEsHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		if err != nil {
 			// Check if this is a rate limit error
 			if err == remote.ErrRateLimited {
-				return &subprocess.Message{
-					Type:          subprocess.MessageTypeError,
-					ID:            msg.ID,
-					Error:         ErrMsgNVDRateLimited,
-					CorrelationID: msg.CorrelationID,
-					Target:        msg.Source,
-				}, nil
+				return subprocess.NewErrorResponse(msg, ErrMsgNVDRateLimited), nil
 			}
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedFetchCVEs, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedFetchCVEs, err)), nil
 		}
 
-		// Create response message
-		respMsg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}
-
-		// Marshal the response
-		jsonData, err := subprocess.MarshalFast(response)
-		if err != nil {
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         fmt.Sprintf(ErrMsgFailedMarshalResp, err),
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
-		respMsg.Payload = jsonData
-
-		return respMsg, nil
+		return subprocess.NewSuccessResponse(msg, response)
 	}
 }
