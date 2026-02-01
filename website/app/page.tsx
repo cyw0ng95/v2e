@@ -1,6 +1,8 @@
 'use client';
 
-import { useCVEList, useCVECount, useSessionStatus } from "@/lib/hooks";
+import { useCVEList } from "@/lib/hooks";
+import { useCVECount } from "@/lib/hooks";
+import { useSessionStatus } from "@/lib/hooks";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DatabaseIcon as Database, ActivityIcon as Activity, AlertCircleIcon as AlertCircle } from '@/components/icons';
@@ -155,7 +157,7 @@ export default function Home() {
             </div>
 
             <div className="mt-4 w-full max-w-70">
-              <Suspense>
+              <Suspense fallback={<div className="p-4"><Skeleton className="h-20 w-full" /></div>}>
                 <SessionControl />
               </Suspense>
             </div>
@@ -183,7 +185,9 @@ export default function Home() {
                 <TabsContent value="cwe" className="h-full">
                   <div className="h-full flex flex-col">
                     <div className="flex-1 min-h-0 overflow-auto">
-                      <CWETable />
+                      <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                        <CWETable />
+                      </Suspense>
                     </div>
                   </div>
                 </TabsContent>
@@ -191,7 +195,7 @@ export default function Home() {
                 <TabsContent value="capec" className="h-full">
                   <div className="h-full flex flex-col">
                     <div className="flex-1 min-h-0 overflow-auto">
-                      <Suspense>
+                      <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                         <CAPECTable />
                       </Suspense>
                     </div>
@@ -201,7 +205,7 @@ export default function Home() {
                 <TabsContent value="attack" className="h-full">
                   <div className="h-full flex flex-col">
                     <div className="flex-1 min-h-0 overflow-auto">
-                      <Suspense>
+                      <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                         <AttackViews />
                       </Suspense>
                     </div>
@@ -211,7 +215,9 @@ export default function Home() {
                 <TabsContent value="cweviews" className="h-full">
                   <div className="h-full flex flex-col">
                     <div className="flex-1 min-h-0 overflow-auto">
-                      <CWEViews />
+                      <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                        <CWEViews />
+                      </Suspense>
                     </div>
                   </div>
                 </TabsContent>
@@ -232,7 +238,7 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="flex-1 min-h-0 flex flex-col">
                       <div className="flex-1 min-h-0 overflow-auto">
-                        <Suspense>
+                        <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                           <CVETable
                             cves={cveList?.cves || []}
                             total={cveList?.total || 0}
@@ -257,7 +263,9 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="flex-1 min-h-0 flex flex-col">
                       <div className="flex-1 min-h-0 overflow-auto">
-                        <BookmarkTable />
+                        <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                          <BookmarkTable />
+                        </Suspense>
                       </div>
                     </CardContent>
                   </Card>
@@ -271,7 +279,9 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="flex-1 min-h-0 flex flex-col">
                       <div className="flex-1 min-h-0 overflow-auto">
-                        <NotesDashboard />
+                        <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                          <NotesDashboard />
+                        </Suspense>
                       </div>
                     </CardContent>
                   </Card>
@@ -285,7 +295,9 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="flex-1 min-h-0 flex flex-col">
                       <div className="flex-1 min-h-0 overflow-auto">
-                        <MemoryCardStudy filterState="to_review" />
+                        <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                          <MemoryCardStudy filterState="to_review" />
+                        </Suspense>
                       </div>
                     </CardContent>
                   </Card>
@@ -299,7 +311,7 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="flex-1 min-h-0 flex flex-col">
                       <div className="flex-1 min-h-0 overflow-auto">
-                        <Suspense>
+                        <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                           <SysMonitor />
                         </Suspense>
                       </div>

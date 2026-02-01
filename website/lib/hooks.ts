@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { rpcClient } from './rpc-client';
 
 interface AttackQueryParams {
@@ -704,7 +704,16 @@ export function useCVEList(offset: number = 0, limit: number = 100) {
     return () => {};
   }, [offset, limit]);
 
-  return { data, isLoading, error };
+  // Derive derived state to prevent unnecessary re-renders
+  const derivedState = useMemo(() => ({
+    data,
+    isLoading,
+    error,
+    hasData: !!data?.cves?.length,
+    total: data?.total || 0,
+  }), [data, isLoading, error]);
+
+  return derivedState;
 }
 
 export function useCVECount() {
