@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
-	"syscall"
-	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
@@ -75,7 +72,12 @@ func (s *Subprocess) Run() error {
 		go s.handleMessage(&msg)
 	}
 
+	// Cancel context to signal other goroutines to stop — EOF or scanner termination
+	s.cancel()
+
 	if err := scanner.Err(); err != nil {
+		// Ensure goroutines observe cancellation
+		s.wg.Wait()
 		return fmt.Errorf("error reading input: %w", err)
 	}
 
@@ -205,11 +207,8 @@ type StandardStartupConfig struct {
 
 // StandardStartup performs the standard startup sequence for subprocesses
 func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger) {
-	// Get process ID from environment or use default
-	processID := os.Getenv("PROCESS_ID")
-	if processID == "" {
-		processID = config.DefaultProcessID
-	}
+	// Use configured default process ID from build-time settings
+	processID := config.DefaultProcessID
 	common.Info("%sProcess ID configured: %s", config.LogPrefix, processID)
 
 	// Use a bootstrap logger for initial messages before the full logging system is ready
@@ -282,42 +281,15 @@ func NewWithUDS(id string, socketPath string) *Subprocess {
 	return sp
 }
 
-// startAutoExitMonitor begins a background routine that exits the subprocess
-// when it detects the broker process has died. It uses the BROKER_PID env var
-// if present and the build-time DefaultProcAutoExit flag.
+// startAutoExitMonitor is intentionally lightweight and does not rely on
+// runtime environment variables (like BROKER_PID). The preferred mechanism
+// for subprocess shutdown is transport EOF detection (the main Run loop
+// will return when the transport is closed). This function remains as a
+// noop placeholder to preserve the build-time toggle.
 func startAutoExitMonitor(s *Subprocess) {
+	// No-op: rely on transport EOF and Run() to terminate the process.
 	if !DefaultProcAutoExit() {
 		return
 	}
-
-	val := os.Getenv("BROKER_PID")
-	if val == "" {
-		return
-	}
-	pid, err := strconv.Atoi(val)
-	if err != nil || pid <= 0 {
-		return
-	}
-
-	// Poll the broker PID periodically; when missing, cancel subprocess context
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-s.ctx.Done():
-				return
-			case <-ticker.C:
-				// syscall.Kill with 0 checks whether process exists and we have permission
-				if err := syscall.Kill(pid, 0); err != nil {
-					// Process not found or no permission -> assume broker gone
-					// Log and cancel
-					// Use stderr for early logging
-					os.Stderr.WriteString("[INFO] Subprocess: detected broker exit, shutting down\n")
-					s.cancel()
-					return
-				}
-			}
-		}
-	}()
+	return
 }

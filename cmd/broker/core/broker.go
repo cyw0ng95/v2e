@@ -10,6 +10,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/broker"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
+	subprocess "github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // Broker manages subprocesses and message passing.
@@ -64,6 +65,9 @@ func NewBroker() *Broker {
 
 	// Configure transport based on configuration
 	b.ConfigureTransportFromConfig()
+
+	// Ensure transport manager uses the same UDS base path as subprocesses
+	b.transportManager.SetUdsBasePath(subprocess.DefaultProcUDSBasePath())
 
 	// Install a default SpawnAdapter that delegates to existing spawn methods.
 

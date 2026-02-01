@@ -2,11 +2,9 @@ package transport
 
 import (
 	"fmt"
-	"os"
-	"strconv"
-	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // TransportType represents the type of transport to use
@@ -34,9 +32,8 @@ type TransportConfig struct {
 func NewTransport(config *TransportConfig) (Transport, error) {
 	// Use configuration flags to determine which transport to enable
 	if config.Type == TransportTypeAuto {
-		// Auto-detect based on environment or availability
-		// Check if UDS is preferred in environment
-		if useUDS, err := strconv.ParseBool(os.Getenv("BROKER_USE_UDS")); err == nil && useUDS {
+		// Auto-detect based on build-time default communicaton type
+		if subprocess.DefaultProcCommType() == "uds" {
 			config.Type = TransportTypeUDS
 		} else {
 			config.Type = TransportTypeFD
@@ -49,8 +46,8 @@ func NewTransport(config *TransportConfig) (Transport, error) {
 	} else if config.FDEnabled && !config.UDSEnabled {
 		config.Type = TransportTypeFD
 	} else if config.UDSEnabled && config.FDEnabled {
-		// Both enabled, use environment variable or default to UDS
-		if useUDS, err := strconv.ParseBool(os.Getenv("BROKER_USE_UDS")); err == nil && useUDS {
+		// Both enabled: prefer build-time default
+		if subprocess.DefaultProcCommType() == "uds" {
 			config.Type = TransportTypeUDS
 		} else {
 			config.Type = TransportTypeFD
@@ -64,23 +61,12 @@ func NewTransport(config *TransportConfig) (Transport, error) {
 		if config.SocketPath == "" {
 			// Generate socket path if not provided
 			if config.BasePath == "" {
-				config.BasePath = "/tmp/v2e_uds"
+				config.BasePath = subprocess.DefaultProcUDSBasePath()
 			}
 			config.SocketPath = fmt.Sprintf("%s_%s.sock", config.BasePath, "default")
 		}
 		transport := NewUDSTransport(config.SocketPath, config.IsServer)
-		// Set reconnection options if available
-		if val := os.Getenv("BROKER_UDS_RECONNECT_ATTEMPTS"); val != "" {
-			if attempts, err := strconv.Atoi(val); err == nil {
-				reconnectDelay := 1 * time.Second
-				if delayStr := os.Getenv("BROKER_UDS_RECONNECT_DELAY_MS"); delayStr != "" {
-					if delayMs, err := strconv.Atoi(delayStr); err == nil {
-						reconnectDelay = time.Duration(delayMs) * time.Millisecond
-					}
-				}
-				transport.SetReconnectOptions(attempts, reconnectDelay)
-			}
-		}
+		// Reconnection options remain default unless explicitly configured
 		return transport, nil
 	default:
 		return nil, fmt.Errorf("unsupported transport type: %s", config.Type)
