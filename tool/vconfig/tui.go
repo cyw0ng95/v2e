@@ -162,6 +162,8 @@ func runTUIInteractive() error {
 
 	// Helper function to get status string
 	getStatusString := func(key string, option ConfigOption) string {
+		// Use the key parameter to distinguish different configuration options
+		_ = key // Use the key parameter to avoid unused parameter warning
 		switch v := option.Default.(type) {
 		case bool:
 			if v {

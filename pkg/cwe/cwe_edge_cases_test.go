@@ -144,6 +144,61 @@ func TestViewRendering(t *testing.T) {
 	if retrievedItem.Name != "Cross-site Scripting" {
 		t.Errorf("Expected name 'Cross-site Scripting', got '%s'", retrievedItem.Name)
 	}
+
+	// Verify that all complex fields were properly initialized in the original item
+	if len(cweItem.RelatedWeaknesses) != 1 {
+		t.Errorf("Expected 1 related weakness, got %d", len(cweItem.RelatedWeaknesses))
+	} else if cweItem.RelatedWeaknesses[0].CweID != "CWE-714" {
+		t.Errorf("Expected related weakness ID 'CWE-714', got '%s'", cweItem.RelatedWeaknesses[0].CweID)
+	}
+
+	if len(cweItem.WeaknessOrdinalities) != 1 {
+		t.Errorf("Expected 1 weakness ordinality, got %d", len(cweItem.WeaknessOrdinalities))
+	} else if cweItem.WeaknessOrdinalities[0].Ordinality != "Primary" {
+		t.Errorf("Expected ordinality 'Primary', got '%s'", cweItem.WeaknessOrdinalities[0].Ordinality)
+	}
+
+	if len(cweItem.DetectionMethods) != 1 {
+		t.Errorf("Expected 1 detection method, got %d", len(cweItem.DetectionMethods))
+	} else if cweItem.DetectionMethods[0].Method != "Automated Static Analysis" {
+		t.Errorf("Expected detection method 'Automated Static Analysis', got '%s'", cweItem.DetectionMethods[0].Method)
+	}
+
+	if len(cweItem.PotentialMitigations) != 1 {
+		t.Errorf("Expected 1 potential mitigation, got %d", len(cweItem.PotentialMitigations))
+	} else if cweItem.PotentialMitigations[0].Strategy != "Parameter Validation" {
+		t.Errorf("Expected mitigation strategy 'Parameter Validation', got '%s'", cweItem.PotentialMitigations[0].Strategy)
+	}
+
+	if len(cweItem.DemonstrativeExamples) != 1 {
+		t.Errorf("Expected 1 demonstrative example, got %d", len(cweItem.DemonstrativeExamples))
+	} else if cweItem.DemonstrativeExamples[0].ID != "DE1" {
+		t.Errorf("Expected demonstrative example ID 'DE1', got '%s'", cweItem.DemonstrativeExamples[0].ID)
+	}
+
+	if len(cweItem.ObservedExamples) != 1 {
+		t.Errorf("Expected 1 observed example, got %d", len(cweItem.ObservedExamples))
+	} else if cweItem.ObservedExamples[0].Reference != "OBS-001" {
+		t.Errorf("Expected observed example reference 'OBS-001', got '%s'", cweItem.ObservedExamples[0].Reference)
+	}
+
+	if len(cweItem.TaxonomyMappings) != 1 {
+		t.Errorf("Expected 1 taxonomy mapping, got %d", len(cweItem.TaxonomyMappings))
+	} else if cweItem.TaxonomyMappings[0].TaxonomyName != "1003" {
+		t.Errorf("Expected taxonomy name '1003', got '%s'", cweItem.TaxonomyMappings[0].TaxonomyName)
+	}
+
+	if len(cweItem.Notes) != 1 {
+		t.Errorf("Expected 1 note, got %d", len(cweItem.Notes))
+	} else if cweItem.Notes[0].Type != "Maintenance" {
+		t.Errorf("Expected note type 'Maintenance', got '%s'", cweItem.Notes[0].Type)
+	}
+
+	if len(cweItem.ContentHistory) != 1 {
+		t.Errorf("Expected 1 content history, got %d", len(cweItem.ContentHistory))
+	} else if cweItem.ContentHistory[0].Type != "Submission" {
+		t.Errorf("Expected content history type 'Submission', got '%s'", cweItem.ContentHistory[0].Type)
+	}
 }
 
 // TestDataRelationships tests data relationship functionality

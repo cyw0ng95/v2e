@@ -157,11 +157,12 @@ func GenerateDetailedConfigMapping(config *Config) (string, error) {
 					method = "not-used" // default if no method specified
 				}
 
-				if option.Method == "ldflags" {
+				switch option.Method {
+				case "ldflags":
 					result.WriteString(fmt.Sprintf("%s (%s) -> Type: %T, Value: %s -> Method: %s, Target: %s\n", key, option.Description, option.Default, strVal, option.Method, option.Target))
-				} else if option.Method == "build-tag" {
+				case "build-tag":
 					result.WriteString(fmt.Sprintf("%s (%s) -> Type: %T, Value: %s -> Method: %s, Target: %s\n", key, option.Description, option.Default, strVal, option.Method, option.Target))
-				} else {
+				default:
 					result.WriteString(fmt.Sprintf("%s (%s) -> Type: %T, Value: %v -> Method: %s (not used in build flags)\n", key, option.Description, option.Default, option.Default, method))
 				}
 			} else {

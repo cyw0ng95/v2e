@@ -129,6 +129,9 @@ func TestSubprocess_SendMessageBatching(t *testing.T) {
 	// Send a burst of messages to exercise batching
 	for i := 0; i < 30; i++ {
 		msg := &Message{Type: MessageTypeEvent, ID: fmt.Sprintf("evt-%d", i)}
+		if msg.Type != MessageTypeEvent {
+			t.Fatalf("Expected MessageTypeEvent, got %s", msg.Type)
+		}
 		if err := sp.SendEvent(msg.ID, nil); err != nil {
 			t.Fatalf("SendEvent failed: %v", err)
 		}
