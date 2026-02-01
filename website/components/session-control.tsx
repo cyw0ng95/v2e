@@ -93,7 +93,7 @@ export function SessionControl() {
   const isPaused = sessionStatus?.hasSession && sessionStatus.state === 'paused';
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Session Control</CardTitle>
         <CardDescription>

@@ -221,7 +221,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg border p-6 max-w-2xl mx-auto">
+    <div className="bg-white rounded-lg border p-6 w-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-800">Memory Card Study</h2>
         <div className="text-sm text-gray-600">
