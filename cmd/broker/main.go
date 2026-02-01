@@ -66,7 +66,7 @@ func main() {
 
 	// Load processes from configuration
 	if err := broker.LoadProcessesFromConfig(nil); err != nil {
-		logger.Error("Error loading processes from config: %v", err)
+		logger.Error(LogMsgErrorLoadingProcesses, err)
 	}
 
 	// Create and attach an optimizer using broker config (optional tuning)
@@ -88,7 +88,7 @@ func main() {
 
 	if false { // Adaptive optimization disabled by default
 		opt.EnableAdaptiveOptimization()
-		logger.Info("Adaptive optimization enabled (freq=%v)", optConfig.AdaptationFreq)
+		logger.Info(LogMsgAdaptiveOptEnabled, optConfig.AdaptationFreq)
 	}
 
 	broker.SetOptimizer(opt)
@@ -97,7 +97,7 @@ func main() {
 	// We can trust NewWithConfig set defaults, but we don't have easy access to the final config struct inside opt
 	// except via side channels. For logging, we'll just log what we have or query metrics.
 	metrics := opt.Metrics()
-	logger.Info("Optimizer started: buffer=%v workers=%v policy=%s batch=%d flush=%v",
+	logger.Info(LogMsgOptimizerStarted,
 		metrics["message_channel_buffer"],
 		metrics["active_workers"],
 		optConfig.OfferPolicy,
@@ -116,9 +116,9 @@ func main() {
 			}
 			// Process messages directed at the broker
 			if err := broker.ProcessMessage(msg); err != nil {
-				logger.Warn("Error processing broker message: id=%s source=%s target=%s error=%v", msg.ID, msg.Source, msg.Target, err)
+				logger.Warn(LogMsgErrorProcessingMessage, msg.ID, msg.Source, msg.Target, err)
 			} else {
-				logger.Debug("Successfully processed broker message: id=%s source=%s target=%s", msg.ID, msg.Source, msg.Target)
+				logger.Debug(LogMsgSuccessProcessingMessage, msg.ID, msg.Source, msg.Target)
 			}
 		}
 	}()
@@ -129,5 +129,5 @@ func main() {
 
 	// Wait for signal
 	<-sigChan
-	logger.Info("Shutdown signal received, stopping broker...")
+	logger.Info(LogMsgShutdownSignal)
 }
