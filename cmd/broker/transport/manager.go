@@ -68,7 +68,8 @@ func (tm *TransportManager) SetTransportErrorHandler(handler func(error)) {
 }
 
 // RegisterUDSTransport creates and registers a UDS transport for a process
-func (tm *TransportManager) RegisterUDSTransport(processID string, isServer bool) error {
+// Returns the socket path created for the transport.
+func (tm *TransportManager) RegisterUDSTransport(processID string, isServer bool) (string, error) {
 	socketPath := fmt.Sprintf("%s_%s.sock", tm.udsBasePath, processID)
 	transport := NewUDSTransport(socketPath, isServer)
 
@@ -81,11 +82,11 @@ func (tm *TransportManager) RegisterUDSTransport(processID string, isServer bool
 	}
 
 	if err := transport.Connect(); err != nil {
-		return fmt.Errorf("failed to connect UDS transport for process %s: %w", processID, err)
+		return "", fmt.Errorf("failed to connect UDS transport for process %s: %w", processID, err)
 	}
 
 	tm.RegisterTransport(processID, transport)
-	return nil
+	return socketPath, nil
 }
 
 // SetUdsBasePath sets the base path for UDS socket files

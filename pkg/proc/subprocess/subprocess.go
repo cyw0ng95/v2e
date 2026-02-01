@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
+	"syscall"
+	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
@@ -226,11 +229,11 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 	// Create subprocess instance
 	var sp *Subprocess
 
-	// Check if we're running as an RPC subprocess with file descriptors
+	// If broker passed RPC fds explicitly, keep existing FD-based mode
 	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
 		// Use file descriptors 3 and 4 for RPC communication
-		inputFD := 3
-		outputFD := 4
+		inputFD := DefaultBuildRPCInputFD()
+		outputFD := DefaultBuildRPCOutputFD()
 
 		// Allow environment override for file descriptors
 		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
@@ -246,11 +249,103 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 
 		sp = NewWithFDs(processID, inputFD, outputFD)
 	} else {
-		// Use default stdin/stdout for non-RPC mode
-		sp = New(processID)
+		// Prefer UDS when configured or when RPC_SOCKET_PATH provided
+		socketPath := os.Getenv("RPC_SOCKET_PATH")
+		brokerUseUDS := os.Getenv("BROKER_USE_UDS")
+
+		// Decide comm type: env override first, then build-time default
+		commType := DefaultProcCommType()
+		if brokerUseUDS == "1" {
+			commType = "uds"
+		} else if brokerUseUDS == "0" {
+			commType = "fd"
+		}
+
+		if socketPath != "" {
+			// Connect to provided socket path
+			sp = NewWithUDS(processID, socketPath)
+		} else if commType == "uds" {
+			// UDS preferred but no socket path provided — fallback to stdin/stdout but log
+			common.Info("%sUDS preferred by build config but no RPC_SOCKET_PATH provided — falling back to stdio", config.LogPrefix)
+			sp = New(processID)
+		} else {
+			// Default to stdin/stdout for non-RPC mode
+			sp = New(processID)
+		}
 	}
 
 	logger.Info("%sSubprocess created with ID: %s", config.LogPrefix, processID)
 
+	// Start auto-exit monitor if enabled and broker PID is provided
+	startAutoExitMonitor(sp)
+
 	return sp, logger
+}
+
+// NewWithUDS creates a new Subprocess instance using a Unix Domain Socket client
+func NewWithUDS(id string, socketPath string) *Subprocess {
+	ctx, cancel := context.WithCancel(context.Background())
+	sp := &Subprocess{
+		ID:       id,
+		handlers: make(map[string]Handler),
+		ctx:      ctx,
+		cancel:   cancel,
+		outChan:  make(chan []byte, defaultOutChanBufSize),
+	}
+
+	// Dial the UDS socket
+	conn, err := net.Dial("unix", socketPath)
+	if err != nil {
+		// Log to stderr since logger may not be ready
+		msg := "[FATAL] Subprocess: failed to connect to RPC UDS socket: " + socketPath + " error: " + err.Error() + "\n"
+		os.Stderr.WriteString(msg)
+		os.Exit(254)
+	}
+
+	// Use the connection for both input and output
+	sp.input = conn
+	// Ensure writer uses io.Writer interface
+	sp.output = conn
+
+	return sp
+}
+
+// startAutoExitMonitor begins a background routine that exits the subprocess
+// when it detects the broker process has died. It uses the BROKER_PID env var
+// if present and the build-time DefaultProcAutoExit flag.
+func startAutoExitMonitor(s *Subprocess) {
+	if !DefaultProcAutoExit() {
+		return
+	}
+
+	val := os.Getenv("BROKER_PID")
+	if val == "" {
+		return
+	}
+	pid, err := strconv.Atoi(val)
+	if err != nil || pid <= 0 {
+		return
+	}
+
+	// Poll the broker PID periodically; when missing, cancel subprocess context
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-s.ctx.Done():
+				return
+			case <-ticker.C:
+				// syscall.Kill with 0 checks whether process exists and we have permission
+				if err := syscall.Kill(pid, 0); err != nil {
+					// Process not found or no permission -> assume broker gone
+					// Log and cancel
+					// Use stderr for early logging
+					os.Stderr.WriteString("[INFO] Subprocess: detected broker exit, shutting down\n")
+					s.cancel()
+					return
+				}
+			}
+		}
+	}()
 }

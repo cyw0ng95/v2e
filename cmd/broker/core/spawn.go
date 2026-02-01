@@ -104,6 +104,19 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 		// MaxMessageSize is now configured at build-time, no runtime override
 	}
 
+	// If this is an RPC process and transport manager exists, try to register a UDS
+	// transport before starting the process so we can pass the socket path in env.
+	if isRPC && b.transportManager != nil && shouldUseUDSTransport(struct{ UseUDS bool }{UseUDS: true}) {
+		if socketPath, err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
+			b.logger.Debug("Registered UDS transport for process %s before start", id)
+			cmd.Env = append(cmd.Env, fmt.Sprintf("BROKER_USE_UDS=%d", 1))
+			cmd.Env = append(cmd.Env, fmt.Sprintf("RPC_SOCKET_PATH=%s", socketPath))
+			cmd.Env = append(cmd.Env, fmt.Sprintf("BROKER_PID=%d", os.Getpid()))
+		} else {
+			b.logger.Warn("Failed to register UDS transport for process %s before start: %v", id, err)
+		}
+	}
+
 	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
 
 	proc := &Process{
@@ -331,14 +344,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 	if b.transportManager == nil {
 		return
 	}
-	if shouldUseUDSTransport(struct{ UseUDS bool }{UseUDS: false}) {
-		if err := b.transportManager.RegisterUDSTransport(processID, true); err == nil {
-			b.logger.Debug("Registered UDS transport for process %s", processID)
-			return
-		}
-		b.logger.Warn("Failed to connect UDS transport for process %s, falling back to FD transport", processID)
-	}
-	// Use FD transport (default or fallback)
+	// Always attempt to register FD transport as a baseline (used as fallback)
 	fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
 	if err := fdTransport.Connect(); err == nil {
 		b.transportManager.RegisterTransport(processID, fdTransport)
@@ -350,6 +356,14 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 
 // shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
 func shouldUseUDSTransport(_ struct{ UseUDS bool }) bool {
-	// Always use FD transport instead of UDS transport
-	return false
+	// Use build-time default set in subprocess package unless overridden by environment
+	// If BROKER_USE_UDS env is explicitly set to 0, disable UDS.
+	if val := os.Getenv("BROKER_USE_UDS"); val != "" {
+		if val == "1" || val == "true" {
+			return true
+		}
+		return false
+	}
+	// Fall back to build-time default
+	return subprocess.DefaultProcCommType() == "uds"
 }

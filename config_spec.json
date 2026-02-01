@@ -92,6 +92,25 @@
       "major_class": "proc",
       "minor_class": "fd"
     },
+    "CONFIG_PROC_COMMTYPE": {
+      "description": "Communication transport type between broker and subprocess (uds or fd)",
+      "type": "string",
+      "default": "uds",
+      "values": ["uds", "fd"],
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildProcCommType",
+      "major_class": "proc",
+      "minor_class": "comm"
+    },
+    "CONFIG_PROC_AUTOEXIT": {
+      "description": "If true, subprocess will gracefully exit when it detects the broker has exited",
+      "type": "bool",
+      "default": true,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildProcAutoExit",
+      "major_class": "proc",
+      "minor_class": "lifecycle"
+    },
     "CONFIG_BROKER_DETECTBINS": {
       "description": "Enable automatic binary detection for broker processes",
       "type": "bool",
