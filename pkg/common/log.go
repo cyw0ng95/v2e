@@ -34,6 +34,22 @@ const (
 	LogMsgServiceStarted = "Service %s started"
 	// LogMsgConfigLoaded is the message when config is loaded
 	LogMsgConfigLoaded = "Configuration loaded from: %s"
+	// LogMsgServiceReady indicates service is ready to accept requests
+	LogMsgServiceReady = "%s service ready and accepting requests"
+	// LogMsgServiceShutdownStarting indicates service shutdown is beginning
+	LogMsgServiceShutdownStarting = "%s service shutdown starting"
+	// LogMsgServiceShutdownComplete indicates service shutdown is complete
+	LogMsgServiceShutdownComplete = "%s service shutdown completed"
+	// LogMsgRPCHandlerRegistered indicates an RPC handler was registered
+	LogMsgRPCHandlerRegistered = "RPC handler registered: %s"
+	// LogMsgSubprocessCreated indicates a subprocess was created
+	LogMsgSubprocessCreated = "Subprocess created with ID: %s"
+	// LogMsgProcessIDConfigured indicates process ID was configured
+	LogMsgProcessIDConfigured = "Process ID configured: %s"
+	// LogMsgBootstrapLoggerCreated indicates bootstrap logger was created
+	LogMsgBootstrapLoggerCreated = "Bootstrap logger created"
+	// LogMsgLoggingSetupComplete indicates logging setup is complete
+	LogMsgLoggingSetupComplete = "Logging setup completed with level: %v"
 )
 
 // String returns the string representation of the log level
