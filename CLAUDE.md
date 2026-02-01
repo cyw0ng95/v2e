@@ -51,6 +51,7 @@ Frontend (Next.js) → Access Service (/restful/rpc) → Broker → Backend Serv
 5. **Document RPC APIs in `service.md`** - every RPC handler must be documented in the service's `service.md` file
 6. **NO remote API calls in tests** - tests must not access NVD, GitHub, or external services (use mocks/fixtures)
 7. **Tests must be fast** - unit tests should run in milliseconds; slow tests hurt developer experience
+8. **NO new documentation files** - only update existing `README.md` or `cmd/*/service.md`. Never create new markdown files.
 
 ### Transport Layer
 - **Default**: Unix Domain Sockets (UDS) with 0600 permissions
@@ -73,18 +74,13 @@ All subprocesses under `cmd/*` must follow this pattern:
 import "github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 
 func main() {
-    // 1. Setup logging with process ID
     logger := subprocess.SetupLogging("my-service")
-
-    // 2. Create subprocess
     sp := subprocess.NewSubprocess(logger)
 
-    // 3. Register RPC handlers
     sp.RegisterHandler("RPCMyMethod", func(params json.RawMessage) (interface{}, error) {
         // Handler implementation
     })
 
-    // 4. Run with defaults (stdin/stdout RPC, graceful shutdown)
     subprocess.RunWithDefaults(sp, logger)
 }
 ```
@@ -227,6 +223,7 @@ Per `.github/agents/v2e-go.agent.md`:
 4. **Document all RPC APIs in `service.md`** - update existing `service.md` files before committing new RPC handlers
 5. **Include tests** - table-driven unit tests and `testing.B` benchmarks for performance-critical paths
 6. **NO flaky remote API tests** - never add tests that access NVD, GitHub, or other external services
+7. **NO new documentation files** - only update existing `README.md` or `cmd/*/service.md`. Never create new markdown files (DESIGN.md, TODO.md, etc.)
 
 ## Job Session Management
 
