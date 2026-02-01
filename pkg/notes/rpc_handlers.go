@@ -344,17 +344,24 @@ func (h *RPCHandlers) handleRPCListBookmarks(ctx context.Context, msg *subproces
 		state = ""
 	}
 
-	offsetFloat, ok := params["offset"].(float64)
-	if !ok {
-		return h.createErrorResponse(msg, "Missing or invalid offset"), nil
+	// Extract pagination parameters with defaults
+	offset := 0
+	if offsetParam, exists := params["offset"]; exists {
+		if offsetFloat, ok := offsetParam.(float64); ok {
+			offset = int(offsetFloat)
+		} else {
+			return h.createErrorResponse(msg, "Invalid offset parameter"), nil
+		}
 	}
-	offset := int(offsetFloat)
 
-	limitFloat, ok := params["limit"].(float64)
-	if !ok {
-		return h.createErrorResponse(msg, "Missing or invalid limit"), nil
+	limit := 50 // Default limit
+	if limitParam, exists := params["limit"]; exists {
+		if limitFloat, ok := limitParam.(float64); ok {
+			limit = int(limitFloat)
+		} else {
+			return h.createErrorResponse(msg, "Invalid limit parameter"), nil
+		}
 	}
-	limit := int(limitFloat)
 
 	bookmarks, total, err := h.container.BookmarkService.ListBookmarks(ctx, state, offset, limit)
 	if err != nil {
