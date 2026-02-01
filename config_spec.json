@@ -111,6 +111,15 @@
       "major_class": "proc",
       "minor_class": "lifecycle"
     },
+    "CONFIG_PROC_UDS_BASEPATH": {
+      "description": "Base path for Unix Domain Socket files for process RPC transports",
+      "type": "string",
+      "default": "/tmp/v2e_uds",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildProcUDSBasePath",
+      "major_class": "proc",
+      "minor_class": "comm"
+    },
     "CONFIG_BROKER_DETECTBINS": {
       "description": "Enable automatic binary detection for broker processes",
       "type": "bool",

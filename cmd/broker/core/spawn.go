@@ -95,7 +95,6 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 
 		cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
 		inputFD, outputFD = b.getRPCFileDescriptors()
-		cmd.Env = append(cmd.Env, "BROKER_PASSING_RPC_FDS=1")
 	}
 
 	setProcessEnv(cmd, id, nil)
@@ -104,14 +103,13 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 		// MaxMessageSize is now configured at build-time, no runtime override
 	}
 
-	// If this is an RPC process and transport manager exists, try to register a UDS
-	// transport before starting the process so we can pass the socket path in env.
-	if isRPC && b.transportManager != nil && shouldUseUDSTransport(struct{ UseUDS bool }{UseUDS: true}) {
-		if socketPath, err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
+	// If this is an RPC process and transport manager exists, register a UDS
+	// transport before starting the process. The socket path is deterministic
+	// and based on the build-time UDS base path so the subprocess can compute
+	// it without runtime environment variables.
+	if isRPC && b.transportManager != nil {
+		if _, err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
 			b.logger.Debug("Registered UDS transport for process %s before start", id)
-			cmd.Env = append(cmd.Env, fmt.Sprintf("BROKER_USE_UDS=%d", 1))
-			cmd.Env = append(cmd.Env, fmt.Sprintf("RPC_SOCKET_PATH=%s", socketPath))
-			cmd.Env = append(cmd.Env, fmt.Sprintf("BROKER_PID=%d", os.Getpid()))
 		} else {
 			b.logger.Warn("Failed to register UDS transport for process %s before start: %v", id, err)
 		}
@@ -356,14 +354,6 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 
 // shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
 func shouldUseUDSTransport(_ struct{ UseUDS bool }) bool {
-	// Use build-time default set in subprocess package unless overridden by environment
-	// If BROKER_USE_UDS env is explicitly set to 0, disable UDS.
-	if val := os.Getenv("BROKER_USE_UDS"); val != "" {
-		if val == "1" || val == "true" {
-			return true
-		}
-		return false
-	}
-	// Fall back to build-time default
+	// Use build-time default set in subprocess package. Do not consult runtime envs.
 	return subprocess.DefaultProcCommType() == "uds"
 }

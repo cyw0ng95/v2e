@@ -229,54 +229,26 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 	// Create subprocess instance
 	var sp *Subprocess
 
-	// If broker passed RPC fds explicitly, keep existing FD-based mode
-	if os.Getenv("BROKER_PASSING_RPC_FDS") == "1" {
-		// Use file descriptors 3 and 4 for RPC communication
+	// Decide communication type using build-time defaults only (no runtime envs)
+	commType := DefaultProcCommType()
+	switch commType {
+	case "fd":
 		inputFD := DefaultBuildRPCInputFD()
 		outputFD := DefaultBuildRPCOutputFD()
-
-		// Allow environment override for file descriptors
-		if val := os.Getenv("RPC_INPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				inputFD = fd
-			}
-		}
-		if val := os.Getenv("RPC_OUTPUT_FD"); val != "" {
-			if fd, err := strconv.Atoi(val); err == nil {
-				outputFD = fd
-			}
-		}
-
 		sp = NewWithFDs(processID, inputFD, outputFD)
-	} else {
-		// Prefer UDS when configured or when RPC_SOCKET_PATH provided
-		socketPath := os.Getenv("RPC_SOCKET_PATH")
-		brokerUseUDS := os.Getenv("BROKER_USE_UDS")
-
-		// Decide comm type: env override first, then build-time default
-		commType := DefaultProcCommType()
-		if brokerUseUDS == "1" {
-			commType = "uds"
-		} else if brokerUseUDS == "0" {
-			commType = "fd"
-		}
-
-		if socketPath != "" {
-			// Connect to provided socket path
-			sp = NewWithUDS(processID, socketPath)
-		} else if commType == "uds" {
-			// UDS preferred but no socket path provided — fallback to stdin/stdout but log
-			common.Info("%sUDS preferred by build config but no RPC_SOCKET_PATH provided — falling back to stdio", config.LogPrefix)
-			sp = New(processID)
-		} else {
-			// Default to stdin/stdout for non-RPC mode
-			sp = New(processID)
-		}
+	case "uds":
+		// Construct deterministic socket path so broker and subprocess agree without env vars
+		socketPath := fmt.Sprintf("%s_%s.sock", DefaultProcUDSBasePath(), processID)
+		sp = NewWithUDS(processID, socketPath)
+	default:
+		sp = New(processID)
 	}
 
 	logger.Info("%sSubprocess created with ID: %s", config.LogPrefix, processID)
 
-	// Start auto-exit monitor if enabled and broker PID is provided
+	// Start auto-exit monitor if enabled. Implementation no longer relies on
+	// runtime environment variables (broker PID) — transport EOF will cause Run()
+	// to return and is the preferred mechanism for subprocess exit detection.
 	startAutoExitMonitor(sp)
 
 	return sp, logger
