@@ -31,8 +31,8 @@ func TestCreateErrorResponse(t *testing.T) {
 		t.Errorf("Expected error type, got %s", errMsg.Type)
 	}
 
-	if errMsg.Error != "test error" {
-		t.Errorf("Expected 'test error', got '%s'", errMsg.Error)
+	if errMsg.Error != "[meta] RPC error response: test error" {
+		t.Errorf("Expected '[meta] RPC error response: test error', got '%s'", errMsg.Error)
 	}
 
 	if errMsg.ID != "test-request" {
@@ -80,8 +80,8 @@ func TestRPCGetCVE_EmptyCVEID(t *testing.T) {
 		t.Error("Expected error message for empty CVE ID")
 	}
 
-	if resp.Error != "cve_id is required" {
-		t.Errorf("Expected 'cve_id is required', got '%s'", resp.Error)
+	if resp.Error != "[meta] RPC error response: cve_id is required" {
+		t.Errorf("Expected '[meta] RPC error response: cve_id is required', got '%s'", resp.Error)
 	}
 }
 

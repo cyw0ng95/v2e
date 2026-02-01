@@ -1,12 +1,5 @@
 package common
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/cyw0ng95/v2e/pkg/jsonutil"
-)
-
 const (
 	// DefaultConfigFile is the default configuration file name
 	DefaultConfigFile = "config.json"
@@ -14,28 +7,14 @@ const (
 
 // Config represents the application configuration
 type Config struct {
-	// Server configuration
-	Server ServerConfig `json:"server,omitempty"`
-	// Client configuration
-	Client ClientConfig `json:"client,omitempty"`
 	// Broker configuration
 	Broker BrokerConfig `json:"broker,omitempty"`
 	// Proc configuration for subprocess framework
 	Proc ProcConfig `json:"proc,omitempty"`
-	// Local service configuration
-	Local LocalConfig `json:"local,omitempty"`
-	// Meta service configuration
-	Meta MetaConfig `json:"meta,omitempty"`
-	// Remote service configuration
-	Remote RemoteConfig `json:"remote,omitempty"`
-	// Asset paths
-	Assets AssetsConfig `json:"assets,omitempty"`
-	// CAPEC related toggles
-	Capec CapecConfig `json:"capec,omitempty"`
+	// Access service configuration (minimal needed)
+	Access AccessConfig `json:"access,omitempty"`
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty"`
-	// Access service configuration
-	Access AccessConfig `json:"access,omitempty"`
 }
 
 // ProcConfig holds process-level configuration (subprocess framework)
@@ -180,49 +159,14 @@ type LoggingConfig struct {
 	Dir string `json:"dir,omitempty"`
 }
 
-// LoadConfig loads configuration from the specified file
-// If filename is empty, it uses the default config file
-// If the file doesn't exist, it returns an empty config (not an error)
+// LoadConfig returns an empty configuration since runtime config is disabled
 func LoadConfig(filename string) (*Config, error) {
-	if filename == "" {
-		filename = DefaultConfigFile
-	}
-
-	// Check if file exists
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		// File doesn't exist, return empty config
-		return &Config{}, nil
-	}
-
-	// Read the file
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file %s: %w", filename, err)
-	}
-
-	// Parse JSON
-	var config Config
-	if err := jsonutil.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file %s: %w", filename, err)
-	}
-
-	return &config, nil
+	// Runtime configuration loading is disabled. Use build-time configuration instead.
+	return &Config{}, nil
 }
 
-// SaveConfig saves configuration to the specified file
+// SaveConfig is disabled since runtime config is disabled
 func SaveConfig(config *Config, filename string) error {
-	if filename == "" {
-		filename = DefaultConfigFile
-	}
-
-	data, err := jsonutil.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config file %s: %w", filename, err)
-	}
-
+	// Runtime configuration saving is disabled. Use build-time configuration instead.
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -14,11 +13,8 @@ import (
 
 // RPCClient handles RPC communication with the broker
 type RPCClient struct {
-	sp              *subprocess.Subprocess
-	client          *rpc.Client // Use the common RPC client
-	pendingRequests map[string]*requestEntry
-	mu              sync.RWMutex
-	correlationSeq  uint64
+	sp     *subprocess.Subprocess
+	client *rpc.Client // Use the common RPC client
 	// per-client RPC timeout (configurable)
 	rpcTimeout time.Duration
 }
@@ -57,10 +53,9 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
 
 	client := &RPCClient{
-		sp:              sp,
-		client:          rpc.NewClient(sp, logger, rpcTimeout),
-		pendingRequests: make(map[string]*requestEntry),
-		rpcTimeout:      rpcTimeout,
+		sp:         sp,
+		client:     rpc.NewClient(sp, logger, rpcTimeout),
+		rpcTimeout: rpcTimeout,
 	}
 
 	// Register handlers for response and error messages
@@ -73,10 +68,9 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 // NewRPCClientWithSubprocess creates a new RPC client using an existing subprocess instance
 func NewRPCClientWithSubprocess(sp *subprocess.Subprocess, logger *common.Logger, rpcTimeout time.Duration) *RPCClient {
 	client := &RPCClient{
-		sp:              sp,
-		client:          rpc.NewClient(sp, logger, rpcTimeout),
-		pendingRequests: make(map[string]*requestEntry),
-		rpcTimeout:      rpcTimeout,
+		sp:         sp,
+		client:     rpc.NewClient(sp, logger, rpcTimeout),
+		rpcTimeout: rpcTimeout,
 	}
 
 	// The common rpc.Client already registers its own handlers for response and error messages
@@ -85,51 +79,18 @@ func NewRPCClientWithSubprocess(sp *subprocess.Subprocess, logger *common.Logger
 	return client
 }
 
-type requestEntry struct {
-	resp chan *subprocess.Message
-	once sync.Once
-}
 
-func (e *requestEntry) signal(m *subprocess.Message) {
-	e.once.Do(func() {
-		e.resp <- m
-		close(e.resp)
-	})
-}
-
-func (e *requestEntry) close() {
-	e.once.Do(func() {
-		close(e.resp)
-	})
-}
 
 // handleResponse handles response messages from the broker
 func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	// Look up the pending requestEntry
-	c.mu.Lock()
-	entry := c.pendingRequests[msg.CorrelationID]
-	if entry != nil {
-		delete(c.pendingRequests, msg.CorrelationID)
-	}
-	c.mu.Unlock()
-
-	if entry != nil {
-		common.Debug(LogMsgRPCResponseReceived, msg.CorrelationID, msg.Type)
-		common.Debug("Signaling response for correlation ID: %s, message type: %s", msg.CorrelationID, msg.Type)
-		entry.signal(msg)
-		common.Debug(LogMsgRPCChannelSignal, msg.CorrelationID)
-	} else {
-		common.Warn("Received response for unknown correlation ID: %s, message type: %s, target: %s", msg.CorrelationID, msg.Type, msg.Target)
-	}
-
-	return nil, nil // Don't send another response
+	// Delegate to the common client's response handler
+	return c.client.HandleResponse(ctx, msg)
 }
 
 // handleError handles error messages from the broker (treat them as responses)
 func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	// Error messages are also valid responses
-	common.Debug("Handling error message for correlation ID: %s, error: %s", msg.CorrelationID, msg.Error)
-	return c.handleResponse(ctx, msg)
+	// Delegate to the common client's error handler
+	return c.client.HandleError(ctx, msg)
 }
 
 // InvokeRPC invokes an RPC method on the broker and waits for response

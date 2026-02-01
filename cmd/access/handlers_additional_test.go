@@ -7,10 +7,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/gin-gonic/gin"
 )
@@ -66,11 +68,8 @@ func (w *responseWriter) Write(p []byte) (int, error) {
 
 func newRPCClientWithResponse(respType subprocess.MessageType, payload interface{}, errMessage string) (*RPCClient, *responseWriter) {
 	sp := subprocess.New("test-client")
-	client := &RPCClient{
-		sp:              sp,
-		pendingRequests: make(map[string]*requestEntry),
-		rpcTimeout:      time.Second,
-	}
+	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
+	client := NewRPCClientWithSubprocess(sp, logger, time.Second)
 	rw := &responseWriter{client: client, respType: respType, payload: payload, errMessage: errMessage}
 	sp.SetOutput(rw)
 	return client, rw
@@ -84,9 +83,12 @@ func (e *errorWriter) Write(p []byte) (int, error) { return 0, errors.New("write
 // Test missing method produces 400
 func TestRPCHandler_MissingMethod(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	sp := subprocess.New("test-client")
+	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
+	rpcClient := NewRPCClientWithSubprocess(sp, logger, 1*time.Second)
 	r := gin.Default()
 	rg := r.Group("/restful")
-	registerHandlers(rg, &RPCClient{pendingRequests: make(map[string]*requestEntry), rpcTimeout: 1 * time.Second}, 1)
+	registerHandlers(rg, rpcClient, 1)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{}`))
@@ -105,7 +107,8 @@ func TestRPCHandler_RPCSendError(t *testing.T) {
 
 	// Use a real Subprocess with an output writer that returns an error to simulate send failures
 	sp := subprocess.New("err-client")
-	rpcClient := &RPCClient{sp: sp, pendingRequests: make(map[string]*requestEntry), rpcTimeout: 1 * time.Second}
+	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
+	rpcClient := NewRPCClientWithSubprocess(sp, logger, 1*time.Second)
 	sp.SetOutput(&errorWriter{})
 	registerHandlers(rg, rpcClient, 1)
 

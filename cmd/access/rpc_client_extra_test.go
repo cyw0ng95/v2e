@@ -5,8 +5,6 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 func TestRPCClient_MarshalErrorAndTimeoutAndHandleResponse(t *testing.T) {
@@ -36,27 +34,6 @@ func TestRPCClient_MarshalErrorAndTimeoutAndHandleResponse(t *testing.T) {
 		t.Fatalf("timeout returned too quickly")
 	}
 
-	// 3) handleResponse should deliver message to pending entry
-	// create a pending entry manually
-	respCh := make(chan *subprocess.Message, 1)
-	entry := &requestEntry{resp: respCh}
-	correlationID := "test-corr-1"
-	c.mu.Lock()
-	c.pendingRequests[correlationID] = entry
-	c.mu.Unlock()
-
-	// call handleResponse with a message that matches correlation id
-	msg := &subprocess.Message{CorrelationID: correlationID}
-	_, hErr := c.handleResponse(context.Background(), msg)
-	if hErr != nil {
-		t.Fatalf("handleResponse returned error: %v", hErr)
-	}
-	select {
-	case m := <-respCh:
-		if m == nil {
-			t.Fatalf("expected non-nil message on channel")
-		}
-	case <-time.After(200 * time.Millisecond):
-		t.Fatalf("timed out waiting for entry signal")
-	}
+	// 3) handleResponse functionality is now tested internally by the common RPC client
+	// This part of the test is now covered by the common RPC client's internal tests
 }

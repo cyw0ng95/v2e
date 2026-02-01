@@ -17,14 +17,14 @@ func TestCreateAndDetectErrorResponse(t *testing.T) {
 
 	errMsg := createErrorResponse(req, "some-error")
 	require.Equal(t, subprocess.MessageTypeError, errMsg.Type)
-	require.Equal(t, "some-error", errMsg.Error)
+	require.Equal(t, "[meta] RPC error response: some-error", errMsg.Error)
 	require.Equal(t, "test-request", errMsg.ID)
 	require.Equal(t, "test-source", errMsg.Target)
 	require.Equal(t, "corr-1", errMsg.CorrelationID)
 
 	isErr, msg := isErrorResponse(errMsg)
 	require.True(t, isErr)
-	require.NotEmpty(t, msg)
+	require.Equal(t, "[meta] RPC error response: some-error", msg)
 
 	// Non-error message should not be detected
 	nonErr := &subprocess.Message{

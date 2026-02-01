@@ -2,16 +2,19 @@ package main
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 func TestInvokeRPCWithUnmarshalableParams(t *testing.T) {
 	sp := subprocess.New("test-client")
-	client := &RPCClient{sp: sp, pendingRequests: make(map[string]*requestEntry), rpcTimeout: time.Second}
+	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
+	client := NewRPCClientWithSubprocess(sp, logger, time.Second)
 
 	// channels are not marshalable to JSON; expect marshal error
 	_, err := client.InvokeRPCWithTarget(context.Background(), "broker", "m", make(chan int))
@@ -26,7 +29,8 @@ func TestInvokeRPCWithUnmarshalableParams(t *testing.T) {
 func TestInvokeRPCWithTimeout(t *testing.T) {
 	sp := subprocess.New("test-client")
 	// do not install any response writer; this should cause a timeout
-	client := &RPCClient{sp: sp, pendingRequests: make(map[string]*requestEntry), rpcTimeout: 10 * time.Millisecond}
+	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
+	client := NewRPCClientWithSubprocess(sp, logger, 10*time.Millisecond)
 
 	_, err := client.InvokeRPCWithTarget(context.Background(), "broker", "m", nil)
 	if err == nil {

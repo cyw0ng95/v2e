@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -169,15 +170,10 @@ func TestRegisterHandlers_RPCForwarding(t *testing.T) {
 	r := gin.Default()
 	rg := r.Group("/api")
 
-	// Create a real RPCClient with a mocked subprocess
-	mockSubprocess := &subprocess.Subprocess{
-		ID: "mock-subprocess",
-	}
-	rpcClient := &RPCClient{
-		sp:              mockSubprocess,
-		pendingRequests: make(map[string]*requestEntry),
-		rpcTimeout:      5 * time.Second,
-	}
+	// Create a real RPCClient with a proper subprocess
+	sp := subprocess.New("test-client")
+	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
+	rpcClient := NewRPCClientWithSubprocess(sp, logger, 5*time.Second)
 	registerHandlers(rg, rpcClient, 5)
 
 	// Perform request

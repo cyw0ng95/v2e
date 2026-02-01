@@ -21,7 +21,7 @@ func TestAccessRPCClient_MarshalFailure(t *testing.T) {
 	resp, err := client.InvokeRPCWithTarget(ctx, "broker", "RPCTest", params)
 	require.Error(t, err)
 	require.Nil(t, resp)
-	require.Len(t, client.pendingRequests, 0)
+	// pendingRequests is now handled internally by the common RPC client
 }
 
 func TestAccessRPCClient_PendingCleanupOnTimeout(t *testing.T) {
@@ -32,5 +32,5 @@ func TestAccessRPCClient_PendingCleanupOnTimeout(t *testing.T) {
 	resp, err := client.InvokeRPCWithTarget(ctx, "broker", "RPCTestTimeout", nil)
 	require.Error(t, err)
 	require.Nil(t, resp)
-	require.Len(t, client.pendingRequests, 0)
+	// pendingRequests cleanup is now handled internally by the common RPC client
 }
