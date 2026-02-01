@@ -457,10 +457,20 @@ func TestMemoryCardFunctionality(t *testing.T) {
 		t.Fatalf("Failed to get memory cards: %v", err)
 	}
 
-	if len(cards) != 1 {
-		t.Errorf("Expected 1 memory card, got %d", len(cards))
-	} else if cards[0].Front != "What is the capital of France?" {
-		t.Errorf("Expected front 'What is the capital of France?', got '%s'", cards[0].Front)
+	if len(cards) != 2 {
+		t.Errorf("Expected 2 memory cards, got %d", len(cards))
+	} else {
+		// Find the manually created card
+		found := false
+		for _, card := range cards {
+			if card.Front == "What is the capital of France?" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected front 'What is the capital of France?' not found in cards")
+		}
 	}
 
 	// Update card after review

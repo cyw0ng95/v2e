@@ -77,7 +77,6 @@ func TestRPCSaveCVEByID(t *testing.T) {
 		t.Errorf("Expected cve_id=CVE-2021-TEST, got %s", result["cve_id"])
 	}
 
-	// Verify CVE was saved
 	saved, err := db.GetCVE("CVE-2021-TEST")
 	if err != nil {
 		t.Errorf("CVE was not saved: %v", err)
@@ -128,7 +127,6 @@ func TestRPCIsCVEStoredByID(t *testing.T) {
 			payload, _ := subprocess.MarshalFast(map[string]string{
 				"cve_id": tt.cveID,
 			})
-
 			msg := &subprocess.Message{
 				Type:    subprocess.MessageTypeRequest,
 				ID:      "RPCIsCVEStoredByID",

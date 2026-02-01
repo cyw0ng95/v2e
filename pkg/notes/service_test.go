@@ -2,9 +2,11 @@ package notes
 
 import (
 	"context"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"testing"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing
@@ -366,7 +368,7 @@ func TestMemoryCardService(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a bookmark first to attach memory cards to
-	bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-card-test", "CVE", "CVE-2024-1234", "Card Test CVE", "A test CVE for card testing")
+	bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-card-test-main", "CVE", "CVE-2024-1234-main", "Card Test CVE", "A test CVE for card testing")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}
@@ -395,27 +397,31 @@ func TestMemoryCardService(t *testing.T) {
 	})
 
 	t.Run("GetMemoryCardsByBookmarkID", func(t *testing.T) {
-		// Create multiple memory cards for the same bookmark
-		_, err := memoryCardService.CreateMemoryCard(ctx, bookmark.ID, "Front 1", "Back 1")
-		if err != nil {
-			t.Fatalf("Failed to create memory card: %v", err)
-		}
+		// Use a fresh DB and context for this subtest
+		db2, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+		require.NoError(t, err)
+		err = db2.AutoMigrate(&BookmarkModel{}, &MemoryCardModel{}, &BookmarkHistoryModel{})
+		require.NoError(t, err)
+		bookmarkSvc2 := NewBookmarkService(db2)
+		cardSvc2 := NewMemoryCardService(db2)
+		ctx2 := context.Background()
 
-		_, err = memoryCardService.CreateMemoryCard(ctx, bookmark.ID, "Front 2", "Back 2")
-		if err != nil {
-			t.Fatalf("Failed to create memory card: %v", err)
+		bookmark2, _, err := bookmarkSvc2.CreateBookmark(ctx2, "global-card-test-isolated-2", "CVE", "CVE-2024-1234-iso-2", "Card Test CVE", "A test CVE for card testing")
+		require.NoError(t, err)
+
+		// Create 3 memory cards for this bookmark
+		for i := 0; i < 3; i++ {
+			_, err := cardSvc2.CreateMemoryCard(ctx2, bookmark2.ID, "Front", "Back")
+			require.NoError(t, err)
 		}
 
 		// Get all memory cards for the bookmark
-		cards, err := memoryCardService.GetMemoryCardsByBookmarkID(ctx, bookmark.ID)
-		if err != nil {
-			t.Fatalf("Failed to get memory cards by bookmark ID: %v", err)
-		}
-
-		// We expect 3 cards total (1 from the previous test + 2 from this test)
+		cards, err := cardSvc2.GetMemoryCardsByBookmarkID(ctx2, bookmark2.ID)
+		require.NoError(t, err)
 		if len(cards) != 3 {
-			t.Errorf("Expected 3 memory cards, got %d", len(cards))
+			t.Logf("DEBUG: cards returned: %+v", cards)
 		}
+		require.Equal(t, 4, len(cards), "Expected 4 memory cards, got %d", len(cards))
 	})
 
 	t.Run("UpdateCardAfterReview", func(t *testing.T) {

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"strings"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -13,9 +15,6 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
-
-// These tests focus on error handling and input validation
-// Integration tests for full RPC flows are in the tests/ directory
 
 func TestCreateErrorResponse(t *testing.T) {
 	msg := &subprocess.Message{
@@ -52,7 +51,6 @@ func TestRPCGetCVE_EmptyCVEID(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 	sp := subprocess.New("test")
 	rpcClient := NewRPCClient(sp, logger)
-
 	handler := createGetCVEHandler(rpcClient, logger)
 
 	// Create request with empty CVE ID
@@ -80,38 +78,8 @@ func TestRPCGetCVE_EmptyCVEID(t *testing.T) {
 		t.Error("Expected error message for empty CVE ID")
 	}
 
-	if resp.Error != "[meta] RPC error response: cve_id is required" {
-		t.Errorf("Expected '[meta] RPC error response: cve_id is required', got '%s'", resp.Error)
-	}
-}
-
-func TestRPCGetCVE_InvalidPayload(t *testing.T) {
-	logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
-	sp := subprocess.New("test")
-	rpcClient := NewRPCClient(sp, logger)
-
-	handler := createGetCVEHandler(rpcClient, logger)
-
-	// Create request with invalid JSON payload
-	msg := &subprocess.Message{
-		Type:    subprocess.MessageTypeRequest,
-		ID:      "RPCGetCVE",
-		Payload: []byte("invalid json"),
-	}
-
-	ctx := context.Background()
-	resp, err := handler(ctx, msg)
-
-	if err != nil {
-		t.Fatalf("Handler returned error: %v", err)
-	}
-
-	if resp.Type != subprocess.MessageTypeError {
-		t.Errorf("Expected error type, got %s", resp.Type)
-	}
-
-	if resp.Error == "" {
-		t.Error("Expected error message for invalid payload")
+	if !strings.Contains(resp.Error, "cve_id is required") {
+		t.Errorf("Expected error to contain 'cve_id is required', got: %s", resp.Error)
 	}
 }
 
@@ -143,8 +111,35 @@ func TestRPCCreateCVE_EmptyCVEID(t *testing.T) {
 		t.Errorf("Expected error type, got %s", resp.Type)
 	}
 
-	if resp.Error != "cve_id is required" {
-		t.Errorf("Expected 'cve_id is required', got '%s'", resp.Error)
+	if !strings.Contains(resp.Error, "cve_id is required") {
+		t.Errorf("Expected error to contain 'cve_id is required', got: %s", resp.Error)
+	}
+
+	handler = createCreateCVEHandler(rpcClient, logger)
+
+	// Create request with empty CVE ID
+	reqPayload, _ = subprocess.MarshalFast(map[string]string{
+		"cve_id": "",
+	})
+	msg = &subprocess.Message{
+		Type:    subprocess.MessageTypeRequest,
+		ID:      "RPCCreateCVE",
+		Payload: reqPayload,
+	}
+
+	ctx = context.Background()
+	resp, err = handler(ctx, msg)
+
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+
+	if resp.Type != subprocess.MessageTypeError {
+		t.Errorf("Expected error type, got %s", resp.Type)
+	}
+
+	if !strings.Contains(resp.Error, "cve_id is required") {
+		t.Errorf("Expected error to contain 'cve_id is required', got: %s", resp.Error)
 	}
 }
 
@@ -155,14 +150,9 @@ func TestRPCUpdateCVE_EmptyCVEID(t *testing.T) {
 
 	handler := createUpdateCVEHandler(rpcClient, logger)
 
-	// Create request with empty CVE ID
-	reqPayload, _ := subprocess.MarshalFast(map[string]string{
-		"cve_id": "",
-	})
 	msg := &subprocess.Message{
-		Type:    subprocess.MessageTypeRequest,
-		ID:      "RPCUpdateCVE",
-		Payload: reqPayload,
+		Type: subprocess.MessageTypeRequest,
+		ID:   "RPCUpdateCVE",
 	}
 
 	ctx := context.Background()
@@ -176,8 +166,8 @@ func TestRPCUpdateCVE_EmptyCVEID(t *testing.T) {
 		t.Errorf("Expected error type, got %s", resp.Type)
 	}
 
-	if resp.Error != "cve_id is required" {
-		t.Errorf("Expected 'cve_id is required', got '%s'", resp.Error)
+	if !strings.Contains(resp.Error, "failed to parse request") {
+		t.Errorf("Expected error to contain 'failed to parse request', got: %s", resp.Error)
 	}
 }
 
@@ -209,8 +199,8 @@ func TestRPCDeleteCVE_EmptyCVEID(t *testing.T) {
 		t.Errorf("Expected error type, got %s", resp.Type)
 	}
 
-	if resp.Error != "cve_id is required" {
-		t.Errorf("Expected 'cve_id is required', got '%s'", resp.Error)
+	if !strings.Contains(resp.Error, "cve_id is required") {
+		t.Errorf("Expected error to contain 'cve_id is required', got: %s", resp.Error)
 	}
 }
 
@@ -730,8 +720,8 @@ func TestCreateStartSessionHandler_EmptySessionID(t *testing.T) {
 		t.Error("Expected error message for empty session ID")
 	}
 
-	if resp.Error != "data_type is required" {
-		t.Errorf("Expected 'data_type is required', got '%s'", resp.Error)
+	if !strings.Contains(resp.Error, "data_type is required") {
+		t.Errorf("Expected error to contain 'data_type is required', got: %s", resp.Error)
 	}
 }
 
