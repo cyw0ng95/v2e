@@ -29,7 +29,7 @@ func ParseFlags(defaultID string) *Flags {
 	// Check if flags are already defined to avoid redefinition panic in tests or if called multiple times
 	if flag.Lookup("id") == nil {
 		flag.StringVar(&f.ProcessID, "id", defaultID, "Process ID")
-		
+
 		flag.IntVar(&f.RPCInputFD, "rpc-in", -1, "RPC input file descriptor")
 		flag.IntVar(&f.RPCOutputFD, "rpc-out", -1, "RPC output file descriptor")
 

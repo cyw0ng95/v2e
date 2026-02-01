@@ -331,7 +331,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 	if b.transportManager == nil {
 		return
 	}
-	if shouldUseUDSTransport(struct{UseUDS bool}{UseUDS: false}) {
+	if shouldUseUDSTransport(struct{ UseUDS bool }{UseUDS: false}) {
 		if err := b.transportManager.RegisterUDSTransport(processID, true); err == nil {
 			b.logger.Debug("Registered UDS transport for process %s", processID)
 			return
@@ -349,7 +349,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 }
 
 // shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
-func shouldUseUDSTransport(config struct{UseUDS bool}) bool {
+func shouldUseUDSTransport(config struct{ UseUDS bool }) bool {
 	// Always use FD transport instead of UDS transport
 	return false
 }

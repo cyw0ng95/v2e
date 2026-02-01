@@ -73,14 +73,14 @@ func main() {
 	routerAdapter := &brokerRouter{b: broker}
 
 	optConfig := perf.Config{
-		BufferCap:      1000, // Default buffer capacity
-		NumWorkers:     4,    // Default number of workers
+		BufferCap:      1000,                   // Default buffer capacity
+		NumWorkers:     4,                      // Default number of workers
 		StatsInterval:  100 * time.Millisecond, // Default stats interval
-		OfferPolicy:    "drop", // Default offer policy
-		OfferTimeout:   0,    // Default offer timeout
-		BatchSize:      1,    // Default batch size
-		FlushInterval:  10 * time.Millisecond, // Default flush interval
-		AdaptationFreq: 10 * time.Second, // Default adaptation frequency
+		OfferPolicy:    "drop",                 // Default offer policy
+		OfferTimeout:   0,                      // Default offer timeout
+		BatchSize:      1,                      // Default batch size
+		FlushInterval:  10 * time.Millisecond,  // Default flush interval
+		AdaptationFreq: 10 * time.Second,       // Default adaptation frequency
 	}
 
 	opt := perf.NewWithConfig(routerAdapter, optConfig)

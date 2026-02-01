@@ -79,8 +79,6 @@ func NewRPCClientWithSubprocess(sp *subprocess.Subprocess, logger *common.Logger
 	return client
 }
 
-
-
 // handleResponse handles response messages from the broker
 func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 	// Delegate to the common client's response handler
