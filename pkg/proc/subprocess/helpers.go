@@ -1,5 +1,7 @@
 package subprocess
 
+import "fmt"
+
 // NewErrorResponse creates an error response message from a request message.
 // It sets Type to MessageTypeError, copies the ID and CorrelationID from the original message,
 // sets the Error field to errMsg, and sets Target to the original message's Source.
@@ -63,4 +65,24 @@ func IsErrorResponse(msg *Message) (bool, string) {
 		return true, msg.Error
 	}
 	return false, ""
+}
+
+// ParseRequest parses a message payload into the provided request struct.
+// Returns an error response message if parsing fails, nil on success.
+// This is a convenience helper for RPC handlers to validate and parse incoming requests.
+func ParseRequest(msg *Message, req interface{}) *Message {
+	if err := UnmarshalPayload(msg, req); err != nil {
+		return NewErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err))
+	}
+	return nil
+}
+
+// RequireField validates that a required string field is not empty.
+// Returns an error response message if the field is empty, nil on success.
+// This is a convenience helper for RPC handlers to validate required request fields.
+func RequireField(msg *Message, value, fieldName string) *Message {
+	if value == "" {
+		return NewErrorResponse(msg, fmt.Sprintf("%s is required", fieldName))
+	}
+	return nil
 }
