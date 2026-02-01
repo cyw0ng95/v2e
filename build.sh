@@ -533,48 +533,18 @@ build_and_package() {
 # Run unit tests
 run_tests() {
     log_info "Running unit tests for GitHub CI..."
-    
     # Check Go version
     if ! check_go_version; then
         return 1
     fi
-    
     setup_build_dir
-    
-    # Ensure config file exists and generate build tags
-    local build_tags="$GO_TAGS"
-    if [ ! -f ".build/.config" ]; then
-        log_info "No config file found, generating default .build/.config..."
-        mkdir -p .build
-        if [ -f "tool/vconfig/main.go" ]; then
-            # Build vconfig tool if not already built
-            if [ ! -f ".build/vconfig" ]; then
-                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
-            fi
-        fi
-        # Generate default config file
-        .build/vconfig -generate-defaults -config .build/.config
-    fi
-    
-    if [ -f ".build/.config" ]; then
-        log_debug "Using configuration from .build/.config for tests"
-        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
-        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
-            build_tags="$GO_TAGS,$config_tags"
-            log_debug "Using test tags: $build_tags"
-        fi
-    else
-        log_debug "No config file found, using default test tags: $GO_TAGS"
-    fi
-    
+    ensure_vconfig_and_config
+    build_tags=$(get_config_build_tags)
+    ldflags=$(get_config_ldflags)
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
-        # Get ldflags from config
-        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
-        
         if [ "$VERBOSE" = true ]; then
             log_info "Running go test with verbose output..."
-            # Run tests with coverage and verbose output, excluding fuzz tests
             if [ -n "$ldflags" ]; then
                 go test -tags "$build_tags" -ldflags "$ldflags" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
             else
@@ -582,7 +552,6 @@ run_tests() {
             fi
         else
             log_info "Running go test..."
-            # Run tests with coverage, excluding fuzz tests
             if [ -n "$ldflags" ]; then
                 go test -tags "$build_tags" -ldflags "$ldflags" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
             else
@@ -590,16 +559,12 @@ run_tests() {
             fi
         fi
         TEST_EXIT_CODE=$?
-        
-        # Generate coverage report
         if [ -f "$BUILD_DIR/coverage.out" ]; then
             go tool cover -html="$BUILD_DIR/coverage.out" -o "$BUILD_DIR/coverage.html"
             if [ "$VERBOSE" = true ]; then
                 log_debug "Coverage report saved to: $BUILD_DIR/coverage.html"
             fi
         fi
-        
-        # Return test exit code for CI
         if [ $TEST_EXIT_CODE -eq 0 ]; then
             log_info "All unit tests passed!"
             return 0
@@ -618,53 +583,21 @@ run_tests() {
 run_fuzz_tests() {
     log_info "Running fuzz tests on key interfaces..."
     setup_build_dir
-    
-    # Ensure config file exists and generate build tags
-    local build_tags="$GO_TAGS"
-    if [ ! -f ".build/.config" ]; then
-        log_info "No config file found, generating default .build/.config..."
-        mkdir -p .build
-        if [ -f "tool/vconfig/main.go" ]; then
-            # Build vconfig tool if not already built
-            if [ ! -f ".build/vconfig" ]; then
-                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
-            fi
-        fi
-        # Generate default config file
-        .build/vconfig -generate-defaults -config .build/.config
-    fi
-    
-    if [ -f ".build/.config" ]; then
-        log_debug "Using configuration from .build/.config for fuzz tests"
-        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
-        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
-            build_tags="$GO_TAGS,$config_tags"
-            log_debug "Using fuzz test tags: $build_tags"
-        fi
-    else
-        log_debug "No config file found, using default fuzz test tags: $GO_TAGS"
-    fi
-    
-    # Fuzz test configuration
+    ensure_vconfig_and_config
+    build_tags=$(get_config_build_tags)
+    ldflags=$(get_config_ldflags)
     FUZZ_TIME="1s"  # 1 second per test, since it may take too long to run on CI
     FUZZ_REPORT="$BUILD_DIR/fuzz-report.txt"
-    
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
-        # Get ldflags from config
-        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
-        
         if [ "$VERBOSE" = true ]; then
             log_info "Running Go fuzz tests for $FUZZ_TIME..."
         fi
-        
-        # Find all fuzz tests
         if [ -n "$ldflags" ]; then
             FUZZ_TESTS=$(go test -tags "$build_tags" -ldflags "$ldflags" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
         else
             FUZZ_TESTS=$(go test -tags "$build_tags" -list=Fuzz ./... 2>/dev/null | grep -E '^Fuzz' || true)
         fi
-        
         if [ -z "$FUZZ_TESTS" ]; then
             log_info "No fuzz tests found. Creating report..."
             {
@@ -684,23 +617,17 @@ run_fuzz_tests() {
             log_info "Fuzz tests passed (no fuzz tests found)"
             return 0
         fi
-        
         log_info "Found fuzz tests:"
         echo "$FUZZ_TESTS"
         echo ""
-        
-        # Run fuzz tests
         FUZZ_EXIT_CODE=0
         FUZZ_RESULTS=""
-        
-        # Iterate through packages and run fuzz tests
         for PKG in $(go list ./... | grep -E '(pkg/proc|cmd/broker|pkg/cve)'); do
             if [ -n "$ldflags" ]; then
                 PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -tags "$GO_TAGS" -ldflags "$ldflags" -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
             else
                 PKG_FUZZ_TESTS=$(cd "$(go list -f '{{.Dir}}' "$PKG")" && go test -tags "$GO_TAGS" -list=Fuzz 2>/dev/null | grep -E '^Fuzz' || true)
             fi
-            
             if [ -n "$PKG_FUZZ_TESTS" ]; then
                 log_info "Fuzzing package: $PKG"
                 for FUZZ_TEST in $PKG_FUZZ_TESTS; do
@@ -727,8 +654,6 @@ run_fuzz_tests() {
                 done
             fi
         done
-        
-        # Generate report
         {
             echo "======================================================================"
             echo "           v2e Fuzz Testing Report"
@@ -759,14 +684,10 @@ run_fuzz_tests() {
             echo "Full log: $BUILD_DIR/fuzz-raw.log"
             echo "======================================================================"
         } > "$FUZZ_REPORT"
-        
         if [ "$VERBOSE" = true ]; then
             cat "$FUZZ_REPORT"
         fi
-        
         log_info "Fuzz test report: $FUZZ_REPORT"
-        
-        # Return exit code
         if [ $FUZZ_EXIT_CODE -eq 0 ]; then
             log_info "All fuzz tests passed!"
             return 0
@@ -776,7 +697,7 @@ run_fuzz_tests() {
         fi
     else
         log_info "No go.mod found. No fuzz tests to run."
-        log_info "Fuzz tests passed (no tests found)"
+        log_info "Fuzz tests passed (no fuzz tests found)"
         return 0
     fi
 }
@@ -785,61 +706,25 @@ run_fuzz_tests() {
 run_benchmarks() {
     log_info "Running performance benchmarks..."
     setup_build_dir
-    
-    # Ensure config file exists and generate build tags
-    local build_tags="$GO_TAGS"
-    if [ ! -f ".build/.config" ]; then
-        log_info "No config file found, generating default .build/.config..."
-        mkdir -p .build
-        if [ -f "tool/vconfig/main.go" ]; then
-            # Build vconfig tool if not already built
-            if [ ! -f ".build/vconfig" ]; then
-                go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
-            fi
-        fi
-        # Generate default config file
-        .build/vconfig -generate-defaults -config .build/.config
-    fi
-    
-    if [ -f ".build/.config" ]; then
-        log_debug "Using configuration from .build/.config for benchmarks"
-        local config_tags=$(.build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "")
-        if [ -n "$config_tags" ] && [ "$config_tags" != "none" ]; then
-            build_tags="$GO_TAGS,$config_tags"
-            log_debug "Using benchmark tags: $build_tags"
-        fi
-    else
-        log_debug "No config file found, using default benchmark tags: $GO_TAGS"
-    fi
-
-    # Check if go.mod exists
+    ensure_vconfig_and_config
+    build_tags=$(get_config_build_tags)
+    ldflags=$(get_config_ldflags)
     if [ -f "go.mod" ]; then
-        # Get ldflags from config
-        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
-        
         BENCHMARK_OUTPUT="$BUILD_DIR/benchmark-raw.txt"
         BENCHMARK_REPORT="$BUILD_DIR/benchmark-report.txt"
         BENCH_BENCHSTAT="$BUILD_DIR/benchmark-benchstat.txt"
         BENCH_AGG_TSV="$BUILD_DIR/benchmark-agg.tsv"
         BENCH_BASELINE="$BUILD_DIR/benchmark-baseline.txt"
-
-        # Detect benchstat if present
         BENCHSTAT_BIN="$(command -v benchstat || true)"
-
-        # Prepare/rotate raw output
         : > "$BENCHMARK_OUTPUT"
-
-        # Gather packages and run per-package benchmarks so we can attribute results
         PKGS=$(go list ./... 2>/dev/null || true)
         BENCH_EXIT_CODE=0
-
         if [ -z "$PKGS" ]; then
             log_info "No packages found to benchmark."
         else
             for PKG in $PKGS; do
                 log_info "Benchmarking package: $PKG"
                 if [ "$VERBOSE" = true ]; then
-                    # Stream output to console and prefix with package
                     if [ -n "$ldflags" ]; then
                         (go test -tags "$build_tags" -ldflags "$ldflags" -run=^$ -bench=. -benchmem -benchtime=1s "$PKG" 2>&1 | sed "s|^|[$PKG] |") | tee -a "$BENCHMARK_OUTPUT"
                     else
@@ -860,8 +745,6 @@ run_benchmarks() {
                 fi
             done
         fi
-
-        # Try to produce a nice table via benchstat if available
         BENCHSTAT_RAN=false
         if [ -n "$BENCHSTAT_BIN" ]; then
             log_info "benchstat detected at $BENCHSTAT_BIN; attempting to generate formatted output..."
@@ -870,7 +753,6 @@ run_benchmarks() {
                 $BENCHSTAT_BIN "$BENCH_BASELINE" "$BENCHMARK_OUTPUT" > "$BENCH_BENCHSTAT" 2>/dev/null
                 rc=$?
             else
-                # benchstat sometimes accepts a single file for formatting; try it
                 $BENCHSTAT_BIN "$BENCHMARK_OUTPUT" > "$BENCH_BENCHSTAT" 2>/dev/null
                 rc=$?
             fi
@@ -885,15 +767,12 @@ run_benchmarks() {
         else
             log_warn "benchstat not found. To enable richer tables install it: go install golang.org/x/perf/cmd/benchstat@latest"
         fi
-
-        # Always produce an aggregated TSV (AWK) as a fallback or companion artifact
         log_info "Generating aggregated TSV of benchmark results..."
         awk 'BEGIN{OFS="\t"; print "package","benchmark","ns/op","B/op","allocs/op"}
         {
             line=$0
             pkg=""
             if (match(line,/^\[([^]]+)\] /,m)) { pkg=m[1]; sub(/^\[[^]]+\] /, "", line) }
-            # Only consider lines that begin with Benchmark (after prefix removal)
             if (line ~ /^Benchmark/) {
                 n=split(line, f, /[ \t]+/)
                 bname=f[1]
@@ -903,12 +782,9 @@ run_benchmarks() {
                     if (f[i]=="B/op") b=f[i-1]
                     if (f[i]=="allocs/op") a=f[i-1]
                 }
-                # Only print rows that have a numeric ns/op value
                 if (ns != "") print pkg, bname, ns, b, a
             }
         }' "$BENCHMARK_OUTPUT" > "$BENCH_AGG_TSV" || true
-
-        # Compose final human-readable report
         log_info "Generating benchmark report..."
         {
             echo "======================================================================"
@@ -953,15 +829,12 @@ run_benchmarks() {
             fi
             echo "======================================================================"
         } > "$BENCHMARK_REPORT"
-
         if [ "$VERBOSE" = true ]; then
             echo ""
             cat "$BENCHMARK_REPORT"
         else
             log_info "Benchmark report generated: $BENCHMARK_REPORT"
         fi
-
-        # Return benchmark exit code for CI (benchstat/awk failures do not change test exit)
         if [ $BENCH_EXIT_CODE -eq 0 ]; then
             log_info "All benchmarks completed successfully!"
             return 0
@@ -1004,29 +877,8 @@ main() {
 
     # Execute based on options
     if [ "$RUN_VCONFIG_TUI" = true ]; then
-        # Ensure vconfig binary exists and is up-to-date with source files
-        VCONFIG_BINARY=".build/vconfig"
-        VCONFIG_SRC_CHANGED=false
-        
-        # Check if binary exists
-        if [ ! -f "$VCONFIG_BINARY" ]; then
-            VCONFIG_SRC_CHANGED=true
-        else
-            # Check if any source files are newer than the binary
-            for src_file in tool/vconfig/*.go; do
-                if [ "$src_file" -nt "$VCONFIG_BINARY" ]; then
-                    VCONFIG_SRC_CHANGED=true
-                    break
-                fi
-            done
-        fi
-        
-        if [ "$VCONFIG_SRC_CHANGED" = true ]; then
-            log_info "Building vconfig tool..."
-            mkdir -p .build
-            go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
-        fi
-        # When -c flag is used, always run TUI regardless of existing config
+        # Use helper to ensure vconfig and config are up-to-date
+        ensure_vconfig_and_config
         log_info "Running vconfig TUI..."
         mkdir -p .build
         .build/vconfig -tui -config .build/.config
