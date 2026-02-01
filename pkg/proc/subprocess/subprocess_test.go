@@ -361,7 +361,8 @@ func TestMessageBatching(t *testing.T) {
 		}
 	}
 
-	// Wait for batching ticker
+	// Wait for batching ticker. Small sleeps here are necessary to allow the
+	// internal batching ticker to tick; keeping them short but non-zero.
 	time.Sleep(15 * time.Millisecond)
 
 	// Stop the subprocess and wait for writer to finish

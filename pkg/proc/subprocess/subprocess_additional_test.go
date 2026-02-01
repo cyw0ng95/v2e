@@ -180,7 +180,9 @@ func TestHandleMessage_NoHandler(t *testing.T) {
 	// ensure wg count so defer s.wg.Done() is safe
 	sp.wg.Add(1)
 	sp.handleMessage(&Message{Type: MessageTypeRequest, ID: "missing"})
-	// wait a bit for send
+	// wait a bit for send; this small sleep is acceptable because it
+	// only allows a background send to complete and is unlikely to
+	// cause CI instability.
 	time.Sleep(10 * time.Millisecond)
 	out := buf.String()
 	if !strings.Contains(out, "no handler found") {

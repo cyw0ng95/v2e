@@ -421,7 +421,8 @@ func TestRecoverRuns_RunningStartsJob(t *testing.T) {
 
 	recoverRuns(executor, logger)
 
-	// Wait a moment for recovery to start
+	// Wait a moment for recovery to start. Short sleeps are unreliable in CI
+	// but this pause is minimal and only used to allow background recovery to proceed.
 	time.Sleep(100 * time.Millisecond)
 
 	// Check run status - should be completed
