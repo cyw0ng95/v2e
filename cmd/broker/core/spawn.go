@@ -8,12 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cyw0ng95/v2e/cmd/broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/meta"
-	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // Spawn starts a new subprocess with the given command and arguments.
@@ -68,43 +66,12 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	ctx, cancel := context.WithCancel(b.ctx)
 	cmd := exec.CommandContext(ctx, command, args...)
 
-	var inputFD, outputFD int
-	var readFromSubprocess, writeToSubprocess *os.File
-	var readFromParent, writeToParent *os.File
 	isRPC := restartConfig != nil && restartConfig.IsRPC
-
-	if isRPC {
-		var err error
-		// Create output pipe: subprocess writes to writeToParent, parent reads from readFromSubprocess
-		readFromSubprocess, writeToParent, err = os.Pipe()
-		if err != nil {
-			cancel()
-			b.logger.Error("Failed to create output pipe for process %s: %v", id, err)
-			return nil, fmt.Errorf("failed to create output pipe: %w", err)
-		}
-
-		// Create input pipe: parent writes to writeToSubprocess, subprocess reads from readFromParent
-		readFromParent, writeToSubprocess, err = os.Pipe()
-		if err != nil {
-			cancel()
-			readFromSubprocess.Close()
-			writeToParent.Close()
-			b.logger.Error("Failed to create input pipe for process %s: %v", id, err)
-			return nil, fmt.Errorf("failed to create input pipe: %w", err)
-		}
-
-		cmd.ExtraFiles = []*os.File{readFromParent, writeToParent}
-		inputFD, outputFD = b.getRPCFileDescriptors()
-	}
 
 	setProcessEnv(cmd, id)
 	// Do not inject PROCESS_ID or RPC-related environment variables. Processes
 	// compute their own IDs and transport paths deterministically from
 	// build-time defaults (ldflags). This avoids runtime env coordination.
-
-	// Track if UDS transport was successfully registered, so we don't
-	// overwrite it with an FD transport later.
-	udsTransportRegistered := false
 
 	// If this is an RPC process and transport manager exists, register a UDS
 	// transport before starting the process. The socket path is deterministic
@@ -113,7 +80,6 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	if isRPC && b.transportManager != nil {
 		if _, err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
 			b.logger.Debug("Registered UDS transport for process %s before start", id)
-			udsTransportRegistered = true
 		} else {
 			b.logger.Warn("Failed to register UDS transport for process %s before start: %v", id, err)
 		}
@@ -126,11 +92,6 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
-	}
-
-	if isRPC {
-		proc.stdin = writeToSubprocess
-		proc.stdout = readFromSubprocess
 	}
 
 	if restartConfig != nil {
@@ -146,20 +107,8 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 
 	if err := cmd.Start(); err != nil {
 		cancel()
-		if isRPC {
-			readFromSubprocess.Close()
-			writeToSubprocess.Close()
-			readFromParent.Close()
-			writeToParent.Close()
-		}
 		info.Status = ProcessStatusFailed
 		return info, fmt.Errorf("failed to start process: %w", err)
-	}
-
-	if isRPC {
-		// Close parent's copy of the pipe ends used by the child
-		readFromParent.Close()
-		writeToParent.Close()
 	}
 
 	info.PID = cmd.Process.Pid
@@ -169,25 +118,15 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	infoCopy := *info
 
 	if isRPC {
-		b.logger.Info("Spawned RPC process: id=%s pid=%d cmd=%s (fds=%d,%d)", id, info.PID, command, inputFD, outputFD)
-		// Only register FD transport if UDS transport was not registered.
-		// UDS transport is the default and preferred communication method.
-		if !udsTransportRegistered {
-			b.registerProcessTransport(id, inputFD, outputFD)
-			// For FD transport, we need to read from the process's stdout pipe
-			proc.readLoopWg.Add(1)
-			b.wg.Add(1)
-			go b.readProcessMessages(proc)
+		b.logger.Info("Spawned RPC process: id=%s pid=%d cmd=%s", id, info.PID, command)
+		// For UDS transport, start a receive loop to read messages from the UDS transport
+		udsTransport, err := b.transportManager.GetTransport(id)
+		if err != nil {
+			b.logger.Warn("Failed to get UDS transport for process %s: %v", id, err)
 		} else {
-			// For UDS transport, start a receive loop to read messages from the UDS transport
-			udsTransport, err := b.transportManager.GetTransport(id)
-			if err != nil {
-				b.logger.Warn("Failed to get UDS transport for process %s: %v", id, err)
-			} else {
-				b.wg.Add(1)
-				go b.readUDSMessages(id, udsTransport)
-				b.logger.Debug("Started UDS message reading for process %s", id)
-			}
+			b.wg.Add(1)
+			go b.readUDSMessages(id, udsTransport)
+			b.logger.Debug("Started UDS message reading for process %s", id)
 		}
 	} else {
 		b.logger.Info("Spawned process: id=%s pid=%d cmd=%s", id, info.PID, command)
@@ -345,35 +284,4 @@ func setProcessEnv(cmd *exec.Cmd, processID string) {
 		// The access service will use its build-time static dir
 		// No runtime config override is applied
 	}
-}
-
-// getRPCFileDescriptors returns the configured input and output file descriptor numbers for RPC communication.
-// Uses build-time configuration as default since runtime config is disabled.
-func (b *Broker) getRPCFileDescriptors() (inputFD, outputFD int) {
-	// Use build-time defaults since runtime config is disabled
-	inputFD = subprocess.DefaultBuildRPCInputFD()
-	outputFD = subprocess.DefaultBuildRPCOutputFD()
-	return
-}
-
-// registerProcessTransport creates and registers the appropriate transport for a spawned RPC process.
-// Returns an error only if transport registration fails critically.
-func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD int) {
-	if b.transportManager == nil {
-		return
-	}
-	// Always attempt to register FD transport as a baseline (used as fallback)
-	fdTransport := transport.NewFDPipeTransport(inputFD, outputFD)
-	if err := fdTransport.Connect(); err == nil {
-		b.transportManager.RegisterTransport(processID, fdTransport)
-		b.logger.Debug("Registered FD transport for process %s", processID)
-	} else {
-		b.logger.Error("Failed to connect FD transport for process %s: %v", processID, err)
-	}
-}
-
-// shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
-func shouldUseUDSTransport(_ struct{ UseUDS bool }) bool {
-	// Use build-time default set in subprocess package. Do not consult runtime envs.
-	return subprocess.DefaultProcCommType() == "uds"
 }

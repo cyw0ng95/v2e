@@ -49,9 +49,7 @@ func (b *Broker) reapProcess(p *Process) {
 
 	// Only close transport if process is NOT configured for restart.
 	// For restart-enabled processes, we keep the UDS transport alive across
-	// restarts to avoid "netpoll failed" errors when closing file descriptors
-	// that Go's poller is still using. The FD pipes (stdin/stdout) will be
-	// closed below, but the UDS transport remains available for the new process.
+	// restarts to avoid socket close errors.
 	shouldCloseTransport := true
 	if p.restartConfig != nil && p.restartConfig.Enabled {
 		shouldCloseTransport = false
@@ -61,41 +59,6 @@ func (b *Broker) reapProcess(p *Process) {
 	if shouldCloseTransport && b.transportManager != nil {
 		b.transportManager.UnregisterTransport(p.info.ID)
 		b.logger.Debug("Unregistered transport for process %s", p.info.ID)
-	}
-
-	// For processes without restart, close stdout and wait for read loop to exit.
-	// For restart-enabled processes, we skip explicit stdout closure to avoid
-	// "netpoll failed" errors. The pipe will break naturally when the process
-	// exits, and the scanner in readProcessMessages will return EOF. The goroutine
-	// will then exit cleanly via the done channel check.
-	if !(p.restartConfig != nil && p.restartConfig.Enabled) {
-		p.mu.Lock()
-		if p.stdout != nil {
-			p.stdout.Close()
-			p.stdout = nil
-		}
-		p.mu.Unlock()
-
-		// Only wait for non-restart processes
-		p.readLoopWg.Wait()
-	} else {
-		// For restart-enabled processes, give the readLoopWg a brief moment to exit
-		// naturally after the pipe breaks. We don't force-close stdout to avoid
-		// netpoll errors, but we still want to ensure the goroutine exits before
-		// we delete the process from the map and spawn a new one.
-		doneChan := make(chan struct{})
-		go func() {
-			p.readLoopWg.Wait()
-			close(doneChan)
-		}()
-		select {
-		case <-doneChan:
-			// Goroutine exited cleanly
-		case <-time.After(100 * time.Millisecond):
-			// Timeout is acceptable - the goroutine will exit when it detects
-			// the done channel is closed (which we do below before restart)
-			b.logger.Debug("ReadLoopWg timeout for restart-enabled process %s, goroutine will exit via done channel", p.info.ID)
-		}
 	}
 
 	event, _ := proc.NewEventMessage(p.info.ID, map[string]interface{}{
@@ -112,7 +75,7 @@ func (b *Broker) reapProcess(p *Process) {
 
 	// Handle restart if configured
 	if p.restartConfig != nil && p.restartConfig.Enabled {
-		// Close the done channel before restart so that readProcessMessages can exit cleanly
+		// Close the done channel before restart so that readUDSMessages can exit cleanly
 		// We close it here instead of relying on defer because we're about to call restartProcess
 		// which will spawn a new process with its own done channel
 		close(p.done)

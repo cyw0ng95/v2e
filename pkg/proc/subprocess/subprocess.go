@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
@@ -212,23 +211,9 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 	}
 	common.Info("%sLogging setup complete with level: %s", config.LogPrefix, logLevel)
 
-	// Create subprocess instance
-	var sp *Subprocess
-
-	// Decide communication type using build-time defaults only (no runtime envs)
-	commType := DefaultProcCommType()
-	switch commType {
-	case "fd":
-		inputFD := DefaultBuildRPCInputFD()
-		outputFD := DefaultBuildRPCOutputFD()
-		sp = NewWithFDs(processID, inputFD, outputFD)
-	case "uds":
-		// Construct deterministic socket path so broker and subprocess agree without env vars
-		socketPath := fmt.Sprintf("%s_%s.sock", DefaultProcUDSBasePath(), processID)
-		sp = NewWithUDS(processID, socketPath)
-	default:
-		sp = New(processID)
-	}
+	// Construct deterministic socket path so broker and subprocess agree without env vars
+	socketPath := fmt.Sprintf("%s_%s.sock", DefaultProcUDSBasePath(), processID)
+	sp := NewWithUDS(processID, socketPath)
 
 	logger.Info("%sSubprocess created with ID: %s", config.LogPrefix, processID)
 
@@ -240,9 +225,8 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 	return sp, logger
 }
 
-// NewWithUDS creates a new Subprocess instance using a Unix Domain Socket client
-// with retry logic to handle race conditions where the socket isn't immediately available.
-// Falls back to FD pipes if UDS connection fails.
+// NewWithUDS creates a new Subprocess instance using a Unix Domain Socket client.
+// Fails fast if UDS connection cannot be established.
 func NewWithUDS(id string, socketPath string) *Subprocess {
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &Subprocess{
@@ -253,49 +237,17 @@ func NewWithUDS(id string, socketPath string) *Subprocess {
 		outChan:  make(chan []byte, defaultOutChanBufSize),
 	}
 
-	// Dial the UDS socket with retry logic to handle race conditions
-	// The broker creates the socket just before spawning the subprocess,
-	// so there may be a brief window where the socket isn't ready.
-	const maxRetries = 10
-	const baseDelay = 10 * time.Millisecond
-	const maxDelay = 500 * time.Millisecond
-
-	var conn net.Conn
-	var err error
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		conn, err = net.Dial("unix", socketPath)
-		if err == nil {
-			// Connection successful
-			break
-		}
-
-		// Calculate delay with exponential backoff, capped at maxDelay
-		delay := baseDelay * time.Duration(1<<uint(attempt))
-		if delay > maxDelay {
-			delay = maxDelay
-		}
-
-		// Log retry attempt to stderr (logger may not be ready yet)
-		msg := fmt.Sprintf("[WARN] Subprocess: UDS connection attempt %d/%d failed: %v, retrying in %v...\n",
-			attempt+1, maxRetries, err, delay)
-		os.Stderr.WriteString(msg)
-
-		// Wait before retry
-		time.Sleep(delay)
-	}
-
+	// Dial the UDS socket immediately - fail fast if connection fails
+	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
-		// All retries exhausted - fall back to FD pipes
-		// This can happen if the broker is using FD transport instead of UDS
-		msg := "[WARN] Subprocess: UDS connection failed, falling back to FD pipes\n"
+		// Log to stderr (logger may not be ready yet)
+		msg := fmt.Sprintf("[FATAL] Subprocess: Failed to connect to UDS socket %s: %v\n", socketPath, err)
 		os.Stderr.WriteString(msg)
-		return NewWithFDs(id, DefaultBuildRPCInputFD(), DefaultBuildRPCOutputFD())
+		os.Exit(253)
 	}
 
 	// Use the connection for both input and output
 	sp.input = conn
-	// Ensure writer uses io.Writer interface
 	sp.output = conn
 
 	return sp

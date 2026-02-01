@@ -3,7 +3,6 @@ package subprocess
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -87,58 +86,6 @@ func New(id string) *Subprocess {
 		input:    os.Stdin,
 		output:   os.Stdout,
 	}
-	return sp
-}
-
-// NewWithFDs creates a new Subprocess instance using specified file descriptors for RPC
-func NewWithFDs(id string, inputFD, outputFD int) *Subprocess {
-	ctx, cancel := context.WithCancel(context.Background())
-	sp := &Subprocess{
-		ID:       id,
-		handlers: make(map[string]Handler),
-		ctx:      ctx,
-		cancel:   cancel,
-		outChan:  make(chan []byte, defaultOutChanBufSize),
-	}
-
-	inputFile := os.NewFile(uintptr(inputFD), "rpc-input")
-	outputFile := os.NewFile(uintptr(outputFD), "rpc-output")
-
-	// Runtime check: verify fds are valid (not closed)
-	var inputValid, outputValid bool
-	if inputFile != nil {
-		var b [1]byte
-		n, err := inputFile.Read(b[:])
-		if err == nil || n == 0 || err == io.EOF {
-			inputValid = true
-		}
-		// Reset file offset if possible (not needed for pipes)
-		inputFile.Seek(0, io.SeekStart)
-	}
-	if outputFile != nil {
-		// Try a non-blocking write (will fail if closed)
-		n, err := outputFile.Write([]byte{})
-		if err == nil || n == 0 {
-			outputValid = true
-		}
-	}
-
-	if !inputValid || !outputValid {
-		// Log to stderr since logger may not be ready
-		msg := "[FATAL] Subprocess: invalid RPC file descriptors: "
-		if !inputValid {
-			msg += "inputFD=" + fmt.Sprint(inputFD) + " "
-		}
-		if !outputValid {
-			msg += "outputFD=" + fmt.Sprint(outputFD) + " "
-		}
-		msg += "\n"
-		os.Stderr.WriteString(msg)
-		os.Exit(254)
-	}
-
-	sp.input = inputFile
-	sp.output = outputFile
 	return sp
 }
 

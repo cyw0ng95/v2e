@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"io"
 	"os/exec"
 	"sync"
 	"time"
@@ -41,20 +40,15 @@ type Process struct {
 	cmd           *exec.Cmd
 	cancel        context.CancelFunc
 	done          chan struct{}
-	stdin         io.WriteCloser
-	stdout        io.ReadCloser
 	mu            sync.RWMutex
 	restartConfig *RestartConfig
-	readLoopWg    sync.WaitGroup // Tracks the readProcessMessages goroutine
 }
 
 // NewTestProcess constructs a Process instance for tests without spawning OS processes.
-func NewTestProcess(id string, status ProcessStatus, stdin io.WriteCloser, stdout io.ReadCloser) *Process {
+func NewTestProcess(id string, status ProcessStatus) *Process {
 	return &Process{
-		info:   &ProcessInfo{ID: id, Status: status},
-		stdin:  stdin,
-		stdout: stdout,
-		done:   make(chan struct{}),
+		info: &ProcessInfo{ID: id, Status: status},
+		done: make(chan struct{}),
 	}
 }
 
@@ -63,16 +57,6 @@ func (p *Process) SetStatus(status ProcessStatus) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.info.Status = status
-}
-
-// SetStdin sets the stdin writer for the process (used in tests).
-func (p *Process) SetStdin(stdin io.WriteCloser) {
-	p.stdin = stdin
-}
-
-// SetStdout sets the stdout reader for the process (used in tests).
-func (p *Process) SetStdout(stdout io.ReadCloser) {
-	p.stdout = stdout
 }
 
 // Info returns the underlying process info.
