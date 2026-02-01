@@ -7,10 +7,20 @@ interface MemoryCardStudyProps {
   filterState?: string; // 'to_review', 'learning', 'mastered', 'archived'
 }
 
+// Validate filterState prop
+const isValidFilterState = (state: string | undefined): state is string => {
+  return state === undefined || ['to_review', 'learning', 'mastered', 'archived'].includes(state);
+};
+
 const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({ 
   bookmarkId, 
   filterState = 'to_review' 
 }) => {
+  // Validate props early
+  if (!isValidFilterState(filterState)) {
+    console.warn(`Invalid filterState: ${filterState}. Using 'to_review' instead.`);
+    filterState = 'to_review';
+  }
   const [cards, setCards] = useState<MemoryCard[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState<number>(0);
   const [showAnswer, setShowAnswer] = useState<boolean>(false);
@@ -26,8 +36,17 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
     loadCards();
   }, [bookmarkId, filterState]);
 
+  // Add cleanup effect for better memory management
+  useEffect(() => {
+    // Reset card index when filter changes to prevent invalid indices
+    if (cards.length > 0) {
+      setCurrentCardIndex(0);
+    }
+  }, [filterState, cards.length]);
+
   const loadCards = async () => {
     setLoading(true);
+    setError(null);
     try {
       const params: any = { learning_state: filterState };
       if (bookmarkId) {
@@ -37,17 +56,24 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
       const response = await rpcClient.listMemoryCards(params);
       
       if (response.retcode === 0 && response.payload) {
-        setCards(response.payload.memory_cards);
+        // Ensure we always have an array, even if empty
+        const memoryCards = response.payload.memory_cards || [];
+        setCards(memoryCards);
+        setCurrentCardIndex(0); // Reset to first card when loading new data
         setStats({
-          total: response.payload.total,
+          total: response.payload.total || 0,
           reviewed: 0,
-          remaining: response.payload.total
+          remaining: response.payload.total || 0
         });
       } else {
         setError('Failed to load memory cards');
+        setCards([]); // Clear cards on error
+        setCurrentCardIndex(0);
       }
     } catch (err) {
       setError('Error loading memory cards');
+      setCards([]); // Clear cards on error
+      setCurrentCardIndex(0);
       console.error('Error loading memory cards:', err);
     } finally {
       setLoading(false);
@@ -55,7 +81,8 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
   };
 
   const handleRateCard = async (rating: string) => {
-    if (currentCardIndex >= cards.length) return;
+    // Defensive check: ensure cards array exists and has items
+    if (!cards || cards.length === 0 || currentCardIndex >= cards.length) return;
     
     const currentCard = cards[currentCardIndex];
     
@@ -71,13 +98,16 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
         updatedCards[currentCardIndex] = response.payload.memory_card;
         setCards(updatedCards);
         
-        // Move to next card
+        // Move to next card with bounds checking
         if (currentCardIndex < cards.length - 1) {
           setCurrentCardIndex(currentCardIndex + 1);
         } else {
           // If we're at the end, reload the list to get new cards to review
-          loadCards();
-          setCurrentCardIndex(0);
+          await loadCards();
+          // Only reset to 0 if we still have cards
+          if (cards.length > 0) {
+            setCurrentCardIndex(0);
+          }
         }
         
         setShowAnswer(false);
@@ -97,8 +127,10 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
     }
   };
 
-  const currentCard = cards[currentCardIndex];
+  // Defensive check: ensure cards array exists and has items before accessing
+  const currentCard = cards && cards.length > 0 ? cards[currentCardIndex] : null;
 
+  // Early return patterns for better performance (rendering-conditional-render)
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -111,23 +143,76 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded-md">
-        {error}
+        <div className="flex items-center justify-between">
+          <span>{error}</span>
+          <button 
+            onClick={loadCards}
+            className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (!currentCard) {
+  // Handle empty state
+  if (!cards || cards.length === 0) {
     return (
       <div className="p-6 text-center bg-white rounded-lg border">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No cards to review</h3>
-        <p className="text-gray-500">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No cards available</h3>
+        <p className="text-gray-500 mb-4">
           {filterState === 'to_review' 
             ? "No cards are ready for review at the moment." 
             : `No cards in "${filterState}" state.`}
         </p>
         <button 
           onClick={loadCards}
-          className="mt-4 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+          className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+        >
+          Refresh
+        </button>
+      </div>
+    );
+  }
+
+  // Handle invalid card index
+  if (currentCardIndex >= cards.length || currentCardIndex < 0) {
+    return (
+      <div className="p-6 text-center bg-white rounded-lg border">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Invalid card position</h3>
+        <p className="text-gray-500 mb-4">The requested card is not available.</p>
+        <button 
+          onClick={() => setCurrentCardIndex(0)}
+          className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 mr-2"
+        >
+          Go to First Card
+        </button>
+        <button 
+          onClick={loadCards}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+        >
+          Refresh Cards
+        </button>
+      </div>
+    );
+  }
+
+  // Handle null currentCard (shouldn't happen with above checks, but extra safety)
+  if (!currentCard) {
+    return (
+      <div className="p-6 text-center bg-white rounded-lg border">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Card not found</h3>
+        <p className="text-gray-500 mb-4">The selected card could not be loaded.</p>
+        <button 
+          onClick={() => setCurrentCardIndex(Math.max(0, currentCardIndex - 1))}
+          className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 mr-2"
+        >
+          Previous Card
+        </button>
+        <button 
+          onClick={loadCards}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
         >
           Refresh
         </button>
