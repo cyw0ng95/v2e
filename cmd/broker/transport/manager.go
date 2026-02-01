@@ -30,10 +30,16 @@ func (tm *TransportManager) RegisterTransport(processID string, transport Transp
 	tm.transports[processID] = transport
 }
 
-// UnregisterTransport removes a transport for a process
+// UnregisterTransport removes a transport for a process and closes it
 func (tm *TransportManager) UnregisterTransport(processID string) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
+
+	if transport, exists := tm.transports[processID]; exists {
+		// Close the transport before removing it from the map
+		// This ensures the listener is closed and acceptLoop goroutines can exit cleanly
+		_ = transport.Close()
+	}
 	delete(tm.transports, processID)
 }
 

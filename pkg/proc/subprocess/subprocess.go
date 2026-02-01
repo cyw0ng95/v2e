@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
@@ -240,6 +241,8 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 }
 
 // NewWithUDS creates a new Subprocess instance using a Unix Domain Socket client
+// with retry logic to handle race conditions where the socket isn't immediately available.
+// Falls back to FD pipes if UDS connection fails.
 func NewWithUDS(id string, socketPath string) *Subprocess {
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &Subprocess{
@@ -250,13 +253,44 @@ func NewWithUDS(id string, socketPath string) *Subprocess {
 		outChan:  make(chan []byte, defaultOutChanBufSize),
 	}
 
-	// Dial the UDS socket
-	conn, err := net.Dial("unix", socketPath)
-	if err != nil {
-		// Log to stderr since logger may not be ready
-		msg := "[FATAL] Subprocess: failed to connect to RPC UDS socket: " + socketPath + " error: " + err.Error() + "\n"
+	// Dial the UDS socket with retry logic to handle race conditions
+	// The broker creates the socket just before spawning the subprocess,
+	// so there may be a brief window where the socket isn't ready.
+	const maxRetries = 10
+	const baseDelay = 10 * time.Millisecond
+	const maxDelay = 500 * time.Millisecond
+
+	var conn net.Conn
+	var err error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		conn, err = net.Dial("unix", socketPath)
+		if err == nil {
+			// Connection successful
+			break
+		}
+
+		// Calculate delay with exponential backoff, capped at maxDelay
+		delay := baseDelay * time.Duration(1<<uint(attempt))
+		if delay > maxDelay {
+			delay = maxDelay
+		}
+
+		// Log retry attempt to stderr (logger may not be ready yet)
+		msg := fmt.Sprintf("[WARN] Subprocess: UDS connection attempt %d/%d failed: %v, retrying in %v...\n",
+			attempt+1, maxRetries, err, delay)
 		os.Stderr.WriteString(msg)
-		os.Exit(254)
+
+		// Wait before retry
+		time.Sleep(delay)
+	}
+
+	if err != nil {
+		// All retries exhausted - fall back to FD pipes
+		// This can happen if the broker is using FD transport instead of UDS
+		msg := "[WARN] Subprocess: UDS connection failed, falling back to FD pipes\n"
+		os.Stderr.WriteString(msg)
+		return NewWithFDs(id, DefaultBuildRPCInputFD(), DefaultBuildRPCOutputFD())
 	}
 
 	// Use the connection for both input and output
