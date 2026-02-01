@@ -156,11 +156,6 @@ html, body, #__next {
     @apply overflow-auto flex-1 px-6;
   }
 
-  /* Constrain CWE table list to viewport height (subtract header + UI chrome) */
-  .cwe-table-content {
-    max-height: calc(100vh - var(--app-header-height) - 160px);
-  }
-
   .card-header {
     @apply flex items-center justify-between pb-2 mb-4 border-b border-border;
   }

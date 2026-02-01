@@ -19,8 +19,23 @@ func NewBookmarkService(db *gorm.DB) *BookmarkService {
 	return &BookmarkService{db: db}
 }
 
-// CreateBookmark creates a new bookmark
+// CreateBookmark creates a new bookmark, enforcing single bookmark per item
 func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, error) {
+	// Check if bookmark already exists for this item
+	var existingBookmark BookmarkModel
+	err := s.db.WithContext(ctx).Where("global_item_id = ? AND item_type = ? AND item_id = ?", globalItemID, itemType, itemID).First(&existingBookmark).Error
+	if err == nil {
+		// Bookmark already exists, return the existing one
+		return &existingBookmark, nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// Some other database error occurred
+		return nil, fmt.Errorf("failed to check for existing bookmark: %w", err)
+	}
+
+	// No existing bookmark found, create new one
+	now := time.Now().UTC()
+	nowStr := now.Format(time.RFC3339)
+	
 	bookmark := &BookmarkModel{
 		GlobalItemID:  globalItemID,
 		ItemType:      itemType,
@@ -29,13 +44,20 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 		Description:   description,
 		LearningState: string(LearningStateToReview),
 		MasteryLevel:  0.0,
+		// Initialize stats in metadata
+		Metadata: map[string]interface{}{
+			"view_count":       0,
+			"study_sessions":   0,
+			"last_viewed":      nowStr,
+			"first_bookmarked": nowStr,
+		},
 	}
 
 	if err := s.db.WithContext(ctx).Create(bookmark).Error; err != nil {
 		return nil, fmt.Errorf("failed to create bookmark: %w", err)
 	}
 
-	// Create history entry
+	// Create history entry for creation
 	history := &BookmarkHistoryModel{
 		BookmarkID: bookmark.ID,
 		Action:     string(BookmarkActionCreated),
@@ -47,6 +69,57 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 	}
 
 	return bookmark, nil
+}
+
+// UpdateBookmarkStats updates the statistics for a bookmark
+func (s *BookmarkService) UpdateBookmarkStats(ctx context.Context, bookmarkID uint, viewIncrement int, studyIncrement int) error {
+	var bookmark BookmarkModel
+	if err := s.db.WithContext(ctx).First(&bookmark, bookmarkID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("bookmark with ID %d not found", bookmarkID)
+		}
+		return fmt.Errorf("failed to find bookmark: %w", err)
+	}
+
+	// Initialize metadata if nil
+	if bookmark.Metadata == nil {
+		bookmark.Metadata = make(map[string]interface{})
+	}
+
+	// Update view count
+	viewCount, _ := bookmark.Metadata["view_count"].(float64)
+	bookmark.Metadata["view_count"] = int(viewCount) + viewIncrement
+
+	// Update study sessions
+	studySessions, _ := bookmark.Metadata["study_sessions"].(float64)
+	bookmark.Metadata["study_sessions"] = int(studySessions) + studyIncrement
+
+	// Update last viewed timestamp
+	bookmark.Metadata["last_viewed"] = time.Now().UTC().Format(time.RFC3339)
+
+	// Update the bookmark
+	if err := s.db.WithContext(ctx).Save(&bookmark).Error; err != nil {
+		return fmt.Errorf("failed to update bookmark stats: %w", err)
+	}
+
+	return nil
+}
+
+// GetBookmarkStats retrieves the statistics for a bookmark
+func (s *BookmarkService) GetBookmarkStats(ctx context.Context, bookmarkID uint) (map[string]interface{}, error) {
+	var bookmark BookmarkModel
+	if err := s.db.WithContext(ctx).Select("metadata").First(&bookmark, bookmarkID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("bookmark with ID %d not found", bookmarkID)
+		}
+		return nil, fmt.Errorf("failed to get bookmark stats: %w", err)
+	}
+
+	if bookmark.Metadata == nil {
+		return make(map[string]interface{}), nil
+	}
+
+	return bookmark.Metadata, nil
 }
 
 // GetBookmarkByID retrieves a bookmark by its ID

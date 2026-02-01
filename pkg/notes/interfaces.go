@@ -16,6 +16,8 @@ type BookmarkServiceInterface interface {
 	GetBookmarksByLearningState(ctx context.Context, state LearningState) ([]*BookmarkModel, error)
 	ListBookmarks(ctx context.Context, state string, offset, limit int) ([]*BookmarkModel, int64, error)
 	DeleteBookmark(ctx context.Context, id uint) error
+	UpdateBookmarkStats(ctx context.Context, bookmarkID uint, viewIncrement int, studyIncrement int) error
+	GetBookmarkStats(ctx context.Context, bookmarkID uint) (map[string]interface{}, error)
 }
 
 // NoteServiceInterface defines the interface for the note service

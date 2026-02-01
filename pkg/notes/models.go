@@ -19,10 +19,13 @@ type BookmarkModel struct {
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
 
 	// Learning state fields
-	LearningState string `gorm:"default:'to-review'"` // to-review, learning, mastered, archived
+	LearningState string  `gorm:"default:'to-review'"` // to-review, learning, mastered, archived
 	LastReviewed  *time.Time
 	NextReview    *time.Time
 	MasteryLevel  float32 `gorm:"default:0.0"` // 0.0 to 1.0
+
+	// Metadata for storing stats and additional information
+	Metadata map[string]interface{} `gorm:"serializer:json"`
 
 	// Relationships
 	Notes   []NoteModel            `gorm:"foreignKey:BookmarkID"`

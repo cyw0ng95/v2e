@@ -50,6 +50,8 @@ func NewRPCHandlers(container *ServiceContainer, sp *subprocess.Subprocess, logg
 	sp.RegisterHandler("RPCGetHistoryByBookmarkID", handlers.handleRPCGetHistoryByBookmarkID)
 	sp.RegisterHandler("RPCRevertBookmarkState", handlers.handleRPCRevertBookmarkState)
 	sp.RegisterHandler("RPCListMemoryCards", handlers.handleRPCListMemoryCards)
+	sp.RegisterHandler("RPCUpdateBookmarkStats", handlers.handleRPCUpdateBookmarkStats)
+	sp.RegisterHandler("RPCGetBookmarkStats", handlers.handleRPCGetBookmarkStats)
 
 	return handlers
 }
@@ -1270,6 +1272,96 @@ func (h *RPCHandlers) handleRPCListMemoryCards(ctx context.Context, msg *subproc
 		Offset:      offset,
 		Limit:       limit,
 		Total:       total,
+	}
+
+	payload, err := subprocess.MarshalFast(result)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to marshal result: %v", err)), nil
+	}
+
+	return &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            msg.ID,
+		Payload:       payload,
+		Target:        msg.Source,
+		CorrelationID: msg.CorrelationID,
+		Source:        h.sp.ID,
+	}, nil
+}
+
+// handleRPCUpdateBookmarkStats handles RPC request to update bookmark statistics
+func (h *RPCHandlers) handleRPCUpdateBookmarkStats(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	var params map[string]interface{}
+	if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to unmarshal params: %v", err)), nil
+	}
+
+	bookmarkIDFloat, ok := params["bookmark_id"].(float64)
+	if !ok {
+		return h.createErrorResponse(msg, "Missing or invalid bookmark_id"), nil
+	}
+	bookmarkID := uint(bookmarkIDFloat)
+
+	viewCountDeltaFloat, ok := params["view_count_delta"].(float64)
+	if !ok {
+		return h.createErrorResponse(msg, "Missing or invalid view_count_delta"), nil
+	}
+	viewCountDelta := int(viewCountDeltaFloat)
+
+	studySessionDeltaFloat, ok := params["study_session_delta"].(float64)
+	if !ok {
+		return h.createErrorResponse(msg, "Missing or invalid study_session_delta"), nil
+	}
+	studySessionDelta := int(studySessionDeltaFloat)
+
+	err := h.container.BookmarkService.UpdateBookmarkStats(ctx, bookmarkID, viewCountDelta, studySessionDelta)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to update bookmark stats: %v", err)), nil
+	}
+
+	result := struct {
+		Success bool `json:"success"`
+	}{
+		Success: true,
+	}
+
+	payload, err := subprocess.MarshalFast(result)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to marshal result: %v", err)), nil
+	}
+
+	return &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            msg.ID,
+		Payload:       payload,
+		Target:        msg.Source,
+		CorrelationID: msg.CorrelationID,
+		Source:        h.sp.ID,
+	}, nil
+}
+
+// handleRPCGetBookmarkStats handles RPC request to get bookmark statistics
+func (h *RPCHandlers) handleRPCGetBookmarkStats(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	var params map[string]interface{}
+	if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to unmarshal params: %v", err)), nil
+	}
+
+	bookmarkIDFloat, ok := params["bookmark_id"].(float64)
+	if !ok {
+		return h.createErrorResponse(msg, "Missing or invalid bookmark_id"), nil
+	}
+	bookmarkID := uint(bookmarkIDFloat)
+
+	stats, err := h.container.BookmarkService.GetBookmarkStats(ctx, bookmarkID)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to get bookmark stats: %v", err)), nil
+	}
+
+	result := struct {
+		Stats map[string]interface{} `json:"stats"`
+	}{
+		Stats: stats,
 	}
 
 	payload, err := subprocess.MarshalFast(result)

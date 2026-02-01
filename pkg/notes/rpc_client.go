@@ -360,6 +360,60 @@ func (s *BookmarkServiceRPCClient) DeleteBookmark(ctx context.Context, id uint) 
 	return nil
 }
 
+// UpdateBookmarkStats updates bookmark statistics via RPC
+func (s *BookmarkServiceRPCClient) UpdateBookmarkStats(ctx context.Context, bookmarkID uint, viewCountDelta, studySessionDelta int) error {
+	params := map[string]interface{}{
+		"bookmark_id":         bookmarkID,
+		"view_count_delta":    viewCountDelta,
+		"study_session_delta": studySessionDelta,
+	}
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCUpdateBookmarkStats", params)
+	if err != nil {
+		return fmt.Errorf("failed to update bookmark stats via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return nil
+}
+
+// GetBookmarkStats retrieves bookmark statistics via RPC
+func (s *BookmarkServiceRPCClient) GetBookmarkStats(ctx context.Context, bookmarkID uint) (map[string]interface{}, error) {
+	params := map[string]interface{}{
+		"bookmark_id": bookmarkID,
+	}
+
+	var result struct {
+		Stats map[string]interface{} `json:"stats"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCGetBookmarkStats", params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bookmark stats via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return nil, fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return result.Stats, nil
+}
+
 // NoteServiceRPCClient implements the NoteService interface using RPC
 type NoteServiceRPCClient struct {
 	Client *RPCClient
