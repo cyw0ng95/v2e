@@ -43,17 +43,10 @@ func BenchmarkRPCMessageOverhead(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		msg := &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            "bench-1",
-			CorrelationID: "bench-corr-1",
-			Target:        "meta",
-		}
-
 		payload, err := subprocess.MarshalFast(data)
 		if err != nil {
 			b.Fatalf("Marshal failed: %v", err)
 		}
-		msg.Payload = payload
+		_ = payload // Use the payload to avoid unused write warnings
 	}
 }

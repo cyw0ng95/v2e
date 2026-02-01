@@ -16,7 +16,7 @@ import (
 )
 
 // registerHandlers registers the REST endpoints on the provided router group
-func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient, rpcTimeoutSec int) {
+func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 	// Health check endpoint
 	restful.GET("/health", func(c *gin.Context) {
 		common.Debug(LogMsgHealthCheckReceived)
@@ -151,7 +151,7 @@ func TestRegisterHandlers_HealthEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 	rg := r.Group("/api")
-	registerHandlers(rg, nil, 0)
+	registerHandlers(rg, nil)
 
 	// Perform request
 	w := httptest.NewRecorder()
@@ -174,7 +174,7 @@ func TestRegisterHandlers_RPCForwarding(t *testing.T) {
 	sp := subprocess.New("test-client")
 	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
 	rpcClient := NewRPCClientWithSubprocess(sp, logger, 5*time.Second)
-	registerHandlers(rg, rpcClient, 5)
+	registerHandlers(rg, rpcClient)
 
 	// Perform request
 	w := httptest.NewRecorder()

@@ -1,6 +1,7 @@
 package local
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -167,7 +168,16 @@ func (cdb *CachedDB) SaveCVE(cveItem *cve.CVEItem) error {
 	var existing CVERecord
 	result := cdb.db.Unscoped().Where("cve_id = ?", cveItem.ID).First(&existing)
 
-	if result.Error == nil {
+	switch {
+	case errors.Is(result.Error, gorm.ErrRecordNotFound):
+		// Record doesn't exist, create it
+		if err := cdb.db.Create(&record).Error; err != nil {
+			return err
+		}
+	case result.Error != nil:
+		// Other error occurred
+		return result.Error
+	default:
 		// Record exists, update it
 		record.ID = existing.ID
 		record.CreatedAt = existing.CreatedAt
@@ -175,13 +185,6 @@ func (cdb *CachedDB) SaveCVE(cveItem *cve.CVEItem) error {
 		if err := cdb.db.Unscoped().Save(&record).Error; err != nil {
 			return err
 		}
-	} else if result.Error == gorm.ErrRecordNotFound {
-		// Record doesn't exist, create it
-		if err := cdb.db.Create(&record).Error; err != nil {
-			return err
-		}
-	} else {
-		return result.Error
 	}
 
 	// Update cache with the new/updated item

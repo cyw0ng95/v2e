@@ -21,7 +21,7 @@ const (
 )
 
 // setupRouter creates the Gin router, registers middleware and handlers
-func setupRouter(rpcClient *RPCClient, rpcTimeoutSec int, staticDir string) *gin.Engine {
+func setupRouter(rpcClient *RPCClient, _ int, staticDir string) *gin.Engine {
 	// Set Gin mode to release (minimal logging)
 	gin.SetMode(gin.ReleaseMode)
 
@@ -41,7 +41,7 @@ func setupRouter(rpcClient *RPCClient, rpcTimeoutSec int, staticDir string) *gin
 
 	// Create RESTful API group
 	restful := router.Group("/restful")
-	registerHandlers(restful, rpcClient, int(rpcTimeoutSec))
+	registerHandlers(restful, rpcClient)
 	common.Info("[ACCESS] RESTful API group registered")
 
 	// Serve static files from configured staticDir if present (Next.js static export)

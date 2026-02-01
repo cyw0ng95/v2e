@@ -88,7 +88,7 @@ func TestRPCHandler_MissingMethod(t *testing.T) {
 	rpcClient := NewRPCClientWithSubprocess(sp, logger, 1*time.Second)
 	r := gin.Default()
 	rg := r.Group("/restful")
-	registerHandlers(rg, rpcClient, 1)
+	registerHandlers(rg, rpcClient)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{}`))
@@ -110,7 +110,7 @@ func TestRPCHandler_RPCSendError(t *testing.T) {
 	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
 	rpcClient := NewRPCClientWithSubprocess(sp, logger, 1*time.Second)
 	sp.SetOutput(&errorWriter{})
-	registerHandlers(rg, rpcClient, 1)
+	registerHandlers(rg, rpcClient)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x"}`))
@@ -136,7 +136,7 @@ func TestRPCHandler_MessageTypeError(t *testing.T) {
 	rg := r.Group("/restful")
 
 	rpcClient, _ := newRPCClientWithResponse(subprocess.MessageTypeError, nil, "boom")
-	registerHandlers(rg, rpcClient, 1)
+	registerHandlers(rg, rpcClient)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x"}`))
@@ -166,7 +166,7 @@ func TestRPCHandler_InvalidPayload(t *testing.T) {
 
 	// Create a client whose response writer will set raw []byte payload directly
 	rpcClient, _ := newRPCClientWithResponse(subprocess.MessageTypeResponse, []byte("not-json"), "")
-	registerHandlers(rg, rpcClient, 1)
+	registerHandlers(rg, rpcClient)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x"}`))
@@ -191,7 +191,7 @@ func TestRPCHandler_DefaultTargetBroker(t *testing.T) {
 	r := gin.Default()
 	rg := r.Group("/restful")
 	rpcClient, rw := newRPCClientWithResponse(subprocess.MessageTypeResponse, map[string]bool{"ok": true}, "")
-	registerHandlers(rg, rpcClient, 1)
+	registerHandlers(rg, rpcClient)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/restful/rpc", strings.NewReader(`{"method":"x","target":""}`))
