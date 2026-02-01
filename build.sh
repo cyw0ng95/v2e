@@ -166,6 +166,55 @@ setup_build_dir() {
     fi
 }
 
+# Ensure `vconfig` tool is built and a config file exists
+ensure_vconfig_and_config() {
+    mkdir -p .build
+    # Build the vconfig helper if source exists and binary missing
+    if [ -f "tool/vconfig/main.go" ]; then
+        if [ ! -f ".build/vconfig" ]; then
+            if [ "$VERBOSE" = true ]; then
+                log_debug "Building vconfig helper..."
+            fi
+            # Build with only the necessary files to avoid pulling unrelated packages
+            go build -o .build/vconfig tool/vconfig/main.go tool/vconfig/config.go tool/vconfig/generator.go tool/vconfig/tui.go
+        fi
+    fi
+
+    # If config file does not exist, generate defaults using vconfig if available
+    if [ ! -f ".build/.config" ]; then
+        if [ -x ".build/vconfig" ]; then
+            if [ "$VERBOSE" = true ]; then
+                log_debug "Generating default .build/.config using vconfig"
+            fi
+            .build/vconfig -generate-defaults -config .build/.config || true
+        else
+            # Fallback: create an empty config file to avoid downstream failures
+            if [ "$VERBOSE" = true ]; then
+                log_debug "vconfig not available; writing empty .build/.config"
+            fi
+            : > .build/.config
+        fi
+    fi
+}
+
+# Read build tags from config via vconfig (or return default)
+get_config_build_tags() {
+    if [ -x ".build/vconfig" ] && [ -f ".build/.config" ]; then
+        .build/vconfig -get-build-flags -config .build/.config 2>/dev/null || echo "$GO_TAGS"
+    else
+        echo "$GO_TAGS"
+    fi
+}
+
+# Read ldflags from config via vconfig (or return empty)
+get_config_ldflags() {
+    if [ -x ".build/vconfig" ] && [ -f ".build/.config" ]; then
+        .build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
 # Efficiently kill all v2e processes
 kill_v2e_processes() {
     local timeout=${1:-5}
