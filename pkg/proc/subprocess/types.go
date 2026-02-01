@@ -9,7 +9,6 @@ import (
 	"os"
 	"sync"
 )
-)
 
 // MaxMessageSize is the maximum size of a message that can be sent between processes
 // This is set to 10MB to accommodate large CVE data from NVD API
