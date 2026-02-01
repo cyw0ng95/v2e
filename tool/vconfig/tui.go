@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gizak/termui/v3"
@@ -71,17 +70,6 @@ func runTUIInteractive() error {
 		fmt.Printf("Created default config at %s\n", configPath)
 	}
 
-	// Create UI elements
-	grid := termui.NewGrid()
-	termWidth, termHeight := termui.TerminalDimensions()
-	grid.SetRect(0, 0, termWidth, termHeight)
-
-	// Create a title
-	title := widgets.NewParagraph()
-	title.Text = "vconfig - Configuration Editor"
-	title.TextStyle.Fg = termui.ColorGreen
-	title.Border = false
-
 	// Group features by major and minor class
 	groups := make(map[string]map[string][]string)
 	groupOrder := make([]string, 0)         // Track order of major classes
@@ -126,146 +114,318 @@ func runTUIInteractive() error {
 		}
 	}
 
-	// Create a list of configuration options organized by major/minor class
-	list := widgets.NewList()
-	list.Title = "Configuration Options (Grouped by Class)"
-	list.Rows = make([]string, 0)
+	// Create UI elements
+	termWidth, termHeight := termui.TerminalDimensions()
 
-	// Add features grouped by major and minor class
-	for _, majorClass := range groupOrder {
-		list.Rows = append(list.Rows, fmt.Sprintf("[=== %s ===](fg:green)", majorClass))
-		for _, minorClass := range minorOrder[majorClass] {
-			list.Rows = append(list.Rows, fmt.Sprintf("  [--- %s ---](fg:cyan)", minorClass))
-			for _, key := range groups[majorClass][minorClass] {
-				option := config.Features[key]
-				status := "disabled"
-				if val, ok := option.Default.(bool); ok && val {
-					status = "enabled"
-				} else if strVal, ok := option.Default.(string); ok {
-					status = strVal
-				} else if intVal, ok := option.Default.(int); ok {
-					status = fmt.Sprintf("%d", intVal)
-				}
-				list.Rows = append(list.Rows, fmt.Sprintf("    [%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, status))
-			}
-		}
-		list.Rows = append(list.Rows, "") // Add blank line between major groups
-	}
+	// Create a title
+	title := widgets.NewParagraph()
+	title.Text = "vconfig - Configuration Editor"
+	title.TextStyle.Fg = termui.ColorGreen
+	title.Border = false
 
-	// Update featureKeys to match the new ordering for navigation purposes
-	featureKeys := make([]string, 0)
-	for _, majorClass := range groupOrder {
-		for _, minorClass := range minorOrder[majorClass] {
-			for _, key := range groups[majorClass][minorClass] {
-				featureKeys = append(featureKeys, key)
-			}
-		}
-	}
+	// Create three columns and a tweak panel
+	majorClassList := widgets.NewList()
+	majorClassList.Title = "Major Classes"
+	majorClassList.SelectedRowStyle = termui.NewStyle(termui.ColorWhite, termui.ColorRed)
+	majorClassList.WrapText = false
 
-	list.SelectedRowStyle = termui.NewStyle(termui.ColorWhite, termui.ColorBlue)
-	list.WrapText = false
+	minorClassList := widgets.NewList()
+	minorClassList.Title = "Minor Classes"
+	minorClassList.SelectedRowStyle = termui.NewStyle(termui.ColorWhite, termui.ColorYellow)
+	minorClassList.WrapText = false
 
-	// Create instructions
+	optionsList := widgets.NewList()
+	optionsList.Title = "Options"
+	optionsList.SelectedRowStyle = termui.NewStyle(termui.ColorWhite, termui.ColorBlue)
+	optionsList.WrapText = false
+
+	tweakPanel := widgets.NewParagraph()
+	tweakPanel.Title = "Tweak Panel"
+	tweakPanel.WrapText = true
+	tweakPanel.Border = true
+
 	instructions := widgets.NewParagraph()
-	instructions.Text = "Press q to quit, j/k to navigate, space to toggle, s to save & exit & show config, p to print config"
+	instructions.Text = "ARROW KEYS: Navigate | SPACE: Toggle/Edit | q: Quit | s: Save & Exit | p: Preview Config"
 	instructions.Title = "Instructions"
 	instructions.Border = false
 
-	// Set up the grid layout
-	grid.Set(
-		termui.NewRow(1.0/10, title),
-		termui.NewRow(8.0/10, list),
-		termui.NewRow(1.0/10, instructions),
-	)
+	// State variables
+	selectedMajor := 0
+	selectedMinor := 0
+	selectedOption := 0
+	activePane := 0 // 0: major, 1: minor, 2: options
 
-	termui.Render(grid)
+	// Populate major class list
+	for _, majorClass := range groupOrder {
+		majorClassList.Rows = append(majorClassList.Rows, majorClass)
+	}
+
+	// Helper function to get status string
+	getStatusString := func(key string, option ConfigOption) string {
+		switch v := option.Default.(type) {
+		case bool:
+			if v {
+				return "enabled"
+			} else {
+				return "disabled"
+			}
+		case string:
+			return v
+		case int:
+			return fmt.Sprintf("%d", v)
+		case float64:
+			return fmt.Sprintf("%g", v)
+		default:
+			return fmt.Sprintf("%v", v)
+		}
+	}
+
+	// Update the minor class list based on selected major class
+	updateMinorClasses := func() {
+		if selectedMajor >= 0 && selectedMajor < len(groupOrder) {
+			majorClass := groupOrder[selectedMajor]
+			minorClassList.Rows = minorOrder[majorClass]
+		} else {
+			minorClassList.Rows = []string{}
+		}
+		minorClassList.SelectedRow = 0
+		selectedMinor = 0
+	}
+
+	// Update the options list based on selected major and minor class
+	updateOptions := func() {
+		if selectedMajor >= 0 && selectedMajor < len(groupOrder) &&
+			selectedMinor >= 0 && selectedMinor < len(minorOrder[groupOrder[selectedMajor]]) {
+			majorClass := groupOrder[selectedMajor]
+			minorClass := minorOrder[majorClass][selectedMinor]
+			optionsList.Rows = []string{}
+			for _, key := range groups[majorClass][minorClass] {
+				status := getStatusString(key, config.Features[key])
+				optionsList.Rows = append(optionsList.Rows, fmt.Sprintf("%s [%s]", key, status))
+			}
+		} else {
+			optionsList.Rows = []string{}
+		}
+		selectedOption = 0
+		optionsList.SelectedRow = 0
+	}
+
+	// Update the tweak panel with information about the selected option and editing interface
+	updateTweakPanel := func() {
+		if selectedMajor >= 0 && selectedMajor < len(groupOrder) &&
+			selectedMinor >= 0 && selectedMinor < len(minorOrder[groupOrder[selectedMajor]]) &&
+			selectedOption >= 0 && selectedOption < len(groups[groupOrder[selectedMajor]][minorOrder[groupOrder[selectedMajor]][selectedMinor]]) {
+			majorClass := groupOrder[selectedMajor]
+			minorClass := minorOrder[majorClass][selectedMinor]
+			key := groups[majorClass][minorClass][selectedOption]
+			option := config.Features[key]
+
+			// Create different editing interfaces based on the option type
+			switch option.Type {
+			case "bool":
+				value := "off"
+				if val, ok := option.Default.(bool); ok && val {
+					value = "on"
+				}
+				tweakPanel.Text = fmt.Sprintf(
+					"NAME: %s\n\nDESCRIPTION:\n%s\n\nTYPE: %s\nCURRENT VALUE: %s\n\nACTION: Press SPACE to toggle (currently: %s)\n\nMETHOD: %s\nTARGET: %s",
+					key, option.Description, option.Type, option.Default, value, option.Method, option.Target,
+				)
+			case "string":
+				if len(option.Values) > 0 {
+					// If there are predefined values, show cycling options
+					var availableValues string
+					for i, v := range option.Values {
+						if i == 0 {
+							availableValues = v
+						} else {
+							availableValues = availableValues + ", " + v
+						}
+					}
+					tweakPanel.Text = fmt.Sprintf(
+						"NAME: %s\n\nDESCRIPTION:\n%s\n\nTYPE: %s\nCURRENT VALUE: %s\n\nAVAILABLE VALUES: %s\n\nACTION: Press SPACE to cycle through values\n\nMETHOD: %s\nTARGET: %s",
+						key, option.Description, option.Type, option.Default, availableValues, option.Method, option.Target,
+					)
+				} else {
+					// For freeform strings, suggest an edit interface
+					tweakPanel.Text = fmt.Sprintf(
+						"NAME: %s\n\nDESCRIPTION:\n%s\n\nTYPE: %s\nCURRENT VALUE: %s\n\nACTION: String value (editing not implemented in TUI)\n\nMETHOD: %s\nTARGET: %s",
+						key, option.Description, option.Type, option.Default, option.Method, option.Target,
+					)
+				}
+			case "int":
+				tweakPanel.Text = fmt.Sprintf(
+					"NAME: %s\n\nDESCRIPTION:\n%s\n\nTYPE: %s\nCURRENT VALUE: %v\n\nACTION: Integer value (editing not implemented in TUI)\n\nMETHOD: %s\nTARGET: %s",
+					key, option.Description, option.Type, option.Default, option.Method, option.Target,
+				)
+			default:
+				tweakPanel.Text = fmt.Sprintf(
+					"NAME: %s\n\nDESCRIPTION:\n%s\n\nTYPE: %s\nCURRENT VALUE: %v\n\nACTION: Unsupported type\n\nMETHOD: %s\nTARGET: %s",
+					key, option.Description, option.Type, option.Default, option.Method, option.Target,
+				)
+			}
+		} else {
+			tweakPanel.Text = "No option selected\n\nUse arrow keys to navigate:\n  - Left/Right: Move between columns\n  - Up/Down: Select items\n  - Space: Toggle/edit value"
+		}
+	}
+
+	// Update grid layout to show/hide details panel
+	updateLayout := func() {
+		// Update borders to highlight active pane
+		majorClassList.BorderStyle = termui.NewStyle(termui.ColorWhite)
+		minorClassList.BorderStyle = termui.NewStyle(termui.ColorWhite)
+		optionsList.BorderStyle = termui.NewStyle(termui.ColorWhite)
+
+		switch activePane {
+		case 0: // Major Classes active
+			majorClassList.BorderStyle = termui.NewStyle(termui.ColorRed)
+		case 1: // Minor Classes active
+			minorClassList.BorderStyle = termui.NewStyle(termui.ColorYellow)
+		case 2: // Options active
+			optionsList.BorderStyle = termui.NewStyle(termui.ColorCyan)
+		}
+
+		// Always show the tweak panel below the selectors
+		majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), int(float64(termHeight)*0.6))
+		minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), int(float64(termHeight)*0.6))
+		optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, int(float64(termHeight)*0.6))
+		tweakPanel.SetRect(0, int(float64(termHeight)*0.6), termWidth, termHeight-2)
+		instructions.SetRect(0, termHeight-2, termWidth, termHeight)
+		termui.Render(title, majorClassList, minorClassList, optionsList, tweakPanel, instructions)
+	}
+
+	// Initial population
+	if len(groupOrder) > 0 {
+		updateMinorClasses()
+		updateOptions()
+		updateTweakPanel()
+	}
+
+	updateLayout()
 
 	// Handle events
 	uiEvents := termui.PollEvents()
-	selectedIndex := 0
 
 	for {
 		e := <-uiEvents
 		switch e.ID {
 		case "q", "<C-c>":
 			return nil
+		case "<Right>":
+			if activePane < 2 {
+				activePane++
+			}
+		case "<Left>":
+			if activePane > 0 {
+				activePane--
+			}
 		case "j", "<Down>":
-			if selectedIndex < len(list.Rows)-1 {
-				selectedIndex++
-				list.SelectedRow = selectedIndex
-				termui.Render(grid)
-			}
-		case "k", "<Up>":
-			if selectedIndex > 0 {
-				selectedIndex--
-				list.SelectedRow = selectedIndex
-				termui.Render(grid)
-			}
-		case " ", "<Enter>":
-			// Toggle the selected option using the ordered featureKeys
-			if len(list.Rows) > 0 && selectedIndex < len(featureKeys) {
-				// Filter out the group header entries to get the actual config key
-				actualConfigIndex := 0
-				for i, rowText := range list.Rows {
-					if i == selectedIndex {
-						break
-					}
-					// Skip group headers and empty lines
-					if !strings.HasPrefix(rowText, "[=== ") && !strings.HasPrefix(rowText, "  [--- ") && rowText != "" {
-						actualConfigIndex++
-					}
+			switch activePane {
+			case 0: // Major class list
+				if selectedMajor < len(groupOrder)-1 {
+					selectedMajor++
+					majorClassList.SelectedRow = selectedMajor
+					updateMinorClasses()
+					updateOptions()
+					updateTweakPanel()
 				}
+			case 1: // Minor class list
+				if selectedMinor < len(minorClassList.Rows)-1 {
+					selectedMinor++
+					minorClassList.SelectedRow = selectedMinor
+					updateOptions()
+					updateTweakPanel()
+				}
+			case 2: // Options list
+				if selectedOption < len(optionsList.Rows)-1 {
+					selectedOption++
+					optionsList.SelectedRow = selectedOption
+					updateTweakPanel()
+				}
+			}
+			updateLayout()
+		case "k", "<Up>":
+			switch activePane {
+			case 0: // Major class list
+				if selectedMajor > 0 {
+					selectedMajor--
+					majorClassList.SelectedRow = selectedMajor
+					updateMinorClasses()
+					updateOptions()
+					updateTweakPanel()
+				}
+			case 1: // Minor class list
+				if selectedMinor > 0 {
+					selectedMinor--
+					minorClassList.SelectedRow = selectedMinor
+					updateOptions()
+					updateTweakPanel()
+				}
+			case 2: // Options list
+				if selectedOption > 0 {
+					selectedOption--
+					optionsList.SelectedRow = selectedOption
+					updateTweakPanel()
+				}
+			}
+			updateLayout()
+		case " ", "<Enter>":
+			if activePane == 2 && selectedOption >= 0 &&
+				selectedOption < len(groups[groupOrder[selectedMajor]][minorOrder[groupOrder[selectedMajor]][selectedMinor]]) {
+				// Toggle/edit the selected option
+				majorClass := groupOrder[selectedMajor]
+				minorClass := minorOrder[majorClass][selectedMinor]
+				key := groups[majorClass][minorClass][selectedOption]
+				option := config.Features[key]
 
-				// Get the key from our reordered list
-				if actualConfigIndex >= 0 && actualConfigIndex < len(featureKeys) {
-					key := featureKeys[actualConfigIndex]
-					option := config.Features[key]
-
-					// Toggle based on type
+				// Toggle based on type
+				if option.Type == "bool" {
 					if val, ok := option.Default.(bool); ok {
 						newVal := !val
 						option.Default = newVal
-
-						// Update the list display
-						status := "disabled"
-						if newVal {
-							status = "enabled"
-						}
-						// Find the correct row to update based on the actual config index
-						rowIndex := findActualRowIndex(list.Rows, actualConfigIndex)
-						if rowIndex >= 0 && rowIndex < len(list.Rows) {
-							list.Rows[rowIndex] = fmt.Sprintf("[%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, status)
-						}
-
-						// Update the config
 						config.Features[key] = option
-					} else if option.Type == "string" {
-						// For string options, cycle through available values if any
-						if len(option.Values) > 0 {
-							currentStr := option.Default.(string)
-							nextIndex := 0
-							// Find current value index
-							for i, v := range option.Values {
-								if v == currentStr {
-									nextIndex = (i + 1) % len(option.Values)
-									break
-								}
-							}
-							newValue := option.Values[nextIndex]
-							option.Default = newValue
-
-							// Update the list display
-							rowIndex := findActualRowIndex(list.Rows, actualConfigIndex)
-							if rowIndex >= 0 && rowIndex < len(list.Rows) {
-								list.Rows[rowIndex] = fmt.Sprintf("[%s](fg:blue) - %s [%s](fg:yellow)", key, option.Description, newValue)
-							}
-
-							// Update the config
-							config.Features[key] = option
+						// Update the display
+						updateOptions()
+						updateTweakPanel()
+					} else {
+						// Convert to bool if needed
+						strVal := fmt.Sprintf("%v", option.Default)
+						if strVal == "true" || strVal == "1" || strVal == "y" {
+							option.Default = false
+						} else {
+							option.Default = true
 						}
+						config.Features[key] = option
+						updateOptions()
+						updateTweakPanel()
 					}
-					termui.Render(grid)
+				} else if option.Type == "string" {
+					// For string options, cycle through available values if any
+					if len(option.Values) > 0 {
+						currentStr := option.Default.(string)
+						nextIndex := 0
+						// Find current value index
+						for i, v := range option.Values {
+							if v == currentStr {
+								nextIndex = (i + 1) % len(option.Values)
+								break
+							}
+						}
+						newValue := option.Values[nextIndex]
+						option.Default = newValue
+						config.Features[key] = option
+						updateOptions()
+						updateTweakPanel()
+					} else {
+						// For string options without predefined values, we could implement an edit interface
+						// For now, we'll update the tweak panel to show the option information
+						updateTweakPanel()
+					}
+				} else if option.Type == "int" {
+					// For integer options, we could implement an edit interface
+					updateTweakPanel()
 				}
+				updateLayout()
 			}
 		case "s":
 			// Save the configuration
@@ -277,13 +437,12 @@ func runTUIInteractive() error {
 				errorMsg.Border = true
 
 				// Temporarily show error
-				grid.Set(
-					termui.NewRow(1.0/10, title),
-					termui.NewRow(7.0/10, list),
-					termui.NewRow(1.0/10, errorMsg),
-					termui.NewRow(1.0/10, instructions),
-				)
-				termui.Render(grid)
+				majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
+				minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
+				optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+				errorMsg.SetRect(0, termHeight-2, termWidth, termHeight)
+				instructions.SetRect(0, termHeight-1, termWidth, termHeight)
+				termui.Render(title, majorClassList, minorClassList, optionsList, errorMsg, instructions)
 
 				// Close termui and show error immediately
 				termui.Close()
@@ -301,13 +460,12 @@ func runTUIInteractive() error {
 				successMsg.Border = true
 
 				// Temporarily show success
-				grid.Set(
-					termui.NewRow(1.0/10, title),
-					termui.NewRow(7.0/10, list),
-					termui.NewRow(1.0/10, successMsg),
-					termui.NewRow(1.0/10, instructions),
-				)
-				termui.Render(grid)
+				majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
+				minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
+				optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+				successMsg.SetRect(0, termHeight-2, termWidth, termHeight)
+				instructions.SetRect(0, termHeight-1, termWidth, termHeight)
+				termui.Render(title, majorClassList, minorClassList, optionsList, successMsg, instructions)
 
 				// Now print the config that was written
 				content, err := os.ReadFile(configPath)
@@ -342,23 +500,17 @@ func runTUIInteractive() error {
 				errorMsg.Border = true
 
 				// Temporarily show error
-				grid.Set(
-					termui.NewRow(1.0/10, title),
-					termui.NewRow(7.0/10, list),
-					termui.NewRow(1.0/10, errorMsg),
-					termui.NewRow(1.0/10, instructions),
-				)
-				termui.Render(grid)
+				majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
+				minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
+				optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+				errorMsg.SetRect(0, termHeight-2, termWidth, termHeight)
+				instructions.SetRect(0, termHeight-1, termWidth, termHeight)
+				termui.Render(title, majorClassList, minorClassList, optionsList, errorMsg, instructions)
 
 				// Wait a moment then restore
 				go func() {
 					time.Sleep(time.Second * 3)
-					grid.Set(
-						termui.NewRow(1.0/10, title),
-						termui.NewRow(8.0/10, list),
-						termui.NewRow(1.0/10, instructions),
-					)
-					termui.Render(grid)
+					updateLayout()
 				}()
 			} else {
 				// Read and display the config content in the TUI
@@ -372,23 +524,17 @@ func runTUIInteractive() error {
 					errorMsg.Border = true
 
 					// Temporarily show error
-					grid.Set(
-						termui.NewRow(1.0/10, title),
-						termui.NewRow(7.0/10, list),
-						termui.NewRow(1.0/10, errorMsg),
-						termui.NewRow(1.0/10, instructions),
-					)
-					termui.Render(grid)
+					majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
+					minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
+					optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+					errorMsg.SetRect(0, termHeight-2, termWidth, termHeight)
+					instructions.SetRect(0, termHeight-1, termWidth, termHeight)
+					termui.Render(title, majorClassList, minorClassList, optionsList, errorMsg, instructions)
 
 					// Wait a moment then restore
 					go func() {
 						time.Sleep(time.Second * 3)
-						grid.Set(
-							termui.NewRow(1.0/10, title),
-							termui.NewRow(8.0/10, list),
-							termui.NewRow(1.0/10, instructions),
-						)
-						termui.Render(grid)
+						updateLayout()
 					}()
 				} else {
 					// Show the config content
@@ -399,42 +545,19 @@ func runTUIInteractive() error {
 					configDisplay.Border = true
 
 					// Temporarily show config
-					grid.Set(
-						termui.NewRow(1.0/10, title),
-						termui.NewRow(7.0/10, configDisplay),
-						termui.NewRow(2.0/10, instructions),
-					)
-					termui.Render(grid)
+					configDisplay.SetRect(0, 1, termWidth, termHeight-1)
+					instructions.SetRect(0, termHeight-1, termWidth, termHeight)
+					termui.Render(title, configDisplay, instructions)
 
 					// Wait a moment then restore
 					go func() {
 						time.Sleep(time.Second * 5)
-						grid.Set(
-							termui.NewRow(1.0/10, title),
-							termui.NewRow(8.0/10, list),
-							termui.NewRow(1.0/10, instructions),
-						)
-						termui.Render(grid)
+						updateLayout()
 					}()
 				}
-				// Clean up temp file
-				os.Remove(tempConfigPath)
 			}
+			// Clean up temp file
+			os.Remove(tempConfigPath)
 		}
 	}
-}
-
-// findActualRowIndex finds the actual row index in the list for a given config option index
-func findActualRowIndex(rows []string, configIndex int) int {
-	actualIndex := 0
-	for i, rowText := range rows {
-		// Skip group headers and empty lines
-		if !strings.HasPrefix(rowText, "[=== ") && !strings.HasPrefix(rowText, "  [--- ") && rowText != "" {
-			if actualIndex == configIndex {
-				return i
-			}
-			actualIndex++
-		}
-	}
-	return -1 // Not found
 }
