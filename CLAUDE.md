@@ -49,6 +49,8 @@ Frontend (Next.js) → Access Service (/restful/rpc) → Broker → Backend Serv
 3. **Subprocess I/O constraint** - services must only read stdin / write stdout for broker-controlled RPC
 4. **Use `build.sh` wrapper** - all builds and tests must use `./build.sh`, never direct `go build`/`go test`
 5. **Document RPC APIs in `service.md`** - every RPC handler must be documented in the service's `service.md` file
+6. **NO remote API calls in tests** - tests must not access NVD, GitHub, or external services (use mocks/fixtures)
+7. **Tests must be fast** - unit tests should run in milliseconds; slow tests hurt developer experience
 
 ### Transport Layer
 - **Default**: Unix Domain Sockets (UDS) with 0600 permissions
@@ -89,11 +91,22 @@ func main() {
 
 ## Testing Guidelines
 
+**CRITICAL TEST REQUIREMENTS:**
+
+1. **NO REMOTE API ACCESS** - Tests must NOT access NVD, GitHub APIs, or any external services. Remote API calls cause flaky tests due to rate limiting, network issues, and service unavailability. Use mocks, fixtures, or local test data instead.
+
+2. **TESTS MUST BE FAST** - Unit tests should run in milliseconds. Slow tests degrade developer experience and CI feedback. If a test is slow, consider:
+   - Using in-memory databases instead of disk I/O
+   - Reducing test data size
+   - Mocking expensive operations
+   - Moving long-running tests to a separate benchmark or integration suite
+
 ### Unit Tests
 - Located alongside source (`*_test.go`)
 - Pattern: `Test*` functions only (use `-run='^Test'` to exclude fuzz tests)
 - Table-driven tests preferred
 - Run with `-race` flag
+- **NO remote API calls** - use mocks/fixtures only
 
 ### Fuzz Tests
 - Pattern: `Fuzz*` functions
@@ -109,6 +122,7 @@ func main() {
 - Use pytest framework in `tests/` directory
 - **Must** start broker/access gateway - never spawn subprocesses directly
 - Test via `/restful/rpc` endpoint
+- **NO remote API calls** - use test fixtures and mock data
 
 ### CI Configuration
 `.github/workflows/test.yml` defines: unit-tests, fuzz-tests, build-and-package, performance-benchmarks jobs.
@@ -205,10 +219,14 @@ Run `./build.sh -c` to access the TUI configuration manager for build flags and 
 
 Per `.github/agents/v2e-go.agent.md`:
 1. **Use `build.sh` for all builds and tests** - never use direct `go build` or `go test`
-2. **Commit at each milestone** - incremental, clean commits
+2. **Commit in-time (frequently, at logical milestones)** - make incremental, clean commits after each meaningful change. Don't batch unrelated changes or wait until "everything is done."
+   - Commit after adding/changing RPC handlers (with updated `service.md`)
+   - Commit after adding tests (separate commit from implementation)
+   - Commit after completing a logical unit of work
 3. **Exclude binaries and databases** - never commit `.db`, `.db-wal`, `.db-shm`, compiled binaries
 4. **Document all RPC APIs in `service.md`** - update existing `service.md` files before committing new RPC handlers
 5. **Include tests** - table-driven unit tests and `testing.B` benchmarks for performance-critical paths
+6. **NO flaky remote API tests** - never add tests that access NVD, GitHub, or other external services
 
 ## Job Session Management
 
