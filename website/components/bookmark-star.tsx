@@ -25,40 +25,45 @@ const BookmarkStar: React.FC<BookmarkStarProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if item is already bookmarked on component mount and when itemId/itemType changes
+  // Only execute in Learn mode
+  useEffect(() => {
+    if (viewMode !== 'learn') {
+      return;
+    }
+
+    const checkBookmarkStatus = async () => {
+      setLoading(true);
+      try {
+        // First, try to find an existing bookmark for this item
+        const listResponse = await rpcClient.listBookmarks({
+          item_id: itemId,
+          item_type: itemType
+        });
+
+        if (listResponse.retcode === 0 && listResponse.payload && listResponse.payload.bookmarks && listResponse.payload.bookmarks.length > 0) {
+          const foundBookmark = listResponse.payload.bookmarks[0];
+          setBookmark(foundBookmark);
+          setIsBookmarked(true);
+        } else {
+          setIsBookmarked(false);
+          setBookmark(null);
+        }
+      } catch (err) {
+        setError('Failed to check bookmark status');
+        console.error('Error checking bookmark status:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkBookmarkStatus();
+  }, [itemId, itemType, viewMode]);
+
   // Only show in Learn mode
   if (viewMode !== 'learn') {
     return null;
   }
-
-  // Check if item is already bookmarked on component mount and when itemId/itemType changes
-  useEffect(() => {
-    checkBookmarkStatus();
-  }, [itemId, itemType]);
-
-  const checkBookmarkStatus = async () => {
-    setLoading(true);
-    try {
-      // First, try to find an existing bookmark for this item
-      const listResponse = await rpcClient.listBookmarks({ 
-        item_id: itemId, 
-        item_type: itemType 
-      });
-      
-      if (listResponse.retcode === 0 && listResponse.payload && listResponse.payload.bookmarks && listResponse.payload.bookmarks.length > 0) {
-        const foundBookmark = listResponse.payload.bookmarks[0];
-        setBookmark(foundBookmark);
-        setIsBookmarked(true);
-      } else {
-        setIsBookmarked(false);
-        setBookmark(null);
-      }
-    } catch (err) {
-      setError('Failed to check bookmark status');
-      console.error('Error checking bookmark status:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleBookmarkToggle = async () => {
     if (loading) return;
