@@ -28,6 +28,7 @@ type UDSTransport struct {
 	reconnectDelay       time.Duration
 	reconnectCb          func(error)
 	errorHandler         func(error)
+	done                 chan struct{} // Signals acceptLoop to exit
 }
 
 // NewUDSTransport creates a new UDSTransport with the specified socket path
@@ -37,6 +38,7 @@ func NewUDSTransport(socketPath string, isServer bool) *UDSTransport {
 		isServer:             isServer,
 		maxReconnectAttempts: 5,
 		reconnectDelay:       1 * time.Second,
+		done:                 make(chan struct{}),
 	}
 	return transport
 }
@@ -303,6 +305,19 @@ func (t *UDSTransport) ResetReconnectAttempts() {
 
 // Close closes the UDS connection and listener
 func (t *UDSTransport) Close() error {
+	// Signal acceptLoop to exit first, before closing listener
+	// This prevents "bad file descriptor" errors when acceptLoop is blocked on Accept
+	select {
+	case <-t.done:
+		// Already closed
+	default:
+		close(t.done)
+	}
+
+	// Give acceptLoop time to exit
+	// Small delay to allow the goroutine to receive the done signal
+	time.Sleep(10 * time.Millisecond)
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -413,27 +428,55 @@ func (t *UDSTransport) acceptLoop() {
 			return
 		}
 
-		conn, err := listener.Accept()
-		if err != nil {
-			// Stop if listener is closed
-			if strings.Contains(err.Error(), "use of closed network connection") || strings.Contains(err.Error(), "Listener closed") {
-				return
-			}
-
-			// Log error via callback if set
-			t.mu.RLock()
-			handler := t.errorHandler
-			t.mu.RUnlock()
-			if handler != nil {
-				handler(fmt.Errorf("UDS accept error: %w", err))
-			}
-
-			// Backoff on temporary error
-			time.Sleep(100 * time.Millisecond)
-			continue
+		// Check if we should exit before blocking on Accept
+		select {
+		case <-t.done:
+			return
+		default:
 		}
 
-		t.handleNewConnection(conn)
+		// Use channel with timeout to allow checking done periodically
+		type result struct {
+			conn net.Conn
+			err  error
+		}
+		resultCh := make(chan result, 1)
+
+		go func() {
+			conn, err := listener.Accept()
+			resultCh <- result{conn, err}
+		}()
+
+		select {
+		case <-t.done:
+			// Drain the result channel to avoid goroutine leak
+			go func() {
+				if r := <-resultCh; r.conn != nil {
+					r.conn.Close()
+				}
+			}()
+			return
+		case r := <-resultCh:
+			if r.err != nil {
+				// Stop if listener is closed
+				if strings.Contains(r.err.Error(), "use of closed network connection") || strings.Contains(r.err.Error(), "Listener closed") {
+					return
+				}
+
+				// Log error via callback if set
+				t.mu.RLock()
+				handler := t.errorHandler
+				t.mu.RUnlock()
+				if handler != nil {
+					handler(fmt.Errorf("UDS accept error: %w", r.err))
+				}
+
+				// Backoff on temporary error
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			t.handleNewConnection(r.conn)
+		}
 	}
 }
 
