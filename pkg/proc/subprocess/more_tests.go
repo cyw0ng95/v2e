@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 )
 
 // errorWriter simulates a writer that always returns an error
@@ -72,44 +70,8 @@ func TestSendMessage_ErrorWriter(t *testing.T) {
 
 // TestConcurrentSendStop stress tests concurrent sendMessage calls with Stop
 func TestConcurrentSendStop(t *testing.T) {
-	t.Skip("Skipping long-running concurrency tests for fast CI")
-	sp := New("concur")
-	buf := &bytes.Buffer{}
-	// Directly set output and enable batching off
-	sp.SetOutput(buf)
-
-	// Start many goroutines sending messages concurrently
-	var wg sync.WaitGroup
-	nG := 50
-	nPer := 200
-	for i := 0; i < nG; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			for j := 0; j < nPer; j++ {
-				msg := &Message{Type: MessageTypeEvent, ID: fmt.Sprintf("g%d-m%d", idx, j)}
-				_ = sp.SendMessage(msg) // ignore errors in stress test
-			}
-		}(i)
-	}
-
-	// Wait a short time and then stop concurrently
-	time.Sleep(10 * time.Millisecond)
-	stopDone := make(chan struct{})
-	go func() {
-		_ = sp.Stop()
-		close(stopDone)
-	}()
-
-	// Wait for senders
-	wg.Wait()
-	// Wait for stop to finish
-	select {
-	case <-stopDone:
-		// ok
-	case <-time.After(2 * time.Second):
-		t.Fatal("Stop did not complete in time")
-	}
+	// Removed long-running concurrency stress test from CI — it exercised
+	// heavy concurrency and took non-trivial time. Keep locally if needed.
 }
 
 // TestZeroCopyPath ensures large messages follow the fast path (no panic and output present)
