@@ -20,22 +20,22 @@ func NewBookmarkService(db *gorm.DB) *BookmarkService {
 }
 
 // CreateBookmark creates a new bookmark, enforcing single bookmark per item
-func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, error) {
+func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, *MemoryCardModel, error) {
 	// Check if bookmark already exists for this item
 	var existingBookmark BookmarkModel
 	err := s.db.WithContext(ctx).Where("global_item_id = ? AND item_type = ? AND item_id = ?", globalItemID, itemType, itemID).First(&existingBookmark).Error
 	if err == nil {
 		// Bookmark already exists, return the existing one
-		return &existingBookmark, nil
+		return &existingBookmark, nil, nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		// Some other database error occurred
-		return nil, fmt.Errorf("failed to check for existing bookmark: %w", err)
+		return nil, nil, fmt.Errorf("failed to check for existing bookmark: %w", err)
 	}
 
 	// No existing bookmark found, create new one
 	now := time.Now().UTC()
 	nowStr := now.Format(time.RFC3339)
-	
+
 	bookmark := &BookmarkModel{
 		GlobalItemID:  globalItemID,
 		ItemType:      itemType,
@@ -53,22 +53,47 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 		},
 	}
 
-	if err := s.db.WithContext(ctx).Create(bookmark).Error; err != nil {
-		return nil, fmt.Errorf("failed to create bookmark: %w", err)
+	var createdCard *MemoryCardModel
+
+	// Use a transaction so bookmark, history and auto-created memory card are atomic
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(bookmark).Error; err != nil {
+			return fmt.Errorf("failed to create bookmark: %w", err)
+		}
+
+		// Create history entry for creation
+		history := &BookmarkHistoryModel{
+			BookmarkID: bookmark.ID,
+			Action:     string(BookmarkActionCreated),
+			NewValue:   string(LearningStateToReview),
+			Timestamp:  time.Now(),
+		}
+		if err := tx.Create(history).Error; err != nil {
+			return fmt.Errorf("failed to create bookmark history: %w", err)
+		}
+
+		// Auto-create a memory card for this bookmark using title/description
+		card := &MemoryCardModel{
+			BookmarkID: bookmark.ID,
+			Front:      title,
+			Back:       description,
+			EaseFactor: 2.5,
+			Interval:   1,
+			Repetition: 0,
+		}
+		if err := tx.Create(card).Error; err != nil {
+			return fmt.Errorf("failed to create memory card: %w", err)
+		}
+		createdCard = card
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// Create history entry for creation
-	history := &BookmarkHistoryModel{
-		BookmarkID: bookmark.ID,
-		Action:     string(BookmarkActionCreated),
-		NewValue:   string(LearningStateToReview),
-		Timestamp:  time.Now(),
-	}
-	if err := s.db.WithContext(ctx).Create(history).Error; err != nil {
-		return nil, fmt.Errorf("failed to create bookmark history: %w", err)
-	}
-
-	return bookmark, nil
+	return bookmark, createdCard, nil
 }
 
 // UpdateBookmarkStats updates the statistics for a bookmark

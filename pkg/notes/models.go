@@ -19,7 +19,7 @@ type BookmarkModel struct {
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
 
 	// Learning state fields
-	LearningState string  `gorm:"default:'to-review'"` // to-review, learning, mastered, archived
+	LearningState string `gorm:"default:'to-review'"` // to-review, learning, mastered, archived
 	LastReviewed  *time.Time
 	NextReview    *time.Time
 	MasteryLevel  float32 `gorm:"default:0.0"` // 0.0 to 1.0

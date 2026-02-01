@@ -8,7 +8,7 @@ import (
 
 // BookmarkServiceInterface defines the interface for the bookmark service
 type BookmarkServiceInterface interface {
-	CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, error)
+	CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, *MemoryCardModel, error)
 	GetBookmarkByID(ctx context.Context, id uint) (*BookmarkModel, error)
 	GetBookmarksByGlobalItemID(ctx context.Context, globalItemID string) ([]*BookmarkModel, error)
 	UpdateBookmark(ctx context.Context, bookmark *BookmarkModel) error

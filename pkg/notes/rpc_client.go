@@ -148,7 +148,7 @@ func NewBookmarkServiceRPCClient(rpcClient *RPCClient) *BookmarkServiceRPCClient
 }
 
 // CreateBookmark creates a new bookmark via RPC
-func (s *BookmarkServiceRPCClient) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, error) {
+func (s *BookmarkServiceRPCClient) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, *MemoryCardModel, error) {
 	params := map[string]interface{}{
 		"global_item_id": globalItemID,
 		"item_type":      itemType,
@@ -158,23 +158,24 @@ func (s *BookmarkServiceRPCClient) CreateBookmark(ctx context.Context, globalIte
 	}
 
 	var result struct {
-		Bookmark *BookmarkModel `json:"bookmark"`
+		Bookmark   *BookmarkModel   `json:"bookmark"`
+		MemoryCard *MemoryCardModel `json:"memory_card"`
 	}
 
 	response, err := s.Client.InvokeRPC(ctx, "local", "RPCCreateBookmark", params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create bookmark via RPC: %w", err)
+		return nil, nil, fmt.Errorf("failed to create bookmark via RPC: %w", err)
 	}
 
 	if response.Type == subprocess.MessageTypeError {
-		return nil, fmt.Errorf("remote error: %s", response.Error)
+		return nil, nil, fmt.Errorf("remote error: %s", response.Error)
 	}
 
 	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		return nil, nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return result.Bookmark, nil
+	return result.Bookmark, result.MemoryCard, nil
 }
 
 // GetBookmarkByID retrieves a bookmark by ID via RPC

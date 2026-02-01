@@ -84,15 +84,17 @@ func (h *RPCHandlers) handleRPCCreateBookmark(ctx context.Context, msg *subproce
 		description = ""
 	}
 
-	bookmark, err := h.container.BookmarkService.CreateBookmark(ctx, globalItemID, itemType, itemID, title, description)
+	bookmark, createdCard, err := h.container.BookmarkService.CreateBookmark(ctx, globalItemID, itemType, itemID, title, description)
 	if err != nil {
 		return h.createErrorResponse(msg, fmt.Sprintf("Failed to create bookmark: %v", err)), nil
 	}
 
 	result := struct {
-		Bookmark *BookmarkModel `json:"bookmark"`
+		Bookmark   *BookmarkModel   `json:"bookmark"`
+		MemoryCard *MemoryCardModel `json:"memory_card,omitempty"`
 	}{
-		Bookmark: bookmark,
+		Bookmark:   bookmark,
+		MemoryCard: createdCard,
 	}
 
 	payload, err := subprocess.MarshalFast(result)

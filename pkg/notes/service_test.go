@@ -33,7 +33,7 @@ func TestBookmarkService(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("CreateBookmark", func(t *testing.T) {
-		bookmark, err := bookmarkService.CreateBookmark(ctx, "global-item-123", "CVE", "CVE-2021-1234", "Test CVE", "A test CVE for bookmarking")
+		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-123", "CVE", "CVE-2021-1234", "Test CVE", "A test CVE for bookmarking")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
@@ -53,7 +53,7 @@ func TestBookmarkService(t *testing.T) {
 
 	t.Run("GetBookmarkByID", func(t *testing.T) {
 		// First create a bookmark
-		createdBookmark, err := bookmarkService.CreateBookmark(ctx, "global-item-456", "CWE", "CWE-123", "Test CWE", "A test CWE for bookmarking")
+		createdBookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-456", "CWE", "CWE-123", "Test CWE", "A test CWE for bookmarking")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
@@ -77,12 +77,12 @@ func TestBookmarkService(t *testing.T) {
 		globalItemID := "global-item-789"
 
 		// Create multiple bookmarks with the same global item ID
-		_, err := bookmarkService.CreateBookmark(ctx, globalItemID, "CAPEC", "CAPEC-123", "Test CAPEC 1", "A test CAPEC for bookmarking")
+		_, _, err := bookmarkService.CreateBookmark(ctx, globalItemID, "CAPEC", "CAPEC-123", "Test CAPEC 1", "A test CAPEC for bookmarking")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
 
-		_, err = bookmarkService.CreateBookmark(ctx, globalItemID, "CAPEC", "CAPEC-124", "Test CAPEC 2", "Another test CAPEC for bookmarking")
+		_, _, err = bookmarkService.CreateBookmark(ctx, globalItemID, "CAPEC", "CAPEC-124", "Test CAPEC 2", "Another test CAPEC for bookmarking")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
@@ -100,7 +100,7 @@ func TestBookmarkService(t *testing.T) {
 
 	t.Run("UpdateBookmark", func(t *testing.T) {
 		// Create a bookmark first
-		bookmark, err := bookmarkService.CreateBookmark(ctx, "global-item-update", "ATT&CK", "T1001", "Test ATT&CK Technique", "A test ATT&CK technique for bookmarking")
+		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-update", "ATT&CK", "T1001", "Test ATT&CK Technique", "A test ATT&CK technique for bookmarking")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
@@ -130,7 +130,7 @@ func TestBookmarkService(t *testing.T) {
 
 	t.Run("UpdateLearningState", func(t *testing.T) {
 		// Create a bookmark first
-		bookmark, err := bookmarkService.CreateBookmark(ctx, "global-item-state", "CVE", "CVE-2022-1234", "Test CVE State", "A test CVE for state updates")
+		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-state", "CVE", "CVE-2022-1234", "Test CVE State", "A test CVE for state updates")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
@@ -154,13 +154,13 @@ func TestBookmarkService(t *testing.T) {
 
 	t.Run("GetBookmarksByLearningState", func(t *testing.T) {
 		// Create a bookmark with a specific learning state
-		_, err := bookmarkService.CreateBookmark(ctx, "global-item-filter", "CWE", "CWE-456", "Test Filter", "A test item for filtering")
+		_, _, err := bookmarkService.CreateBookmark(ctx, "global-item-filter", "CWE", "CWE-456", "Test Filter", "A test item for filtering")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
 
 		// Create another bookmark and update its state
-		bookmark, err := bookmarkService.CreateBookmark(ctx, "global-item-filter2", "CAPEC", "CAPEC-456", "Test Filter 2", "Another test item for filtering")
+		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-filter2", "CAPEC", "CAPEC-456", "Test Filter 2", "Another test item for filtering")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
 		}
@@ -194,7 +194,7 @@ func TestNoteService(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a bookmark first to attach notes to
-	bookmark, err := bookmarkService.CreateBookmark(ctx, "global-note-test", "CVE", "CVE-2023-1234", "Note Test CVE", "A test CVE for note testing")
+	bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-note-test", "CVE", "CVE-2023-1234", "Note Test CVE", "A test CVE for note testing")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestMemoryCardService(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a bookmark first to attach memory cards to
-	bookmark, err := bookmarkService.CreateBookmark(ctx, "global-card-test", "CVE", "CVE-2024-1234", "Card Test CVE", "A test CVE for card testing")
+	bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-card-test", "CVE", "CVE-2024-1234", "Card Test CVE", "A test CVE for card testing")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}
@@ -462,7 +462,7 @@ func TestHistoryService(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a bookmark first
-	bookmark, err := bookmarkService.CreateBookmark(ctx, "global-history-test", "CWE", "CWE-789", "History Test CWE", "A test CWE for history testing")
+	bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-history-test", "CWE", "CWE-789", "History Test CWE", "A test CWE for history testing")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}

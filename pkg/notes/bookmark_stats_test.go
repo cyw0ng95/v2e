@@ -24,7 +24,7 @@ func TestBookmarkStatistics(t *testing.T) {
 
 	// Test 1: Create a bookmark and verify initial stats
 	t.Run("CreateBookmarkWithInitialStats", func(t *testing.T) {
-		bookmark, err := bookmarkService.CreateBookmark(
+		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-1",
 			"CVE",
@@ -58,7 +58,7 @@ func TestBookmarkStatistics(t *testing.T) {
 
 	// Test 2: Update bookmark stats with positive deltas
 	t.Run("UpdateBookmarkStatsPositiveDeltas", func(t *testing.T) {
-		bookmark, err := bookmarkService.CreateBookmark(
+		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-2",
 			"CWE",
@@ -106,7 +106,7 @@ func TestBookmarkStatistics(t *testing.T) {
 
 	// Test 3: Update bookmark stats with zero deltas (should still update timestamp)
 	t.Run("UpdateBookmarkStatsZeroDeltas", func(t *testing.T) {
-		bookmark, err := bookmarkService.CreateBookmark(
+		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-3",
 			"CAPEC",
@@ -158,7 +158,7 @@ func TestBookmarkStatistics(t *testing.T) {
 	// Test 4: Verify single bookmark constraint with stats
 	t.Run("SingleBookmarkConstraintWithStats", func(t *testing.T) {
 		// Create first bookmark
-		bookmark1, err := bookmarkService.CreateBookmark(
+		bookmark1, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"unique-global-id",
 			"CVE",
@@ -170,7 +170,7 @@ func TestBookmarkStatistics(t *testing.T) {
 		require.NotNil(t, bookmark1)
 
 		// Try to create duplicate bookmark - should return existing
-		bookmark2, err := bookmarkService.CreateBookmark(
+		bookmark2, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"unique-global-id",
 			"CVE",
@@ -197,7 +197,7 @@ func TestBookmarkStatistics(t *testing.T) {
 
 	// Test 5: Update stats on existing bookmark multiple times
 	t.Run("MultipleStatUpdates", func(t *testing.T) {
-		bookmark, err := bookmarkService.CreateBookmark(
+		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-4",
 			"ATT&CK",

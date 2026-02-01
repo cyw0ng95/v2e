@@ -39,7 +39,7 @@ func TestRPCMethod(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a test bookmark first
-	createdBookmark, err := service.BookmarkService.CreateBookmark(ctx, "test-item-id", string(ItemTypeCVE), "test-cve-id", "Test Bookmark", "Test content")
+	createdBookmark, _, err := service.BookmarkService.CreateBookmark(ctx, "test-item-id", string(ItemTypeCVE), "test-cve-id", "Test Bookmark", "Test content")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestDataMigration(t *testing.T) {
 	}
 
 	// Test creating records after migration
-	createdBookmark, err := service.BookmarkService.CreateBookmark(ctx, "migration-test-item", string(ItemTypeCVE), "migration-cve-id", "Migration Test Bookmark", "Migration test content")
+	createdBookmark, _, err := service.BookmarkService.CreateBookmark(ctx, "migration-test-item", string(ItemTypeCVE), "migration-cve-id", "Migration Test Bookmark", "Migration test content")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark after migration: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestServiceOperationErrorHandling(t *testing.T) {
 	}
 
 	// Test error when updating non-existent bookmark - first create a valid bookmark then try to update with an invalid one
-	createdBookmark, err := service.BookmarkService.CreateBookmark(ctx, "test-item", string(ItemTypeCVE), "test-cve", "Test Bookmark", "Test Description")
+	createdBookmark, _, err := service.BookmarkService.CreateBookmark(ctx, "test-item", string(ItemTypeCVE), "test-cve", "Test Bookmark", "Test Description")
 	if err != nil {
 		t.Fatalf("Failed to create test bookmark: %v", err)
 	}
@@ -344,7 +344,7 @@ func TestConcurrentAccess(t *testing.T) {
 	ctx := context.Background()
 
 	// Pre-populate with some test data
-	createdBookmark, err := service.BookmarkService.CreateBookmark(ctx, "concurrent-test-item", string(ItemTypeCVE), "concurrent-cve", "Concurrent Test Bookmark", "Concurrent test content")
+	createdBookmark, _, err := service.BookmarkService.CreateBookmark(ctx, "concurrent-test-item", string(ItemTypeCVE), "concurrent-cve", "Concurrent Test Bookmark", "Concurrent test content")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}
@@ -436,7 +436,7 @@ func TestMemoryCardFunctionality(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a bookmark first
-	createdBookmark, err := service.BookmarkService.CreateBookmark(ctx, "memory-card-test-item", string(ItemTypeCVE), "memory-cve", "Memory Card Test Bookmark", "Memory card test content")
+	createdBookmark, _, err := service.BookmarkService.CreateBookmark(ctx, "memory-card-test-item", string(ItemTypeCVE), "memory-cve", "Memory Card Test Bookmark", "Memory card test content")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}
@@ -522,12 +522,12 @@ func TestCrossReferenceFunctionality(t *testing.T) {
 	ctx := context.Background()
 
 	// Create two bookmarks for cross-referencing
-	createdBookmark1, err := service.BookmarkService.CreateBookmark(ctx, "cross-ref-item-1", string(ItemTypeCVE), "cross-ref-cve-1", "Cross Reference Test Bookmark 1", "Cross reference test content 1")
+	createdBookmark1, _, err := service.BookmarkService.CreateBookmark(ctx, "cross-ref-item-1", string(ItemTypeCVE), "cross-ref-cve-1", "Cross Reference Test Bookmark 1", "Cross reference test content 1")
 	if err != nil {
 		t.Fatalf("Failed to create first bookmark: %v", err)
 	}
 
-	createdBookmark2, err := service.BookmarkService.CreateBookmark(ctx, "cross-ref-item-2", string(ItemTypeCWE), "cross-ref-cwe-2", "Cross Reference Test Bookmark 2", "Cross reference test content 2")
+	createdBookmark2, _, err := service.BookmarkService.CreateBookmark(ctx, "cross-ref-item-2", string(ItemTypeCWE), "cross-ref-cwe-2", "Cross Reference Test Bookmark 2", "Cross reference test content 2")
 	if err != nil {
 		t.Fatalf("Failed to create second bookmark: %v", err)
 	}
@@ -591,7 +591,7 @@ func TestHistoryFunctionality(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a bookmark
-	createdBookmark, err := service.BookmarkService.CreateBookmark(ctx, "history-test-item", string(ItemTypeCVE), "history-cve", "History Test Bookmark", "History test content")
+	createdBookmark, _, err := service.BookmarkService.CreateBookmark(ctx, "history-test-item", string(ItemTypeCVE), "history-cve", "History Test Bookmark", "History test content")
 	if err != nil {
 		t.Fatalf("Failed to create bookmark: %v", err)
 	}
@@ -658,7 +658,7 @@ func TestPerformanceWithLargeDatasets(t *testing.T) {
 	// Measure insertion performance
 	startTime := time.Now()
 	for i := 0; i < numBookmarks; i++ {
-		_, err := service.BookmarkService.CreateBookmark(ctx,
+		_, _, err := service.BookmarkService.CreateBookmark(ctx,
 			fmt.Sprintf("perf-test-item-%d", i),
 			string(ItemTypeCVE),
 			fmt.Sprintf("perf-cve-%d", i),
