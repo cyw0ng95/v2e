@@ -33,11 +33,11 @@ func (r *OptimizedRouter) RouteFast(msg *proc.Message) error {
 	r.mu.RLock()
 	ch, exists := r.routes[msg.Target]
 	r.mu.RUnlock()
-	
+
 	if !exists {
 		return fmt.Errorf("no route for target: %s", msg.Target)
 	}
-	
+
 	select {
 	case ch <- msg:
 		return nil
@@ -59,7 +59,7 @@ func NewWorkStealingScheduler(numQueues int) *WorkStealingScheduler {
 	for i := range queues {
 		queues[i] = make(chan *proc.Message, 100) // Buffered channel
 	}
-	
+
 	return &WorkStealingScheduler{
 		queues:  queues,
 		workers: make([]int, numQueues),
@@ -72,7 +72,7 @@ func (ws *WorkStealingScheduler) Dispatch(msg *proc.Message) {
 	hash := fnv.New32a()
 	hash.Write([]byte(msg.Target))
 	idx := hash.Sum32() % uint32(len(ws.queues))
-	
+
 	select {
 	case ws.queues[idx] <- msg:
 		// Successfully added to primary queue

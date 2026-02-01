@@ -170,25 +170,30 @@ func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	var existing CVERecord
 	result := d.db.Unscoped().Where("cve_id = ?", cveItem.ID).First(&existing)
 
-	if result.Error == nil {
+	switch {
+	case result.Error == nil:
 		// Record exists, update it
 		record.ID = existing.ID
 		record.CreatedAt = existing.CreatedAt
 		record.DeletedAt = gorm.DeletedAt{} // Clear soft delete flag
 		return d.db.Unscoped().Save(&record).Error
-	} else if result.Error == gorm.ErrRecordNotFound {
+	case result.Error == gorm.ErrRecordNotFound:
 		// Record doesn't exist, create it
 		return d.db.Create(&record).Error
+	default:
+		return result.Error
 	}
-
-	return result.Error
 }
 
 // BulkInsertRecords efficiently inserts multiple records in a single transaction
 func (d *DB) BulkInsert(records []CVERecord, batchSize int) error {
 	tx := d.db.Begin()
-	defer func() { if r := recover(); r != nil { tx.Rollback() } }()
-	
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	for i := 0; i < len(records); i += batchSize {
 		end := min(i+batchSize, len(records))
 		if err := tx.Create(records[i:end]).Error; err != nil {
@@ -276,10 +281,10 @@ func (d *DB) Count() (int64, error) {
 
 // LazyCVERecord provides lazy loading for CVE data
 type LazyCVERecord struct {
-	ID          string
-	*CVERecord  // Loaded on demand
-	loaded      bool
-	db          *DB
+	ID         string
+	*CVERecord // Loaded on demand
+	loaded     bool
+	db         *DB
 }
 
 // NewLazyCVERecord creates a new lazy-loaded CVE record

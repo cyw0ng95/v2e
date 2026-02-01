@@ -267,7 +267,7 @@ func BenchmarkCVERelationshipsOpt(b *testing.B) {
 		}
 
 		// Simulate processing the retrieved CVE (e.g., extracting related CWEs)
-		if item.Weaknesses != nil && len(item.Weaknesses) > 0 {
+		if len(item.Weaknesses) > 0 {
 			_ = item.Weaknesses[0].Description[0].Value
 		}
 	}

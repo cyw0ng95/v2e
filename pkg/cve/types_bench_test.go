@@ -338,6 +338,8 @@ func BenchmarkCVSSMetricV3Processing(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Simulate processing of CVSS metrics
+		_ = cvssMetric.Source
+		_ = cvssMetric.Type
 		_ = cvssMetric.CvssData.BaseScore
 		_ = cvssMetric.CvssData.BaseSeverity
 		_ = cvssMetric.ExploitabilityScore
