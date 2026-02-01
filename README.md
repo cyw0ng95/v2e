@@ -141,9 +141,9 @@ The project includes a dedicated configuration management tool (`vconfig`) with 
 
 The system uses a sophisticated, hybrid RPC communication mechanism designed for high throughput and low latency:
 
-- **Dual-Mode Transport Layer**:
-  - **Unix Domain Sockets (UDS)**: The default, high-performance transport method. Provides secure (0600 permissions), efficient, and standard IPC.
-  - **FD Pipes (Legacy/Fallback)**: Uses custom file descriptors 3 and 4 to avoid conflicts with standard I/O streams.
+ - **Dual-Mode Transport Layer**:
+   - **Unix Domain Sockets (UDS)**: The default, high-performance transport method. Provides secure (0600 permissions), efficient, and standard IPC.
+   - **FD Pipes (Legacy/Fallback)**: Supported for legacy compatibility. When used, the file descriptor numbers are configured at build time (ldflags); runtime environment variables are not relied upon.
 - **Adaptive Optimization**: The broker includes a traffic optimizer that dynamically adjusts batch sizes and worker counts based on load.
 - **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching.
 - **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs.

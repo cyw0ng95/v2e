@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/notes"
@@ -64,6 +65,17 @@ func updateMemoryCardHandler(service *notes.MemoryCardService, logger *common.Lo
 		if err := json.Unmarshal(msg.Payload, &params); err != nil {
 			return nil, err
 		}
+		// Defensive: validate status if provided
+		if raw, ok := params["status"]; ok {
+			if sstr, ok := raw.(string); ok {
+				if _, err := notes.ParseCardStatus(sstr); err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, fmt.Errorf("status must be a string")
+			}
+		}
+
 		card, err := service.UpdateMemoryCardFields(ctx, params)
 		if err != nil {
 			return nil, err

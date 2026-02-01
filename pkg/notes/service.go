@@ -55,24 +55,10 @@ func (s *MemoryCardService) UpdateMemoryCardFields(ctx context.Context, fields m
 				if perr != nil {
 					return perr
 				}
-				cur := CardStatus(card.Status)
-				if !CanTransition(cur, parsed) {
-					return ErrInvalidTransition
+				// Use centralized transition logic within this transaction
+				if err := s.transitionCardStatusTx(tx, card.ID, parsed); err != nil {
+					return err
 				}
-				// Use optimistic update for status + version
-				// Attempt to update row where version matches
-				res := tx.Model(&MemoryCardModel{}).
-					Where("id = ? AND version = ?", card.ID, card.Version).
-					Updates(map[string]any{"status": string(parsed), "version": card.Version + 1})
-				if res.Error != nil {
-					return res.Error
-				}
-				if res.RowsAffected == 0 {
-					return fmt.Errorf("concurrent update detected")
-				}
-				// reflect new values locally for further updates
-				card.Status = string(parsed)
-				card.Version = card.Version + 1
 			} else {
 				return fmt.Errorf("status must be a string")
 			}
@@ -837,6 +823,57 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 	}
 
 	return nil
+}
+
+// transitionCardStatusTx performs a versioned status transition within an existing transaction.
+func (s *MemoryCardService) transitionCardStatusTx(tx *gorm.DB, cardID uint, next CardStatus) error {
+	var cur MemoryCardModel
+	if err := tx.First(&cur, cardID).Error; err != nil {
+		return err
+	}
+	if !CanTransition(CardStatus(cur.Status), next) {
+		return ErrInvalidTransition
+	}
+	res := tx.Model(&MemoryCardModel{}).
+		Where("id = ? AND version = ?", cur.ID, cur.Version).
+		Updates(map[string]any{"status": string(next), "version": cur.Version + 1})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrConcurrentUpdate
+	}
+	return nil
+}
+
+// TransitionCardStatus transitions a card to the given status using optimistic concurrency.
+// If expectedVersion is non-nil, the transition will only succeed if the current
+// version matches expectedVersion; otherwise it uses the current version observed
+// in the database for the versioned update.
+func (s *MemoryCardService) TransitionCardStatus(ctx context.Context, cardID uint, expectedVersion *int, next CardStatus) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var cur MemoryCardModel
+		if err := tx.First(&cur, cardID).Error; err != nil {
+			return err
+		}
+		if expectedVersion != nil && cur.Version != *expectedVersion {
+			return ErrConcurrentUpdate
+		}
+		if !CanTransition(CardStatus(cur.Status), next) {
+			return ErrInvalidTransition
+		}
+		// versioned update
+		res := tx.Model(&MemoryCardModel{}).
+			Where("id = ? AND version = ?", cur.ID, cur.Version).
+			Updates(map[string]any{"status": string(next), "version": cur.Version + 1})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrConcurrentUpdate
+		}
+		return nil
+	})
 }
 
 // GetCardsByLearningState retrieves memory cards for bookmarks in a specific learning state

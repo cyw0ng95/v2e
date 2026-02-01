@@ -78,3 +78,6 @@ func ParseCardStatus(s string) (CardStatus, error) {
 		return "", fmt.Errorf("unknown card status: %q", s)
 	}
 }
+
+// ErrConcurrentUpdate returned when a versioned update fails due to concurrency.
+var ErrConcurrentUpdate = fmt.Errorf("concurrent update detected")

@@ -2,6 +2,7 @@ package notes
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -85,5 +86,55 @@ func TestUpdateCardAfterReview_Transition(t *testing.T) {
 	}
 	if updated.NextReview == nil || updated.NextReview.Before(time.Now()) {
 		t.Fatalf("expected next review set in future")
+	}
+}
+
+func TestConcurrentStatusTransitions(t *testing.T) {
+	db := setupTestDBForSvc(t)
+	svc := NewMemoryCardService(db)
+
+	bm := &BookmarkModel{GlobalItemID: "g3", ItemType: "test", ItemID: "i3", Title: "t3"}
+	if err := db.Create(bm).Error; err != nil {
+		t.Fatal(err)
+	}
+	card := &MemoryCardModel{BookmarkID: bm.ID, Front: "qc", Back: "ac", Status: string(StatusNew), Content: "{}"}
+	if err := db.Create(card).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	results := make(chan error, 2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		results <- svc.TransitionCardStatus(context.Background(), card.ID, nil, StatusLearning)
+	}()
+	go func() {
+		defer wg.Done()
+		results <- svc.TransitionCardStatus(context.Background(), card.ID, nil, StatusArchived)
+	}()
+	wg.Wait()
+	close(results)
+
+	var successCount, concurrentCount int
+	for err := range results {
+		if err == nil {
+			successCount++
+		} else if err == ErrConcurrentUpdate {
+			concurrentCount++
+		} else {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	if successCount != 1 || concurrentCount != 1 {
+		t.Fatalf("expected one success and one concurrent error, got success=%d concurrent=%d", successCount, concurrentCount)
+	}
+
+	var updated MemoryCardModel
+	if err := db.First(&updated, card.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status != string(StatusLearning) && updated.Status != string(StatusArchived) {
+		t.Fatalf("unexpected final status: %s", updated.Status)
 	}
 }
