@@ -5,20 +5,6 @@ import (
 	"testing"
 )
 
-// fakeTransportManagerStub implements minimal TransportManager behavior used by spawn tests.
-type fakeTransportManagerStub struct {
-	registered bool
-	socketPath string
-}
-
-func (f *fakeTransportManagerStub) RegisterUDSTransport(processID string, isServer bool) (string, error) {
-	f.registered = true
-	f.socketPath = "/tmp/fake_stub_" + processID + ".sock"
-	return f.socketPath, nil
-}
-
-// Note: the stub is kept for future tests but we currently use the real TransportManager in tests.
-
 func TestBroker_Spawn_PreRegistersUDS(t *testing.T) {
 	tm := transport.NewTransportManager()
 	tm.SetUdsBasePath("/tmp/test-spawn-uds")
