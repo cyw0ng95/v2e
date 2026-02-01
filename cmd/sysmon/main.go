@@ -2,123 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"sync"
-	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/common/procfs"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
-
-const DefaultRPCTimeout = 30 * time.Second
-
-// RPCClient handles RPC communication with the broker
-type RPCClient struct {
-	sp              *subprocess.Subprocess
-	pendingRequests map[string]*requestEntry
-	mu              sync.RWMutex
-	correlationSeq  uint64
-	logger          *common.Logger
-}
-
-type requestEntry struct {
-	resp chan *subprocess.Message
-	once sync.Once
-}
-
-func newRequestEntry() *requestEntry {
-	return &requestEntry{resp: make(chan *subprocess.Message, 1)}
-}
-
-func (e *requestEntry) signal(msg *subprocess.Message) {
-	e.once.Do(func() {
-		e.resp <- msg
-		close(e.resp)
-	})
-}
-
-func (e *requestEntry) close() {
-	e.once.Do(func() {
-		close(e.resp)
-	})
-}
-
-func NewRPCClient(sp *subprocess.Subprocess, logger *common.Logger) *RPCClient {
-	client := &RPCClient{
-		sp:              sp,
-		pendingRequests: make(map[string]*requestEntry),
-		logger:          logger,
-	}
-	sp.RegisterHandler(string(subprocess.MessageTypeResponse), client.handleResponse)
-	sp.RegisterHandler(string(subprocess.MessageTypeError), client.handleError)
-	return client
-}
-
-func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	c.mu.Lock()
-	entry, exists := c.pendingRequests[msg.CorrelationID]
-	if exists {
-		delete(c.pendingRequests, msg.CorrelationID)
-	}
-	c.mu.Unlock()
-	if exists && entry != nil {
-		c.logger.Info(LogMsgRPCResponseReceived, msg.CorrelationID, msg.Type)
-		entry.signal(msg)
-		c.logger.Info(LogMsgRPCChannelSignaled, msg.CorrelationID)
-	} else {
-		c.logger.Warn("Received response for unknown correlation ID: %s", msg.CorrelationID)
-	}
-	return nil, nil
-}
-
-func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	return c.handleResponse(ctx, msg)
-}
-
-func (c *RPCClient) InvokeRPC(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error) {
-	c.mu.Lock()
-	c.correlationSeq++
-	correlationID := fmt.Sprintf("sysmon-rpc-%d", c.correlationSeq)
-	c.mu.Unlock()
-	entry := newRequestEntry()
-	c.mu.Lock()
-	c.pendingRequests[correlationID] = entry
-	c.mu.Unlock()
-	defer func() {
-		c.mu.Lock()
-		delete(c.pendingRequests, correlationID)
-		c.mu.Unlock()
-		entry.close()
-	}()
-	var payload []byte
-	if params != nil {
-		data, err := subprocess.MarshalFast(params)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal params: %w", err)
-		}
-		payload = data
-	}
-	msg := &subprocess.Message{
-		Type:          subprocess.MessageTypeRequest,
-		ID:            method,
-		Payload:       payload,
-		Target:        target,
-		CorrelationID: correlationID,
-		Source:        c.sp.ID,
-	}
-	if err := c.sp.SendMessage(msg); err != nil {
-		return nil, fmt.Errorf("failed to send RPC request: %w", err)
-	}
-	select {
-	case response := <-entry.resp:
-		return response, nil
-	case <-time.After(DefaultRPCTimeout):
-		return nil, fmt.Errorf("RPC timeout waiting for response from %s", target)
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-}
 
 func main() {
 	// Use common startup utility to standardize initialization
@@ -130,7 +19,7 @@ func main() {
 
 	// RPC client to query the broker for message statistics
 	logger.Info(LogMsgRPCClientCreated)
-	rpcClient := NewRPCClient(sp, logger)
+	rpcClient := rpc.NewClient(sp, logger, rpc.DefaultRPCTimeout)
 
 	// Register RPC handler for system metrics (pass rpcClient so we can query broker)
 	sp.RegisterHandler("RPCGetSysMetrics", createGetSysMetricsHandler(logger, rpcClient))
@@ -146,7 +35,7 @@ func main() {
 }
 
 // createGetSysMetricsHandler creates a handler for RPCGetSysMetrics
-func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) subprocess.Handler {
+func createGetSysMetricsHandler(logger *common.Logger, rpcClient *rpc.Client) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		logger.Info(LogMsgStartingGetSysMetrics, msg.CorrelationID)
 		logger.Info(LogMsgSysMetricsInvoked, msg.ID, msg.CorrelationID)
@@ -156,18 +45,12 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 		if err != nil {
 			logger.Warn(LogMsgFailedCollectMetrics, err)
 			logger.Info(LogMsgGetSysMetricsFailed, msg.CorrelationID, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "Failed to collect metrics",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
+			return subprocess.NewErrorResponse(msg, "Failed to collect metrics"), nil
 		}
 		// Attempt to fetch broker message statistics via RPC
 		if rpcClient != nil {
 			logger.Info(LogMsgBrokerStatsFetchStarted)
-			rpcCtx, cancel := context.WithTimeout(ctx, DefaultRPCTimeout)
+			rpcCtx, cancel := context.WithTimeout(ctx, rpc.DefaultRPCTimeout)
 			defer cancel()
 			resp, rpcErr := rpcClient.InvokeRPC(rpcCtx, "broker", "RPCGetMessageStats", nil)
 			if rpcErr != nil {
@@ -186,28 +69,10 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *RPCClient) sub
 		}
 		logger.Info(LogMsgCollectedMetrics, metrics["cpu_usage"], metrics["memory_usage"], metrics["load_avg"], metrics["uptime"])
 		logger.Info(LogMsgMetricsMarshalingStarted)
-		payload, err := subprocess.MarshalFast(metrics)
-		if err != nil {
-			logger.Warn(LogMsgFailedMarshalMetrics, err)
-			logger.Info(LogMsgGetSysMetricsFailed, msg.CorrelationID, err)
-			return &subprocess.Message{
-				Type:          subprocess.MessageTypeError,
-				ID:            msg.ID,
-				Error:         "Failed to marshal metrics",
-				CorrelationID: msg.CorrelationID,
-				Target:        msg.Source,
-			}, nil
-		}
 		logger.Info(LogMsgMetricsMarshalingSuccess)
 		logger.Info(LogMsgReturningMetrics, msg.CorrelationID)
 		logger.Info(LogMsgGetSysMetricsSuccess, msg.CorrelationID)
-		return &subprocess.Message{
-			Type:          subprocess.MessageTypeResponse,
-			ID:            msg.ID,
-			Payload:       payload,
-			CorrelationID: msg.CorrelationID,
-			Target:        msg.Source,
-		}, nil
+		return subprocess.NewSuccessResponse(msg, metrics)
 	}
 }
 

@@ -10,6 +10,14 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
+// DefaultRPCTimeout is the default timeout for RPC calls
+const DefaultRPCTimeout = 30 * time.Second
+
+// GetDefaultTimeout returns the default RPC timeout duration.
+func GetDefaultTimeout() time.Duration {
+	return DefaultRPCTimeout
+}
+
 // RequestEntry represents a pending request in the RPC client
 type RequestEntry struct {
 	resp chan *subprocess.Message
