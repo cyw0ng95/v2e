@@ -1,6 +1,7 @@
 package local
 
 import (
+	"strings"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve"
@@ -64,7 +65,7 @@ func NewOptimizedDB(dbPath string) (*DB, error) {
 	}
 
 	// Set connection pool parameters
-	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxIdleConns(20)   // Increased idle connections for concurrent requests
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
@@ -111,7 +112,7 @@ func NewDB(dbPath string) (*DB, error) {
 	}
 
 	// Set connection pool parameters
-	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxIdleConns(20)   // Increased idle connections for concurrent requests
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
@@ -135,10 +136,10 @@ func NewDB(dbPath string) (*DB, error) {
 
 	// Additional PRAGMAs for enhanced performance
 	pragmas := []string{
-		"PRAGMA mmap_size=268435456",    // 256MB memory mapping
-		"PRAGMA temp_store=memory",      // Store temp tables in memory
-		"PRAGMA foreign_keys=OFF",       // Disable FK constraints for speed
-		"PRAGMA locking_mode=EXCLUSIVE", // Exclusive locking for single writer
+		"PRAGMA mmap_size=268435456", // 256MB memory mapping
+		"PRAGMA temp_store=memory",   // Store temp tables in memory
+		"PRAGMA foreign_keys=OFF",    // Disable FK constraints for speed
+		"PRAGMA busy_timeout=30000",  // Wait up to 30 seconds for locks
 	}
 	for _, pragma := range pragmas {
 		if _, err := sqlDB.Exec(pragma); err != nil {
@@ -255,10 +256,23 @@ func (d *DB) GetCVE(cveID string) (*cve.CVEItem, error) {
 // ListCVEs retrieves CVEs with pagination
 func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 	var records []CVERecord
-	if err := d.db.Offset(offset).Limit(limit).Order("published desc").Find(&records).Error; err != nil {
+	
+	// Retry logic for database locking issues
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		err = d.db.Offset(offset).Limit(limit).Order("published desc").Find(&records).Error
+		if err == nil {
+			break
+		}
+		// If it's a database lock error, wait and retry
+		if strings.Contains(err.Error(), "database is locked") && attempt < 2 {
+			time.Sleep(time.Millisecond * time.Duration(10*(attempt+1))) // Exponential backoff
+			continue
+		}
+		// For other errors or final attempt, return immediately
 		return nil, err
 	}
-
+	
 	// Pre-allocate with exact capacity to avoid re-allocations
 	cves := make([]cve.CVEItem, len(records))
 	for i, record := range records {
@@ -266,16 +280,30 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 			return nil, err
 		}
 	}
-
+	
 	return cves, nil
 }
 
 // Count returns the total number of CVEs in the database
 func (d *DB) Count() (int64, error) {
 	var count int64
-	if err := d.db.Model(&CVERecord{}).Count(&count).Error; err != nil {
+	
+	// Retry logic for database locking issues
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		err = d.db.Model(&CVERecord{}).Count(&count).Error
+		if err == nil {
+			return count, nil
+		}
+		// If it's a database lock error, wait and retry
+		if strings.Contains(err.Error(), "database is locked") && attempt < 2 {
+			time.Sleep(time.Millisecond * time.Duration(10*(attempt+1))) // Exponential backoff
+			continue
+		}
+		// For other errors or final attempt, return immediately
 		return 0, err
 	}
+	
 	return count, nil
 }
 
