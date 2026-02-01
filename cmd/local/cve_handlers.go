@@ -384,3 +384,192 @@ func createCountCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Hand
 		return respMsg, nil
 	}
 }
+
+// createCreateCVEHandler creates a handler for RPCCreateCVE
+// Accepts a CVEItem directly (not wrapped) and saves it to the database
+func createCreateCVEHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCCreateCVE request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
+		var req cve.CVEItem
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			logger.Warn("Failed to parse RPCCreateCVE request: %v", err)
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to parse request: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		if req.ID == "" {
+			logger.Warn("cve.id is required for RPCCreateCVE")
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         "cve.id is required",
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		if err := db.SaveCVE(&req); err != nil {
+			logger.Warn("Failed to create CVE in database: %v", err)
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to create CVE: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		logger.Info("Created CVE %s in local database", req.ID)
+		result := map[string]interface{}{
+			"success": true,
+			"cve_id":  req.ID,
+		}
+		respMsg := &subprocess.Message{
+			Type:          subprocess.MessageTypeResponse,
+			ID:            msg.ID,
+			CorrelationID: msg.CorrelationID,
+			Target:        msg.Source,
+		}
+		jsonData, err := subprocess.MarshalFast(result)
+		if err != nil {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to marshal result: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		respMsg.Payload = jsonData
+		return respMsg, nil
+	}
+}
+
+// createUpdateCVEHandler creates a handler for RPCUpdateCVE
+// Accepts a CVEItem directly (not wrapped) and updates it in the database
+func createUpdateCVEHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCUpdateCVE request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
+		var req cve.CVEItem
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			logger.Warn("Failed to parse RPCUpdateCVE request: %v", err)
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to parse request: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		if req.ID == "" {
+			logger.Warn("cve.id is required for RPCUpdateCVE")
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         "cve.id is required",
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		if err := db.SaveCVE(&req); err != nil {
+			logger.Warn("Failed to update CVE in database: %v", err)
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to update CVE: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		logger.Info("Updated CVE %s in local database", req.ID)
+		result := map[string]interface{}{
+			"success": true,
+			"cve_id":  req.ID,
+		}
+		respMsg := &subprocess.Message{
+			Type:          subprocess.MessageTypeResponse,
+			ID:            msg.ID,
+			CorrelationID: msg.CorrelationID,
+			Target:        msg.Source,
+		}
+		jsonData, err := subprocess.MarshalFast(result)
+		if err != nil {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to marshal result: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		respMsg.Payload = jsonData
+		return respMsg, nil
+	}
+}
+
+// createDeleteCVEHandler creates a handler for RPCDeleteCVE
+// Accepts { cve_id: string } and deletes the CVE from the database
+// Note: This is an alias for RPCDeleteCVEByID with the same functionality
+func createDeleteCVEHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCDeleteCVE request - Message ID: %s, Correlation ID: %s", msg.ID, msg.CorrelationID)
+		var req struct {
+			CVEID string `json:"cve_id"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			logger.Warn("Failed to parse RPCDeleteCVE request: %v", err)
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to parse request: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		if req.CVEID == "" {
+			logger.Warn("cve_id is required for RPCDeleteCVE")
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         "cve_id is required",
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		if err := db.DeleteCVE(req.CVEID); err != nil {
+			logger.Warn("Failed to delete CVE from database: %v", err)
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to delete CVE: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		logger.Info("Deleted CVE %s from local database", req.CVEID)
+		result := map[string]interface{}{
+			"success": true,
+			"cve_id":  req.CVEID,
+		}
+		respMsg := &subprocess.Message{
+			Type:          subprocess.MessageTypeResponse,
+			ID:            msg.ID,
+			CorrelationID: msg.CorrelationID,
+			Target:        msg.Source,
+		}
+		jsonData, err := subprocess.MarshalFast(result)
+		if err != nil {
+			return &subprocess.Message{
+				Type:          subprocess.MessageTypeError,
+				ID:            msg.ID,
+				Error:         fmt.Sprintf("failed to marshal result: %v", err),
+				CorrelationID: msg.CorrelationID,
+				Target:        msg.Source,
+			}, nil
+		}
+		respMsg.Payload = jsonData
+		return respMsg, nil
+	}
+}

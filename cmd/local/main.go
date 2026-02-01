@@ -214,6 +214,13 @@ func main() {
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCListCVEs")
 	sp.RegisterHandler("RPCCountCVEs", createCountCVEsHandler(db, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCCountCVEs")
+	// Register additional CVE handlers for meta service compatibility
+	sp.RegisterHandler("RPCCreateCVE", createCreateCVEHandler(db, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCCreateCVE")
+	sp.RegisterHandler("RPCUpdateCVE", createUpdateCVEHandler(db, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCUpdateCVE")
+	sp.RegisterHandler("RPCDeleteCVE", createDeleteCVEHandler(db, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCDeleteCVE")
 	sp.RegisterHandler("RPCGetCWEByID", createGetCWEByIDHandler(cweStore, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCWEByID")
 	sp.RegisterHandler("RPCListCWEs", createListCWEsHandler(cweStore, logger))

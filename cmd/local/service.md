@@ -113,7 +113,7 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, and ATT&CK data using SQ
 - **Request Parameters**:
   - `cve_id` (string, required): CVE identifier to check
 - **Response**:
-  - `exists` (bool): true if CVE exists in database
+  - `stored` (bool): true if CVE exists in database
   - `cve_id` (string): The queried CVE ID
 - **Errors**:
   - Missing CVE ID: `cve_id` parameter is required

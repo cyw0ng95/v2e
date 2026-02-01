@@ -330,19 +330,43 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 					return
 				}
 
-				// Store each CVE
+				// Store each CVE with retry logic
 				storedCount := int64(0)
 				errorCount := int64(0)
+				maxRetries := 3
 
 				for _, vuln := range fetchedVulns {
 					params := &rpc.SaveCVEByIDParams{CVE: vuln.CVE}
-					_, err := e.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
+					var lastErr error
 
-					if err != nil {
-						e.logger.Warn(cve.LogMsgTFFailedStoreCVE, vuln.CVE.ID, err)
+					// Retry failed saves up to maxRetries times
+					for attempt := 0; attempt < maxRetries; attempt++ {
+						_, err := e.rpcInvoker.InvokeRPC(ctx, "local", "RPCSaveCVEByID", params)
+
+						if err == nil {
+							storedCount++
+							lastErr = nil
+							break
+						}
+
+						lastErr = err
+						if attempt < maxRetries-1 {
+							// Exponential backoff before retry
+							backoff := time.Duration(1<<uint(attempt)) * 100 * time.Millisecond
+							e.logger.Debug(cve.LogMsgTFFailedStoreCVE, vuln.CVE.ID, err)
+							e.logger.Debug("Retrying save for %s after %v (attempt %d/%d)", vuln.CVE.ID, backoff, attempt+1, maxRetries)
+							select {
+							case <-ctx.Done():
+								e.logger.Warn("Context cancelled while retrying save for %s", vuln.CVE.ID)
+								break
+							case <-time.After(backoff):
+							}
+						}
+					}
+
+					if lastErr != nil {
+						e.logger.Warn(cve.LogMsgTFFailedStoreCVE, vuln.CVE.ID, lastErr)
 						errorCount++
-					} else {
-						storedCount++
 					}
 				}
 

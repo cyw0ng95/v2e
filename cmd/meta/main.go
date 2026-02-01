@@ -217,12 +217,9 @@ func NewRPCClient(sp *subprocess.Subprocess, logger *common.Logger) *RPCClient {
 func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 	c.logger.Debug("Handling response message: correlationID=%s, type=%s, target=%s", msg.CorrelationID, msg.Type, msg.Target)
 
-	// Look up the pending request entry and remove it while holding the lock
+	// Look up the pending request entry (don't delete - defer in InvokeRPC handles cleanup)
 	c.mu.Lock()
 	entry := c.pendingRequests[msg.CorrelationID]
-	if entry != nil {
-		delete(c.pendingRequests, msg.CorrelationID)
-	}
 	c.mu.Unlock()
 
 	if entry != nil {
@@ -460,6 +457,9 @@ func main() {
 	sp.RegisterHandler("RPCStartATTACKImport", createStartATTACKImportHandler(dataPopController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartATTACKImport")
 	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartATTACKImport")
+
+	// Register Memory Card proxy handlers
+	registerMemoryCardProxyHandlers(sp, rpcClient, logger)
 
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)
@@ -1440,12 +1440,8 @@ func createListCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproce
 			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
-		jsonData, err := subprocess.MarshalFast(resp.Payload)
-		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
+		// Forward payload directly from local service response (already JSON)
+		respMsg.Payload = resp.Payload
 
 		logger.Info("RPCListCVEs: Successfully listed CVEs")
 		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
@@ -1481,12 +1477,8 @@ func createCountCVEsHandler(rpcClient *RPCClient, logger *common.Logger) subproc
 			Source:        msg.Target, // Set source to the target of the original message (this service's ID)
 		}
 
-		jsonData, err := subprocess.MarshalFast(resp.Payload)
-		if err != nil {
-			logger.Error("Failed to marshal response: %v", err)
-			return createErrorResponse(msg, fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		respMsg.Payload = jsonData
+		// Forward payload directly from local service response (already JSON)
+		respMsg.Payload = resp.Payload
 
 		logger.Info("RPCCountCVEs: Successfully counted CVEs")
 		logger.Debug(LogMsgRPCResponseSent, respMsg.Type, respMsg.ID, respMsg.Target, respMsg.CorrelationID)
@@ -1506,14 +1498,20 @@ func createStartTypedSessionHandler(jobExecutor *taskflow.JobExecutor, logger *c
 			Params          map[string]interface{} `json:"params,omitempty"`
 		}
 
-		// Set defaults
-		req.StartIndex = 0
-		req.ResultsPerBatch = 100
-		req.DataType = taskflow.DataTypeCVE // default to CVE
-
 		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 			logger.Error("Failed to parse request: %v", err)
 			return createErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+		}
+
+		// Set defaults only if not provided (after unmarshaling)
+		if req.StartIndex == 0 {
+			req.StartIndex = 0
+		}
+		if req.ResultsPerBatch == 0 {
+			req.ResultsPerBatch = 100
+		}
+		if req.DataType == "" {
+			req.DataType = taskflow.DataTypeCVE // default to CVE
 		}
 
 		if req.SessionID == "" {
