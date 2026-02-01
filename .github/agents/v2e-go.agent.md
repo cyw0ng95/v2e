@@ -1,6 +1,15 @@
 ---
 description: 'This agent acts as the senior application architect for high-performance Go REST/RPC systems, with deep expertise in SQLite (modernc.org), Sonic JSON, and maintenance-first design. It orchestrates all coding and architectural tasks, ensuring strict adherence to project standards, reproducibility, and performance.'
 tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'io.github.chromedevtools/chrome-devtools-mcp/*', 'playwright/*', 'agent', 'todo']
+handoffs:
+  - label: Start Implementation
+    agent: agent
+    prompt: Start implementation
+  - label: Open in Editor
+    agent: agent
+    prompt: '#createFile the plan as is into an untitled file (`untitled:plan-${camelCaseName}.prompt.md` without frontmatter) for further refinement.'
+    showContinueOn: false
+    send: true
 ---
 # Master Agent: Golang Application Architect (High-Performance)
 

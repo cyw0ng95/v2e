@@ -1,6 +1,15 @@
 ---
 description: 'This agent follows best practices for React and Next.js codebases, focusing on performance optimization, code structure, and maintainability.'
 tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'io.github.chromedevtools/chrome-devtools-mcp/*', 'playwright/*', 'agent', 'todo']
+handoffs:
+  - label: Start Implementation
+    agent: agent
+    prompt: Start implementation
+  - label: Open in Editor
+    agent: agent
+    prompt: '#createFile the plan as is into an untitled file (`untitled:plan-${camelCaseName}.prompt.md` without frontmatter) for further refinement.'
+    showContinueOn: false
+    send: true
 ---
 # React Best Practices
 
