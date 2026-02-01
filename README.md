@@ -118,45 +118,88 @@ The system utilizes a sophisticated dual-mode transport layer with both Unix Dom
 
 ## Configuration
 
-The broker is configured via `config.json`. Key configuration areas include:
+The system uses a hybrid configuration approach: build-time configuration via `vconfig` (ldflags) for compile-time settings, and runtime configuration via `.config` for process definitions.
 
-- **Transport**: Choose between `uds` (default) or `fd_pipe`.
-- **Optimizer**: Tune the performance characteristics of the message broker.
-  - `optimizer_buffer_cap`: Size of the message buffer.
-  - `optimizer_num_workers`: Number of parallel processing workers.
-  - `optimizer_offer_policy`: Strategy when buffer is full (`drop`, `block`, `timeout`, `drop_oldest`).
-  - `optimizer_enable_adaptive`: Enable dynamic self-tuning of batch sizes and worker counts.
-- **Processes**: Define the subprocesses to be managed by the broker.
+### vconfig TUI
 
-### Advanced Configuration Management
+Run `./build.sh -c` to access the interactive configuration manager.
 
-The project includes a dedicated configuration management tool (`vconfig`) with the following features:
+#### Logging Configuration
 
-- **TUI Interface**: Interactive text-based user interface for configuration management
-- **Build Flag Generation**: Automatic generation of build flags based on configuration
-- **Default Configuration**: Generation of configuration files with default values
-- **Validation**: Configuration validation and error checking
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_MIN_LOG_LEVEL` | string | `INFO` | Minimum log level (DEBUG, INFO, WARN, ERROR) |
+| `CONFIG_LOGGING_DIR` | string | `./logs` | Directory for log files |
+| `CONFIG_LOGGING_REFRESH` | bool | `true` | Remove log directory first for fresh logs |
+
+#### Access Service Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_ACCESS_SERVERADDR` | string | `0.0.0.0:8080` | Server address for access service |
+| `CONFIG_ACCESS_STATICDIR` | string | `website` | Static directory for access service |
+
+#### Transport Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_PROC_COMMTYPE` | string | `uds` | Communication transport type (uds or fd) |
+| `CONFIG_PROC_UDS_BASEPATH` | string | `/tmp/v2e_uds` | Base path for subprocess UDS sockets |
+| `CONFIG_BROKER_UDS_BASEPATH` | string | `/tmp/v2e_uds` | Base path for broker UDS sockets |
+
+#### Optimizer Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_OPTIMIZER_BUFFER` | int | `1000` | Message channel buffer capacity |
+| `CONFIG_OPTIMIZER_WORKERS` | int | `4` | Worker goroutines count |
+| `CONFIG_OPTIMIZER_BATCH` | int | `1` | Message batch size |
+| `CONFIG_OPTIMIZER_FLUSH` | int | `10` | Flush interval (milliseconds) |
+| `CONFIG_OPTIMIZER_POLICY` | string | `drop` | Offer policy (drop, wait, reject) |
 
 ## Transport & Communication
 
-The system uses a sophisticated, hybrid RPC communication mechanism designed for high throughput and low latency:
+The system uses a dual-mode RPC communication mechanism designed for high throughput and low latency.
 
- - **Dual-Mode Transport Layer**:
-   - **Unix Domain Sockets (UDS)**: The default, high-performance transport method. Provides secure (0600 permissions), efficient, and standard IPC.
-   - **FD Pipes (Legacy/Fallback)**: Supported for legacy compatibility. When used, the file descriptor numbers are configured at build time (ldflags); runtime environment variables are not relied upon.
-- **Adaptive Optimization**: The broker includes a traffic optimizer that dynamically adjusts batch sizes and worker counts based on load.
-- **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching.
-- **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs.
-- **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process.
- - **Build-time Configuration**: File descriptor numbers for FD Pipe transport are configured at build time (ldflags). Runtime environment variables are no longer used for RPC transport configuration.
-- **Message Pooling**: Optimized message allocation using sync.Pool for reduced garbage collection
+### Transport Modes
 
-The communication pattern follows this flow:
-1. External requests → Access REST API → Broker → Backend Services
-2. All inter-service communication happens exclusively through broker routing
-3. No direct subprocess-to-subprocess communication is allowed
-4. The broker maintains message correlation and response tracking
-5. Optional message optimization layer handles high-volume traffic with configurable parameters
+| Mode | Description | Status | Configuration |
+|------|-------------|--------|---------------|
+| **Unix Domain Sockets (UDS)** | High-performance IPC with 0600 permissions | Default | `CONFIG_PROC_COMMTYPE=uds` |
+| **FD Pipes** | Legacy transport using inherited file descriptors | Fallback | `CONFIG_PROC_COMMTYPE=fd` |
+
+### Transport Architecture
+
+```
+Frontend → Access Service → Broker → Backend Services
+                      ↓           ↓
+                HTTP/REST      UDS/FD Pipes
+                                    ↓
+                            Subprocess Services
+```
+
+### Message Flow
+
+1. **External requests** → Access REST API (`/restful/rpc`) → Broker
+2. **Broker routing** → Backend Services via UDS or FD Pipes
+3. **Response path** → Broker → Access Service → Frontend
+4. **No direct subprocess-to-subprocess communication** is allowed
+
+### Message Types
+
+| Type | Purpose |
+|------|---------|
+| Request | RPC call with correlation ID |
+| Response | RPC response matching correlation ID |
+| Event | Asynchronous notification |
+| Error | Error response with details |
+
+### Key Features
+
+- **Message Pooling**: `sync.Pool` for reduced GC pressure
+- **Zero-Copy JSON**: `bytedance/sonic` for serialization
+- **Correlation IDs**: Request-response matching
+- **Per-Process Statistics**: Message counts and timing
 
 ## Frontend Integration
 
@@ -180,48 +223,29 @@ The frontend includes dedicated sections for:
 
 ## Quickstart
 
-Prerequisites: Go 1.21+, Node.js 20+, npm 10+, and basic shell tools. For macOS users, Podman is required for the containerized development environment.
+Prerequisites: Go 1.21+, Node.js 20+, npm 10+, and basic shell tools. For macOS users, Podman is required for containerized development.
+
+**IMPORTANT:** Always use `./build.sh` for all builds and tests. Do not use direct `go build` or `go test` commands - the wrapper handles build tags, environment setup, and proper test configuration.
 
 ### Build Script Options
 
-The project includes an enhanced build script (`build.sh`) with multiple options:
+| Option | Description |
+|--------|-------------|
+| `-c` | Run vconfig TUI to configure build options |
+| `-t` | Run unit tests (excludes fuzz tests, uses `-run='^Test'`) |
+| `-f` | Run fuzz tests (5 seconds per target) |
+| `-m` | Run benchmarks with reporting |
+| `-p` | Build and package binaries + assets |
+| `-r` | Run full system: broker + all subprocesses + frontend dev server |
+| `-v` | Enable verbose output |
+| `-h` | Show help message |
 
-- `-c`: Run vconfig TUI to configure build options
-- `-t`: Run unit tests and return result for GitHub CI
-- `-f`: Run fuzz tests on key interfaces (5 seconds per test)
-- `-m`: Run performance benchmarks and generate report
-- `-p`: Build and package binaries with assets
-- `-r`: Run Node.js process and broker (for development)
-- `-v`: Enable verbose output
-- `-h`: Show help message
-
-Build all commands:
-
-```bash
-# Build backend binaries
-go build ./cmd/...
-```
-
-Build the frontend:
+### Common Workflows
 
 ```bash
-# Navigate to website directory and install dependencies
-cd website
-npm install
-# Build the frontend
-npm run build
-```
+# Configure build options (vconfig TUI)
+./build.sh -c
 
-Run with the broker (recommended):
-
-```bash
-# Start the broker which spawns configured subprocesses
-./broker config.json
-```
-
-Alternatively, use the build script for different workflows:
-
-```bash
 # Run unit tests
 ./build.sh -t
 
@@ -231,77 +255,23 @@ Alternatively, use the build script for different workflows:
 # Run performance benchmarks
 ./build.sh -m
 
-# Build and package binaries with assets
+# Build and package everything
 ./build.sh -p
 
-# Run development mode with auto-reload
+# Run full development environment (recommended for testing)
 ./build.sh -r
 ```
+
+### Development Mode (`./build.sh -r`)
+
+Starts the complete system for integration testing and development:
+- Broker with all subprocesses (access, local, meta, remote, sysmon)
+- Frontend dev server on http://localhost:3000
+- Logs written to `.build/package/logs/`
+
+Press Ctrl+C to stop all services cleanly.
 
 ## Development Workflow
-
-### Live Development
-
-To enable live development, use the `-r` option with the `build.sh` script. This option streamlines development by automatically restarting the broker and Node.js processes when changes are detected in Go source files or frontend assets.
-
-Run the following command from the project root:
-
-```bash
-./build.sh -r
-```
-
-Features:
-- **Automatic Restart**: The broker and Node.js processes restart automatically on file changes
-- **Debouncing**: Prevents rapid restarts with a delay between file change detection and process restarts
-- **Process Cleanup**: Ensures all subprocesses terminate properly before restarting
-- **Verbose Output**: Use `-v` flag with any option for detailed logging
-
-Notes:
-- This workflow is for development only, not for production environments
-- Ensure all dependencies are installed before using the `-r` option
-
-### Testing
-
-Run unit tests:
-
-```bash
-# Run Go unit tests
-./build.sh -t
-```
-
-Run fuzz tests:
-
-```bash
-# Run fuzz tests on key interfaces
-./build.sh -f
-```
-
-Run performance benchmarks:
-
-```bash
-# Execute performance benchmarks
-./build.sh -m
-```
-
-Build and package:
-
-```bash
-# Build and package binaries with assets
-./build.sh -p
-```
-
-### Build Script Options
-
-The build script supports the following options:
-
-- `-c`: Run vconfig TUI to configure build options
-- `-t`: Run unit tests and return result for CI
-- `-f`: Run fuzz tests on key interfaces (5 seconds per test)
-- `-m`: Run performance benchmarks and generate report
-- `-p`: Build and package binaries with assets
-- `-r`: Run Node.js process and broker (for development)
-- `-v`: Enable verbose output
-- `-h`: Show help message
 
 ### Containerized Development Environment
 
@@ -455,27 +425,42 @@ The broker supports the following configuration parameters in `config.json`:
 
 ## Performance Characteristics
 
-The broker-first architecture provides several performance benefits:
+The broker-first architecture provides several performance benefits through configurable optimization parameters.
 
-- **Efficient Message Routing**: Direct process-to-process communication through the broker minimizes overhead
-- **Scalable Process Management**: The broker can manage dozens of subprocess services with minimal resource impact
-- **Built-in Metrics Collection**: Comprehensive performance monitoring built into the architecture
-- **Optimized Communication**: Custom file descriptor usage avoids I/O conflicts and improves throughput
-- **Asynchronous Message Optimization**: Configurable buffering, batching, and worker pools for high-volume scenarios
-- **Message Pooling**: Reduced garbage collection through sync.Pool-based message allocation
-- **Concurrent Task Execution**: go-taskflow enables parallel execution of tasks with up to 100 concurrent goroutines
-- **Adaptive Optimization**: Dynamic adjustment of performance parameters based on system load and throughput
-- **Enhanced Benchmarking**: Comprehensive performance benchmarking with detailed reporting capabilities
+### Optimizer Configuration
 
-Performance monitoring capabilities include:
+Build-time configurable via vconfig (`CONFIG_OPTIMIZER_*` options):
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `BufferCap` | 1000 | Message channel buffer capacity |
+| `NumWorkers` | 4 | Number of parallel processing workers |
+| `BatchSize` | 1 | Message batch size for throughput |
+| `FlushInterval` | 10ms | Maximum time before flushing batches |
+| `OfferPolicy` | drop | Strategy when buffer is full (drop/wait/reject) |
+
+### Performance Benefits
+
+| Feature | Benefit |
+|---------|---------|
+| **Efficient Message Routing** | Direct process-to-process communication through broker minimizes overhead |
+| **Scalable Process Management** | Broker manages dozens of subprocess services with minimal resource impact |
+| **Zero-Copy JSON** | `bytedance/sonic` for JIT-optimized serialization |
+| **Message Pooling** | `sync.Pool` reduces garbage collection pressure |
+| **Concurrent Task Execution** | go-taskflow enables parallel execution with up to 100 concurrent goroutines |
+| **Configurable Buffering** | Tunable buffer capacity for high-volume scenarios |
+| **Worker Pools** | Adjustable worker count for CPU-bound processing |
+| **Message Batching** | Configurable batch size and flush interval for throughput optimization |
+
+### Performance Monitoring
+
+Available metrics include:
 - Message throughput statistics
 - Process response times
 - System resource utilization
 - Error rate tracking
 - Per-process message statistics
 - Optimizer metrics and performance counters
-- Adaptive algorithm effectiveness metrics
-- Detailed benchmark reports with statistical analysis
 
 ## Project Layout
 
@@ -623,33 +608,9 @@ For macOS users or when isolation is required, the project includes a containeri
 - **Go Module Cache**: Mounts the Go module cache inside the container for faster builds
 - **Cross-platform**: Works on both macOS and Linux (optional on Linux with USE_CONTAINER=true)
 
-### Configuration Management
-
-The project includes a dedicated configuration management tool:
-
-- **Location**: `tool/vconfig/`
-- **Purpose**: Provides a TUI interface and command-line options for configuration management
-- **Features**: 
-  - Interactive TUI mode for easy configuration
-  - Default configuration generation
-  - Build flag generation based on configuration
-  - Validation of configuration parameters
-
-### Enhanced Testing
-
-The project includes multiple testing methodologies:
+### Testing Methodologies
 
 - **Unit Tests**: Standard Go unit tests with coverage reporting
 - **Fuzz Tests**: Fuzz testing for key interfaces to discover edge cases
 - **Performance Benchmarks**: Comprehensive benchmarking with statistical analysis
 - **Integration Tests**: Pytest-based integration tests in the `tests/` directory
-
-### Build Options
-
-The build script (`build.sh`) provides multiple options for different workflows:
-
-- **Development**: Incremental builds with dependency checking
-- **Packaging**: Complete packaging with all assets and binaries
-- **Testing**: Dedicated test execution with coverage reports
-- **Benchmarking**: Performance benchmarking with detailed reports
-- **Continuous Integration**: CI-ready test execution
