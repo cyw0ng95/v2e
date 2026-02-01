@@ -2,6 +2,8 @@ package perf
 
 import (
 	"context"
+	"fmt"
+	"hash/fnv"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -12,6 +14,88 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
+
+// OptimizedRouter provides optimized message routing
+type OptimizedRouter struct {
+	routes map[string]chan *proc.Message
+	mu     sync.RWMutex
+}
+
+// NewOptimizedRouter creates a new optimized router
+func NewOptimizedRouter() *OptimizedRouter {
+	return &OptimizedRouter{
+		routes: make(map[string]chan *proc.Message),
+	}
+}
+
+// RouteFast performs fast message routing with timeout
+func (r *OptimizedRouter) RouteFast(msg *proc.Message) error {
+	r.mu.RLock()
+	ch, exists := r.routes[msg.Target]
+	r.mu.RUnlock()
+	
+	if !exists {
+		return fmt.Errorf("no route for target: %s", msg.Target)
+	}
+	
+	select {
+	case ch <- msg:
+		return nil
+	case <-time.After(100 * time.Millisecond):
+		return fmt.Errorf("timeout routing message")
+	}
+}
+
+// WorkStealingScheduler provides work stealing for balanced load distribution
+type WorkStealingScheduler struct {
+	queues  []chan *proc.Message
+	workers []int
+	mu      sync.Mutex
+}
+
+// NewWorkStealingScheduler creates a new work stealing scheduler
+func NewWorkStealingScheduler(numQueues int) *WorkStealingScheduler {
+	queues := make([]chan *proc.Message, numQueues)
+	for i := range queues {
+		queues[i] = make(chan *proc.Message, 100) // Buffered channel
+	}
+	
+	return &WorkStealingScheduler{
+		queues:  queues,
+		workers: make([]int, numQueues),
+	}
+}
+
+// Dispatch distributes messages using work stealing algorithm
+func (ws *WorkStealingScheduler) Dispatch(msg *proc.Message) {
+	// Use consistent hashing to determine primary queue
+	hash := fnv.New32a()
+	hash.Write([]byte(msg.Target))
+	idx := hash.Sum32() % uint32(len(ws.queues))
+	
+	select {
+	case ws.queues[idx] <- msg:
+		// Successfully added to primary queue
+	default:
+		// Primary queue full, try work stealing
+		ws.stealWork(msg)
+	}
+}
+
+// stealWork attempts to find an available queue when primary is full
+func (ws *WorkStealingScheduler) stealWork(msg *proc.Message) {
+	for i := range ws.queues {
+		select {
+		case ws.queues[i] <- msg:
+			// Successfully stole a slot
+			return
+		default:
+			// Queue is full, continue to next
+		}
+	}
+	// All queues full, block on first queue as last resort
+	ws.queues[0] <- msg
+}
 
 // Optimizer provides a modular performance optimizer decoupled from cmd/broker.
 // This initial skeleton wires to interfaces so cmd/broker can adopt it incrementally.

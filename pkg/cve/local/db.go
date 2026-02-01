@@ -20,6 +20,14 @@ func (d *DB) GormDB() *gorm.DB {
 	return d.db
 }
 
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // CVERecord represents a CVE record in the database
 type CVERecord struct {
 	gorm.Model
@@ -29,6 +37,52 @@ type CVERecord struct {
 	LastModified time.Time `gorm:"index"`
 	VulnStatus   string    `gorm:"index"`
 	Data         string    `gorm:"type:text"` // JSON representation of full CVEItem
+}
+
+// NewOptimizedDB creates an optimized database connection
+func NewOptimizedDB(dbPath string) (*DB, error) {
+	// Disable GORM logging to prevent interference with RPC message parsing
+	// When running as a subprocess, stdout is used for RPC messages only
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+		// Enable prepared statement caching for better performance
+		PrepareStmt: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Auto-migrate the schema
+	if err := db.AutoMigrate(&CVERecord{}); err != nil {
+		return nil, err
+	}
+
+	// Configure connection pool for better performance
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	// Set connection pool parameters
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// Enhanced SQLite PRAGMAs for performance
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL",
+		"PRAGMA synchronous=NORMAL",
+		"PRAGMA cache_size=-40000",
+		"PRAGMA mmap_size=268435456", // 256MB
+		"PRAGMA temp_store=memory",
+	}
+	for _, p := range pragmas {
+		if _, err := sqlDB.Exec(p); err != nil {
+			return nil, err
+		}
+	}
+
+	return &DB{db: db}, nil
 }
 
 // NewDB creates a new database connection
@@ -79,6 +133,19 @@ func NewDB(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
+	// Additional PRAGMAs for enhanced performance
+	pragmas := []string{
+		"PRAGMA mmap_size=268435456",    // 256MB memory mapping
+		"PRAGMA temp_store=memory",      // Store temp tables in memory
+		"PRAGMA foreign_keys=OFF",       // Disable FK constraints for speed
+		"PRAGMA locking_mode=EXCLUSIVE", // Exclusive locking for single writer
+	}
+	for _, pragma := range pragmas {
+		if _, err := sqlDB.Exec(pragma); err != nil {
+			return nil, err
+		}
+	}
+
 	return &DB{db: db}, nil
 }
 
@@ -115,6 +182,21 @@ func (d *DB) SaveCVE(cveItem *cve.CVEItem) error {
 	}
 
 	return result.Error
+}
+
+// BulkInsertRecords efficiently inserts multiple records in a single transaction
+func (d *DB) BulkInsert(records []CVERecord, batchSize int) error {
+	tx := d.db.Begin()
+	defer func() { if r := recover(); r != nil { tx.Rollback() } }()
+	
+	for i := 0; i < len(records); i += batchSize {
+		end := min(i+batchSize, len(records))
+		if err := tx.Create(records[i:end]).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit().Error
 }
 
 // SaveCVEs saves multiple CVE items to the database using batch insert for better performance
@@ -190,6 +272,45 @@ func (d *DB) Count() (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// LazyCVERecord provides lazy loading for CVE data
+type LazyCVERecord struct {
+	ID          string
+	*CVERecord  // Loaded on demand
+	loaded      bool
+	db          *DB
+}
+
+// NewLazyCVERecord creates a new lazy-loaded CVE record
+func (d *DB) NewLazyCVERecord(id string) *LazyCVERecord {
+	return &LazyCVERecord{
+		ID:     id,
+		loaded: false,
+		db:     d,
+	}
+}
+
+// Load ensures the CVE record is loaded from the database
+func (l *LazyCVERecord) Load() error {
+	if !l.loaded {
+		record, err := l.db.GetCVERaw(l.ID)
+		if err != nil {
+			return err
+		}
+		l.CVERecord = record
+		l.loaded = true
+	}
+	return nil
+}
+
+// GetCVERaw retrieves raw CVE record without unmarshaling the data field
+func (d *DB) GetCVERaw(cveID string) (*CVERecord, error) {
+	var record CVERecord
+	if err := d.db.Where("cve_id = ?", cveID).First(&record).Error; err != nil {
+		return nil, err
+	}
+	return &record, nil
 }
 
 // DeleteCVE deletes a CVE from the database by ID

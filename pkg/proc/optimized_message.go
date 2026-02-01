@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -22,6 +23,52 @@ var optimizedPool = &OptimizedMessagePool{
 			return &Message{}
 		},
 	},
+}
+
+// Size-tiered pools for different payload sizes
+var (
+	smallMessagePool = sync.Pool{
+		New: func() interface{} { return &Message{Payload: make(json.RawMessage, 0, 64)} },
+	}
+	mediumMessagePool = sync.Pool{
+		New: func() interface{} { return &Message{Payload: make(json.RawMessage, 0, 512)} },
+	}
+	largeMessagePool = sync.Pool{
+		New: func() interface{} { return &Message{Payload: make(json.RawMessage, 0, 4096)} },
+	}
+)
+
+// GetMessageBySize retrieves a message optimized for expected payload size
+func GetMessageBySize(expectedSize int) *Message {
+	var pool *sync.Pool
+	switch {
+	case expectedSize <= 64:
+		pool = &smallMessagePool
+	case expectedSize <= 512:
+		pool = &mediumMessagePool
+	default:
+		pool = &largeMessagePool
+	}
+	msg := pool.Get().(*Message)
+	msg.reset()
+	return msg
+}
+
+// PutMessageBySize returns a message to the appropriate pool based on size
+func PutMessageBySize(msg *Message, expectedSize int) {
+	if msg == nil {
+		return
+	}
+	var pool *sync.Pool
+	switch {
+	case expectedSize <= 64:
+		pool = &smallMessagePool
+	case expectedSize <= 512:
+		pool = &mediumMessagePool
+	default:
+		pool = &largeMessagePool
+	}
+	pool.Put(msg)
 }
 
 // Get retrieves a Message from the optimized pool
@@ -136,6 +183,30 @@ func (m *Message) OptimizedUnmarshalPayload(v interface{}) error {
 // OptimizedMarshal serializes the message to JSON with enhanced performance
 func (m *Message) OptimizedMarshal() ([]byte, error) {
 	return jsonutil.Marshal(m)
+}
+
+// FastMarshal provides faster JSON serialization for Message objects
+func (m *Message) FastMarshal() []byte {
+	// Pre-allocate with estimated size
+	buf := make([]byte, 0, 128+len(m.ID)+len(m.Source)+len(m.Target)+len(m.Payload))
+	
+	buf = append(buf, `{"type":"`...)
+	buf = append(buf, string(m.Type)...)
+	buf = append(buf, `","id":"`...)
+	buf = append(buf, m.ID...)
+	buf = append(buf, `","payload":`...)
+	if m.Payload != nil {
+		buf = append(buf, m.Payload...)
+	} else {
+		buf = append(buf, "null"...)
+	}
+	buf = append(buf, `,"source":"`...)
+	buf = append(buf, m.Source...)
+	buf = append(buf, `","target":"`...)
+	buf = append(buf, m.Target...)
+	buf = append(buf, `"}`...)
+	
+	return buf
 }
 
 // OptimizedUnmarshal deserializes a message from JSON with enhanced performance
