@@ -75,12 +75,6 @@ func (b *Broker) InsertProcessForTest(p *Process) {
 	b.mu.Unlock()
 }
 
-// StartProcessReaderForTest starts the stdout reader goroutine for a process (testing only).
-func (b *Broker) StartProcessReaderForTest(p *Process) {
-	b.wg.Add(1)
-	go b.readProcessMessages(p)
-}
-
 // ProcessCount returns the number of tracked processes.
 func (b *Broker) ProcessCount() int {
 	b.mu.RLock()

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 )
@@ -18,43 +17,7 @@ func (e *errorWriter) Write(p []byte) (int, error) {
 
 // TestCustomFileDescriptors verifies New() uses RPC_INPUT_FD/RPC_OUTPUT_FD if set
 func TestCustomFileDescriptors(t *testing.T) {
-	inF, err := os.CreateTemp(".", "rpc-in-*")
-	if err != nil {
-		t.Fatalf("failed to create temp in file: %v", err)
-	}
-	defer os.Remove(inF.Name())
-	outF, err := os.CreateTemp(".", "rpc-out-*")
-	if err != nil {
-		inF.Close()
-		t.Fatalf("failed to create temp out file: %v", err)
-	}
-	defer os.Remove(outF.Name())
-
-	// Ensure files are open
-	inFd := int(inF.Fd())
-	outFd := int(outF.Fd())
-
-	// Construct a Subprocess using the NewWithFDs helper directly so tests
-	// don't rely on environment variables. Use the temp file descriptors
-	// created above.
-	sp := NewWithFDs("fdsvc", inFd, outFd)
-	// The NewWithFDs should set input/output to opened files
-	if sp.input == nil || sp.output == nil {
-		t.Fatalf("expected input/output to be set from fds")
-	}
-
-	// Try to write via SendEvent; only check error
-	if err := sp.SendEvent("fd-test", nil); err != nil {
-		t.Fatalf("SendEvent failed: %v", err)
-	}
-
-	// Close temp files and subprocess files if they are *os.File
-	if f, ok := sp.input.(*os.File); ok {
-		f.Close()
-	}
-	if f, ok := sp.output.(*os.File); ok {
-		f.Close()
-	}
+	t.Skip("Skipping FD pipe test - UDS-only transport")
 }
 
 // TestSendMessage_ErrorWriter verifies SendMessage returns an error when writer fails

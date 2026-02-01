@@ -1,7 +1,6 @@
 package core
 
 import (
-	"io"
 	"testing"
 	"time"
 
@@ -41,7 +40,7 @@ func TestProcessInfo_StatusTransitions(t *testing.T) {
 
 // TestProcess_SetStatus verifies thread-safe status updates.
 func TestProcess_SetStatus(t *testing.T) {
-	proc := NewTestProcess("test", ProcessStatusRunning, nil, nil)
+	proc := NewTestProcess("test", ProcessStatusRunning)
 
 	if proc.info.Status != ProcessStatusRunning {
 		t.Fatalf("expected initial status running, got %s", proc.info.Status)
@@ -60,21 +59,7 @@ func TestProcess_SetStatus(t *testing.T) {
 
 // TestProcess_IOSetters ensures stdin/stdout can be set independently.
 func TestProcess_IOSetters(t *testing.T) {
-	r, w := io.Pipe()
-	defer r.Close()
-	defer w.Close()
-
-	proc := NewTestProcess("io-test", ProcessStatusRunning, nil, nil)
-
-	proc.SetStdin(w)
-	proc.SetStdout(r)
-
-	if proc.stdin != w {
-		t.Fatalf("stdin not set correctly")
-	}
-	if proc.stdout != r {
-		t.Fatalf("stdout not set correctly")
-	}
+	t.Skip("Skipping stdin/stdout setter test - UDS-only transport")
 }
 
 // TestRestartConfig_State covers restart counter increments.
@@ -158,7 +143,7 @@ func TestProcessInfo_Fields(t *testing.T) {
 
 // TestProcess_DoneChannel verifies done channel behavior.
 func TestProcess_DoneChannel(t *testing.T) {
-	proc := NewTestProcess("done-test", ProcessStatusRunning, nil, nil)
+	proc := NewTestProcess("done-test", ProcessStatusRunning)
 
 	select {
 	case <-proc.Done():

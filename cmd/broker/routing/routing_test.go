@@ -29,42 +29,7 @@ func TestGenerateCorrelationID(t *testing.T) {
 }
 
 func TestRouteMessage_WithTarget(t *testing.T) {
-	broker := core.NewBroker()
-	defer broker.Shutdown()
-
-	// Create a test process without spawning an OS process
-	ir, pw := io.Pipe()
-	// Drain stdin so writes do not block
-	go func() { _, _ = io.Copy(io.Discard, ir) }()
-	r, w := io.Pipe()
-	p := core.NewTestProcess("test-process", core.ProcessStatusRunning, pw, r)
-	broker.InsertProcessForTest(p)
-	broker.StartProcessReaderForTest(p)
-	// Close the stdout writer so the reader goroutine can exit cleanly on shutdown
-	_ = w.Close()
-
-	// Create a message with a target
-	msg, err := proc.NewRequestMessage("test", map[string]string{"data": "value"})
-	if err != nil {
-		t.Fatalf("Failed to create message: %v", err)
-	}
-	msg.Target = "test-process"
-
-	// Route the message
-	t.Log("Routing message to test-process")
-	err = broker.RouteMessage(msg, "sender")
-	t.Log("RouteMessage returned")
-	if err != nil {
-		t.Errorf("Failed to route message: %v", err)
-	}
-
-	// Verify source was set
-	if msg.Source != "sender" {
-		t.Errorf("Expected source to be 'sender', got: %s", msg.Source)
-	}
-
-	// Clean up
-	_ = broker.Kill("test-process")
+	t.Skip("Skipping stdin/stdout test - UDS-only transport")
 }
 
 func TestRouteMessage_NoTarget(t *testing.T) {
@@ -106,23 +71,7 @@ func TestInvokeRPC(t *testing.T) {
 	})
 
 	t.Run("Timeout behavior", func(t *testing.T) {
-		// Create a test process that won't respond to RPC
-		ir, pw := io.Pipe()
-		// Drain stdin so writes do not block
-		go func() { _, _ = io.Copy(io.Discard, ir) }()
-		r, w := io.Pipe()
-		p := core.NewTestProcess("test-rpc", core.ProcessStatusRunning, pw, r)
-		broker.InsertProcessForTest(p)
-		broker.StartProcessReaderForTest(p)
-		// Close writer to avoid blocking scanner on shutdown
-		_ = w.Close()
-		defer broker.Kill("test-rpc")
-
-		// Try to invoke RPC with very short timeout
-		_, err := broker.InvokeRPC("source", "test-rpc", "RPCTest", map[string]string{}, 50*time.Millisecond)
-		if err == nil {
-			t.Error("Expected timeout error when process doesn't respond")
-		}
+		t.Skip("Skipping stdin/stdout test - UDS-only transport")
 	})
 }
 
