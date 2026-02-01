@@ -21,26 +21,16 @@ type RPCClient struct {
 
 // NewRPCClient creates a new RPC client for broker communication
 func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
-	// We'll create the subprocess separately and pass it in
-	// For now, we'll create it here as before but eventually it should come from standard startup
+	// Use deterministic UDS path based on build-time base path and process ID
+	socketPath := fmt.Sprintf("%s_%s.sock", subprocess.DefaultProcUDSBasePath(), processID)
 	var sp *subprocess.Subprocess
 
-	// Create subprocess based on build-time default communication type
-	switch subprocess.DefaultProcCommType() {
-	case "fd":
-		sp = subprocess.NewWithFDs(processID, subprocess.DefaultBuildRPCInputFD(), subprocess.DefaultBuildRPCOutputFD())
-	case "uds":
-		// Use deterministic UDS path based on build-time base path and process ID
-		socketPath := fmt.Sprintf("%s_%s.sock", subprocess.DefaultProcUDSBasePath(), processID)
-		// Only attempt to create a UDS-backed subprocess if the socket exists
-		// to avoid forcing process exit when no broker listener is present
-		if _, err := os.Stat(socketPath); err == nil {
-			sp = subprocess.NewWithUDS(processID, socketPath)
-		} else {
-			// Fallback to stdio subprocess (useful for tests that don't set up a socket)
-			sp = subprocess.New(processID)
-		}
-	default:
+	// Only attempt to create a UDS-backed subprocess if the socket exists
+	// to avoid forcing process exit when no broker listener is present
+	if _, err := os.Stat(socketPath); err == nil {
+		sp = subprocess.NewWithUDS(processID, socketPath)
+	} else {
+		// Fallback to stdio subprocess (useful for tests that don't set up a socket)
 		sp = subprocess.New(processID)
 	}
 
