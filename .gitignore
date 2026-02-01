@@ -101,3 +101,6 @@ logs/
 *.test
 # vconfig binary
 tool/vconfig/vconfig
+
+# MCP
+.playwright-mcp
