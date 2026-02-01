@@ -36,7 +36,7 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 	}
 
 	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
-		b.logger.Debug("[TRACE] Received response message: id=%s correlation_id=%s from=%s", msg.ID, msg.CorrelationID, msg.Source)
+		b.logger.Debug("Received response message: id=%s correlation_id=%s from=%s", msg.ID, msg.CorrelationID, msg.Source)
 		// Use atomic load-and-delete operation to reduce lock contention
 		b.pendingMu.Lock()
 		pending, exists := b.pendingRequests[msg.CorrelationID]
@@ -46,17 +46,17 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 		b.pendingMu.Unlock()
 
 		if exists {
-			b.logger.Debug("[TRACE] Routing response to pending request: correlation_id=%s", msg.CorrelationID)
+			b.logger.Debug("Routing response to pending request: correlation_id=%s", msg.CorrelationID)
 			select {
 			case pending.ResponseChan <- msg:
-				b.logger.Debug("[TRACE] Response delivered to waiting channel: correlation_id=%s", msg.CorrelationID)
+				b.logger.Debug("Response delivered to waiting channel: correlation_id=%s", msg.CorrelationID)
 				return nil
 			case <-time.After(5 * time.Second):
-				b.logger.Warn("[TRACE] Timeout sending response to pending request: correlation_id=%s", msg.CorrelationID)
+				b.logger.Warn("Timeout sending response to pending request: correlation_id=%s", msg.CorrelationID)
 				return fmt.Errorf("timeout sending response to pending request")
 			}
 		}
-		b.logger.Debug("[TRACE] No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
+		b.logger.Debug("No pending request found for correlation_id=%s (may be tracked by subprocess), trying target-based routing", msg.CorrelationID)
 		// For responses, ensure the source is set to the responding process
 		if msg.Type == proc.MessageTypeResponse && msg.Source == "" {
 			msg.Source = sourceProcess

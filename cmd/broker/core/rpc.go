@@ -55,20 +55,20 @@ func (b *Broker) InvokeRPC(sourceProcess, targetProcess, rpcMethod string, paylo
 	}
 
 	b.logger.Debug("Invoked RPC: source=%s target=%s method=%s correlation_id=%s", sourceProcess, targetProcess, rpcMethod, correlationID)
-	b.logger.Debug("[TRACE] Waiting for response: correlation_id=%s target=%s method=%s timeout=%v", correlationID, targetProcess, rpcMethod, timeout)
+	b.logger.Debug("Waiting for response: correlation_id=%s target=%s method=%s timeout=%v", correlationID, targetProcess, rpcMethod, timeout)
 
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
 	select {
 	case response := <-responseChan:
-		b.logger.Debug("[TRACE] Received response for correlation_id=%s: type=%s", correlationID, response.Type)
+		b.logger.Debug("Received response for correlation_id=%s: type=%s", correlationID, response.Type)
 		return response, nil
 	case <-timer.C:
-		b.logger.Warn("[TRACE] Timeout waiting for response: correlation_id=%s target=%s method=%s", correlationID, targetProcess, rpcMethod)
+		b.logger.Warn("Timeout waiting for response: correlation_id=%s target=%s method=%s", correlationID, targetProcess, rpcMethod)
 		return nil, fmt.Errorf("timeout waiting for response from %s", targetProcess)
 	case <-b.ctx.Done():
-		b.logger.Warn("[TRACE] Broker context cancelled while waiting for response: correlation_id=%s", correlationID)
+		b.logger.Warn("Broker context cancelled while waiting for response: correlation_id=%s", correlationID)
 		return nil, fmt.Errorf("broker is shutting down")
 	}
 }
