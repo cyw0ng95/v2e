@@ -32,7 +32,14 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 	case "uds":
 		// Use deterministic UDS path based on build-time base path and process ID
 		socketPath := fmt.Sprintf("%s_%s.sock", subprocess.DefaultProcUDSBasePath(), processID)
-		sp = subprocess.NewWithUDS(processID, socketPath)
+		// Only attempt to create a UDS-backed subprocess if the socket exists
+		// to avoid forcing process exit when no broker listener is present
+		if _, err := os.Stat(socketPath); err == nil {
+			sp = subprocess.NewWithUDS(processID, socketPath)
+		} else {
+			// Fallback to stdio subprocess (useful for tests that don't set up a socket)
+			sp = subprocess.New(processID)
+		}
 	default:
 		sp = subprocess.New(processID)
 	}
