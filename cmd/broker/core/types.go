@@ -45,6 +45,7 @@ type Process struct {
 	stdout        io.ReadCloser
 	mu            sync.RWMutex
 	restartConfig *RestartConfig
+	readLoopWg    sync.WaitGroup // Tracks the readProcessMessages goroutine
 }
 
 // NewTestProcess constructs a Process instance for tests without spawning OS processes.

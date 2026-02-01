@@ -29,6 +29,7 @@ type UDSTransport struct {
 	reconnectCb          func(error)
 	errorHandler         func(error)
 	done                 chan struct{} // Signals acceptLoop to exit
+	acceptLoopWg         sync.WaitGroup // Tracks acceptLoop goroutine
 }
 
 // NewUDSTransport creates a new UDSTransport with the specified socket path
@@ -99,6 +100,7 @@ func (t *UDSTransport) Connect() error {
 
 		// Start accepting connections asynchronously to avoid blocking
 		// the broker/spawning process.
+		t.acceptLoopWg.Add(1)
 		go t.acceptLoop()
 	} else {
 		// Client connects to existing socket
@@ -305,8 +307,7 @@ func (t *UDSTransport) ResetReconnectAttempts() {
 
 // Close closes the UDS connection and listener
 func (t *UDSTransport) Close() error {
-	// Signal acceptLoop to exit first, before closing listener
-	// This prevents "bad file descriptor" errors when acceptLoop is blocked on Accept
+	// Signal acceptLoop to exit first
 	select {
 	case <-t.done:
 		// Already closed
@@ -314,9 +315,10 @@ func (t *UDSTransport) Close() error {
 		close(t.done)
 	}
 
-	// Give acceptLoop time to exit
-	// Small delay to allow the goroutine to receive the done signal
-	time.Sleep(10 * time.Millisecond)
+	// Wait for acceptLoop to exit completely
+	// This ensures that the goroutine is no longer using the listener
+	// before we close it, preventing "bad file descriptor" errors
+	t.acceptLoopWg.Wait()
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -332,6 +334,7 @@ func (t *UDSTransport) Close() error {
 	}
 
 	// Close listener if this is a server
+	// acceptLoop has definitely exited now, so it's safe to close the listener
 	if t.listener != nil {
 		if closeErr := t.listener.Close(); closeErr != nil && err == nil {
 			err = closeErr
@@ -419,6 +422,12 @@ func (t *UDSTransport) EnsureSocketDirectory() error {
 
 // acceptLoop accepts incoming connections asynchronously
 func (t *UDSTransport) acceptLoop() {
+	defer t.acceptLoopWg.Done()
+
+	// Use a very short deadline to ensure we can exit quickly when done is signaled
+	// 10ms timeout allows quick response to done signal while not wasting too much CPU
+	const deadlineInterval = 10 * time.Millisecond
+
 	for {
 		t.mu.RLock()
 		listener := t.listener
@@ -428,55 +437,73 @@ func (t *UDSTransport) acceptLoop() {
 			return
 		}
 
-		// Check if we should exit before blocking on Accept
+		// Check done channel first before any blocking operation
 		select {
 		case <-t.done:
 			return
 		default:
 		}
 
-		// Use channel with timeout to allow checking done periodically
-		type result struct {
-			conn net.Conn
-			err  error
+		// Set a deadline so Accept() doesn't block forever
+		// We need to type assert to *net.UnixListener to call SetDeadline
+		unixListener, ok := listener.(*net.UnixListener)
+		if !ok {
+			return
 		}
-		resultCh := make(chan result, 1)
 
-		go func() {
-			conn, err := listener.Accept()
-			resultCh <- result{conn, err}
-		}()
+		// Set deadline for this accept attempt
+		err := unixListener.SetDeadline(time.Now().Add(deadlineInterval))
+		if err != nil {
+			// Listener might be closed, check done again
+			select {
+			case <-t.done:
+				return
+			default:
+			}
+			// If not done, it might be a real error
+			return
+		}
 
+		// Accept will return after the deadline if no connection is pending
+		conn, err := listener.Accept()
+
+		// Immediately check if we should exit
 		select {
 		case <-t.done:
-			// Drain the result channel to avoid goroutine leak
-			go func() {
-				if r := <-resultCh; r.conn != nil {
-					r.conn.Close()
-				}
-			}()
+			// Close connection if we got one but are shutting down
+			if conn != nil {
+				conn.Close()
+			}
 			return
-		case r := <-resultCh:
-			if r.err != nil {
-				// Stop if listener is closed
-				if strings.Contains(r.err.Error(), "use of closed network connection") || strings.Contains(r.err.Error(), "Listener closed") {
-					return
-				}
+		default:
+		}
 
-				// Log error via callback if set
-				t.mu.RLock()
-				handler := t.errorHandler
-				t.mu.RUnlock()
-				if handler != nil {
-					handler(fmt.Errorf("UDS accept error: %w", r.err))
-				}
-
-				// Backoff on temporary error
-				time.Sleep(100 * time.Millisecond)
+		if err != nil {
+			// Timeout is expected - just continue to check done again
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				continue
 			}
-			t.handleNewConnection(r.conn)
+
+			// Stop if listener is closed
+			if strings.Contains(err.Error(), "use of closed network connection") || strings.Contains(err.Error(), "Listener closed") {
+				return
+			}
+
+			// Log other errors via callback if set
+			t.mu.RLock()
+			handler := t.errorHandler
+			t.mu.RUnlock()
+			if handler != nil {
+				handler(fmt.Errorf("UDS accept error: %w", err))
+			}
+
+			// Brief backoff on error before retry
+			time.Sleep(10 * time.Millisecond)
+			continue
 		}
+
+		// Successfully accepted a connection
+		t.handleNewConnection(conn)
 	}
 }
 

@@ -99,3 +99,14 @@ func (tm *TransportManager) RegisterUDSTransport(processID string, isServer bool
 func (tm *TransportManager) SetUdsBasePath(path string) {
 	tm.udsBasePath = path
 }
+
+// CloseAll closes all registered transports. This should be called during broker shutdown.
+func (tm *TransportManager) CloseAll() {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	for processID, transport := range tm.transports {
+		_ = transport.Close()
+		delete(tm.transports, processID)
+	}
+}

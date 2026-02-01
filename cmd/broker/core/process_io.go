@@ -9,12 +9,36 @@ import (
 
 // readProcessMessages reads messages from a process's stdout and forwards them to the broker.
 func (b *Broker) readProcessMessages(p *Process) {
+	defer p.readLoopWg.Done()
 	defer b.wg.Done()
 
 	scanner := bufio.NewScanner(p.stdout)
 	buf := make([]byte, proc.MaxMessageSize)
 	scanner.Buffer(buf, proc.MaxMessageSize)
-	for scanner.Scan() {
+
+	for {
+		// Check if process is done before each scan
+		select {
+		case <-p.done:
+			b.logger.Debug("Process %s done, stopping message reading", p.info.ID)
+			return
+		default:
+		}
+
+		if !scanner.Scan() {
+			// Scan failed - check if process exited
+			select {
+			case <-p.done:
+				b.logger.Debug("Process %s done, scanner.Scan returned false", p.info.ID)
+			default:
+				// Scanner error without process being done
+				if err := scanner.Err(); err != nil {
+					b.logger.Warn("Error reading from process %s: %v", p.info.ID, err)
+				}
+			}
+			return
+		}
+
 		line := scanner.Text()
 		if line == "" {
 			continue
@@ -60,10 +84,6 @@ func (b *Broker) readProcessMessages(p *Process) {
 				}()
 			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		b.logger.Warn("Error reading from process %s: %v", p.info.ID, err)
 	}
 }
 

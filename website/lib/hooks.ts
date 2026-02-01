@@ -233,17 +233,19 @@ export function useStartSession() {
   const [error, setError] = useState<Error | null>(null);
 
   const mutate = async (params: { sessionId: string; startIndex?: number; resultsPerBatch?: number }, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    // Destructure outside try block so variables are in scope for error logging
+    const { sessionId, startIndex, resultsPerBatch } = params;
+
     try {
       setIsPending(true);
       setError(null);
-      
-      const { sessionId, startIndex, resultsPerBatch } = params;
+
       const response = await rpcClient.startSession(sessionId, startIndex, resultsPerBatch);
-      
+
       if (response.retcode !== 0) {
         throw new Error(response.message || 'Failed to start session');
       }
-      
+
       if (options?.onSuccess) {
         options.onSuccess(response.payload);
       }
@@ -266,17 +268,19 @@ export function useStartTypedSession() {
   const [error, setError] = useState<Error | null>(null);
 
   const mutate = async (params: { sessionId: string; dataType: string; startIndex?: number; resultsPerBatch?: number; params?: Record<string, unknown> }, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    // Destructure outside try block so variables are in scope for error logging
+    const { sessionId, dataType, startIndex, resultsPerBatch, params: extraParams } = params;
+
     try {
       setIsPending(true);
       setError(null);
-      
-      const { sessionId, dataType, startIndex, resultsPerBatch, params: extraParams } = params;
+
       const response = await rpcClient.startTypedSession(sessionId, dataType, startIndex, resultsPerBatch, extraParams);
-      
+
       if (response.retcode !== 0) {
         throw new Error(response.message || 'Failed to start typed session');
       }
-      
+
       if (options?.onSuccess) {
         options.onSuccess(response.payload);
       }
@@ -603,17 +607,19 @@ export function useStartCWEViewJob() {
   const [error, setError] = useState<Error | null>(null);
 
   const mutate = async (params: { sessionId?: string; startIndex?: number; resultsPerBatch?: number } = {}, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    // Destructure outside try block so variables are in scope for error logging
+    const { sessionId, startIndex, resultsPerBatch } = params;
+
     try {
       setIsPending(true);
       setError(null);
-      
-      const { sessionId, startIndex, resultsPerBatch } = params;
+
       const response = await rpcClient.startCWEViewJob(sessionId, startIndex, resultsPerBatch);
-      
+
       if (response.retcode !== 0) {
         throw new Error(response.message || 'Failed to start CWE view job');
       }
-      
+
       if (options?.onSuccess) {
         options.onSuccess(response.payload);
       }
@@ -636,17 +642,19 @@ export function useStopCWEViewJob() {
   const [error, setError] = useState<Error | null>(null);
 
   const mutate = async (params: { sessionId?: string } = {}, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    // Destructure outside try block so variables are in scope for error logging
+    const { sessionId } = params;
+
     try {
       setIsPending(true);
       setError(null);
-      
-      const { sessionId } = params;
+
       const response = await rpcClient.stopCWEViewJob(sessionId);
-      
+
       if (response.retcode !== 0) {
         throw new Error(response.message || 'Failed to stop CWE view job');
       }
-      
+
       if (options?.onSuccess) {
         options.onSuccess(response.payload);
       }

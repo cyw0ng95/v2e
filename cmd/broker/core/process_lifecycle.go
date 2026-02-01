@@ -13,7 +13,8 @@ import (
 // If auto-restart is enabled, it will attempt to restart the process according to the configured policy.
 func (b *Broker) reapProcess(p *Process) {
 	defer b.wg.Done()
-	defer close(p.done)
+	// Note: p.done is closed explicitly later in this function, not deferred,
+	// because we need to close it before calling restartProcess for restart-enabled processes
 
 	err := p.cmd.Wait()
 
@@ -46,10 +47,55 @@ func (b *Broker) reapProcess(p *Process) {
 		b.logger.Info("Process exited successfully: id=%s pid=%d code=%d", p.info.ID, p.info.PID, p.info.ExitCode)
 	}
 
-	// Unregister transport for the process if it exists
-	if b.transportManager != nil {
+	// Only close transport if process is NOT configured for restart.
+	// For restart-enabled processes, we keep the UDS transport alive across
+	// restarts to avoid "netpoll failed" errors when closing file descriptors
+	// that Go's poller is still using. The FD pipes (stdin/stdout) will be
+	// closed below, but the UDS transport remains available for the new process.
+	shouldCloseTransport := true
+	if p.restartConfig != nil && p.restartConfig.Enabled {
+		shouldCloseTransport = false
+		b.logger.Debug("Keeping transport alive for restart-enabled process %s", p.info.ID)
+	}
+
+	if shouldCloseTransport && b.transportManager != nil {
 		b.transportManager.UnregisterTransport(p.info.ID)
 		b.logger.Debug("Unregistered transport for process %s", p.info.ID)
+	}
+
+	// For processes without restart, close stdout and wait for read loop to exit.
+	// For restart-enabled processes, we skip explicit stdout closure to avoid
+	// "netpoll failed" errors. The pipe will break naturally when the process
+	// exits, and the scanner in readProcessMessages will return EOF. The goroutine
+	// will then exit cleanly via the done channel check.
+	if !(p.restartConfig != nil && p.restartConfig.Enabled) {
+		p.mu.Lock()
+		if p.stdout != nil {
+			p.stdout.Close()
+			p.stdout = nil
+		}
+		p.mu.Unlock()
+
+		// Only wait for non-restart processes
+		p.readLoopWg.Wait()
+	} else {
+		// For restart-enabled processes, give the readLoopWg a brief moment to exit
+		// naturally after the pipe breaks. We don't force-close stdout to avoid
+		// netpoll errors, but we still want to ensure the goroutine exits before
+		// we delete the process from the map and spawn a new one.
+		doneChan := make(chan struct{})
+		go func() {
+			p.readLoopWg.Wait()
+			close(doneChan)
+		}()
+		select {
+		case <-doneChan:
+			// Goroutine exited cleanly
+		case <-time.After(100 * time.Millisecond):
+			// Timeout is acceptable - the goroutine will exit when it detects
+			// the done channel is closed (which we do below before restart)
+			b.logger.Debug("ReadLoopWg timeout for restart-enabled process %s, goroutine will exit via done channel", p.info.ID)
+		}
 	}
 
 	event, _ := proc.NewEventMessage(p.info.ID, map[string]interface{}{
@@ -63,16 +109,19 @@ func (b *Broker) reapProcess(p *Process) {
 	// Release lock before sending message to avoid deadlock if channel is full
 	p.mu.Unlock()
 	b.sendMessageInternal(event)
-	p.mu.Lock()
 
 	// Handle restart if configured
 	if p.restartConfig != nil && p.restartConfig.Enabled {
-		p.mu.Unlock()
+		// Close the done channel before restart so that readProcessMessages can exit cleanly
+		// We close it here instead of relying on defer because we're about to call restartProcess
+		// which will spawn a new process with its own done channel
+		close(p.done)
 		b.restartProcess(p)
 		return
 	}
 
-	p.mu.Unlock()
+	// For non-restart processes, close done channel to signal goroutines
+	close(p.done)
 }
 
 // restartProcess attempts to restart a process according to its restart configuration.
@@ -248,11 +297,10 @@ func (b *Broker) Shutdown() error {
 
 	b.bus.Close()
 
-	// Clean up transport manager
+	// Clean up transport manager - close all transports including those
+	// kept alive for process restart
 	if b.transportManager != nil {
-		// Close all transports
-		// Note: In a real implementation, we'd iterate through all transports and close them
-		// For now, we just let the process cleanup handle it
+		b.transportManager.CloseAll()
 	}
 
 	b.logger.Info("Broker shutdown complete")
