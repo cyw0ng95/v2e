@@ -261,13 +261,11 @@ func (m *MockSysmonRPCClient) InvokeRPC(ctx context.Context, target, method stri
 	}, nil
 }
 
-func (m *MockSysmonRPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+func (m *MockSysmonRPCClient) handleResponse(_ context.Context, _ *subprocess.Message) (*subprocess.Message, error) {
 	return nil, nil
 }
 
-func (m *MockSysmonRPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	return m.handleResponse(ctx, msg)
-}
+
 
 func TestRPCClient_HandleResponse(t *testing.T) {
 	sp := subprocess.New("test")

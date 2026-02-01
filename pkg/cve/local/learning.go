@@ -186,11 +186,12 @@ func (ldb *LearningDB) applyAdaptiveRating(item *LearningItem, rating string, hi
 		history.Confidence = floatMax(0.0, history.Confidence-0.1)
 		item.Status = LearningStatusLearning
 	case "good": // Recalled correctly
-		if item.Repetition == 0 {
+		switch item.Repetition {
+		case 0:
 			item.Interval = 1
-		} else if item.Repetition == 1 {
+		case 1:
 			item.Interval = 6
-		} else {
+		default:
 			// Dynamic interval calculation based on ease factor and trend
 			trendMultiplier := 0.8 + trend*0.4
 			item.Interval = int(float64(item.Interval) * item.EaseFactor * trendMultiplier)
@@ -202,11 +203,12 @@ func (ldb *LearningDB) applyAdaptiveRating(item *LearningItem, rating string, hi
 		history.Confidence = floatMin(1.0, history.Confidence+0.15)
 		item.Status = LearningStatusLearning
 	case "easy": // Recalled easily
-		if item.Repetition == 0 {
+		switch item.Repetition {
+		case 0:
 			item.Interval = 1
-		} else if item.Repetition == 1 {
+		case 1:
 			item.Interval = 6
-		} else {
+		default:
 			// Boost interval for easy recall with confidence bonus
 			confidenceBonus := 1.0 + history.Confidence*0.3
 			trendMultiplier := 1.0 + trend*0.5

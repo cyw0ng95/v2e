@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ export function SessionControl() {
   const [startIndex, setStartIndex] = useState(0);
   const [resultsPerBatch, setResultsPerBatch] = useState(100);
   const [dataType, setDataType] = useState('cve'); // Default to CVE
+  // Track if we're currently handling a stop operation
+  const [isStopping, setIsStopping] = useState(false);
 
   const handleStartSession = () => {
     startTypedSession.mutate(
@@ -46,6 +48,9 @@ export function SessionControl() {
       {
         onSuccess: () => {
           toast.success(`Session started successfully for ${dataType.toUpperCase()}`);
+          // Reset stop session error tracking when starting a new session
+          stopSession.reset();
+          setIsStopping(false);
         },
         onError: (error) => {
           toast.error(`Failed to start session: ${error.message}`);
@@ -55,14 +60,27 @@ export function SessionControl() {
   };
 
   const handleStopSession = () => {
+    // Prevent multiple simultaneous stop requests
+    if (stopSession.isPending || isStopping) {
+      console.warn('Stop session request already pending or in progress');
+      return;
+    }
+    
+    setIsStopping(true);
+    
     stopSession.mutate(undefined, {
       onSuccess: (data) => {
         toast.success(
           `Session stopped. Fetched: ${data?.fetchedCount}, Stored: ${data?.storedCount}`
         );
+        setIsStopping(false);
       },
       onError: (error) => {
-        toast.error(`Failed to stop session: ${error.message}`);
+        // Don't show toast for "run not active" errors as they're expected
+        if (!error.message.includes('run not active')) {
+          toast.error(`Failed to stop session: ${error.message}`);
+        }
+        setIsStopping(false);
       },
     });
   };
@@ -88,6 +106,22 @@ export function SessionControl() {
       },
     });
   };
+
+  // Reset stop session state when session becomes inactive
+  React.useEffect(() => {
+    if (sessionStatus && !sessionStatus.hasSession) {
+      setIsStopping(false);
+      stopSession.reset();
+    }
+  }, [sessionStatus, stopSession]);
+
+  // Cleanup function to reset state when component unmounts
+  React.useEffect(() => {
+    return () => {
+      setIsStopping(false);
+      stopSession.reset();
+    };
+  }, [stopSession]);
 
   const isRunning = sessionStatus?.hasSession && sessionStatus.state === 'running';
   const isPaused = sessionStatus?.hasSession && sessionStatus.state === 'paused';
@@ -188,7 +222,7 @@ export function SessionControl() {
                 </Button>
                 <Button
                   onClick={handleStopSession}
-                  disabled={stopSession.isPending}
+                  disabled={stopSession.isPending || isStopping}
                   variant="destructive"
                 >
                   <Square className="h-4 w-4 mr-2" />
@@ -208,7 +242,7 @@ export function SessionControl() {
                 </Button>
                 <Button
                   onClick={handleStopSession}
-                  disabled={stopSession.isPending}
+                  disabled={stopSession.isPending || isStopping}
                   variant="destructive"
                 >
                   <Square className="h-4 w-4 mr-2" />

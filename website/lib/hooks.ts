@@ -389,9 +389,17 @@ export function useStartATTACKImport() {
 export function useStopSession() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  // Track if we've already seen a "run not active" error to prevent retries
+  const [seenInactiveError, setSeenInactiveError] = useState<boolean>(false);
 
   const mutate = async (_: undefined, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
     try {
+      // Prevent retries if we've already seen the "run not active" error
+      if (seenInactiveError) {
+        console.warn('Skipping stop session request - already saw "run not active" error');
+        return;
+      }
+      
       setIsPending(true);
       setError(null);
       
@@ -407,6 +415,15 @@ export function useStopSession() {
     } catch (err: any) {
       setError(err);
       console.error('Error stopping session:', err);
+      
+      // Prevent infinite retry loop for "run not active" errors
+      if (err.message && err.message.includes('run not active')) {
+        console.warn('Session already inactive, preventing future retries');
+        setSeenInactiveError(true);
+        // Don't call onError for this specific error to prevent retry loops
+        return;
+      }
+      
       if (options?.onError) {
         options.onError(err);
       }
@@ -415,7 +432,13 @@ export function useStopSession() {
     }
   };
 
-  return { mutate, isPending, error };
+  // Reset the seen error state when component unmounts or when we want to allow retries again
+  const reset = () => {
+    setSeenInactiveError(false);
+    setError(null);
+  };
+
+  return { mutate, isPending, error, reset };
 }
 
 export function usePauseJob() {

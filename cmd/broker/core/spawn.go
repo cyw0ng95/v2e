@@ -275,7 +275,7 @@ func (b *Broker) isExecutable(path string) bool {
 }
 
 // startService starts a service by name with RPC capability.
-func (b *Broker) startService(serviceName string, withRPC bool) error {
+func (b *Broker) startService(serviceName string, _ bool) error {
 	// Start the service with RPC and auto-restart
 	// Default to unlimited restarts (-1)
 	info, err := b.SpawnRPCWithRestart(serviceName, "./"+serviceName, -1)
@@ -289,7 +289,7 @@ func (b *Broker) startService(serviceName string, withRPC bool) error {
 
 // setProcessEnv configures environment variables for a process based on its ID and build-time config.
 // This consolidates the repeated env setup logic from Spawn, SpawnRPC, SpawnWithRestart, and SpawnRPCWithRestart.
-func setProcessEnv(cmd *exec.Cmd, processID string, config interface{}) {
+func setProcessEnv(cmd *exec.Cmd, processID string, _ interface{}) {
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
@@ -349,7 +349,7 @@ func (b *Broker) registerProcessTransport(processID string, inputFD, outputFD in
 }
 
 // shouldUseUDSTransport determines whether UDS transport should be used based on the transport configuration
-func shouldUseUDSTransport(config struct{ UseUDS bool }) bool {
+func shouldUseUDSTransport(_ struct{ UseUDS bool }) bool {
 	// Always use FD transport instead of UDS transport
 	return false
 }

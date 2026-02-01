@@ -24,7 +24,6 @@ func TestProcessInfo_StatusTransitions(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			info := &ProcessInfo{
-				ID:     "test-proc",
 				Status: tc.startStatus,
 			}
 
@@ -84,9 +83,6 @@ func TestRestartConfig_State(t *testing.T) {
 		Enabled:      true,
 		MaxRestarts:  5,
 		RestartCount: 0,
-		Command:      "echo",
-		Args:         []string{"hello"},
-		IsRPC:        false,
 	}
 
 	for i := 1; i <= 5; i++ {
@@ -131,14 +127,13 @@ func TestPendingRequest_Timestamps(t *testing.T) {
 // TestProcessInfo_Fields ensures all fields can be set and retrieved.
 func TestProcessInfo_Fields(t *testing.T) {
 	info := &ProcessInfo{
-		ID:        "proc1",
-		PID:       12345,
-		Command:   "/bin/echo",
-		Args:      []string{"test", "arg"},
-		Status:    ProcessStatusRunning,
-		ExitCode:  0,
-		StartTime: time.Now(),
-		EndTime:   time.Time{},
+		ID:       "proc1",
+		PID:      12345,
+		Command:  "/bin/echo",
+		Args:     []string{"test", "arg"},
+		Status:   ProcessStatusRunning,
+		ExitCode: 0,
+		EndTime:  time.Time{},
 	}
 
 	if info.ID != "proc1" {

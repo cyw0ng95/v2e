@@ -101,10 +101,7 @@ func TestLearningDatabaseOperations(t *testing.T) {
 }
 
 func TestLearningItemDefaults(t *testing.T) {
-	item := &LearningItem{
-		ItemType: LearningItemTypeCWE,
-		ItemID:   "CWE-79",
-	}
+	item := &LearningItem{}
 
 	// Test that defaults are set correctly
 	if item.Status != "" {
