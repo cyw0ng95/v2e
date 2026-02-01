@@ -8,8 +8,8 @@ import (
 
 // GenerateBuildFlags creates build flags from the configuration
 func GenerateBuildFlags(config *Config) (string, error) {
-	var flags []string
-
+	// Preallocate slice for flags for performance
+	flags := make([]string, 0, len(config.Features))
 	for key, option := range config.Features {
 		// For boolean options, add the flag if true
 		if val, ok := option.Default.(bool); ok {
@@ -18,26 +18,29 @@ func GenerateBuildFlags(config *Config) (string, error) {
 			}
 		} else {
 			// For string options, check the method property to decide whether to include in build flags
-			// If method is ldflags or something else, don't add to build flags
 			if option.Method != "build-tag" {
-				// Skip string options that use other methods like ldflags
 				continue
+			}
+			// If explicitly marked as build-tag, add it using the target pattern or key as fallback
+			if option.Target != "" {
+				flags = append(flags, option.Target)
 			} else {
-				// If explicitly marked as build-tag, add it using the target pattern or key as fallback
-				if option.Target != "" {
-					flags = append(flags, option.Target)
-				} else {
-					flags = append(flags, key)
-				}
+				flags = append(flags, key)
 			}
 		}
 	}
-
 	if len(flags) == 0 {
 		return "", nil
 	}
-
-	return strings.Join(flags, ","), nil
+	// Use strings.Builder for efficient concatenation
+	var sb strings.Builder
+	for i, flag := range flags {
+		sb.WriteString(flag)
+		if i < len(flags)-1 {
+			sb.WriteByte(',')
+		}
+	}
+	return sb.String(), nil
 }
 
 // GenerateGoBuildTags creates Go build tags from the configuration
@@ -56,23 +59,36 @@ func GenerateGoBuildTags(config *Config) (string, error) {
 
 // GenerateLdflags creates linker flags from the configuration
 func GenerateLdflags(config *Config) (string, error) {
-	var ldflags []string
-
+	// Preallocate slice for ldflags for performance
+	ldflags := make([]string, 0, len(config.Features))
 	for _, option := range config.Features {
 		// Handle string options that should be injected via ldflags
 		if strVal, ok := option.Default.(string); ok {
 			if option.Method == "ldflags" && option.Target != "" {
-				// Inject the value via ldflags using the specified target: -X 'target=value'
-				ldflags = append(ldflags, fmt.Sprintf("-X '%s=%s'", option.Target, strVal))
+				ldflags = append(ldflags, "-X '")
+				ldflags = append(ldflags, option.Target)
+				ldflags = append(ldflags, "=")
+				ldflags = append(ldflags, strVal)
+				ldflags = append(ldflags, "'")
 			}
 		}
 	}
-
 	if len(ldflags) == 0 {
 		return "", nil
 	}
-
-	return strings.Join(ldflags, " "), nil
+	// Use strings.Builder for efficient concatenation
+	var sb strings.Builder
+	for i := 0; i < len(ldflags); i += 5 {
+		sb.WriteString(ldflags[i])   // -X '
+		sb.WriteString(ldflags[i+1]) // target
+		sb.WriteString(ldflags[i+2]) // =
+		sb.WriteString(ldflags[i+3]) // value
+		sb.WriteString(ldflags[i+4]) // '
+		if i+5 < len(ldflags) {
+			sb.WriteByte(' ')
+		}
+	}
+	return sb.String(), nil
 }
 
 // GenerateCHeader creates a C header file from the configuration
