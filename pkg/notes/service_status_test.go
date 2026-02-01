@@ -5,17 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+// Reuse existing setupTestDB from service_test.go which returns (*gorm.DB, error)
+func setupTestDBForSvc(t *testing.T) *gorm.DB {
+	db, err := setupTestDB()
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.AutoMigrate(&MemoryCardModel{}, &BookmarkModel{}); err != nil {
-		t.Fatal(err)
+		t.Fatalf("setup DB failed: %v", err)
 	}
 	return db
 }
@@ -30,7 +27,7 @@ func TestCanTransition(t *testing.T) {
 }
 
 func TestUpdateMemoryCardFields_StatusTransition(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupTestDBForSvc(t)
 	svc := NewMemoryCardService(db)
 
 	// create bookmark and card
@@ -62,7 +59,7 @@ func TestUpdateMemoryCardFields_StatusTransition(t *testing.T) {
 }
 
 func TestUpdateCardAfterReview_Transition(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupTestDBForSvc(t)
 	svc := NewMemoryCardService(db)
 
 	bm := &BookmarkModel{GlobalItemID: "g2", ItemType: "test", ItemID: "i2", Title: "t2"}
