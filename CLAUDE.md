@@ -181,6 +181,52 @@ Mock mode: NEXT_PUBLIC_USE_MOCK_DATA=true
 - Dynamic routes require `generateStaticParams()` or use client-side navigation only
 - TypeScript types in `lib/types.ts` mirror Go structs (camelCase naming)
 
+### Browser Testing with Playwright MCP
+
+When testing the website frontend, use the Playwright MCP tools available in Claude Code to navigate through pages and capture bugs through console logs.
+
+**Start the dev server first:**
+```bash
+./build.sh -r    # Starts broker + frontend on http://localhost:3000
+```
+
+**Common Playwright MCP testing patterns:**
+
+1. **Navigate to a page:**
+   - Use `browser_navigate` with URL (e.g., `http://localhost:3000`)
+
+2. **Capture page state:**
+   - Use `browser_snapshot` to get accessibility tree (better than screenshots for debugging)
+   - Use `browser_take_screenshot` for visual verification
+
+3. **Check console for errors:**
+   - Use `browser_console_messages` with level `error` or `warning` to capture JavaScript errors
+   - Look for failed RPC calls, unhandled promises, missing assets
+
+4. **Interact with elements:**
+   - Use `browser_click` with element ref from snapshot
+   - Use `browser_type` to fill forms
+   - Use `browser_select_option` for dropdowns
+
+5. **Wait for conditions:**
+   - Use `browser_wait_for` with text or time
+   - Use `browser_evaluate` to run custom JS to check state
+
+**Bug capture workflow:**
+```
+1. Navigate to page
+2. Take snapshot for baseline
+3. Interact (click, type, etc.)
+4. Check console messages (errors/warnings)
+5. Take screenshot/snapshot of broken state
+6. Use browser_evaluate to inspect React state or network requests
+```
+
+**Console log analysis:**
+- `error` level: JavaScript errors, failed RPC calls, missing imports
+- `warning` level: Deprecated APIs, React warnings, failed asset loads
+- `info/debug` level: RPC request/response logs, state changes
+
 ## Service Documentation
 
 **CRITICAL: All RPC APIs MUST be documented in `service.md` inside each `cmd/*/` directory.**
