@@ -1,7 +1,7 @@
 package cve
 
 const (
-	// Log messages
+	// Job Controller Log Messages
 	LogMsgJobStarted              = "Job started: session_id=%s, start_index=%d, batch_size=%d"
 	LogMsgJobStopped              = "Job stopped"
 	LogMsgJobPaused               = "Job paused"
@@ -19,7 +19,7 @@ const (
 	LogMsgFailedStoreCVE          = "Failed to store CVE %s: %v"
 	LogMsgStoredCVEsSuccess       = "Stored %d/%d CVEs successfully"
 
-	// Taskflow Executor Log messages
+	// Taskflow Executor Log Messages
 	LogMsgTFJobStarted        = "Job started: run_id=%s, start_index=%d, batch_size=%d, data_type=%s"
 	LogMsgTFJobResumed        = "Job resumed: run_id=%s"
 	LogMsgTFJobPaused         = "Job paused: run_id=%s"
@@ -38,4 +38,41 @@ const (
 	LogMsgTFStoredCVEsSuccess = "Stored %d/%d CVEs successfully"
 	LogMsgTFFetchFailed       = "Fetch failed: %v"
 	LogMsgTFJobCompleted      = "Job completed: run_id=%s"
+
+	// Session Management Log Messages
+	LogMsgSessionCreated          = "Session created: id=%s"
+	LogMsgSessionNotFound         = "Session not found: id=%s"
+	LogMsgSessionUpdated          = "Session updated: id=%s, status=%s"
+	LogMsgSessionDeleted          = "Session deleted: id=%s"
+	LogMsgSessionListRetrieved    = "Session list retrieved: count=%d"
+	LogMsgSessionProgressUpdated  = "Session progress updated: id=%s, progress=%.2f%%"
+
+	// Database Operations Log Messages
+	LogMsgDatabaseConnected       = "Database connected successfully"
+	LogMsgDatabaseConnectionError = "Database connection error: %v"
+	LogMsgDatabaseQueryExecuted   = "Database query executed: table=%s, operation=%s"
+	LogMsgDatabaseTransactionBegin = "Database transaction started"
+	LogMsgDatabaseTransactionCommit = "Database transaction committed"
+	LogMsgDatabaseTransactionRollback = "Database transaction rolled back: %v"
+
+	// Remote API Operations Log Messages
+	LogMsgAPIRequestSent          = "API request sent: endpoint=%s, method=%s"
+	LogMsgAPIResponseReceived     = "API response received: status=%d, duration=%v"
+	LogMsgAPIRateLimitHit         = "API rate limit hit, retrying in %v"
+	LogMsgAPIAuthenticationError  = "API authentication error: %v"
+	LogMsgAPITimeout              = "API request timeout: endpoint=%s"
+
+	// Data Processing Log Messages
+	LogMsgDataValidationStarted   = "Data validation started: record_count=%d"
+	LogMsgDataValidationComplete  = "Data validation completed: valid=%d, invalid=%d"
+	LogMsgDataTransformation      = "Data transformation applied: type=%s"
+	LogMsgDataDeduplication       = "Duplicate records removed: count=%d"
+	LogMsgDataSortingComplete     = "Data sorting completed: field=%s, order=%s"
+
+	// Cache Operations Log Messages
+	LogMsgCacheHit                = "Cache hit: key=%s"
+	LogMsgCacheMiss               = "Cache miss: key=%s"
+	LogMsgCacheSet                = "Cache set: key=%s, ttl=%v"
+	LogMsgCacheEvicted            = "Cache evicted: key=%s"
+	LogMsgCacheCleared            = "Cache cleared: pattern=%s"
 )
