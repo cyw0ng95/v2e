@@ -159,41 +159,33 @@ const RightColumn = memo(function RightColumn({
 
             <TabsContent value="cwe" className="h-full">
               <div className="h-full flex flex-col">
-                <div className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <CWETable />
-                  </Suspense>
-                </div>
+                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                  <CWETable />
+                </Suspense>
               </div>
             </TabsContent>
 
             <TabsContent value="capec" className="h-full">
               <div className="h-full flex flex-col">
-                <div className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <CAPECTable />
-                  </Suspense>
-                </div>
+                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                  <CAPECTable />
+                </Suspense>
               </div>
             </TabsContent>
 
             <TabsContent value="attack" className="h-full">
               <div className="h-full flex flex-col">
-                <div className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <AttackViews />
-                  </Suspense>
-                </div>
+                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                  <AttackViews />
+                </Suspense>
               </div>
             </TabsContent>
 
             <TabsContent value="cweviews" className="h-full">
               <div className="h-full flex flex-col">
-                <div className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <CWEViews />
-                  </Suspense>
-                </div>
+                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                  <CWEViews />
+                </Suspense>
               </div>
             </TabsContent>
 
@@ -211,21 +203,19 @@ const RightColumn = memo(function RightColumn({
                     <p className="text-xs text-muted-foreground mt-1">Note: server-side search not implemented yet; this filters currently loaded results.</p>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 flex flex-col">
-                  <div className="flex-1 min-h-0 overflow-auto">
-                    <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                      <CVETable
-                        cves={cveList?.cves || []}
-                        total={cveList?.total || 0}
-                        page={page}
-                        pageSize={pageSize}
-                        isLoading={isLoadingList}
-                        onPageChange={setPage}
-                        onPageSizeChange={setPageSize}
-                        searchQuery={searchQuery}
-                      />
-                    </Suspense>
-                  </div>
+                <CardContent className="flex-1 min-h-0">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <CVETable
+                      cves={cveList?.cves || []}
+                      total={cveList?.total || 0}
+                      page={page}
+                      pageSize={pageSize}
+                      isLoading={isLoadingList}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                      searchQuery={searchQuery}
+                    />
+                  </Suspense>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -236,12 +226,10 @@ const RightColumn = memo(function RightColumn({
                   <CardTitle>Bookmarks & Notes</CardTitle>
                   <CardDescription>Manage your bookmarks and personal notes</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 flex flex-col">
-                  <div className="flex-1 min-h-0 overflow-auto">
-                    <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                      <BookmarkTable />
-                    </Suspense>
-                  </div>
+                <CardContent className="flex-1 min-h-0">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <BookmarkTable />
+                  </Suspense>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -252,12 +240,10 @@ const RightColumn = memo(function RightColumn({
                   <CardTitle>Notes Dashboard</CardTitle>
                   <CardDescription>Your learning progress and activity</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 flex flex-col">
-                  <div className="flex-1 min-h-0 overflow-auto">
-                    <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                      <NotesDashboard />
-                    </Suspense>
-                  </div>
+                <CardContent className="flex-1 min-h-0">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <NotesDashboard />
+                  </Suspense>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -268,12 +254,10 @@ const RightColumn = memo(function RightColumn({
                   <CardTitle>Study Memory Cards</CardTitle>
                   <CardDescription>Review and rate your memory cards</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 flex flex-col">
-                  <div className="flex-1 min-h-0 overflow-auto">
-                    <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                      <MemoryCardStudy filterState="to_review" />
-                    </Suspense>
-                  </div>
+                <CardContent className="flex-1 min-h-0">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <MemoryCardStudy filterState="to_review" />
+                  </Suspense>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -284,12 +268,10 @@ const RightColumn = memo(function RightColumn({
                   <CardTitle>System Monitor</CardTitle>
                   <CardDescription>View system performance metrics</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-0 flex flex-col">
-                  <div className="flex-1 min-h-0 overflow-auto">
-                    <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                      <SysMonitor />
-                    </Suspense>
-                  </div>
+                <CardContent className="flex-1 min-h-0">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <SysMonitor />
+                  </Suspense>
                 </CardContent>
               </Card>
             </TabsContent>
