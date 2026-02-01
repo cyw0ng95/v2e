@@ -32,10 +32,14 @@ type NoteServiceInterface interface {
 // MemoryCardServiceInterface defines the interface for the memory card service
 type MemoryCardServiceInterface interface {
 	CreateMemoryCard(ctx context.Context, bookmarkID uint, front, back string) (*MemoryCardModel, error)
+	GetMemoryCardByID(ctx context.Context, id uint) (*MemoryCardModel, error)
 	GetMemoryCardsByBookmarkID(ctx context.Context, bookmarkID uint) ([]*MemoryCardModel, error)
 	GetCardsForReview(ctx context.Context) ([]*MemoryCardModel, error)
 	GetCardsByLearningState(ctx context.Context, state LearningState) ([]*MemoryCardModel, error)
 	UpdateCardAfterReview(ctx context.Context, cardID uint, rating CardRating) error
+	UpdateMemoryCardFields(ctx context.Context, fields map[string]any) (*MemoryCardModel, error)
+	DeleteMemoryCard(ctx context.Context, id uint) error
+	TransitionCardStatus(ctx context.Context, cardID uint, expectedVersion *int, next CardStatus) error
 	ListMemoryCards(ctx context.Context, bookmarkID *uint, learningState *string, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error)
 }
 

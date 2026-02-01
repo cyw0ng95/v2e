@@ -604,6 +604,32 @@ func (s *MemoryCardServiceRPCClient) CreateMemoryCard(ctx context.Context, bookm
 	return result.Card, nil
 }
 
+// GetMemoryCardByID retrieves a memory card by ID via RPC
+func (s *MemoryCardServiceRPCClient) GetMemoryCardByID(ctx context.Context, id uint) (*MemoryCardModel, error) {
+	params := map[string]interface{}{
+		"card_id": id,
+	}
+
+	var result struct {
+		Card *MemoryCardModel `json:"card"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCGetMemoryCardByID", params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get memory card by ID via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return nil, fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return result.Card, nil
+}
+
 // GetMemoryCardsByBookmarkID retrieves memory cards for a bookmark via RPC
 func (s *MemoryCardServiceRPCClient) GetMemoryCardsByBookmarkID(ctx context.Context, bookmarkID uint) ([]*MemoryCardModel, error) {
 	params := map[string]interface{}{
@@ -694,6 +720,91 @@ func (s *MemoryCardServiceRPCClient) UpdateCardAfterReview(ctx context.Context, 
 	response, err := s.Client.InvokeRPC(ctx, "local", "RPCUpdateCardAfterReview", params)
 	if err != nil {
 		return fmt.Errorf("failed to update card after review via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateMemoryCardFields updates a memory card by ID with arbitrary fields via RPC
+func (s *MemoryCardServiceRPCClient) UpdateMemoryCardFields(ctx context.Context, fields map[string]any) (*MemoryCardModel, error) {
+	// Convert fields to map[string]interface{} for JSON marshaling
+	params := make(map[string]interface{})
+	for k, v := range fields {
+		params[k] = v
+	}
+
+	var result struct {
+		Card *MemoryCardModel `json:"card"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCUpdateMemoryCard", params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update memory card via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return nil, fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return result.Card, nil
+}
+
+// DeleteMemoryCard deletes a memory card by ID via RPC
+func (s *MemoryCardServiceRPCClient) DeleteMemoryCard(ctx context.Context, id uint) error {
+	params := map[string]interface{}{
+		"card_id": id,
+	}
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCDeleteMemoryCard", params)
+	if err != nil {
+		return fmt.Errorf("failed to delete memory card via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return nil
+}
+
+// TransitionCardStatus transitions a card to a new status via RPC
+func (s *MemoryCardServiceRPCClient) TransitionCardStatus(ctx context.Context, cardID uint, expectedVersion *int, next CardStatus) error {
+	params := map[string]interface{}{
+		"card_id": cardID,
+		"status":  string(next),
+	}
+
+	if expectedVersion != nil {
+		params["expected_version"] = *expectedVersion
+	}
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCUpdateMemoryCard", params)
+	if err != nil {
+		return fmt.Errorf("failed to transition card status via RPC: %w", err)
 	}
 
 	if response.Type == subprocess.MessageTypeError {

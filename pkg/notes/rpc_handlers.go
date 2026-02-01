@@ -44,6 +44,11 @@ func NewRPCHandlers(container *ServiceContainer, sp *subprocess.Subprocess, logg
 	sp.RegisterHandler("RPCGetCardsForReview", handlers.handleRPCGetCardsForReview)
 	sp.RegisterHandler("RPCGetCardsByLearningState", handlers.handleRPCGetCardsByLearningState)
 	sp.RegisterHandler("RPCUpdateCardAfterReview", handlers.handleRPCUpdateCardAfterReview)
+	// Alias for frontend compatibility
+	sp.RegisterHandler("RPCRateMemoryCard", handlers.handleRPCUpdateCardAfterReview)
+	sp.RegisterHandler("RPCUpdateMemoryCard", handlers.handleRPCUpdateMemoryCard)
+	sp.RegisterHandler("RPCDeleteMemoryCard", handlers.handleRPCDeleteMemoryCard)
+	sp.RegisterHandler("RPCGetMemoryCardByID", handlers.handleRPCGetMemoryCardByID)
 	sp.RegisterHandler("RPCCreateCrossReference", handlers.handleRPCCreateCrossReference)
 	sp.RegisterHandler("RPCGetCrossReferencesBySource", handlers.handleRPCGetCrossReferencesBySource)
 	sp.RegisterHandler("RPCGetCrossReferencesByTarget", handlers.handleRPCGetCrossReferencesByTarget)
@@ -1373,6 +1378,123 @@ func (h *RPCHandlers) handleRPCGetBookmarkStats(ctx context.Context, msg *subpro
 		Stats map[string]interface{} `json:"stats"`
 	}{
 		Stats: stats,
+	}
+
+	payload, err := subprocess.MarshalFast(result)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to marshal result: %v", err)), nil
+	}
+
+	return &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            msg.ID,
+		Payload:       payload,
+		Target:        msg.Source,
+		CorrelationID: msg.CorrelationID,
+		Source:        h.sp.ID,
+	}, nil
+}
+
+// handleRPCUpdateMemoryCard handles RPC request to update a memory card
+func (h *RPCHandlers) handleRPCUpdateMemoryCard(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	var params map[string]interface{}
+	if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to unmarshal params: %v", err)), nil
+	}
+
+	// Convert params to map[string]any for UpdateMemoryCardFields
+	fields := make(map[string]any)
+	for k, v := range params {
+		fields[k] = v
+	}
+
+	card, err := h.container.MemoryCardService.UpdateMemoryCardFields(ctx, fields)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to update memory card: %v", err)), nil
+	}
+
+	result := struct {
+		Card *MemoryCardModel `json:"card"`
+	}{
+		Card: card,
+	}
+
+	payload, err := subprocess.MarshalFast(result)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to marshal result: %v", err)), nil
+	}
+
+	return &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            msg.ID,
+		Payload:       payload,
+		Target:        msg.Source,
+		CorrelationID: msg.CorrelationID,
+		Source:        h.sp.ID,
+	}, nil
+}
+
+// handleRPCDeleteMemoryCard handles RPC request to delete a memory card
+func (h *RPCHandlers) handleRPCDeleteMemoryCard(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	var params map[string]interface{}
+	if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to unmarshal params: %v", err)), nil
+	}
+
+	cardIDFloat, ok := params["card_id"].(float64)
+	if !ok {
+		return h.createErrorResponse(msg, "Missing or invalid card_id"), nil
+	}
+	cardID := uint(cardIDFloat)
+
+	err := h.container.MemoryCardService.DeleteMemoryCard(ctx, cardID)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to delete memory card: %v", err)), nil
+	}
+
+	result := struct {
+		Success bool `json:"success"`
+	}{
+		Success: true,
+	}
+
+	payload, err := subprocess.MarshalFast(result)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to marshal result: %v", err)), nil
+	}
+
+	return &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		ID:            msg.ID,
+		Payload:       payload,
+		Target:        msg.Source,
+		CorrelationID: msg.CorrelationID,
+		Source:        h.sp.ID,
+	}, nil
+}
+
+// handleRPCGetMemoryCardByID handles RPC request to get a memory card by ID
+func (h *RPCHandlers) handleRPCGetMemoryCardByID(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	var params map[string]interface{}
+	if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to unmarshal params: %v", err)), nil
+	}
+
+	cardIDFloat, ok := params["card_id"].(float64)
+	if !ok {
+		return h.createErrorResponse(msg, "Missing or invalid card_id"), nil
+	}
+	cardID := uint(cardIDFloat)
+
+	card, err := h.container.MemoryCardService.GetMemoryCardByID(ctx, cardID)
+	if err != nil {
+		return h.createErrorResponse(msg, fmt.Sprintf("Failed to get memory card: %v", err)), nil
+	}
+
+	result := struct {
+		Card *MemoryCardModel `json:"card"`
+	}{
+		Card: card,
 	}
 
 	payload, err := subprocess.MarshalFast(result)

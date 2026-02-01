@@ -805,10 +805,10 @@ export interface MemoryCard {
   minor_class: string;
   status: string;
   content: any; // TipTap JSON
-  card_type: string; // 'basic', 'cloze', 'image_occlusion', etc.
-  learning_state: string; // 'to_review', 'learning', 'mastered', 'archived'
-  author?: string;
-  is_private: boolean;
+  card_type: string; // TODO: Not yet implemented in backend MemoryCardModel
+  learning_state: string; // Derived from bookmark.learning_state, not stored on card
+  author?: string; // TODO: Not yet implemented in backend MemoryCardModel
+  is_private: boolean; // TODO: Not yet implemented in backend MemoryCardModel
   interval: number; // Days until next review
   ease_factor: number; // SM-2 algorithm factor
   repetitions: number; // Number of times reviewed
@@ -820,15 +820,15 @@ export interface MemoryCard {
 
 export interface CreateMemoryCardRequest {
   bookmark_id: number;
-  front_content: string;
-  back_content: string;
-  major_class: string;
-  minor_class: string;
-  status: string;
-  content: any; // TipTap JSON
-  card_type?: string;
-  author?: string;
-  is_private?: boolean;
+  front: string; // Note: backend expects 'front', stored as front_content in model
+  back: string; // Note: backend expects 'back', stored as back_content in model
+  major_class?: string;
+  minor_class?: string;
+  status?: string;
+  content?: any; // TipTap JSON
+  card_type?: string; // TODO: Not yet implemented in backend
+  author?: string; // TODO: Not yet implemented in backend
+  is_private?: boolean; // TODO: Not yet implemented in backend
   metadata?: Record<string, unknown>;
 }
 
@@ -862,16 +862,16 @@ export interface ListMemoryCardsResponse {
 }
 
 export interface UpdateMemoryCardRequest {
-  id: number;
-  front_content?: string;
-  back_content?: string;
+  card_id: number; // Note: backend expects 'card_id' not 'id'
+  front?: string; // Note: backend expects 'front', stored as front_content in model
+  back?: string; // Note: backend expects 'back', stored as back_content in model
   major_class?: string;
   minor_class?: string;
   status?: string;
   content?: any; // TipTap JSON
-  learning_state?: string;
-  author?: string;
-  is_private?: boolean;
+  learning_state?: string; // Derived from bookmark, use bookmark RPC to update
+  author?: string; // TODO: Not yet implemented in backend
+  is_private?: boolean; // TODO: Not yet implemented in backend
   interval?: number;
   ease_factor?: number;
   repetitions?: number;
@@ -885,7 +885,7 @@ export interface UpdateMemoryCardResponse {
 }
 
 export interface DeleteMemoryCardRequest {
-  id: number;
+  card_id: number; // Note: backend expects 'card_id' not 'id'
 }
 
 export interface DeleteMemoryCardResponse {
@@ -893,7 +893,7 @@ export interface DeleteMemoryCardResponse {
 }
 
 export interface RateMemoryCardRequest {
-  id: number;
+  card_id: number; // Note: backend expects 'card_id' not 'id'
   rating: string; // 'again', 'hard', 'good', 'easy'
 }
 

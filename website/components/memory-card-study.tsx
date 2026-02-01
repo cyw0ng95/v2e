@@ -67,7 +67,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
     setError(null);
     
     try {
-      const params: any = { learning_state: filterState };
+      const params: any = { learning_state: filterState.replace('_', '-') };
       if (bookmarkId) {
         params.bookmark_id = bookmarkId;
       }
@@ -114,7 +114,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
     
     try {
       const response = await rpcClient.rateMemoryCard({
-        id: currentCard.id,
+        card_id: currentCard.id,
         rating: rating
       });
       

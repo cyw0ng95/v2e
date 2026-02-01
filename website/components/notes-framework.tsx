@@ -207,8 +207,8 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
 
     const response = await rpcClient.createMemoryCard({
       bookmark_id: bookmark.id,
-      front_content: front.trim(),
-      back_content: back.trim()
+      front: front.trim(),
+      back: back.trim()
     });
 
     if (response.retcode === 0 && response.payload?.memory_card) {
@@ -239,9 +239,9 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
     if (!editingCardFront.trim() || !editingCardBack.trim()) return;
 
     const response = await rpcClient.updateMemoryCard({
-      id: cardId,
-      front_content: editingCardFront,
-      back_content: editingCardBack
+      card_id: cardId,
+      front: editingCardFront,
+      back: editingCardBack
     });
 
     if (response.retcode === 0 && response.payload?.memory_card) {
@@ -255,7 +255,7 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
   };
 
   const handleDeleteMemoryCard = async (cardId: number) => {
-    const response = await rpcClient.deleteMemoryCard({ id: cardId });
+    const response = await rpcClient.deleteMemoryCard({ card_id: cardId });
 
     if (response.retcode === 0) {
       setMemoryCards(memoryCards.filter(card => card.id !== cardId));
@@ -266,7 +266,7 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
 
   const handleRateMemoryCard = async (cardId: number, rating: string) => {
     const response = await rpcClient.rateMemoryCard({
-      id: cardId,
+      card_id: cardId,
       rating: rating
     });
 
