@@ -454,6 +454,37 @@ func TestMemoryCardService(t *testing.T) {
 			t.Errorf("Expected Interval to be 1 after first 'Good' rating, got %d", updatedCard.Interval)
 		}
 	})
+
+	t.Run("CreateMemoryCardFull and CRUD fields", func(t *testing.T) {
+		card, err := memoryCardService.CreateMemoryCardFull(ctx, bookmark.ID, "FrontQ", "BackA", "Major", "Minor", "active", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hello TipTap"}]}]}`, "basic", "author1", false, map[string]any{"foo": "bar"})
+		if err != nil {
+			t.Fatalf("Failed to create memory card (full): %v", err)
+		}
+		if card.MajorClass != "Major" || card.MinorClass != "Minor" || card.Status != "active" {
+			t.Errorf("Classification fields not set correctly: %+v", card)
+		}
+		if card.Content == "" {
+			t.Errorf("Content (TipTap JSON) should not be empty")
+		}
+		// Update fields
+		fields := map[string]any{"id": float64(card.ID), "major_class": "UpdatedMajor", "status": "archived"}
+		updated, err := memoryCardService.UpdateMemoryCardFields(ctx, fields)
+		if err != nil {
+			t.Fatalf("Failed to update memory card fields: %v", err)
+		}
+		if updated.MajorClass != "UpdatedMajor" || updated.Status != "archived" {
+			t.Errorf("Update did not persist: %+v", updated)
+		}
+		// Delete
+		err = memoryCardService.DeleteMemoryCard(ctx, card.ID)
+		if err != nil {
+			t.Fatalf("Failed to delete memory card: %v", err)
+		}
+		_, err = memoryCardService.GetMemoryCardByID(ctx, card.ID)
+		if err == nil {
+			t.Errorf("Expected error after delete, got nil")
+		}
+	})
 }
 
 func TestHistoryService(t *testing.T) {

@@ -1569,3 +1569,30 @@ func createStartTypedSessionHandler(jobExecutor *taskflow.JobExecutor, logger *c
 		return respMsg, nil
 	}
 }
+
+// createProxyHandler returns a handler that proxies the RPC call to the given target and method.
+func createProxyHandler(rpcClient *RPCClient, logger *common.Logger, target, method string) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Forward the payload as-is to the target service/method
+		var params interface{}
+		if msg.Payload != nil {
+			params = msg.Payload
+		}
+		resp, err := rpcClient.InvokeRPC(ctx, target, method, params)
+		if err != nil {
+			logger.Warn("Proxy handler failed: %v", err)
+			return createErrorResponse(msg, fmt.Sprintf("proxy handler failed: %v", err)), nil
+		}
+		return resp, nil
+	}
+}
+
+// Memory Card RPC handlers
+func registerMemoryCardProxyHandlers(sp *subprocess.Subprocess, rpcClient *RPCClient, logger *common.Logger) {
+	sp.RegisterHandler("RPCCreateMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCCreateMemoryCard"))
+	sp.RegisterHandler("RPCGetMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCGetMemoryCard"))
+	sp.RegisterHandler("RPCUpdateMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCUpdateMemoryCard"))
+	sp.RegisterHandler("RPCDeleteMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCDeleteMemoryCard"))
+	sp.RegisterHandler("RPCListMemoryCards", createProxyHandler(rpcClient, logger, "local", "RPCListMemoryCards"))
+	logger.Info("Memory Card proxy handlers registered")
+}

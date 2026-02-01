@@ -801,6 +801,10 @@ export interface MemoryCard {
   bookmark_id: number;
   front_content: string;
   back_content: string;
+  major_class: string;
+  minor_class: string;
+  status: string;
+  content: any; // TipTap JSON
   card_type: string; // 'basic', 'cloze', 'image_occlusion', etc.
   learning_state: string; // 'to_review', 'learning', 'mastered', 'archived'
   author?: string;
@@ -818,6 +822,10 @@ export interface CreateMemoryCardRequest {
   bookmark_id: number;
   front_content: string;
   back_content: string;
+  major_class: string;
+  minor_class: string;
+  status: string;
+  content: any; // TipTap JSON
   card_type?: string;
   author?: string;
   is_private?: boolean;
@@ -857,6 +865,10 @@ export interface UpdateMemoryCardRequest {
   id: number;
   front_content?: string;
   back_content?: string;
+  major_class?: string;
+  minor_class?: string;
+  status?: string;
+  content?: any; // TipTap JSON
   learning_state?: string;
   author?: string;
   is_private?: boolean;

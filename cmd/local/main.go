@@ -275,6 +275,14 @@ func main() {
 	notes.NewRPCHandlers(notesServiceContainer, sp, logger)
 	logger.Info("Notes service handlers registered")
 
+	// Register Memory Card handlers
+	sp.RegisterHandler("RPCCreateMemoryCard", createMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
+	sp.RegisterHandler("RPCGetMemoryCard", getMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
+	sp.RegisterHandler("RPCUpdateMemoryCard", updateMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
+	sp.RegisterHandler("RPCDeleteMemoryCard", deleteMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
+	sp.RegisterHandler("RPCListMemoryCards", listMemoryCardsHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
+	logger.Info("Memory Card handlers registered")
+
 	logger.Info(LogMsgServiceStarting, sp.ID)
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)

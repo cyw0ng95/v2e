@@ -58,11 +58,15 @@ type NoteModel struct {
 type MemoryCardModel struct {
 	ID         uint       `gorm:"primaryKey"`
 	BookmarkID uint       `gorm:"index;not null"`
-	Front      string     `gorm:"type:text;not null"` // Question/content on front of card
-	Back       string     `gorm:"type:text;not null"` // Answer/explanation on back of card
-	EaseFactor float32    `gorm:"default:2.5"`        // For spaced repetition algorithm
-	Interval   int        `gorm:"default:1"`          // Days until next review
-	Repetition int        `gorm:"default:0"`          // Number of successful reviews
+	Front      string     `gorm:"type:text;not null"`          // Question/content on front of card
+	Back       string     `gorm:"type:text;not null"`          // Answer/explanation on back of card
+	MajorClass string     `gorm:"type:varchar(64);default:''"` // Major class/category
+	MinorClass string     `gorm:"type:varchar(64);default:''"` // Minor class/category
+	Status     string     `gorm:"type:varchar(32);default:''"` // Status (e.g., active, archived)
+	Content    string     `gorm:"type:json;not null"`          // TipTap JSON content
+	EaseFactor float32    `gorm:"default:2.5"`                 // For spaced repetition algorithm
+	Interval   int        `gorm:"default:1"`                   // Days until next review
+	Repetition int        `gorm:"default:0"`                   // Number of successful reviews
 	NextReview *time.Time // When to review this card next
 	CreatedAt  time.Time
 	UpdatedAt  time.Time

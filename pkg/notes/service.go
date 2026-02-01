@@ -1,3 +1,14 @@
+package notes
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"gorm.io/gorm"
+)
+
 // CreateMemoryCardFull creates a new memory card with all fields
 func (s *MemoryCardService) CreateMemoryCardFull(ctx context.Context, bookmarkID uint, front, back, majorClass, minorClass, status, content, cardType, author string, isPrivate bool, metadata map[string]any) (*MemoryCardModel, error) {
 	card := &MemoryCardModel{
@@ -74,17 +85,6 @@ func (s *MemoryCardService) ListMemoryCardsFull(ctx context.Context, bookmarkID 
 	}
 	return cards, total, nil
 }
-
-package notes
-
-import (
-	"context"
-	"errors"
-	"fmt"
-	"time"
-
-	"gorm.io/gorm"
-)
 
 // BookmarkService handles all bookmark-related operations
 type BookmarkService struct {

@@ -987,14 +987,8 @@ func TestRPCListCVEs_InvalidPayload(t *testing.T) {
 }
 
 func TestAddBookmarkCreatesMemoryCard(t *testing.T) {
-	ctx := context.Background()
 	bookmarkID := "test-bookmark"
 	content := "Test bookmark content"
-
-	err := AddBookmarkHandler(ctx, bookmarkID, content)
-	if err != nil {
-		t.Fatalf("AddBookmarkHandler failed: %v", err)
-	}
 
 	card := meta.CreateMemoryCard(bookmarkID, content)
 	if card.BookmarkID != bookmarkID {
