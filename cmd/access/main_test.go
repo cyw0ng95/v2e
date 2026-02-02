@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/gin-gonic/gin"
 )
@@ -31,7 +32,7 @@ func TestNewRPCClient_Access(t *testing.T) {
 }
 
 func TestRPCClient_HandleResponse_UnknownCorrelation(t *testing.T) {
-	client := NewRPCClient("test-access-2", DefaultRPCTimeout)
+	client := NewRPCClient("test-access-2", common.DefaultRPCTimeout)
 	msg := &subprocess.Message{
 		Type:          subprocess.MessageTypeResponse,
 		ID:            "m",
@@ -162,7 +163,7 @@ func TestRPCClient_InvokeRPC(t *testing.T) {
 }
 
 func TestRPCClient_HandleError(t *testing.T) {
-	client := NewRPCClient("test-access-5", DefaultRPCTimeout)
+	client := NewRPCClient("test-access-5", common.DefaultRPCTimeout)
 
 	// Create a message to test error handling
 	msg := &subprocess.Message{
@@ -195,7 +196,7 @@ func TestRPCClient_InvokeRPCWithTarget_Timeout(t *testing.T) {
 }
 
 func TestRPCClient_InvokeRPCWithTarget_ContextCancel(t *testing.T) {
-	client := NewRPCClient("test-access-7", DefaultRPCTimeout)
+	client := NewRPCClient("test-access-7", common.DefaultRPCTimeout)
 
 	// Create a context that's already cancelled
 	ctx, cancel := context.WithCancel(context.Background())

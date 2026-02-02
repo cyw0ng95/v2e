@@ -6,19 +6,13 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	// DefaultRPCTimeout is the default timeout for RPC requests used by tests and main
-	DefaultRPCTimeout = 30 * time.Second
-	// DefaultShutdownTimeout is the default timeout for graceful shutdown
-	DefaultShutdownTimeout = 10 * time.Second
-)
+// Default timeout and shutdown constants are now in pkg/common/defaults.go
 
 // setupRouter creates the Gin router, registers middleware and handlers
 func setupRouter(rpcClient *RPCClient, _ int, staticDir string) *gin.Engine {

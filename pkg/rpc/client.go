@@ -10,12 +10,13 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
-// DefaultRPCTimeout is the default timeout for RPC calls
-const DefaultRPCTimeout = 30 * time.Second
+// DefaultRPCTimeout is defined in pkg/common/defaults.go
+// This package variable provides backward compatibility
+var DefaultRPCTimeout = common.DefaultRPCTimeout
 
-// GetDefaultTimeout returns the default RPC timeout duration.
+// GetDefaultTimeout returns the default RPC timeout duration from pkg/common
 func GetDefaultTimeout() time.Duration {
-	return DefaultRPCTimeout
+	return common.DefaultRPCTimeout
 }
 
 // RequestEntry represents a pending request in the RPC client

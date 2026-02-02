@@ -29,10 +29,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
 
-const (
-	// DefaultSessionDBPath is the default path for the session database
-	DefaultSessionDBPath = "session.db"
-)
+// Default constants are now in pkg/common/defaults.go
 
 // DataType represents the type of data being populated
 // Using the same DataType from taskflow package
@@ -204,7 +201,7 @@ func main() {
 	// Get run database path from environment or use default
 	runDBPath := os.Getenv("SESSION_DB_PATH")
 	if runDBPath == "" {
-		runDBPath = DefaultSessionDBPath
+		runDBPath = common.DefaultSessionDBPath
 		logger.Info(LogMsgRunDBPathDefaultUsed, runDBPath)
 	} else {
 		logger.Info(LogMsgRunDBPathConfigured, runDBPath)
@@ -234,7 +231,7 @@ func main() {
 
 	// Create RPC client for inter-service communication
 	logger.Info(LogMsgRPCClientCreated)
-	rpcClient := rpc.NewClient(sp, logger, 60*time.Second)
+	rpcClient := rpc.NewClient(sp, logger, common.DefaultRPCTimeout)
 	rpcAdapter := &RPCClientAdapter{client: rpcClient}
 	logger.Info(LogMsgRPCAdapterCreated)
 
