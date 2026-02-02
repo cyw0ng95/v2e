@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
+import { Navbar } from "@/components/navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,11 +32,12 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-            <div className="min-h-screen min-w-screen flex flex-col bg-background">
-              <main className="w-full h-full overflow-auto">{children}</main>
-              <Toaster />
-            </div>
-          </Providers>
+          <div className="min-h-screen min-w-screen flex flex-col bg-background">
+            <Navbar />
+            <main className="flex-1 overflow-auto">{children}</main>
+            <Toaster />
+          </div>
+        </Providers>
 
       </body>
     </html>

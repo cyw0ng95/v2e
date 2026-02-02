@@ -124,9 +124,9 @@ const RightColumn = memo(function RightColumn({
   , [viewMode]);
 
   return (
-    <main className="w-full md:w-4/5 h-screen flex flex-col px-8 py-6">
+    <main className="w-full md:flex-1 h-screen flex flex-col px-10 py-8">
       <div className="flex-1 flex flex-col h-full">
-        <div className="space-y-8 flex-1 flex flex-col h-full">
+        <div className="space-y-8 flex-1 flex flex-col h-full page-transition">
           <Tabs value={tab} onValueChange={setTab} className="w-full h-full flex flex-col">
             <TabsList className={tabListClass}>
               {viewMode === 'view' ? (
@@ -283,25 +283,25 @@ const RightColumn = memo(function RightColumn({
 });
 
 // Memoized Left Sidebar Component to prevent re-renders on view mode changes
-const LeftSidebar = memo(function LeftSidebar({ 
-  viewMode, 
-  setViewMode, 
-  setTab, 
-  cveCount, 
-  sessionStatus 
-}: { 
-  viewMode: 'view' | 'learn'; 
+const LeftSidebar = memo(function LeftSidebar({
+  viewMode,
+  setViewMode,
+  setTab,
+  cveCount,
+  sessionStatus
+}: {
+  viewMode: 'view' | 'learn';
   setViewMode: (mode: 'view' | 'learn') => void;
   setTab: (tab: any) => void;
   cveCount?: number;
   sessionStatus?: any;
 }) {
   return (
-    <aside className="w-full md:w-1/5 shrink-0 bg-muted h-full flex flex-col">
-      <div className="sticky top-0 left-0 bottom-0 p-6 space-y-4 overflow-auto w-full">
+    <aside className="w-full md:w-80 shrink-0 h-full flex flex-col">
+      <div className="sticky top-0 left-0 bottom-0 p-6 space-y-6 overflow-auto w-full">
         {/* View/Learn Toggle */}
-        <ViewLearnToggle 
-          value={viewMode} 
+        <ViewLearnToggle
+          value={viewMode}
           onValueChange={(newMode) => {
             setViewMode(newMode);
             // Reset to appropriate default tab when switching modes
@@ -310,60 +310,54 @@ const LeftSidebar = memo(function LeftSidebar({
             } else {
               setTab('notes-dashboard');
             }
-          }} 
+          }}
         />
-        
-        {/* Consistent Left Panel Content - Same in both View and Learn modes */}
-        <div className="space-y-2">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">v2e</h1>
-          <p className="text-sm text-muted-foreground">CVE Management</p>
-        </div>
 
-        {/* Stats stacked */}
+        {/* Stats stacked - enhanced styling */}
         <div className="space-y-4">
-          <Card className="w-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card className="w-full hover:shadow-md transition-all duration-150">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-medium">Total CVEs</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground" />
+              <Database className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl font-bold">{cveCount?.toLocaleString() || '0'}</div>
-              <p className="text-xs text-muted-foreground">Local DB</p>
+              <div className="text-2xl font-bold tracking-tight">{cveCount?.toLocaleString() || '0'}</div>
+              <p className="text-xs text-muted-foreground mt-1">Local Database</p>
             </CardContent>
           </Card>
 
-          <Card className="w-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card className="w-full hover:shadow-md transition-all duration-150">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-medium">Session</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg font-medium">
+              <div className="text-lg font-semibold">
                 {sessionStatus?.hasSession ? (
-                  <Badge variant={sessionStatus.state === 'running' ? 'default' : 'secondary'}>
+                  <Badge variant={sessionStatus.state === 'running' ? 'default' : 'secondary'} className="badge-info">
                     {sessionStatus.state}
                   </Badge>
                 ) : (
                   <Badge variant="outline">Idle</Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{sessionStatus?.hasSession ? sessionStatus.sessionId : 'No active session'}</p>
+              <p className="text-xs text-muted-foreground mt-2">{sessionStatus?.hasSession ? sessionStatus.sessionId : 'No active session'}</p>
             </CardContent>
           </Card>
 
-          <Card className="w-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card className="w-full hover:shadow-md transition-all duration-150">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-medium">Progress</CardTitle>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              <AlertCircle className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg font-medium">{sessionStatus?.hasSession ? sessionStatus.fetchedCount || 0 : 0}</div>
+              <div className="text-2xl font-bold tracking-tight">{sessionStatus?.hasSession ? sessionStatus.fetchedCount || 0 : 0}</div>
               <p className="text-xs text-muted-foreground mt-1">{sessionStatus?.hasSession ? `${sessionStatus.storedCount || 0} stored, ${sessionStatus.errorCount || 0} errors` : 'No activity'}</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="mt-4 w-full">
+        <div className="w-full">
           <Suspense fallback={<div className="p-4"><Skeleton className="h-20 w-full" /></div>}>
             <SessionControl />
           </Suspense>
@@ -388,20 +382,20 @@ export default function Home() {
   const { data: sessionStatus } = useSessionStatus();
 
   return (
-    <div className="h-screen w-screen bg-background overflow-hidden">
-      <div className="h-full flex flex-col md:flex-row">
+    <div className="h-[calc(100vh-var(--app-header-height))] w-screen bg-background overflow-hidden">
+      <div className="h-full flex flex-col md:flex-row page-transition">
         {/* Left Sidebar - Memoized to prevent re-renders */}
-        <LeftSidebar 
-          viewMode={viewMode} 
-          setViewMode={setViewMode} 
+        <LeftSidebar
+          viewMode={viewMode}
+          setViewMode={setViewMode}
           setTab={setTab}
           cveCount={cveCount ?? undefined}
           sessionStatus={sessionStatus ?? undefined}
         />
 
         {/* Right Main Area - Memoized to optimize performance */}
-        <div className="hidden md:block w-px h-full bg-border" />
-        <RightColumn 
+        <div className="hidden md:block w-px h-full bg-border/50" />
+        <RightColumn
           viewMode={viewMode}
           tab={tab}
           setTab={setTab}

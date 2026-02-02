@@ -67,7 +67,7 @@ interface TabsListProps {
 
 export function TabsList({ children, className }: TabsListProps) {
   return (
-    <div className={"inline-flex gap-1 p-1 bg-muted rounded-lg " + (className || "")}>
+    <div className={"inline-flex gap-1 p-1.5 bg-muted/50 rounded-xl backdrop-blur-sm border border-border/50 " + (className || "")}>
       {children}
     </div>
   );
@@ -93,11 +93,11 @@ export function TabsTrigger({ value, children, disabled, className }: TabsTrigge
   }, [disabled, onValueChange, value]);
   
   const buttonClassName = React.useMemo(() => {
-    const baseClass = "px-4 py-2 rounded-md transition-colors cursor-pointer";
-    const stateClass = isSelected 
-      ? "bg-background text-foreground shadow-sm" 
-      : "text-muted-foreground hover:text-foreground hover:bg-muted/50";
-    const disabledClass = disabled ? "opacity-50 cursor-not-allowed" : "";
+    const baseClass = "px-4 py-2 rounded-lg transition-all duration-150 cursor-pointer font-medium text-sm";
+    const stateClass = isSelected
+      ? "bg-background text-foreground shadow-sm hover:shadow-md"
+      : "text-muted-foreground hover:text-foreground hover:bg-background/50 hover:-translate-y-px";
+    const disabledClass = disabled ? "opacity-50 cursor-not-allowed hover:translate-y-0" : "";
     return `${baseClass} ${stateClass} ${disabledClass} ${className || ""}`.trim();
   }, [isSelected, disabled, className]);
   
@@ -125,15 +125,15 @@ interface TabsContentProps {
 export function TabsContent({ value, children, className }: TabsContentProps) {
   const { value: selectedValue } = useTabsContext();
   const isSelected = selectedValue === value;
-  
+
   if (!isSelected) {
     return null;
   }
-  
+
   return (
-    <div 
+    <div
       role="tabpanel"
-      className={`flex-1 min-h-0 overflow-auto ${className || ""}`}
+      className={`flex-1 min-h-0 overflow-auto animate-in fade-in slide-in-from-bottom-4 duration-300 ${className || ""}`}
     >
       {children}
     </div>
