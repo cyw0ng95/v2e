@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/capec"
@@ -13,6 +14,12 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/meta"
 )
+
+// serviceToSpawn represents a service to be spawned with its name and path.
+type serviceToSpawn struct {
+	name string
+	path string
+}
 
 // Spawn starts a new subprocess with the given command and arguments.
 func (b *Broker) Spawn(id, command string, args ...string) (*ProcessInfo, error) {
@@ -219,8 +226,8 @@ func (b *Broker) loadDetectedBinaries() error {
 		"sysmon": true,
 	}
 
-	// Track which services we've started
-	startedServices := make(map[string]bool)
+	// Collect executables to spawn
+	var services []serviceToSpawn
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -234,18 +241,13 @@ func (b *Broker) loadDetectedBinaries() error {
 			filePath := filepath.Join(execDir, fileName)
 			if b.isExecutable(filePath) {
 				b.logger.Info("Detected executable: %s", fileName)
-				if err := b.startService(fileName); err != nil {
-					b.logger.Warn("Failed to start service %s: %v", fileName, err)
-				} else {
-					startedServices[fileName] = true
-				}
+				services = append(services, serviceToSpawn{name: fileName, path: filePath})
 			}
 		}
 	}
 
-	// Report what we found
-	b.logger.Info("Binary detection complete. Started services: %v", startedServices)
-	return nil
+	// Spawn all services in parallel, then wait for ready events
+	return b.spawnServicesParallel(services)
 }
 
 // loadSpecifiedBinaries loads the specified binaries from the list.
@@ -288,6 +290,133 @@ func (b *Broker) startService(serviceName string) error {
 	}
 
 	b.logger.Info("Started service %s (PID: %d) with RPC and auto-restart", info.ID, info.PID)
+	return nil
+}
+
+// spawnServicesParallel spawns multiple services in parallel and waits for all ready events.
+// This significantly speeds up startup compared to sequential spawning.
+func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
+	type spawnResult struct {
+		name string
+		info *ProcessInfo
+		proc *Process
+		err  error
+	}
+
+	const readyTimeout = 5 * time.Second
+	deadline := time.Now().Add(readyTimeout * time.Duration(len(services)))
+
+	// Phase 1: Spawn all processes in parallel
+	resultChan := make(chan spawnResult, len(services))
+
+	for _, svc := range services {
+		go func(s serviceToSpawn) {
+			b.mu.Lock()
+			if _, exists := b.processes[s.name]; exists {
+				b.mu.Unlock()
+				resultChan <- spawnResult{name: s.name, err: fmt.Errorf("process with id '%s' already exists", s.name)}
+				return
+			}
+			b.mu.Unlock()
+
+			ctx, cancel := context.WithCancel(b.ctx)
+			cmd := exec.CommandContext(ctx, "./"+s.name)
+			setProcessEnv(cmd, s.name)
+
+			info := &ProcessInfo{ID: s.name, Command: "./" + s.name, Status: ProcessStatusRunning, StartTime: time.Now()}
+			proc := &Process{
+				info:          info,
+				cmd:           cmd,
+				cancel:        cancel,
+				done:          make(chan struct{}),
+				ready:         make(chan struct{}),
+				restartConfig: &RestartConfig{Enabled: true, MaxRestarts: -1, Command: "./" + s.name, IsRPC: true},
+			}
+
+			// Register UDS transport before starting
+			if b.transportManager != nil {
+				if _, err := b.transportManager.RegisterUDSTransport(s.name, true); err != nil {
+					cancel()
+					info.Status = ProcessStatusFailed
+					resultChan <- spawnResult{name: s.name, err: fmt.Errorf("failed to register UDS transport: %w", err)}
+					return
+				}
+			}
+
+			if err := cmd.Start(); err != nil {
+				cancel()
+				if b.transportManager != nil {
+					b.transportManager.UnregisterTransport(s.name)
+				}
+				info.Status = ProcessStatusFailed
+				resultChan <- spawnResult{name: s.name, err: fmt.Errorf("failed to start process: %w", err)}
+				return
+			}
+
+			info.PID = cmd.Process.Pid
+			b.mu.Lock()
+			b.processes[s.name] = proc
+			b.mu.Unlock()
+
+			// Start UDS message reading goroutine
+			if b.transportManager != nil {
+				udsTransport, err := b.transportManager.GetTransport(s.name)
+				if err == nil {
+					b.wg.Add(1)
+					go b.readUDSMessages(s.name, udsTransport)
+				}
+			}
+
+			b.wg.Add(1)
+			go b.reapProcess(proc)
+
+			resultChan <- spawnResult{name: s.name, info: info, proc: proc, err: nil}
+		}(svc)
+	}
+
+	// Collect spawn results
+	var results []spawnResult
+	startedServices := make(map[string]bool)
+	var procs []*Process
+
+	for range services {
+		result := <-resultChan
+		results = append(results, result)
+		if result.err != nil {
+			b.logger.Warn("Failed to start service %s: %v", result.name, result.err)
+		} else {
+			b.logger.Info("Spawned RPC process: id=%s pid=%d cmd=%s", result.name, result.info.PID, result.name)
+			startedServices[result.name] = true
+			procs = append(procs, result.proc)
+		}
+	}
+
+	// Phase 2: Wait for all ready events in parallel
+	var readyWg sync.WaitGroup
+	for _, result := range results {
+		if result.err != nil || result.proc == nil {
+			continue
+		}
+
+		readyWg.Add(1)
+		go func(p *Process, name string) {
+			defer readyWg.Done()
+			select {
+			case <-p.ready:
+				b.logger.Debug("Process %s is ready and accepting messages", name)
+			case <-time.After(time.Until(deadline)):
+				b.logger.Warn("Process %s did not send ready event before deadline", name)
+			case <-b.ctx.Done():
+				return
+			}
+		}(result.proc, result.name)
+	}
+
+	// Wait for all processes to be ready before proceeding
+	readyWg.Wait()
+
+	// Report what we found
+	b.logger.Info("Started services: %v", startedServices)
 	return nil
 }
 

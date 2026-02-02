@@ -54,8 +54,23 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 				return
 			}
 
-			// Log error and continue
-			b.logger.Warn("Error receiving message from UDS transport for process %s: %v", processID, err)
+			// Check if process has sent ready event yet
+			p.mu.RLock()
+			readyClosed := false
+			select {
+			case <-p.ready:
+				readyClosed = true
+			default:
+			}
+			p.mu.RUnlock()
+
+			// If process hasn't signaled ready yet, transport not connected is expected
+			// Log as debug instead of warn during initial startup
+			if !readyClosed && err.Error() == "transport not connected" {
+				b.logger.Debug("Process %s UDS transport not yet connected (waiting for subprocess_ready)", processID)
+			} else {
+				b.logger.Warn("Error receiving message from UDS transport for process %s: %v", processID, err)
+			}
 			// Don't return immediately - might be a temporary error
 			// But sleep a bit to avoid tight error loop
 			time.Sleep(100 * time.Millisecond)
