@@ -43,9 +43,8 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 		rpcTimeout: rpcTimeout,
 	}
 
-	// Register handlers for response and error messages
-	sp.RegisterHandler(string(subprocess.MessageTypeResponse), client.handleResponse)
-	sp.RegisterHandler(string(subprocess.MessageTypeError), client.handleError)
+	// rpc.Client already registers its own Response and Error handlers internally
+	// No need to register duplicate handlers here
 
 	return client
 }
@@ -62,18 +61,6 @@ func NewRPCClientWithSubprocess(sp *subprocess.Subprocess, logger *common.Logger
 	// No need to register additional handlers here
 
 	return client
-}
-
-// handleResponse handles response messages from the broker
-func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	// Delegate to the common client's response handler
-	return c.client.HandleResponse(ctx, msg)
-}
-
-// handleError handles error messages from the broker (treat them as responses)
-func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-	// Delegate to the common client's error handler
-	return c.client.HandleError(ctx, msg)
 }
 
 // InvokeRPC invokes an RPC method on the broker and waits for response
