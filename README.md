@@ -87,6 +87,9 @@ The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permis
   - Provides workflow control mechanisms
   - Orchestrates CVE/CWE data fetching jobs with persistent state management
   - Performs automatic CWE and CAPEC imports at startup
+  - Provides memory card management (delegates to local service):
+    - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
+    - RPCDeleteMemoryCard, RPCListMemoryCards
 
 - **Local Service** ([cmd/local](cmd/local)): The data persistence layer that:
   - Manages local SQLite databases for CVE, CWE, CAPEC, and ATT&CK data
@@ -96,6 +99,10 @@ The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permis
   - Imports ATT&CK data from XLSX files and provides access to techniques, tactics, mitigations, software, and groups
   - Supports CAPEC XML schema validation and catalog metadata retrieval
   - Offers CWE view management with storage and retrieval capabilities
+  - Provides memory card storage for bookmark/knowledge management:
+    - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
+    - RPCDeleteMemoryCard, RPCListMemoryCards
+    - Supports TipTap JSON content, classification fields, and metadata
 
 - **Remote Service** ([cmd/remote](cmd/remote)): The data acquisition layer that:
   - Fetches vulnerability data from external APIs (NVD, etc.)
@@ -151,14 +158,14 @@ Run `./build.sh -c` to access the interactive configuration manager.
 
 ## Transport & Communication
 
-The system uses a Unix Domain Sockets (UDS) RPC communication mechanism designed for high throughput and low latency.
+The system uses a **UDS-only** (Unix Domain Sockets) RPC communication mechanism designed for high throughput and low latency. Legacy stdin/stdout FD pipe support has been removed - all subprocess communication now exclusively uses UDS.
 
 ### Transport Architecture
 
 ```
 Frontend → Access Service → Broker → Backend Services
                       ↓           ↓
-                HTTP/REST      UDS
+                HTTP/REST      UDS (only)
                                     ↓
                             Subprocess Services
 ```
@@ -166,9 +173,10 @@ Frontend → Access Service → Broker → Backend Services
 ### Message Flow
 
 1. **External requests** → Access REST API (`/restful/rpc`) → Broker
-2. **Broker routing** → Backend Services via UDS
+2. **Broker routing** → Backend Services via UDS (exclusively)
 3. **Response path** → Broker → Access Service → Frontend
 4. **No direct subprocess-to-subprocess communication** is allowed
+5. **UDS-only transport**: All broker-to-subprocess communication uses Unix Domain Sockets with 0600 permissions
 
 ### Message Types
 
@@ -282,32 +290,69 @@ The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with 
 
 ### Job States
 
-The system supports six job states with strictly defined transitions:
+The system supports thirteen job states with strictly defined transitions, including intermediate states for granular progress tracking:
 
 ```mermaid
 stateDiagram-v2
     [*] --> Queued: Create Run
-    Queued --> Running: Start
+    Queued --> Initializing: Start
     Queued --> Stopped: Stop
+    Initializing --> Running: Ready
+    Initializing --> Failed: Setup Error
+    Initializing --> Stopped: Stop
     Running --> Paused: Pause
     Running --> Completed: Finish Successfully
     Running --> Failed: Error
     Running --> Stopped: Stop
-    Paused --> Running: Resume
+    Running --> Fetching: API Call
+    Running --> Processing: Transform
+    Running --> Saving: Persist
+    Running --> Validating: Verify
+    Fetching --> Processing: Data Received
+    Fetching --> Running: Batch Complete
+    Fetching --> Failed: API Error
+    Fetching --> Paused: Pause During Fetch
+    Processing --> Saving: Processed
+    Processing --> Running: Batch Complete
+    Processing --> Failed: Transform Error
+    Processing --> Paused: Pause During Process
+    Saving --> Running: Persisted
+    Saving --> Completed: All Saved
+    Saving --> Failed: Storage Error
+    Saving --> Paused: Pause During Save
+    Validating --> Running: Validation Passed
+    Validating --> Failed: Validation Failed
+    Validating --> Paused: Pause During Validate
+    Paused --> Recovering: Resume
     Paused --> Stopped: Stop
+    Recovering --> Running: Recovery Complete
+    Recovering --> Failed: Recovery Failed
+    Recovering --> Stopped: Stop During Recovery
     Completed --> [*]
     Failed --> [*]
     Stopped --> [*]
+    RollingBack --> Stopped: Rollback Complete
+    RollingBack --> Failed: Rollback Failed
 ```
 
-**State Descriptions:**
+**Primary State Descriptions:**
 
 - **Queued**: Job created but not yet started
-- **Running**: Job actively fetching and storing data
+- **Initializing**: Job is being set up, resources allocated
+- **Running**: Job is actively executing
 - **Paused**: Job temporarily paused by user (can be resumed)
 - **Completed**: Job finished successfully (all data fetched)
 - **Failed**: Job encountered fatal error
 - **Stopped**: Job manually stopped by user
+
+**Intermediate Progress States:**
+
+- **Fetching**: Actively fetching data from remote API (NVD, etc.)
+- **Processing**: Transforming and normalizing fetched data
+- **Saving**: Persisting processed data to database
+- **Validating**: Verifying data integrity and consistency
+- **Recovering**: Recovering from pause or failure state
+- **RollingBack**: Rolling back partial changes after error
 
 **Terminal States**: Completed, Failed, Stopped (cannot transition further)
 
@@ -558,11 +603,12 @@ The broker implements intelligent adaptive tuning that responds to system and ap
 ## Notes and Conventions
 
 - All subprocesses must be started and managed by the broker; never run backend subprocesses directly in production or integration tests
-- Subprocesses communicate exclusively via JSON RPC messages over stdin/stdout
+- Subprocesses communicate exclusively via **UDS (Unix Domain Sockets)** - stdin/stdout FD pipe support has been removed
 - Configuration (process list, logging) is controlled through `config.json`
-- The authoritative RPC API specification for each subprocess can be found in the top comment of its `cmd/*/main.go` file
+- The authoritative RPC API specification for each subprocess can be found in `cmd/*/service.md`
 - All inter-service communication flows through the broker to maintain architectural integrity
-- Job sessions persist across service restarts; only one active run is allowed at a time
+- Job sessions persist across service restarts; paused jobs remain paused, running jobs auto-resume
+- Only one active job run (running or paused) is allowed at a time
 
 ## Where to Look Next
 
