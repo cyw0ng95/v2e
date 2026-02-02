@@ -73,18 +73,6 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	// compute their own IDs and transport paths deterministically from
 	// build-time defaults (ldflags). This avoids runtime env coordination.
 
-	// If this is an RPC process and transport manager exists, register a UDS
-	// transport before starting the process. The socket path is deterministic
-	// and based on the build-time UDS base path so the subprocess can compute
-	// it without runtime environment variables.
-	if isRPC && b.transportManager != nil {
-		if _, err := b.transportManager.RegisterUDSTransport(id, true); err == nil {
-			b.logger.Debug("Registered UDS transport for process %s before start", id)
-		} else {
-			b.logger.Warn("Failed to register UDS transport for process %s before start: %v", id, err)
-		}
-	}
-
 	info := &ProcessInfo{ID: id, Command: command, Args: args, Status: ProcessStatusRunning, StartTime: time.Now()}
 
 	proc := &Process{
@@ -92,6 +80,7 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 		cmd:    cmd,
 		cancel: cancel,
 		done:   make(chan struct{}),
+		ready:  make(chan struct{}),
 	}
 
 	if restartConfig != nil {
@@ -103,6 +92,32 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 			restartConfig.Args = args
 		}
 		proc.restartConfig = restartConfig
+	}
+
+	// If this is an RPC process and transport manager exists, register a UDS
+	// transport before starting the process. The socket path is deterministic
+	// and based on the build-time UDS base path so the subprocess can compute
+	// it without runtime environment variables.
+	// This is a hard failure - if UDS registration fails, we don't spawn the process.
+	var udsRegistered bool
+	if isRPC && b.transportManager != nil {
+		if _, err := b.transportManager.RegisterUDSTransport(id, true); err != nil {
+			cancel()
+			info.Status = ProcessStatusFailed
+			return info, fmt.Errorf("failed to register UDS transport for process %s: %w", id, err)
+		}
+		b.logger.Debug("Registered UDS transport for process %s before start", id)
+		udsRegistered = true
+	}
+
+	// Ensure UDS transport is cleaned up if spawning fails
+	if udsRegistered {
+		defer func() {
+			if info.Status == ProcessStatusFailed {
+				b.logger.Warn("Cleaning up UDS transport for failed process %s", id)
+				b.transportManager.UnregisterTransport(id)
+			}
+		}()
 	}
 
 	if err := cmd.Start(); err != nil {
@@ -134,6 +149,25 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 
 	b.wg.Add(1)
 	go b.reapProcess(proc)
+
+	// Wait for subprocess_ready event with timeout for RPC processes
+	// This ensures the subprocess has initialized and registered its handlers
+	// before we consider it fully running and start routing messages to it
+	if isRPC {
+		const readyTimeout = 5 * time.Second
+		select {
+		case <-proc.ready:
+			b.logger.Debug("Process %s is ready and accepting messages", id)
+		case <-time.After(readyTimeout):
+			// Timeout - subprocess didn't send ready event in time
+			// Don't kill the process, but log a warning
+			b.logger.Warn("Process %s did not send ready event within %v, may not be fully initialized", id, readyTimeout)
+		case <-b.ctx.Done():
+			// Broker context cancelled during spawn
+			info.Status = ProcessStatusFailed
+			return &infoCopy, fmt.Errorf("broker context cancelled while waiting for process %s to be ready", id)
+		}
+	}
 
 	return &infoCopy, nil
 }

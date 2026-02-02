@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
@@ -226,7 +227,7 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 }
 
 // NewWithUDS creates a new Subprocess instance using a Unix Domain Socket client.
-// Fails fast if UDS connection cannot be established.
+// Implements retry logic with exponential backoff for connection failures.
 func NewWithUDS(id string, socketPath string) *Subprocess {
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &Subprocess{
@@ -237,11 +238,37 @@ func NewWithUDS(id string, socketPath string) *Subprocess {
 		outChan:  make(chan []byte, defaultOutChanBufSize),
 	}
 
-	// Dial the UDS socket immediately - fail fast if connection fails
-	conn, err := net.Dial("unix", socketPath)
+	// Retry logic: 3 attempts with exponential backoff (100ms, 200ms, 400ms)
+	// This gives the broker time to create the UDS socket if there's any timing issue
+	const maxRetries = 3
+	retryDelays := []time.Duration{100 * time.Millisecond, 200 * time.Millisecond, 400 * time.Millisecond}
+
+	var conn net.Conn
+	var err error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		conn, err = net.Dial("unix", socketPath)
+		if err == nil {
+			// Connection successful
+			if attempt > 0 {
+				msg := fmt.Sprintf("[INFO] Subprocess: Connected to UDS socket %s on attempt %d\n", socketPath, attempt+1)
+				os.Stderr.WriteString(msg)
+			}
+			break
+		}
+
+		// Connection failed, log retry if not the last attempt
+		if attempt < maxRetries-1 {
+			msg := fmt.Sprintf("[WARN] Subprocess: Failed to connect to UDS socket %s (attempt %d/%d): %v, retrying in %v...\n",
+				socketPath, attempt+1, maxRetries, err, retryDelays[attempt])
+			os.Stderr.WriteString(msg)
+			time.Sleep(retryDelays[attempt])
+		}
+	}
+
+	// If all retries failed, exit with fatal error
 	if err != nil {
-		// Log to stderr (logger may not be ready yet)
-		msg := fmt.Sprintf("[FATAL] Subprocess: Failed to connect to UDS socket %s: %v\n", socketPath, err)
+		msg := fmt.Sprintf("[FATAL] Subprocess: Failed to connect to UDS socket %s after %d attempts: %v\n", socketPath, maxRetries, err)
 		os.Stderr.WriteString(msg)
 		os.Exit(253)
 	}

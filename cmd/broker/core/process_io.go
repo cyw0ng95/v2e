@@ -67,6 +67,28 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 			continue
 		}
 
+		// Handle subprocess_ready event - close the ready channel to signal
+		// that the subprocess has initialized and registered its handlers
+		if msg.Type == proc.MessageTypeEvent && msg.ID == "subprocess_ready" {
+			b.mu.RLock()
+			p, exists := b.processes[processID]
+			b.mu.RUnlock()
+
+			if exists {
+				p.mu.Lock()
+				if p.ready != nil {
+					select {
+					case <-p.ready:
+						// Already closed
+					default:
+						close(p.ready)
+						b.logger.Debug("Process %s signaled ready", processID)
+					}
+				}
+				p.mu.Unlock()
+			}
+		}
+
 		// Route the message through the broker's router
 		if err := b.RouteMessage(msg, processID); err != nil {
 			b.logger.Warn("Failed to route message from UDS transport for process %s: %v", processID, err)

@@ -40,6 +40,7 @@ type Process struct {
 	cmd           *exec.Cmd
 	cancel        context.CancelFunc
 	done          chan struct{}
+	ready         chan struct{} // Closed when subprocess sends subprocess_ready event
 	mu            sync.RWMutex
 	restartConfig *RestartConfig
 }
@@ -47,8 +48,9 @@ type Process struct {
 // NewTestProcess constructs a Process instance for tests without spawning OS processes.
 func NewTestProcess(id string, status ProcessStatus) *Process {
 	return &Process{
-		info: &ProcessInfo{ID: id, Status: status},
-		done: make(chan struct{}),
+		info:  &ProcessInfo{ID: id, Status: status},
+		done:  make(chan struct{}),
+		ready: make(chan struct{}),
 	}
 }
 
