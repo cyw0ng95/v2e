@@ -3,6 +3,7 @@ package taskflow
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,10 +22,12 @@ type RPCInvoker interface {
 
 // JobExecutor manages task execution using go-taskflow with persistent state
 type JobExecutor struct {
-	rpcInvoker RPCInvoker
-	runStore   *RunStore
-	executor   gotaskflow.Executor
-	logger     *common.Logger
+	rpcInvoker           RPCInvoker
+	runStore             *RunStore
+	executor             gotaskflow.Executor
+	logger               *common.Logger
+	remoteCircuitBreaker *CircuitBreaker
+	localCircuitBreaker  *CircuitBreaker
 
 	mu         sync.RWMutex
 	activeRun  *JobRun
@@ -33,11 +36,17 @@ type JobExecutor struct {
 
 // NewJobExecutor creates a new job executor with Taskflow and persistent storage
 func NewJobExecutor(rpcInvoker RPCInvoker, runStore *RunStore, logger *common.Logger, concurrency uint) *JobExecutor {
+	// Create circuit breakers: 5 failures triggers open, 60s to reset
+	remoteCB := NewCircuitBreaker(5, 60*time.Second)
+	localCB := NewCircuitBreaker(10, 30*time.Second)
+
 	return &JobExecutor{
-		rpcInvoker: rpcInvoker,
-		runStore:   runStore,
-		executor:   gotaskflow.NewExecutor(concurrency),
-		logger:     logger,
+		rpcInvoker:           rpcInvoker,
+		runStore:             runStore,
+		executor:             gotaskflow.NewExecutor(concurrency),
+		logger:               logger,
+		remoteCircuitBreaker: remoteCB,
+		localCircuitBreaker:  localCB,
 	}
 }
 
@@ -303,7 +312,14 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 
 				// Check if it's an error message
 				if msg.Type == subprocess.MessageTypeError {
-					fetchErr = fmt.Errorf("error from remote: %s", msg.Error)
+					rpcErr := fmt.Errorf("error from remote: %s", msg.Error)
+					// Check for rate limit - should be handled differently
+					if isRateLimitError(rpcErr) {
+						e.logger.Warn("Rate limit detected, will retry with backoff")
+						fetchErr = rpcErr
+						return
+					}
+					fetchErr = rpcErr
 					return
 				}
 
@@ -387,11 +403,30 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 				e.logger.Warn(cve.LogMsgTFFetchFailed, fetchErr)
 				e.runStore.UpdateProgress(runID, 0, 0, 1)
 
+				// Check if error is unrecoverable
+				if shouldGiveUp(fetchErr) {
+					e.logger.Error("Job failed after unrecoverable error: %v", fetchErr)
+					e.runStore.UpdateState(runID, StateFailed)
+					e.runStore.SetError(runID, fetchErr.Error())
+					return
+				}
+
+				// Get error count for backoff calculation
+				retryCount := 0
+				if run, err := e.runStore.GetRun(runID); err == nil && run != nil {
+					retryCount = int(run.ErrorCount)
+				}
+
+				// Calculate appropriate backoff based on error type
+				backoff := calculateBackoff(fetchErr, retryCount)
+
+				e.logger.Info("Retrying after %v (error: %v)", backoff, fetchErr)
+
 				// Wait before retrying
 				select {
 				case <-ctx.Done():
 					return
-				case <-time.After(5 * time.Second):
+				case <-time.After(backoff):
 					continue
 				}
 			}
@@ -415,3 +450,46 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 		}
 	}
 }
+
+// isRateLimitError checks if an error is related to API rate limiting
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "rate limit") ||
+		strings.Contains(errStr, "429") ||
+		strings.Contains(errStr, "too many requests")
+}
+
+// shouldGiveUp determines if an error is unrecoverable and the job should fail
+func shouldGiveUp(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// Context cancellation is unrecoverable
+	if strings.Contains(errStr, "context canceled") ||
+		strings.Contains(errStr, "context deadline exceeded") {
+		return true
+	}
+	return false
+}
+
+// calculateBackoff determines the appropriate wait time before retry
+func calculateBackoff(err error, retryCount int) time.Duration {
+	if err == nil {
+		return 5 * time.Second
+	}
+	// Rate limits need longer backoff
+	if isRateLimitError(err) {
+		return 30 * time.Second
+	}
+	// Exponential backoff for other errors: 2^retryCount seconds, max 60s
+	backoff := time.Duration(1<<uint(retryCount)) * time.Second
+	if backoff > 60*time.Second {
+		backoff = 60 * time.Second
+	}
+	return backoff
+}
+
