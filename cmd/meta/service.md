@@ -177,37 +177,63 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - Session exists: A session is already running
   - RPC error: Failed to communicate with backend services
 
-#### 8. RPCStopSession
-- **Description**: Stops the current CVE fetching session and cleans up resources
+#### 8. RPCStartTypedSession
+- **Description**: Starts a new typed data fetching session for CVE, CWE, CAPEC, or ATT&CK data
+- **Request Parameters**:
+  - `session_id` (string, required): Unique identifier for the session
+  - `data_type` (string, required): Type of data to fetch - "cve", "cwe", "capec", or "attack"
+  - `start_index` (int, optional): Index to start fetching from (default: 0)
+  - `results_per_batch` (int, optional): Number of results per batch (default: 100)
+  - `params` (object, optional): Additional parameters for the job
+- **Response**:
+  - `success` (bool): true if session started successfully
+  - `session_id` (string): ID of the started session
+  - `state` (string): Current state of the session ("running")
+  - `data_type` (string): The data type being fetched
+  - `created_at` (string): Timestamp when session was created
+  - `start_index` (int): Index where fetching started
+  - `batch_size` (int): Number of results per batch
+  - `params` (object): Additional parameters for the job
+- **Errors**:
+  - Missing session ID: `session_id` parameter is required
+  - Session exists: A session is already running
+  - Invalid data type: `data_type` must be one of "cve", "cwe", "capec", or "attack"
+  - RPC error: Failed to communicate with backend services
+
+#### 9. RPCStopSession
+- **Description**: Stops the current data fetching session and cleans up resources
 - **Request Parameters**: None
 - **Response**:
   - `success` (bool): true if session stopped successfully
   - `session_id` (string): ID of the stopped session
-  - `fetched_count` (int): Number of CVEs fetched during the session
-  - `stored_count` (int): Number of CVEs successfully stored during the session
+  - `fetched_count` (int): Number of items fetched during the session
+  - `stored_count` (int): Number of items successfully stored during the session
   - `error_count` (int): Number of errors encountered during the session
 - **Errors**:
   - No session: No active session to stop
   - RPC error: Failed to communicate with backend services
 
-#### 9. RPCGetSessionStatus
-- **Description**: Retrieves the current status of the active CVE fetching session
+#### 10. RPCGetSessionStatus
+- **Description**: Retrieves the current status of the active data fetching session
 - **Request Parameters**: None
 - **Response**:
   - `has_session` (bool): true if a session exists
   - `session_id` (string): ID of the session (if exists)
   - `state` (string): Current state of the session ("running", "paused", "stopped")
+  - `data_type` (string): Type of data being fetched ("cve", "cwe", "capec", "attack")
   - `start_index` (int): Index where the session started
   - `results_per_batch` (int): Number of results per batch
   - `created_at` (string): Timestamp when session was created
   - `updated_at` (string): Timestamp when session was last updated
-  - `fetched_count` (int): Number of CVEs fetched during the session
-  - `stored_count` (int): Number of CVEs successfully stored during the session
+  - `fetched_count` (int): Number of items fetched during the session
+  - `stored_count` (int): Number of items successfully stored during the session
   - `error_count` (int): Number of errors encountered during the session
+  - `error_message` (string, optional): Error message if session failed
+  - `progress` (object, optional): Progress details per data type
 - **Errors**: None (returns empty status if no session exists)
 
-#### 10. RPCPauseJob
-- **Description**: Pauses the currently running CVE fetching job
+#### 11. RPCPauseJob
+- **Description**: Pauses the currently running data fetching job
 - **Request Parameters**: None
 - **Response**:
   - `success` (bool): true if job paused successfully
@@ -216,8 +242,8 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - No running job: No job is currently running
   - RPC error: Failed to communicate with backend services
 
-#### 11. RPCResumeJob
-- **Description**: Resumes a paused CVE fetching job
+#### 12. RPCResumeJob
+- **Description**: Resumes a paused data fetching job
 - **Request Parameters**: None
 - **Response**:
   - `success` (bool): true if job resumed successfully
@@ -226,7 +252,7 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - No paused job: No job is currently paused
   - RPC error: Failed to communicate with backend services
 
-#### 12. RPCStartCWEViewJob
+#### 13. RPCStartCWEViewJob
 - **Description**: Starts a background job to fetch and save CWE views
 - **Request Parameters**:
   - `start_index` (int, optional): Index to start fetching from (default: 0)
@@ -238,7 +264,7 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - RPC error: Failed to communicate with backend services
   - Import error: Failed to start the import process
 
-#### 13. RPCStopCWEViewJob
+#### 14. RPCStopCWEViewJob
 - **Description**: Stops a running CWE view job
 - **Request Parameters**:
   - `session_id` (string, optional): ID of the session to stop (default: current session)

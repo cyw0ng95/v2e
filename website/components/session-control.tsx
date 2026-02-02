@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useSessionStatus,
-  useStartSession,
   useStartTypedSession,
   useStopSession,
   usePauseJob,
@@ -22,9 +21,24 @@ import {
 import { PlayIcon as Play, SquareIcon as Square, PauseIcon as Pause, RotateCwIcon as RotateCw } from '@/components/icons';
 import { toast } from "sonner";
 
+// Helper function to capitalize data type for display
+function formatDataType(dataType: string): string {
+  switch (dataType.toLowerCase()) {
+    case 'cve':
+      return 'CVE';
+    case 'cwe':
+      return 'CWE';
+    case 'capec':
+      return 'CAPEC';
+    case 'attack':
+      return 'ATT&CK';
+    default:
+      return dataType.toUpperCase();
+  }
+}
+
 export function SessionControl() {
   const { data: sessionStatus } = useSessionStatus();
-  const startSession = useStartSession();
   const startTypedSession = useStartTypedSession();
   const stopSession = useStopSession();
   const pauseJob = usePauseJob();
@@ -47,7 +61,7 @@ export function SessionControl() {
       },
       {
         onSuccess: () => {
-          toast.success(`Session started successfully for ${dataType.toUpperCase()}`);
+          toast.success(`Session started successfully for ${formatDataType(dataType)}`);
           // Reset stop session error tracking when starting a new session
           stopSession.reset();
           setIsStopping(false);
@@ -129,9 +143,9 @@ export function SessionControl() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Session Control</CardTitle>
+        <CardTitle>Job Session Control</CardTitle>
         <CardDescription>
-          Start, stop, or manage CVE fetching job sessions
+          Start, stop, or manage data fetching job sessions (CVE, CWE, CAPEC, ATT&CK)
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -200,16 +214,6 @@ export function SessionControl() {
 
           {/* Control Buttons */}
           <div className="flex gap-2">
-            {!sessionStatus?.hasSession && (
-              <Button
-                onClick={handleStartSession}
-                disabled={startSession.isPending || !sessionId}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Start Session
-              </Button>
-            )}
-
             {isRunning && (
               <>
                 <Button
@@ -262,7 +266,7 @@ export function SessionControl() {
                 </div>
                 <div>
                   <span className="font-medium">Data Type:</span>{" "}
-                  <span className="text-muted-foreground">{sessionStatus.dataType || 'cve'}</span>
+                  <span className="text-muted-foreground">{formatDataType(sessionStatus.dataType || 'cve')}</span>
                 </div>
                 <div>
                   <span className="font-medium">State:</span>{" "}
@@ -308,7 +312,7 @@ export function SessionControl() {
                       };
                       return (
                         <div key={dt} className="mb-1 text-xs">
-                          <span className="font-medium">{dt.toUpperCase()}:</span>{" "}
+                          <span className="font-medium">{formatDataType(dt)}:</span>{" "}
                           <span>Processed: {typedProgress.processedCount}/{typedProgress.totalCount} ({Math.round((typedProgress.processedCount / Math.max(typedProgress.totalCount, 1)) * 100)}%)</span>
                           {typedProgress.errorCount > 0 && (
                             <span className="ml-2 text-destructive">Errors: {typedProgress.errorCount}</span>
