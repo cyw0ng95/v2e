@@ -959,4 +959,13 @@ main() {
     exit $exit_code
 }
 
-main "$@"
+# Ensure build directory exists for logging
+mkdir -p "$BUILD_DIR"
+
+# Run main with output logging to both console and .build/last_build.log
+# Use a temporary file to preserve exit code through the pipe
+EXIT_CODE_FILE="$BUILD_DIR/.exit_code_$$"
+(main "$@" 2>&1; echo $? > "$EXIT_CODE_FILE") | tee "$BUILD_DIR/last_build.log"
+EXIT_CODE=$(cat "$EXIT_CODE_FILE" 2>/dev/null || echo 0)
+rm -f "$EXIT_CODE_FILE"
+exit $EXIT_CODE
