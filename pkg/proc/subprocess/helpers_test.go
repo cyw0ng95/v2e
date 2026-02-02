@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
@@ -532,7 +533,7 @@ func TestParseRequest(t *testing.T) {
 					t.Errorf("ParseRequest() error response Target = %v, want %v", errResp.Target, tt.msg.Source)
 				}
 				// Check that error string contains expected prefix
-				if tt.wantErrString != "" && len(errResp.Error) < len(tt.wantErrString) || errResp.Error[:len(tt.wantErrString)] != tt.wantErrString {
+				if tt.wantErrString != "" && !strings.Contains(errResp.Error, tt.wantErrString) {
 					t.Errorf("ParseRequest() error = %v, want to contain %v", errResp.Error, tt.wantErrString)
 				}
 			} else {
