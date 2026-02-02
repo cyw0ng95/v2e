@@ -30,11 +30,22 @@ func (m *mockJobStateRPCInvoker) InvokeRPC(ctx context.Context, target, method s
 		return nil, errors.New("mock RPC failure")
 	}
 
-	if m.returnEmptyData {
-		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: []byte(`{"cves":[]}`)}, nil
+	// Handle different RPC methods appropriately
+	switch method {
+	case "RPCSaveCVEByID":
+		// Return success response for save operations
+		savePayload := []byte(`{"success": true}`)
+		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: savePayload}, nil
+	case "RPCFetchCVEs":
+		if m.returnEmptyData {
+			return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: []byte(`{"vulnerabilities":[]}`)}, nil
+		}
+		// Return valid CVE data to keep job running
+		cveData := []byte(`{"vulnerabilities":[{"cve":{"id":"CVE-2024-0001","sourceIdentifier":"nvd@nist.gov","published":"2024-01-01T00:00:00.000Z","lastModified":"2024-01-01T00:00:00.000Z","vulnStatus":"Pending"}}]}`)
+		return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: cveData}, nil
+	default:
+		return nil, errors.New("unknown RPC method: " + method)
 	}
-
-	return &subprocess.Message{Type: subprocess.MessageTypeResponse, Payload: []byte(`{"cves":[{"id":"CVE-2024-0001"}]}`)}, nil
 }
 
 // TestController_StartStop ensures basic start/stop lifecycle.

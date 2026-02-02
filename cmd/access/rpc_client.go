@@ -78,3 +78,15 @@ func (c *RPCClient) InvokeRPCWithTarget(ctx context.Context, target, method stri
 func (c *RPCClient) Run(ctx context.Context) error {
 	return c.sp.Run()
 }
+
+// handleResponse handles response messages (for test compatibility)
+// This delegates to the common RPC client's HandleResponse method
+func (c *RPCClient) handleResponse(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	return c.client.HandleResponse(ctx, msg)
+}
+
+// handleError handles error messages (for test compatibility)
+// This delegates to the common RPC client's HandleError method
+func (c *RPCClient) handleError(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+	return c.client.HandleError(ctx, msg)
+}
