@@ -32,6 +32,7 @@ type JobExecutor struct {
 	mu         sync.RWMutex
 	activeRun  *JobRun
 	cancelFunc context.CancelFunc
+	doneChan   chan struct{} // Signals when executeJob goroutine completes
 }
 
 // NewJobExecutor creates a new job executor with Taskflow and persistent storage
@@ -60,7 +61,12 @@ func (e *JobExecutor) StartTyped(ctx context.Context, runID string, startIndex, 
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	// Check if there's already an active run
+	// First check in-memory activeRun (faster)
+	if e.activeRun != nil {
+		return fmt.Errorf("job already running: %s (state: %s)", e.activeRun.ID, e.activeRun.State)
+	}
+
+	// Double-check persisted store for active runs
 	activeRun, err := e.runStore.GetActiveRun()
 	if err != nil {
 		return fmt.Errorf("failed to check active run: %w", err)
@@ -75,17 +81,20 @@ func (e *JobExecutor) StartTyped(ctx context.Context, runID string, startIndex, 
 		return fmt.Errorf("failed to create run: %w", err)
 	}
 
-	// Transition to running
-	if err := e.runStore.UpdateState(runID, StateRunning); err != nil {
-		return fmt.Errorf("failed to update state: %w", err)
+	// Transition to running with validation
+	if err := e.transitionStateLocked(runID, StateQueued, StateRunning); err != nil {
+		return fmt.Errorf("failed to transition to running: %w", err)
 	}
+
+	// Set activeRun and doneChan BEFORE starting goroutine (prevents race)
+	e.activeRun = run
+	e.doneChan = make(chan struct{})
 
 	// Create cancellable context
 	jobCtx, cancel := context.WithCancel(ctx)
 	e.cancelFunc = cancel
-	e.activeRun = run
 
-	// Start job in background
+	// Start job in background (lock is released after defer, but activeRun is already set)
 	go e.executeJob(jobCtx, runID)
 
 	e.logger.Info(cve.LogMsgTFJobStarted,
@@ -99,28 +108,35 @@ func (e *JobExecutor) Resume(ctx context.Context, runID string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	// Get the run
+	// Validate no active run (prevents double-resume)
+	if e.activeRun != nil {
+		return fmt.Errorf("cannot resume: another job is active: %s", e.activeRun.ID)
+	}
+
+	// Get and validate the run
 	run, err := e.runStore.GetRun(runID)
 	if err != nil {
 		return fmt.Errorf("failed to get run: %w", err)
 	}
 
-	// Check if it's paused
 	if run.State != StatePaused {
 		return fmt.Errorf("run is not paused (current state: %s)", run.State)
 	}
 
-	// Transition to running
-	if err := e.runStore.UpdateState(runID, StateRunning); err != nil {
-		return fmt.Errorf("failed to update state: %w", err)
+	// Transition with validation
+	if err := e.transitionStateLocked(runID, StatePaused, StateRunning); err != nil {
+		return err
 	}
+
+	// Set active run before starting goroutine
+	e.activeRun = run
+	e.doneChan = make(chan struct{})
 
 	// Create cancellable context
 	jobCtx, cancel := context.WithCancel(ctx)
 	e.cancelFunc = cancel
-	e.activeRun = run
 
-	// Restart job in background
+	// Start job in background
 	go e.executeJob(jobCtx, runID)
 
 	e.logger.Info(cve.LogMsgTFJobResumed, runID)
@@ -133,18 +149,20 @@ func (e *JobExecutor) Pause(runID string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if e.activeRun == nil || e.activeRun.ID != runID {
-		return fmt.Errorf("run not active: %s", runID)
-	}
-
-	// Get current run
+	// First validate run exists in store
 	run, err := e.runStore.GetRun(runID)
 	if err != nil {
-		return err
+		return fmt.Errorf("run not found: %w", err)
 	}
 
+	// Validate state
 	if run.State != StateRunning {
 		return fmt.Errorf("run is not running (current state: %s)", run.State)
+	}
+
+	// Then verify we own this run
+	if e.activeRun == nil || e.activeRun.ID != runID {
+		return fmt.Errorf("run not active: %s", runID)
 	}
 
 	// Cancel the job context
@@ -153,12 +171,21 @@ func (e *JobExecutor) Pause(runID string) error {
 		e.cancelFunc = nil
 	}
 
-	// Update state
-	if err := e.runStore.UpdateState(runID, StatePaused); err != nil {
+	// Transition with validation
+	if err := e.transitionStateLocked(runID, StateRunning, StatePaused); err != nil {
 		return err
 	}
 
+	// Wait for goroutine to finish (with timeout)
+	select {
+	case <-e.doneChan:
+		// OK, goroutine finished
+	case <-time.After(10 * time.Second):
+		e.logger.Warn("Pause: goroutine did not finish within timeout")
+	}
+
 	e.activeRun = nil
+	e.doneChan = nil
 	e.logger.Info(cve.LogMsgTFJobPaused, runID)
 
 	return nil
@@ -169,22 +196,45 @@ func (e *JobExecutor) Stop(runID string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if e.activeRun == nil || e.activeRun.ID != runID {
-		return fmt.Errorf("run not active: %s", runID)
+	// First validate run exists in store
+	run, err := e.runStore.GetRun(runID)
+	if err != nil {
+		return fmt.Errorf("run not found: %w", err)
 	}
 
-	// Cancel the job context
-	if e.cancelFunc != nil {
-		e.cancelFunc()
-		e.cancelFunc = nil
+	// Allow stopping from running or paused state
+	if run.State != StateRunning && run.State != StatePaused {
+		return fmt.Errorf("run cannot be stopped from state: %s", run.State)
 	}
 
-	// Update state
-	if err := e.runStore.UpdateState(runID, StateStopped); err != nil {
+	// For running jobs, verify we own it and cancel
+	if run.State == StateRunning {
+		if e.activeRun == nil || e.activeRun.ID != runID {
+			return fmt.Errorf("run not active: %s", runID)
+		}
+
+		// Cancel the job context
+		if e.cancelFunc != nil {
+			e.cancelFunc()
+			e.cancelFunc = nil
+		}
+
+		// Wait for goroutine to finish
+		select {
+		case <-e.doneChan:
+		case <-time.After(10 * time.Second):
+			e.logger.Warn("Stop: goroutine did not finish within timeout")
+		}
+	}
+
+	// Transition to stopped
+	fromState := run.State
+	if err := e.transitionStateLocked(runID, fromState, StateStopped); err != nil {
 		return err
 	}
 
 	e.activeRun = nil
+	e.doneChan = nil
 	e.logger.Info(cve.LogMsgTFJobStopped, runID)
 
 	return nil
@@ -193,6 +243,24 @@ func (e *JobExecutor) Stop(runID string) error {
 // GetStatus returns the current status of a run
 func (e *JobExecutor) GetStatus(runID string) (*JobRun, error) {
 	return e.runStore.GetRun(runID)
+}
+
+// transitionStateLocked performs validated state transition (caller must hold lock)
+func (e *JobExecutor) transitionStateLocked(runID string, from, to JobState) error {
+	run, err := e.runStore.GetRun(runID)
+	if err != nil {
+		return err
+	}
+
+	if run.State != from {
+		return fmt.Errorf("expected state %s, got %s", from, run.State)
+	}
+
+	if !run.State.CanTransitionTo(to) {
+		return fmt.Errorf("invalid state transition: %s -> %s", run.State, to)
+	}
+
+	return e.runStore.UpdateState(runID, to)
 }
 
 // GetActiveRun returns the currently active run (if any)
@@ -252,11 +320,11 @@ func (e *JobExecutor) RecoverRuns(ctx context.Context) error {
 
 // executeJob runs the actual fetch-and-store loop using Taskflow
 func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
+	// Signal completion when done (Pause/Stop will wait for this)
 	defer func() {
-		e.mu.Lock()
-		e.activeRun = nil
-		e.cancelFunc = nil
-		e.mu.Unlock()
+		if e.doneChan != nil {
+			close(e.doneChan)
+		}
 	}()
 
 	// Get run details
@@ -279,6 +347,11 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 		select {
 		case <-ctx.Done():
 			e.logger.Info(cve.LogMsgTFJobLoopCancelled, runID)
+			// Clear activeRun only on cancellation (Pause/Stop handle their own cleanup)
+			e.mu.Lock()
+			e.activeRun = nil
+			e.cancelFunc = nil
+			e.mu.Unlock()
 			return
 		default:
 			tf := gotaskflow.NewTaskFlow(fmt.Sprintf("cve-batch-%d", currentIndex))
@@ -408,6 +481,11 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 					e.logger.Error("Job failed after unrecoverable error: %v", fetchErr)
 					e.runStore.UpdateState(runID, StateFailed)
 					e.runStore.SetError(runID, fetchErr.Error())
+					// Clear activeRun on failure
+					e.mu.Lock()
+					e.activeRun = nil
+					e.cancelFunc = nil
+					e.mu.Unlock()
 					return
 				}
 
@@ -425,6 +503,11 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 				// Wait before retrying
 				select {
 				case <-ctx.Done():
+					// Clear activeRun on cancellation during backoff wait
+					e.mu.Lock()
+					e.activeRun = nil
+					e.cancelFunc = nil
+					e.mu.Unlock()
 					return
 				case <-time.After(backoff):
 					continue
@@ -435,6 +518,11 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 				// Job completed naturally
 				e.logger.Info(cve.LogMsgTFJobCompleted, runID)
 				e.runStore.UpdateState(runID, StateCompleted)
+				// Clear activeRun on completion
+				e.mu.Lock()
+				e.activeRun = nil
+				e.cancelFunc = nil
+				e.mu.Unlock()
 				return
 			}
 
@@ -444,6 +532,11 @@ func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 			// Rate limiting
 			select {
 			case <-ctx.Done():
+				// Clear activeRun on cancellation during rate limit wait
+				e.mu.Lock()
+				e.activeRun = nil
+				e.cancelFunc = nil
+				e.mu.Unlock()
 				return
 			case <-time.After(1 * time.Second):
 			}

@@ -199,59 +199,76 @@ func TestJobExecutor_RecoveryAfterCrash(t *testing.T) {
 	defer store.Close()
 	defer os.Remove("test_recovery.db")
 
-	// Create a run in running state (simulating crash)
+	// Create a run in PAUSED state (simulating crash with paused job)
+	// Note: running jobs auto-resume, paused jobs stay paused
 	runID := "test-recovery"
 	_, err = store.CreateRun(runID, 0, 100, DataTypeCVE)
 	if err != nil {
 		t.Fatalf("Failed to create run: %v", err)
 	}
 
+	// Proper state flow: queued -> running -> paused
 	err = store.UpdateState(runID, StateRunning)
 	if err != nil {
 		t.Fatalf("Failed to set running state: %v", err)
+	}
+	err = store.UpdateState(runID, StatePaused)
+	if err != nil {
+		t.Fatalf("Failed to set paused state: %v", err)
 	}
 
 	// Create new executor (simulating restart)
 	executor := NewJobExecutor(invoker, store, logger, 100)
 	ctx := context.Background()
 
-	// Run recovery
+	// Run recovery - should NOT auto-resume paused jobs
 	err = executor.RecoverRuns(ctx)
 	if err != nil {
 		t.Fatalf("RecoverRuns failed: %v", err)
 	}
 
-	// Verify the run was resumed
+	// Verify the run was NOT auto-resumed (paused jobs stay paused)
 	activeRun, err := executor.GetActiveRun()
 	if err != nil {
 		t.Fatalf("GetActiveRun failed: %v", err)
 	}
-	if activeRun == nil {
-		t.Error("Expected active run after recovery, got nil")
+	if activeRun != nil {
+		t.Error("Expected no active run after recovery (paused job should stay paused)")
 	}
 
-	// Clean up
-	executor.Stop(runID)
+	// Verify run is still paused
+	runAfter, err := store.GetRun(runID)
+	if err != nil {
+		t.Fatalf("Failed to get run: %v", err)
+	}
+	if runAfter.State != StatePaused {
+		t.Errorf("Expected run to remain paused, got state %s", runAfter.State)
+	}
 }
 
-// TestJobExecutor_PausedRunNotAutoResumed verifies paused runs stay paused
-func TestJobExecutor_PausedRunNotAutoResumed(t *testing.T) {
+// TestJobExecutor_PausedRunStaysPaused verifies paused runs are not auto-resumed
+func TestJobExecutor_PausedRunStaysPaused(t *testing.T) {
 	invoker := newMockRPCInvoker()
 	logger := newTestLogger()
-	store, err := NewRunStore("test_paused_recovery.db", logger)
+	store, err := NewRunStore("test_paused_stays_paused.db", logger)
 	if err != nil {
 		t.Fatalf("Failed to create run store: %v", err)
 	}
 	defer store.Close()
-	defer os.Remove("test_paused_recovery.db")
+	defer os.Remove("test_paused_stays_paused.db")
 
-	// Create a paused run
-	runID := "test-paused-recovery"
+	// Create a paused run (proper state flow: queued -> running -> paused)
+	runID := "test-paused-stays"
 	_, err = store.CreateRun(runID, 0, 100, DataTypeCVE)
 	if err != nil {
 		t.Fatalf("Failed to create run: %v", err)
 	}
 
+	// Proper state flow: queued -> running -> paused
+	err = store.UpdateState(runID, StateRunning)
+	if err != nil {
+		t.Fatalf("Failed to set running state: %v", err)
+	}
 	err = store.UpdateState(runID, StatePaused)
 	if err != nil {
 		t.Fatalf("Failed to set paused state: %v", err)
