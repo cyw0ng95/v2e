@@ -98,28 +98,55 @@ func extractTableTitle(doc *goquery.Document) string {
 }
 
 // parseTableEntries parses table rows into SSGTableEntry records.
+// Supports tables with 3 or 4 columns:
+// - 3 columns: Mapping, Rule Title, Description
+// - 4 columns: Mapping, Rule Title, Description, Rationale
 func parseTableEntries(doc *goquery.Document, tableID string) ([]ssg.SSGTableEntry, error) {
 	var entries []ssg.SSGTableEntry
 
 	// Find the main table
-	doc.Find("table tbody tr").Each(func(i int, s *goquery.Selection) {
+	doc.Find("table tbody tr, table tr").Each(func(i int, s *goquery.Selection) {
 		var entry ssg.SSGTableEntry
 		entry.TableID = tableID
 
-		// Parse cells in order: Mapping, Rule Title, Description, Rationale
+		// Parse cells - handle both 3 and 4 column tables
 		cells := s.Find("td")
-		if cells.Length() < 4 {
-			// Skip incomplete rows
+		numCells := cells.Length()
+		
+		// Skip header rows or rows with too few cells
+		if numCells < 2 {
+			return
+		}
+		
+		// Check if this is a header row (contains <thead> parent or all cells are bold)
+		if s.Parent().Is("thead") {
 			return
 		}
 
-		entry.Mapping = strings.TrimSpace(cells.Eq(0).Text())
-		entry.RuleTitle = strings.TrimSpace(cells.Eq(1).Text())
-		entry.Description = strings.TrimSpace(cells.Eq(2).Text())
-		entry.Rationale = strings.TrimSpace(cells.Eq(3).Text())
+		// Parse based on column count
+		switch {
+		case numCells >= 4:
+			// 4+ columns: Mapping, Rule Title, Description, Rationale
+			entry.Mapping = strings.TrimSpace(cells.Eq(0).Text())
+			entry.RuleTitle = strings.TrimSpace(cells.Eq(1).Text())
+			entry.Description = strings.TrimSpace(cells.Eq(2).Text())
+			entry.Rationale = strings.TrimSpace(cells.Eq(3).Text())
+		case numCells == 3:
+			// 3 columns: Mapping, Rule Title, Description (no rationale)
+			entry.Mapping = strings.TrimSpace(cells.Eq(0).Text())
+			entry.RuleTitle = strings.TrimSpace(cells.Eq(1).Text())
+			entry.Description = strings.TrimSpace(cells.Eq(2).Text())
+			entry.Rationale = ""
+		case numCells == 2:
+			// 2 columns: Rule Title, Description (no mapping or rationale)
+			entry.Mapping = ""
+			entry.RuleTitle = strings.TrimSpace(cells.Eq(0).Text())
+			entry.Description = strings.TrimSpace(cells.Eq(1).Text())
+			entry.Rationale = ""
+		}
 
-		// Skip rows with empty mapping (likely header or invalid)
-		if entry.Mapping == "" {
+		// Skip rows with both empty rule title and description (likely invalid)
+		if entry.RuleTitle == "" && entry.Description == "" {
 			return
 		}
 
