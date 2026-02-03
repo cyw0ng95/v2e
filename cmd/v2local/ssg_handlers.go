@@ -319,33 +319,6 @@ func createSSGImportGuideHandler(store *local.Store, logger *common.Logger) subp
 	}
 }
 
-// createSSGDeleteGuideHandler creates a handler for RPCSSGDeleteGuide
-func createSSGDeleteGuideHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("Processing RPCSSGDeleteGuide request")
-		var req struct {
-			ID string `json:"id"`
-		}
-		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
-			logger.Warn("Failed to parse RPCSSGDeleteGuide request: %v", errResp.Error)
-			return errResp, nil
-		}
-		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
-			logger.Warn("id is required for RPCSSGDeleteGuide")
-			return errResp, nil
-		}
-		if err := store.DeleteGuide(req.ID); err != nil {
-			logger.Warn("Failed to delete guide: %v", err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to delete guide: %v", err)), nil
-		}
-		logger.Info("Deleted guide %s", req.ID)
-		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-			"success": true,
-			"id":      req.ID,
-		})
-	}
-}
-
 // createSSGImportTableHandler creates a handler for RPCSSGImportTable
 // Parses an HTML table file and imports it into the database
 func createSSGImportTableHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
@@ -489,34 +462,6 @@ func createSSGGetTableEntriesHandler(store *local.Store, logger *common.Logger) 
 	}
 }
 
-// createSSGDeleteTableHandler creates a handler for RPCSSGDeleteTable
-func createSSGDeleteTableHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("Processing RPCSSGDeleteTable request")
-		var req struct {
-			ID string `json:"id"`
-		}
-		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
-			logger.Warn("Failed to parse RPCSSGDeleteTable request: %v", errResp.Error)
-			return errResp, nil
-		}
-		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
-			logger.Warn("id is required for RPCSSGDeleteTable")
-			return errResp, nil
-		}
-		if err := store.DeleteTable(req.ID); err != nil {
-			logger.Warn("Failed to delete table: %v", err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to delete table: %v", err)), nil
-		}
-		logger.Info("Deleted table %s", req.ID)
-		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-			"success": true,
-			"id":      req.ID,
-		})
-	}
-}
-
-
 // RegisterSSGHandlers registers all SSG local RPC handlers
 func RegisterSSGHandlers(sp *subprocess.Subprocess, store *local.Store, logger *common.Logger) {
 	sp.RegisterHandler("RPCSSGImportGuide", createSSGImportGuideHandler(store, logger))
@@ -561,13 +506,7 @@ func RegisterSSGHandlers(sp *subprocess.Subprocess, store *local.Store, logger *
 	sp.RegisterHandler("RPCSSGGetChildRules", createSSGGetChildRulesHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGGetChildRules")
 
-	sp.RegisterHandler("RPCSSGDeleteGuide", createSSGDeleteGuideHandler(store, logger))
-	logger.Info("RPC handler registered: RPCSSGDeleteGuide")
-
-	sp.RegisterHandler("RPCSSGDeleteTable", createSSGDeleteTableHandler(store, logger))
-	logger.Info("RPC handler registered: RPCSSGDeleteTable")
-
-sp.RegisterHandler("RPCSSGImportManifest", createSSGImportManifestHandler(store, logger))
+	sp.RegisterHandler("RPCSSGImportManifest", createSSGImportManifestHandler(store, logger))
 logger.Info("RPC handler registered: RPCSSGImportManifest")
 
 sp.RegisterHandler("RPCSSGListManifests", createSSGListManifestsHandler(store, logger))

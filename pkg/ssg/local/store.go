@@ -292,33 +292,6 @@ func (s *Store) BuildTreeNodes(guideID string) ([]*ssg.TreeNode, error) {
 	return roots, nil
 }
 
-// DeleteGuide deletes a guide and all associated groups and rules.
-func (s *Store) DeleteGuide(id string) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		// Delete references associated with rules in this guide
-		if err := tx.Exec("DELETE FROM ssg_references WHERE rule_id IN (SELECT id FROM ssg_rules WHERE guide_id = ?)", id).Error; err != nil {
-			return err
-		}
-
-		// Delete rules
-		if err := tx.Where("guide_id = ?", id).Delete(&ssg.SSGRule{}).Error; err != nil {
-			return err
-		}
-
-		// Delete groups
-		if err := tx.Where("guide_id = ?", id).Delete(&ssg.SSGGroup{}).Error; err != nil {
-			return err
-		}
-
-		// Delete guide
-		if err := tx.Delete(&ssg.SSGGuide{}, "id = ?", id).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
-}
-
 // SaveTable saves or updates a table in the database.
 func (s *Store) SaveTable(table *ssg.SSGTable) error {
 	return s.db.Save(table).Error
@@ -388,23 +361,6 @@ func (s *Store) GetTableEntries(tableID string, offset, limit int) ([]ssg.SSGTab
 	return entries, total, nil
 }
 
-// DeleteTable deletes a table and all associated entries.
-func (s *Store) DeleteTable(id string) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		// Delete entries
-		if err := tx.Where("table_id = ?", id).Delete(&ssg.SSGTableEntry{}).Error; err != nil {
-			return err
-		}
-
-		// Delete table
-		if err := tx.Delete(&ssg.SSGTable{}, "id = ?", id).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
-}
-
 // SaveManifest saves a manifest and its associated profiles and profile rules.
 // This is an atomic operation - all or nothing.
 func (s *Store) SaveManifest(manifest *ssg.SSGManifest, profiles []ssg.SSGProfile, profileRules []ssg.SSGProfileRule) error {
@@ -471,34 +427,6 @@ if err := query.Find(&manifests).Error; err != nil {
 return nil, err
 }
 return manifests, nil
-}
-
-// DeleteManifest deletes a manifest and all associated profiles and profile rules.
-func (s *Store) DeleteManifest(id string) error {
-return s.db.Transaction(func(tx *gorm.DB) error {
-// Get manifest to find product
-var manifest ssg.SSGManifest
-if err := tx.First(&manifest, "id = ?", id).Error; err != nil {
-return err
-}
-
-// Delete profile rules for this manifest's profiles
-if err := tx.Where("profile_id LIKE ?", manifest.Product+":%").Delete(&ssg.SSGProfileRule{}).Error; err != nil {
-return err
-}
-
-// Delete profiles
-if err := tx.Where("manifest_id = ?", id).Delete(&ssg.SSGProfile{}).Error; err != nil {
-return err
-}
-
-// Delete manifest
-if err := tx.Delete(&ssg.SSGManifest{}, "id = ?", id).Error; err != nil {
-return err
-}
-
-return nil
-})
 }
 
 // ListProfiles retrieves profiles, optionally filtered by product or profile ID.
