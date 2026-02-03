@@ -104,7 +104,7 @@ const logger = createLogger('rpc-client');
 // ============================================================================
 
 const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-const DEFAULT_TIMEOUT = 30000; // 30 seconds
+const DEFAULT_TIMEOUT = 120000; // 120 seconds (2 minutes) - increased for SSG operations
 const MOCK_DELAY_MS = 500; // 500ms delay for mock responses
 
 // ============================================================================

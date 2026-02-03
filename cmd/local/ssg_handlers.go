@@ -53,12 +53,13 @@ func createSSGListGuidesHandler(store *local.Store, logger *common.Logger) subpr
 				return errResp, nil
 			}
 		}
+		logger.Debug("Listing SSG guides with filters: product=%s profile_id=%s", req.Product, req.ProfileID)
 		guides, err := store.ListGuides(req.Product, req.ProfileID)
 		if err != nil {
-			logger.Warn("Failed to list guides: %v", err)
+			logger.Error("Failed to list SSG guides: %v", err)
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list guides: %v", err)), nil
 		}
-		logger.Info("Listed %d guides", len(guides))
+		logger.Info("Listed %d SSG guides (product=%s profile_id=%s)", len(guides), req.Product, req.ProfileID)
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"guides": guides,
 			"count":  len(guides),
@@ -273,36 +274,42 @@ func createSSGImportGuideHandler(store *local.Store, logger *common.Logger) subp
 			return errMsg, nil
 		}
 
+		logger.Info("Starting SSG guide import from path: %s", req.Path)
+
 		// Parse the guide file
 		guide, groups, rules, err := ssgparser.ParseGuideFile(req.Path)
 		if err != nil {
-			logger.Warn("Failed to parse guide file: %v", err)
+			logger.Error("Failed to parse guide file %s: %v", req.Path, err)
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse guide: %v", err)), nil
 		}
+		logger.Info("Parsed guide %s: product=%s profile=%s groups=%d rules=%d", guide.ID, guide.Product, guide.ProfileID, len(groups), len(rules))
 
 		// Save guide to database
 		if err := store.SaveGuide(guide); err != nil {
-			logger.Warn("Failed to save guide: %v", err)
+			logger.Error("Failed to save guide %s to database: %v", guide.ID, err)
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save guide: %v", err)), nil
 		}
+		logger.Debug("Saved guide %s to database", guide.ID)
 
 		// Save all groups
 		for i := range groups {
 			if err := store.SaveGroup(&groups[i]); err != nil {
-				logger.Warn("Failed to save group %s: %v", groups[i].ID, err)
+				logger.Error("Failed to save group %s for guide %s: %v", groups[i].ID, guide.ID, err)
 				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save group: %v", err)), nil
 			}
 		}
+		logger.Debug("Saved %d groups for guide %s", len(groups), guide.ID)
 
 		// Save all rules with references
 		for i := range rules {
 			if err := store.SaveRule(&rules[i]); err != nil {
-				logger.Warn("Failed to save rule %s: %v", rules[i].ID, err)
+				logger.Error("Failed to save rule %s for guide %s: %v", rules[i].ID, guide.ID, err)
 				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save rule: %v", err)), nil
 			}
 		}
+		logger.Debug("Saved %d rules for guide %s", len(rules), guide.ID)
 
-		logger.Info("Imported guide %s: %d groups, %d rules", guide.ID, len(groups), len(rules))
+		logger.Info("Successfully imported guide %s: product=%s profile=%s groups=%d rules=%d", guide.ID, guide.Product, guide.ProfileID, len(groups), len(rules))
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"success":    true,
 			"guide_id":   guide.ID,

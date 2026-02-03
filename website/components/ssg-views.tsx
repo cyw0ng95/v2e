@@ -202,15 +202,16 @@ export function SSGViews() {
   const pauseJob = usePauseSSGImportJob();
   const resumeJob = useResumeSSGImportJob();
 
-  // Poll job status when running
+  // Poll job status and guides when running
   React.useEffect(() => {
     if (jobStatus?.state === 'running' || jobStatus?.state === 'queued') {
       const interval = setInterval(() => {
         refetchJobStatus();
+        refetch(); // Also fetch guides to show newly imported ones
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [jobStatus?.state, refetchJobStatus]);
+  }, [jobStatus?.state, refetchJobStatus, refetch]);
 
   // Extract guides from response
   let guides: any[] = [];

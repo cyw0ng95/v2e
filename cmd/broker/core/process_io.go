@@ -69,7 +69,12 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 			if !readyClosed && err.Error() == "transport not connected" {
 				b.logger.Debug("Process %s UDS transport not yet connected (waiting for subprocess_ready)", processID)
 			} else {
-				b.logger.Warn("Error receiving message from UDS transport for process %s: %v", processID, err)
+				// "token too long" indicates message exceeded max buffer size - this is a critical error
+				if err.Error() == "failed to scan message: bufio.Scanner: token too long" {
+					b.logger.Error("Message size exceeded maximum buffer for process %s: %v", processID, err)
+				} else {
+					b.logger.Warn("Error receiving message from UDS transport for process %s: %v", processID, err)
+				}
 			}
 			// Don't return immediately - might be a temporary error
 			// But sleep a bit to avoid tight error loop

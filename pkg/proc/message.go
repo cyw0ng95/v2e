@@ -22,8 +22,9 @@ const (
 	MessageTypeError MessageType = "error"
 )
 
-// MaxMessageSize is adjustable at runtime via configuration (default 10MB)
-var MaxMessageSize = 10 * 1024 * 1024 // 10MB
+// MaxMessageSize is adjustable at runtime via configuration (default 50MB)
+// Increased to handle large SSG guides with many rules and references
+var MaxMessageSize = 50 * 1024 * 1024 // 50MB
 
 // DefaultBufferSize is the default initial buffer size for scanners/readers
 const DefaultBufferSize = 4096

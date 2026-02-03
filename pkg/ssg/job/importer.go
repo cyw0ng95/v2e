@@ -215,7 +215,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 	imp.logger.Info("SSG import workflow started for run: %s", runID)
 
 	// Step 1: Pull latest changes from SSG repository
-	imp.logger.Info("Step 1: Pulling SSG repository...")
+	imp.logger.Info("[Step 1/4] Pulling SSG repository...")
 	_, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGPullRepo", nil)
 	if err != nil {
 		imp.mu.Lock()
@@ -226,13 +226,13 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 			imp.activeRun.CompletedAt = &now
 		}
 		imp.mu.Unlock()
-		imp.logger.Error("Failed to pull SSG repository: %v", err)
+		imp.logger.Error("[Step 1/4] Failed to pull SSG repository: %v", err)
 		return
 	}
-	imp.logger.Info("SSG repository pull completed")
+	imp.logger.Info("[Step 1/4] SSG repository pull completed successfully")
 
 	// Step 2: List guide files
-	imp.logger.Info("Step 2: Listing guide files...")
+	imp.logger.Info("[Step 2/4] Listing guide files...")
 	resultMsg, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGListGuideFiles", nil)
 	if err != nil {
 		imp.mu.Lock()
@@ -294,7 +294,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		return
 	}
 
-	imp.logger.Info("Found %d guide files", len(files))
+	imp.logger.Info("[Step 2/4] Found %d guide files to import", len(files))
 
 	// Update progress
 	imp.mu.Lock()
@@ -304,6 +304,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 	imp.mu.Unlock()
 
 	// Step 3: Import each guide file
+	imp.logger.Info("[Step 3/4] Starting guide import for %d files...", len(files))
 	for i, file := range files {
 		// Check for cancellation/pause
 		imp.mu.RLock()
@@ -345,7 +346,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 			continue
 		}
 
-		imp.logger.Info("Importing guide %d/%d: %s", i+1, len(files), filename)
+		imp.logger.Debug("[%d/%d] Importing guide: %s", i+1, len(files), filename)
 
 		// Update current file
 		imp.mu.Lock()
@@ -390,10 +391,13 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 			continue
 		}
 
-		// Import the guide
-		respMsg, err := imp.rpcInvoker.InvokeRPC(ctx, "local", "RPCSSGImportGuide", map[string]interface{}{
+		// Import the guide with extended timeout (5 minutes per guide)
+		// Large guide files can take a long time to parse and save
+		importCtx, cancelImport := context.WithTimeout(ctx, 5*time.Minute)
+		respMsg, err := imp.rpcInvoker.InvokeRPC(importCtx, "local", "RPCSSGImportGuide", map[string]interface{}{
 			"path": path,
 		})
+		cancelImport() // Clean up the context
 		if err != nil {
 			imp.logger.Warn("Failed to import %s: %v", filename, err)
 			imp.mu.Lock()
@@ -442,8 +446,8 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		now := time.Now()
 		imp.activeRun.CompletedAt = &now
 		imp.activeRun.Progress.CurrentFile = ""
-		imp.logger.Info("SSG import job completed: %s (processed: %d, failed: %d)",
-			runID, imp.activeRun.Progress.ProcessedGuides, imp.activeRun.Progress.FailedGuides)
+		imp.logger.Info("[Step 4/4] SSG import job completed: %s (processed: %d, failed: %d, total: %d)",
+			runID, imp.activeRun.Progress.ProcessedGuides, imp.activeRun.Progress.FailedGuides, len(files))
 	}
 	imp.mu.Unlock()
 }
