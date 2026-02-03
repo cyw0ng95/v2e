@@ -1,6 +1,6 @@
 # v2e
 
-A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive CVE (Common Vulnerabilities and Exposures) management platform with integrated CWE (Common Weakness Enumeration), CAPEC (Common Attack Pattern Enumeration and Classification), and ATT&CK (Adversarial Tactics, Techniques, and Common Knowledge) framework data handling.
+A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive CVE (Common Vulnerabilities and Exposures) management platform with integrated CWE (Common Weakness Enumeration), CAPEC (Common Attack Pattern Enumeration and Classification), ATT&CK (Adversarial Tactics, Techniques, and Common Knowledge) framework, and SSG (SCAP Security Guide) data handling.
 
 ## Executive Summary
 
@@ -10,7 +10,7 @@ Key architectural principles:
 - **Centralized Process Management**: The broker is the sole orchestrator of all subprocess services
 - **Enforced Communication Pattern**: All inter-service communication occurs through broker routing
 - **RPC-Based Messaging**: Services communicate via structured JSON RPC messages over stdin/stdout
-- **Comprehensive Data Handling**: Integrated CVE, CWE, CAPEC, and ATT&CK data management
+- **Comprehensive Data Handling**: Integrated CVE, CWE, CAPEC, ATT&CK, and SSG data management
 - **Frontend Integration**: A Next.js-based web application provides user interface access
 - **Performance Monitoring**: Built-in metrics collection and system monitoring capabilities
 - **Message Optimization**: Asynchronous message routing with configurable buffering and batching
@@ -98,6 +98,7 @@ The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permis
   - Implements caching mechanisms for improved performance
   - Imports ATT&CK data from XLSX files and provides access to techniques, tactics, mitigations, software, and groups
   - Supports CAPEC XML schema validation and catalog metadata retrieval
+  - Manages SSG (SCAP Security Guide) data with file-based storage and XML parsing
   - Offers CWE view management with storage and retrieval capabilities
   - Provides memory card storage for bookmark/knowledge management:
     - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
@@ -200,7 +201,7 @@ The Next.js-based frontend ([website](website)) provides:
 
 - **REST Gateway Interface**: Access service exposes `/restful/rpc` endpoint for frontend-backend communication
 - **Sophisticated RPC Client**: Handles automatic case conversion (camelCase ↔ snake_case) and comprehensive error handling
-- **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, and system monitoring data
+- **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, ATT&CK, SSG, and system monitoring data
 - **Real-time Updates**: Session control and live metrics display
 - **Responsive Design**: Adaptable interface for various screen sizes and devices
 - **Modern Tech Stack**: Uses Next.js 16+, React 19+, with TypeScript, Tailwind CSS, and Radix UI components
@@ -210,6 +211,8 @@ The frontend includes dedicated sections for:
 - CVE Database browsing and management
 - CWE Database and view management
 - CAPEC data visualization
+- ATT&CK framework integration
+- SSG (SCAP Security Guide) profiles and rules
 - ATT&CK framework data (techniques, tactics, mitigations, software, groups)
 - System monitoring and performance metrics
 - Session control for data fetching jobs
