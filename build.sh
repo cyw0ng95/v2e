@@ -220,12 +220,12 @@ kill_v2e_processes() {
     local timeout=${1:-5}
     
     # Kill all v2e subprocesses in one command
-    pkill -f "$PACKAGE_DIR/(broker|access|local|meta|remote|sysmon)" 2>/dev/null || true
+    pkill -f "$PACKAGE_DIR/(v2broker|v2access|v2local|v2meta|v2remote|v2sysmon)" 2>/dev/null || true
     
     # Wait for processes to terminate with timeout
     local count=0
     while [ $count -lt $timeout ]; do
-        if ! pgrep -f "$PACKAGE_DIR/(broker|access|local|meta|remote|sysmon)" >/dev/null; then
+        if ! pgrep -f "$PACKAGE_DIR/(v2broker|v2access|v2local|v2meta|v2remote|v2sysmon)" >/dev/null; then
             return 0
         fi
         sleep 1
@@ -233,7 +233,7 @@ kill_v2e_processes() {
     done
     
     # Force kill if still running
-    pkill -9 -f "$PACKAGE_DIR/(broker|access|local|meta|remote|sysmon)" 2>/dev/null || true
+    pkill -9 -f "$PACKAGE_DIR/(v2broker|v2access|v2local|v2meta|v2remote|v2sysmon)" 2>/dev/null || true
 }
 
 # Run Node.js process and broker once, terminate both on Ctrl-C
@@ -279,8 +279,8 @@ run_node_and_broker_once() {
 
     log_info "[build.sh] Starting broker from $PACKAGE_DIR..."
     pushd "$PACKAGE_DIR" > /dev/null
-    log_info "[build.sh] Launch command: ./broker"
-    ./broker config.json &
+    log_info "[build.sh] Launch command: ./v2broker"
+    ./v2broker config.json &
     BROKER_PID=$!
     log_info "[build.sh] Broker started with PID: $BROKER_PID"
     popd > /dev/null

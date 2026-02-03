@@ -17,6 +17,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
       
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -54,6 +64,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
       
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -101,6 +121,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
       
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -147,9 +177,9 @@ jobs:
           ls -lh .build/package/
           echo ""
           echo "Checking for binaries:"
-          test -f .build/package/access && echo "✓ access binary exists"
-          test -f .build/package/broker && echo "✓ broker binary exists"
-          test -f .build/package/meta && echo "✓ meta binary exists"
+          test -f .build/package/v2access && echo "✓ v2access binary exists"
+          test -f .build/package/v2broker && echo "✓ v2broker binary exists"
+          test -f .build/package/v2meta && echo "✓ v2meta binary exists"
           echo ""
           echo "Checking for frontend:"
           if [ -d .build/package/website ]; then
@@ -207,6 +237,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
       
       - name: Set up Go
         uses: actions/setup-go@v6

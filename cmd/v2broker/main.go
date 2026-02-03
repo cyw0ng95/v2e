@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cyw0ng95/v2e/cmd/broker/perf"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/perf"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )

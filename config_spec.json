@@ -61,7 +61,7 @@
       "type": "string",
       "default": "0.0.0.0:8080",
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/access.buildServerAddr",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2access.buildServerAddr",
       "major_class": "access",
       "minor_class": "network"
     },
@@ -70,7 +70,7 @@
       "type": "string",
       "default": "website",
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/access.buildStaticDir",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2access.buildStaticDir",
       "major_class": "access",
       "minor_class": "path"
     },
@@ -103,9 +103,9 @@
     "CONFIG_BROKER_BOOTBINS": {
       "description": "Comma-separated list of binaries to boot when detect_bins is false",
       "type": "string",
-      "default": "access,remote,local,meta,sysmon",
+      "default": "v2access,v2remote,v2local,v2meta,v2sysmon",
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/broker.core.buildBootBins",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker.core.buildBootBins",
       "major_class": "broker",
       "minor_class": "process"
     },
@@ -204,7 +204,7 @@
       "type": "string",
       "default": "/tmp/v2e_uds",
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/broker/transport.manager.buildUDSBasePath",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/transport.manager.buildUDSBasePath",
       "major_class": "broker",
       "minor_class": "transport"
     },
@@ -213,7 +213,7 @@
       "type": "int",
       "default": 1,
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerBatch",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerBatch",
       "major_class": "broker",
       "minor_class": "optimizer"
     },
@@ -222,7 +222,7 @@
       "type": "int",
       "default": 1000,
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerBuffer",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerBuffer",
       "major_class": "broker",
       "minor_class": "optimizer"
     },
@@ -231,7 +231,7 @@
       "type": "int",
       "default": 10,
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerFlush",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerFlush",
       "major_class": "broker",
       "minor_class": "optimizer"
     },
@@ -241,7 +241,7 @@
       "default": "drop",
       "values": ["drop", "wait", "reject"],
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerPolicy",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerPolicy",
       "major_class": "broker",
       "minor_class": "optimizer"
     },
@@ -250,7 +250,7 @@
       "type": "int",
       "default": 4,
       "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/cmd/broker/main.buildOptimizerWorkers",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerWorkers",
       "major_class": "broker",
       "minor_class": "optimizer"
     }

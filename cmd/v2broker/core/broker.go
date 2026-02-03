@@ -5,8 +5,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/cyw0ng95/v2e/cmd/broker/mq"
-	"github.com/cyw0ng95/v2e/cmd/broker/transport"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/mq"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/broker"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
