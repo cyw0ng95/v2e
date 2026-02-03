@@ -566,4 +566,175 @@ func RegisterSSGHandlers(sp *subprocess.Subprocess, store *local.Store, logger *
 
 	sp.RegisterHandler("RPCSSGDeleteTable", createSSGDeleteTableHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGDeleteTable")
+
+sp.RegisterHandler("RPCSSGImportManifest", createSSGImportManifestHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGImportManifest")
+
+sp.RegisterHandler("RPCSSGListManifests", createSSGListManifestsHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGListManifests")
+
+sp.RegisterHandler("RPCSSGGetManifest", createSSGGetManifestHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetManifest")
+
+sp.RegisterHandler("RPCSSGListProfiles", createSSGListProfilesHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGListProfiles")
+
+sp.RegisterHandler("RPCSSGGetProfile", createSSGGetProfileHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetProfile")
+
+sp.RegisterHandler("RPCSSGGetProfileRules", createSSGGetProfileRulesHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetProfileRules")
+}
+
+// createSSGImportManifestHandler creates a handler for importing manifest files
+func createSSGImportManifestHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+FilePath string `json:"file_path"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.FilePath, "file_path"); errMsg != nil {
+return errMsg, nil
+}
+
+// Parse manifest file
+manifest, profiles, profileRules, err := ssgparser.ParseManifestFile(req.FilePath)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse manifest: %s", err)), nil
+}
+
+// Save to database
+if err := store.SaveManifest(manifest, profiles, profileRules); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save manifest: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"manifest_id":    manifest.ID,
+"product":        manifest.Product,
+"profile_count":  len(profiles),
+"rule_count":     len(profileRules),
+})
+}
+}
+
+// createSSGListManifestsHandler creates a handler for listing manifests
+func createSSGListManifestsHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+Product string `json:"product"`
+Limit   int    `json:"limit"`
+Offset  int    `json:"offset"`
+}
+_ = subprocess.UnmarshalPayload(msg, &req)
+
+manifests, err := store.ListManifests(req.Product, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list manifests: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"manifests": manifests,
+"count":     len(manifests),
+})
+}
+}
+
+// createSSGGetManifestHandler creates a handler for getting a manifest
+func createSSGGetManifestHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+ManifestID string `json:"manifest_id"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.ManifestID, "manifest_id"); errMsg != nil {
+return errMsg, nil
+}
+
+manifest, err := store.GetManifest(req.ManifestID)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get manifest: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"manifest": manifest,
+})
+}
+}
+
+// createSSGListProfilesHandler creates a handler for listing profiles
+func createSSGListProfilesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+Product   string `json:"product"`
+ProfileID string `json:"profile_id"`
+Limit     int    `json:"limit"`
+Offset    int    `json:"offset"`
+}
+_ = subprocess.UnmarshalPayload(msg, &req)
+
+profiles, err := store.ListProfiles(req.Product, req.ProfileID, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list profiles: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"profiles": profiles,
+"count":    len(profiles),
+})
+}
+}
+
+// createSSGGetProfileHandler creates a handler for getting a profile
+func createSSGGetProfileHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+ProfileID string `json:"profile_id"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.ProfileID, "profile_id"); errMsg != nil {
+return errMsg, nil
+}
+
+profile, err := store.GetProfile(req.ProfileID)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get profile: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"profile": profile,
+})
+}
+}
+
+// createSSGGetProfileRulesHandler creates a handler for getting profile rules
+func createSSGGetProfileRulesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+ProfileID string `json:"profile_id"`
+Limit     int    `json:"limit"`
+Offset    int    `json:"offset"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.ProfileID, "profile_id"); errMsg != nil {
+return errMsg, nil
+}
+
+rules, err := store.GetProfileRules(req.ProfileID, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get profile rules: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"rules": rules,
+"count": len(rules),
+})
+}
 }
