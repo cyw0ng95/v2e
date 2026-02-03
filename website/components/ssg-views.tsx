@@ -1,18 +1,21 @@
 import React, { useState } from "react";
 import {
   useSSGGuides,
+  useSSGTables,
   useSSGImportStatus,
   useStartSSGImportJob,
   useStopSSGImportJob,
   usePauseSSGImportJob,
   useResumeSSGImportJob,
   useSSGTree,
+  useSSGTableEntries,
 } from "@/lib/hooks";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
-import { ChevronRight, ChevronDown, Folder, FileText, Play, Pause, Square, RotateCcw } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FileText, Play, Pause, Square, RotateCcw, Table } from "lucide-react";
 import type { TreeNode } from "@/lib/types";
 
 // Tree Node Component for recursive rendering
@@ -191,9 +194,16 @@ function DetailPanel({ selectedNode, onClose }: { selectedNode: TreeNode | null;
 }
 
 export function SSGViews() {
-  const { data, isLoading, error, refetch } = useSSGGuides();
+  const [activeTab, setActiveTab] = useState<'guides' | 'tables'>('guides');
   const [selectedGuide, setSelectedGuide] = useState<any | null>(null);
+  const [selectedTable, setSelectedTable] = useState<any | null>(null);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+
+  // Guide hooks
+  const { data: guidesData, isLoading: guidesLoading, error: guidesError, refetch: refetchGuides } = useSSGGuides();
+  
+  // Table hooks
+  const { data: tablesData, isLoading: tablesLoading, error: tablesError, refetch: refetchTables } = useSSGTables();
 
   // Job control hooks
   const { data: jobStatus, isLoading: jobLoading, refetch: refetchJobStatus } = useSSGImportStatus();
@@ -202,32 +212,31 @@ export function SSGViews() {
   const pauseJob = usePauseSSGImportJob();
   const resumeJob = useResumeSSGImportJob();
 
-  // Poll job status and guides when running
+  // Poll job status and data when running
   React.useEffect(() => {
     if (jobStatus?.state === 'running' || jobStatus?.state === 'queued') {
       const interval = setInterval(() => {
         refetchJobStatus();
-        refetch(); // Also fetch guides to show newly imported ones
+        refetchGuides();
+        refetchTables();
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [jobStatus?.state, refetchJobStatus, refetch]);
+  }, [jobStatus?.state, refetchJobStatus, refetchGuides, refetchTables]);
 
-  // Extract guides from response
-  let guides: any[] = [];
-  if (data && Array.isArray(data.guides)) {
-    guides = data.guides;
-  }
+  // Extract guides and tables from response
+  const guides: any[] = (guidesData && Array.isArray(guidesData.guides)) ? guidesData.guides : [];
+  const tables: any[] = (tablesData && Array.isArray(tablesData.tables)) ? tablesData.tables : [];
 
   const jobProgress = jobStatus?.progress;
 
   return (
     <div className="w-full h-full flex gap-4">
-      {/* Left Panel: Guide List and Job Control */}
+      {/* Left Panel: Tabs for Guides/Tables and Job Control */}
       <Card className="w-80 flex flex-col">
         <CardHeader>
-          <CardTitle className="text-base">SSG Guides</CardTitle>
-          <CardDescription>SCAP Security Guides</CardDescription>
+          <CardTitle className="text-base">SSG Data</CardTitle>
+          <CardDescription>Security Guides & Tables</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Job Control */}
@@ -277,7 +286,8 @@ export function SSGViews() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  refetch();
+                  refetchGuides();
+                  refetchTables();
                   refetchJobStatus();
                 }}
               >
@@ -306,8 +316,20 @@ export function SSGViews() {
                 </div>
                 {jobProgress && (
                   <>
+                    {jobProgress.currentPhase && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Phase:</span>
+                        <span className="capitalize">{jobProgress.currentPhase}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Progress:</span>
+                      <span className="text-muted-foreground">Tables:</span>
+                      <span>
+                        {jobProgress.processedTables} / {jobProgress.totalTables}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Guides:</span>
                       <span>
                         {jobProgress.processedGuides} / {jobProgress.totalGuides}
                       </span>
@@ -317,9 +339,9 @@ export function SSGViews() {
                         {jobProgress.currentFile}
                       </div>
                     )}
-                    {jobProgress.failedGuides > 0 && (
+                    {(jobProgress.failedTables > 0 || jobProgress.failedGuides > 0) && (
                       <div className="text-destructive">
-                        {jobProgress.failedGuides} failed
+                        {jobProgress.failedTables + jobProgress.failedGuides} failed
                       </div>
                     )}
                   </>
@@ -328,48 +350,104 @@ export function SSGViews() {
             )}
           </div>
 
-          {/* Guide List */}
-          <div className="flex-1 overflow-auto">
-            {isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : error ? (
-              <div className="text-sm text-destructive">Error loading guides</div>
-            ) : guides.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-8">
-                No guides available.<br />
-                Start import job to fetch guides.
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {guides.map((guide) => (
-                  <div
-                    key={guide.id}
-                    className={`flex flex-col p-2 rounded cursor-pointer transition-colors ${
-                      selectedGuide?.id === guide.id ? 'bg-muted' : 'hover:bg-muted/50'
-                    }`}
-                    onClick={() => setSelectedGuide(guide)}
-                  >
-                    <span className="text-sm font-medium truncate" title={guide.title}>
-                      {guide.title}
-                    </span>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{guide.product}</span>
-                      <span>•</span>
-                      <span>{guide.profileId}</span>
+          {/* Tabs for Guides and Tables */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'guides' | 'tables')} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="guides">Guides</TabsTrigger>
+              <TabsTrigger value="tables">Tables</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="guides" className="flex-1 overflow-auto mt-4">
+              {guidesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : guidesError ? (
+                <div className="text-sm text-destructive">Error loading guides</div>
+              ) : guides.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No guides available.<br />
+                  Start import job to fetch guides.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {guides.map((guide) => (
+                    <div
+                      key={guide.id}
+                      className={`flex flex-col p-2 rounded cursor-pointer transition-colors ${
+                        selectedGuide?.id === guide.id ? 'bg-muted' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedGuide(guide);
+                        setSelectedTable(null);
+                        setSelectedNode(null);
+                      }}
+                    >
+                      <span className="text-sm font-medium truncate" title={guide.title}>
+                        {guide.title}
+                      </span>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{guide.product}</span>
+                        <span>•</span>
+                        <span>{guide.profileId || guide.shortId}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="tables" className="flex-1 overflow-auto mt-4">
+              {tablesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : tablesError ? (
+                <div className="text-sm text-destructive">Error loading tables</div>
+              ) : tables.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No tables available.<br />
+                  Start import job to fetch tables.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {tables.map((table) => (
+                    <div
+                      key={table.id}
+                      className={`flex flex-col p-2 rounded cursor-pointer transition-colors ${
+                        selectedTable?.id === table.id ? 'bg-muted' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedTable(table);
+                        setSelectedGuide(null);
+                        setSelectedNode(null);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Table className="w-4 h-4 text-purple-500 shrink-0" />
+                        <span className="text-sm font-medium truncate flex-1" title={table.title}>
+                          {table.title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground ml-6">
+                        <span>{table.product}</span>
+                        <span>•</span>
+                        <span>{table.tableType}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
-      {/* Right Panel: Tree View or Detail */}
+      {/* Right Panel: Tree View or Table View or Detail */}
       <Card className="flex-1 flex flex-col">
         {selectedNode ? (
           <>
@@ -382,6 +460,11 @@ export function SSGViews() {
               <DetailPanel selectedNode={selectedNode} onClose={() => setSelectedNode(null)} />
             </CardContent>
           </>
+        ) : selectedTable ? (
+          <SelectedTableView
+            table={selectedTable}
+            onBack={() => setSelectedTable(null)}
+          />
         ) : selectedGuide ? (
           <SelectedGuideTree
             guideId={selectedGuide.id}
@@ -390,11 +473,106 @@ export function SSGViews() {
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            Select a guide to view its tree structure
+            Select a guide or table to view details
           </div>
         )}
       </Card>
     </div>
+  );
+}
+
+// Component for displaying selected table view
+function SelectedTableView({
+  table,
+  onBack,
+}: {
+  table: any;
+  onBack: () => void;
+}) {
+  const [page, setPage] = useState(0);
+  const pageSize = 100;
+  const { data, isLoading, error } = useSSGTableEntries(table.id, page * pageSize, pageSize);
+
+  const entries: any[] = (data && Array.isArray(data.entries)) ? data.entries : [];
+  const total: number = data?.total || 0;
+  const totalPages = Math.ceil(total / pageSize);
+
+  return (
+    <>
+      <CardHeader className="pb-2">
+        <Button variant="ghost" size="sm" className="w-fit" onClick={onBack}>
+          ← Back to list
+        </Button>
+        <CardTitle className="text-base">{table.title}</CardTitle>
+        <CardDescription>
+          {table.product} • {table.tableType}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : error ? (
+          <div className="text-sm text-destructive">Error loading table entries</div>
+        ) : entries.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-8">
+            No entries available
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-auto border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className="p-2 text-left font-medium">Mapping</th>
+                    <th className="p-2 text-left font-medium">Rule Title</th>
+                    <th className="p-2 text-left font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => (
+                    <tr key={entry.id} className="border-t hover:bg-muted/50">
+                      <td className="p-2 font-mono text-xs align-top">{entry.mapping}</td>
+                      <td className="p-2 align-top">{entry.ruleTitle}</td>
+                      <td className="p-2 text-xs text-muted-foreground align-top">{entry.description.substring(0, 200)}{entry.description.length > 200 ? '...' : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Page {page + 1} of {totalPages} ({total} entries)
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 0}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </>
   );
 }
 
