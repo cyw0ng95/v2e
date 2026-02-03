@@ -524,9 +524,121 @@ This section documents the CWE "View" feature and how it is implemented in the l
 
 ---
 
+## SSG (SCAP Security Guide) Operations
+
+### RPCDeploySSGPackage
+- **Description**: Deploys an SSG package by extracting the tar.gz to the SSG document path
+- **Request Parameters**:
+  - `package_data` (bytes, required): The tar.gz package data
+- **Response**:
+  - `success` (bool): true if deployed successfully
+  - `message` (string): Success message
+- **Errors**:
+  - Missing package_data: `package_data` is required
+  - Deployment failed: Failed to extract or deploy package
+- **Example**:
+  - **Request**: {"package_data": <binary>}
+  - **Response**: {"success": true, "message": "SSG package deployed successfully"}
+
+### RPCListSSGProfiles
+- **Description**: Lists available SSG security profiles with pagination
+- **Request Parameters**:
+  - `offset` (int, optional): Offset for pagination (default: 0)
+  - `limit` (int, optional): Limit for pagination (default: 10)
+- **Response**:
+  - `profiles` ([]object): Array of profile summaries
+  - `total` (int): Total number of profiles
+  - `offset` (int): The offset used
+  - `limit` (int): The limit used
+- **Errors**: None (returns empty list if no profiles)
+- **Example**:
+  - **Request**: {"offset": 0, "limit": 10}
+  - **Response**: {"profiles": [...], "total": 25, "offset": 0, "limit": 10}
+
+### RPCGetSSGProfile
+- **Description**: Retrieves a specific SSG profile by ID
+- **Request Parameters**:
+  - `profile_id` (string, required): Profile ID
+- **Response**:
+  - `profile` (object): The profile object with all fields
+- **Errors**:
+  - Missing profile_id: `profile_id` is required
+  - Not found: Profile not found
+- **Example**:
+  - **Request**: {"profile_id": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced"}
+  - **Response**: {"profile": {...}}
+
+### RPCListSSGRules
+- **Description**: Lists SSG security rules with optional filtering and pagination
+- **Request Parameters**:
+  - `offset` (int, optional): Offset for pagination (default: 0)
+  - `limit` (int, optional): Limit for pagination (default: 10)
+  - `severity` (string, optional): Filter by severity (e.g., "high", "medium", "low")
+  - `profile` (string, optional): Filter by profile
+- **Response**:
+  - `rules` ([]object): Array of rule summaries
+  - `total` (int): Total number of rules
+  - `offset` (int): The offset used
+  - `limit` (int): The limit used
+- **Errors**: None (returns empty list if no rules)
+- **Example**:
+  - **Request**: {"offset": 0, "limit": 10, "severity": "high"}
+  - **Response**: {"rules": [...], "total": 150, "offset": 0, "limit": 10}
+
+### RPCGetSSGRule
+- **Description**: Retrieves a specific SSG rule by ID
+- **Request Parameters**:
+  - `rule_id` (string, required): Rule ID
+- **Response**:
+  - `rule` (object): The rule object with all fields
+- **Errors**:
+  - Missing rule_id: `rule_id` is required
+  - Not found: Rule not found
+- **Example**:
+  - **Request**: {"rule_id": "xccdf_org.ssgproject.content_rule_accounts_password_pam_dcredit"}
+  - **Response**: {"rule": {...}}
+
+### RPCSearchSSGContent
+- **Description**: Searches across SSG content (profiles and rules) by query string
+- **Request Parameters**:
+  - `query` (string, required): Search query
+  - `offset` (int, optional): Offset for pagination (default: 0)
+  - `limit` (int, optional): Limit for pagination (default: 10)
+- **Response**:
+  - `results` ([]object): Array of matching profiles and rules
+  - `total` (int): Total number of results
+  - `offset` (int): The offset used
+  - `limit` (int): The limit used
+- **Errors**:
+  - Missing query: `query` is required
+  - Search failed: Internal error during search
+- **Example**:
+  - **Request**: {"query": "password", "offset": 0, "limit": 10}
+  - **Response**: {"results": [...], "total": 45, "offset": 0, "limit": 10}
+
+### RPCGetSSGMetadata
+- **Description**: Retrieves metadata about the SSG store (version, counts, etc.)
+- **Request Parameters**: None
+- **Response**:
+  - `metadata` (object): Metadata object
+    - `version` (string): SSG version
+    - `benchmark_id` (string): Benchmark ID
+    - `title` (string): Benchmark title
+    - `description` (string): Benchmark description
+    - `profile_count` (int): Number of profiles
+    - `rule_count` (int): Number of rules
+    - `last_updated` (string): Last update timestamp
+- **Errors**: None
+- **Example**:
+  - **Request**: {}
+  - **Response**: {"metadata": {"version": "0.1.79", "profile_count": 25, "rule_count": 1500, ...}}
+
+---
+
 ## Notes
 - Uses SQLite databases for local storage of CVE, CWE, CAPEC, and ATT&CK data
 - Automatically imports ATT&CK data from XLSX files in the assets directory at startup
-- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK) in separate databases
+- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK, SSG) in separate databases/stores
+- SSG data is stored in file-based format (XML files) with in-memory indexing
 - Provides comprehensive CRUD operations for all data types
 - Includes pagination support for listing operations

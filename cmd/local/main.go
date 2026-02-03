@@ -24,6 +24,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/notes"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/ssg"
 )
 
 // importATTACKDataAtStartup automatically imports ATT&CK data from XLSX files in the assets directory at startup
@@ -165,6 +166,19 @@ func main() {
 	}
 	logger.Info(LogMsgATTACKDatabaseOpened, attackDBPath)
 
+	// Initialize SSG store (using SSG_DOCPATH env var)
+	ssgDocPath := os.Getenv("SSG_DOCPATH")
+	if ssgDocPath == "" {
+		ssgDocPath = "ssg"
+	}
+	logger.Info("SSG document path configured: %s", ssgDocPath)
+	ssgStore, err := ssg.NewLocalSSGStore(ssgDocPath, logger)
+	if err != nil {
+		logger.Error("Failed to initialize SSG store: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("SSG store initialized at %s", ssgDocPath)
+
 	// Import CWEs from JSON file at startup (if file exists)
 	// Removed duplicate importCWEsAtStartup definition; now only in cwe_handlers.go
 
@@ -277,6 +291,22 @@ func main() {
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCListAttackGroups")
 	sp.RegisterHandler("RPCGetAttackImportMetadata", createGetAttackImportMetadataHandler(attackStore, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetAttackImportMetadata")
+
+	// Register SSG handlers
+	sp.RegisterHandler("RPCDeploySSGPackage", createDeploySSGPackageHandler(ssgStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCDeploySSGPackage")
+	sp.RegisterHandler("RPCListSSGProfiles", createListSSGProfilesHandler(ssgStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCListSSGProfiles")
+	sp.RegisterHandler("RPCGetSSGProfile", createGetSSGProfileHandler(ssgStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetSSGProfile")
+	sp.RegisterHandler("RPCListSSGRules", createListSSGRulesHandler(ssgStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCListSSGRules")
+	sp.RegisterHandler("RPCGetSSGRule", createGetSSGRuleHandler(ssgStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetSSGRule")
+	sp.RegisterHandler("RPCSearchSSGContent", createSearchSSGContentHandler(ssgStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCSearchSSGContent")
+	sp.RegisterHandler("RPCGetSSGMetadata", createGetSSGMetadataHandler(ssgStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetSSGMetadata")
 
 	// Register Notes service handlers
 	notes.NewRPCHandlers(notesServiceContainer, sp, logger)
