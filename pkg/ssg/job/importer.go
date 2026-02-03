@@ -49,14 +49,17 @@ type JobRun struct {
 
 // JobProgress tracks the progress of an import job
 type JobProgress struct {
-	TotalGuides      int    `json:"total_guides"`
-	ProcessedGuides  int    `json:"processed_guides"`
-	FailedGuides     int    `json:"failed_guides"`
-	TotalTables      int    `json:"total_tables"`
-	ProcessedTables  int    `json:"processed_tables"`
-	FailedTables     int    `json:"failed_tables"`
-	CurrentFile      string `json:"current_file,omitempty"`
-	CurrentPhase     string `json:"current_phase,omitempty"` // "tables" or "guides"
+	TotalGuides       int    `json:"total_guides"`
+	ProcessedGuides   int    `json:"processed_guides"`
+	FailedGuides      int    `json:"failed_guides"`
+	TotalTables       int    `json:"total_tables"`
+	ProcessedTables   int    `json:"processed_tables"`
+	FailedTables      int    `json:"failed_tables"`
+	TotalManifests    int    `json:"total_manifests"`
+	ProcessedManifests int   `json:"processed_manifests"`
+	FailedManifests   int    `json:"failed_manifests"`
+	CurrentFile       string `json:"current_file,omitempty"`
+	CurrentPhase      string `json:"current_phase,omitempty"` // "tables", "guides", or "manifests"
 }
 
 // RPCInvoker is an interface for making RPC calls to other services
@@ -216,45 +219,54 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		}
 	}()
 
-	imp.logger.Info("SSG import workflow started for run: %s (tick-tock mode)", runID)
+	imp.logger.Info("SSG import workflow started for run: %s (tick-tock-tock mode)", runID)
 
 	// Step 1: Pull latest changes from SSG repository
-	imp.logger.Info("[Step 1/5] Pulling SSG repository...")
+	imp.logger.Info("[Step 1/6] Pulling SSG repository...")
 	_, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGPullRepo", nil)
 	if err != nil {
 		imp.setFailed(runID, fmt.Sprintf("failed to pull repository: %v", err))
-		imp.logger.Error("[Step 1/5] Failed to pull SSG repository: %v", err)
+		imp.logger.Error("[Step 1/6] Failed to pull SSG repository: %v", err)
 		return
 	}
-	imp.logger.Info("[Step 1/5] SSG repository pull completed successfully")
+	imp.logger.Info("[Step 1/6] SSG repository pull completed successfully")
 
 	// Step 2: List table files
-	imp.logger.Info("[Step 2/5] Listing table files...")
+	imp.logger.Info("[Step 2/6] Listing table files...")
 	tableFiles, err := imp.listFiles(ctx, runID, "RPCSSGListTableFiles", "tables")
 	if err != nil {
 		return // Error already logged and state set
 	}
-	imp.logger.Info("[Step 2/5] Found %d table files to import", len(tableFiles))
+	imp.logger.Info("[Step 2/6] Found %d table files to import", len(tableFiles))
 
 	// Step 3: List guide files
-	imp.logger.Info("[Step 3/5] Listing guide files...")
+	imp.logger.Info("[Step 3/6] Listing guide files...")
 	guideFiles, err := imp.listFiles(ctx, runID, "RPCSSGListGuideFiles", "guides")
 	if err != nil {
 		return // Error already logged and state set
 	}
-	imp.logger.Info("[Step 3/5] Found %d guide files to import", len(guideFiles))
+	imp.logger.Info("[Step 3/6] Found %d guide files to import", len(guideFiles))
+
+	// Step 4: List manifest files
+	imp.logger.Info("[Step 4/6] Listing manifest files...")
+	manifestFiles, err := imp.listFiles(ctx, runID, "RPCSSGListManifestFiles", "manifests")
+	if err != nil {
+		return // Error already logged and state set
+	}
+	imp.logger.Info("[Step 4/6] Found %d manifest files to import", len(manifestFiles))
 
 	// Update progress with totals
 	imp.mu.Lock()
 	if imp.activeRun != nil && imp.activeRun.ID == runID {
 		imp.activeRun.Progress.TotalTables = len(tableFiles)
 		imp.activeRun.Progress.TotalGuides = len(guideFiles)
+		imp.activeRun.Progress.TotalManifests = len(manifestFiles)
 	}
 	imp.mu.Unlock()
 
-	// Step 4: Import in tick-tock fashion (alternate between tables and guides)
-	imp.logger.Info("[Step 4/5] Starting tick-tock import: %d tables, %d guides", len(tableFiles), len(guideFiles))
-	maxLen := max(len(tableFiles), len(guideFiles))
+	// Step 5: Import in tick-tock-tock fashion (alternate between tables, guides, and manifests)
+	imp.logger.Info("[Step 5/6] Starting tick-tock-tock import: %d tables, %d guides, %d manifests", len(tableFiles), len(guideFiles), len(manifestFiles))
+	maxLen := max(len(tableFiles), len(guideFiles), len(manifestFiles))
 
 	for i := 0; i < maxLen; i++ {
 		// Check for cancellation/pause before each iteration
@@ -314,6 +326,35 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 				imp.mu.Unlock()
 			}
 		}
+
+		// Check for cancellation/pause
+		if !imp.checkRunning(runID) {
+			return
+		}
+
+		// Tock-tock: Import manifest (if available)
+		if i < len(manifestFiles) {
+			imp.mu.Lock()
+			if imp.activeRun != nil && imp.activeRun.ID == runID {
+				imp.activeRun.Progress.CurrentPhase = "manifests"
+			}
+			imp.mu.Unlock()
+
+			if !imp.importFile(ctx, runID, manifestFiles[i], "manifest", "RPCSSGImportManifest") {
+				// Import failed, but continue with other files
+				imp.mu.Lock()
+				if imp.activeRun != nil && imp.activeRun.ID == runID {
+					imp.activeRun.Progress.FailedManifests++
+				}
+				imp.mu.Unlock()
+			} else {
+				imp.mu.Lock()
+				if imp.activeRun != nil && imp.activeRun.ID == runID {
+					imp.activeRun.Progress.ProcessedManifests++
+				}
+				imp.mu.Unlock()
+			}
+		}
 	}
 
 	// Mark job as completed
@@ -324,11 +365,12 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		imp.activeRun.CompletedAt = &now
 		imp.activeRun.Progress.CurrentFile = ""
 		imp.activeRun.Progress.CurrentPhase = ""
-		imp.logger.Info("[Step 5/5] SSG import job completed: %s (tables: %d/%d, guides: %d/%d, failed: %d tables, %d guides)",
+		imp.logger.Info("[Step 6/6] SSG import job completed: %s (tables: %d/%d, guides: %d/%d, manifests: %d/%d, failed: %d tables, %d guides, %d manifests)",
 			runID,
 			imp.activeRun.Progress.ProcessedTables, imp.activeRun.Progress.TotalTables,
 			imp.activeRun.Progress.ProcessedGuides, imp.activeRun.Progress.TotalGuides,
-			imp.activeRun.Progress.FailedTables, imp.activeRun.Progress.FailedGuides)
+			imp.activeRun.Progress.ProcessedManifests, imp.activeRun.Progress.TotalManifests,
+			imp.activeRun.Progress.FailedTables, imp.activeRun.Progress.FailedGuides, imp.activeRun.Progress.FailedManifests)
 	}
 	imp.mu.Unlock()
 }
