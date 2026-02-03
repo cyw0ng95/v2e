@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -12,14 +13,10 @@ import (
 )
 
 func TestCWEHandlers(t *testing.T) {
-	// temp sqlite DB
-	f, err := os.CreateTemp("", "cwe-test-*.db")
-	if err != nil {
-		t.Fatalf("temp db: %v", err)
-	}
-	dbPath := f.Name()
-	f.Close()
-	defer os.Remove(dbPath)
+	// Use t.TempDir() for cleaner cleanup
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "cwe-test.db")
+	jsonPath := filepath.Join(tempDir, "cwe-import.json")
 
 	var buf bytes.Buffer
 	logger := common.NewLogger(&buf, "", common.DebugLevel)
@@ -30,22 +27,14 @@ func TestCWEHandlers(t *testing.T) {
 	}
 
 	// create a small JSON file for import
-	tempJson, err := os.CreateTemp("", "cwe-import-*.json")
-	if err != nil {
-		t.Fatalf("create temp json: %v", err)
-	}
-	jsonPath := tempJson.Name()
 	sample := []map[string]interface{}{{"ID": "CWE-1", "Name": "Test CWE"}}
 	data, err := subprocess.MarshalFast(sample)
 	if err != nil {
 		t.Fatalf("marshal sample: %v", err)
 	}
-	if _, err := tempJson.Write(data); err != nil {
-		tempJson.Close()
+	if err := os.WriteFile(jsonPath, data, 0600); err != nil {
 		t.Fatalf("write sample: %v", err)
 	}
-	tempJson.Close()
-	defer os.Remove(jsonPath)
 
 	ctx := context.Background()
 
