@@ -254,10 +254,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 
 	// Step 4: Import in tick-tock fashion (alternate between tables and guides)
 	imp.logger.Info("[Step 4/5] Starting tick-tock import: %d tables, %d guides", len(tableFiles), len(guideFiles))
-	maxLen := len(tableFiles)
-	if len(guideFiles) > maxLen {
-		maxLen = len(guideFiles)
-	}
+	maxLen := max(len(tableFiles), len(guideFiles))
 
 	for i := 0; i < maxLen; i++ {
 		// Check for cancellation/pause before each iteration

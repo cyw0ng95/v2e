@@ -391,6 +391,7 @@ export function SSGViews() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{guide.product}</span>
                         <span>•</span>
+                        {/* Use shortId as fallback when profileId is empty (for index guides) */}
                         <span>{guide.profileId || guide.shortId}</span>
                       </div>
                     </div>
@@ -537,7 +538,7 @@ function SelectedTableView({
                     <tr key={entry.id} className="border-t hover:bg-muted/50">
                       <td className="p-2 font-mono text-xs align-top">{entry.mapping}</td>
                       <td className="p-2 align-top">{entry.ruleTitle}</td>
-                      <td className="p-2 text-xs text-muted-foreground align-top">{entry.description.substring(0, 200)}{entry.description.length > 200 ? '...' : ''}</td>
+                      <td className="p-2 text-xs text-muted-foreground align-top">{(entry.description || '').substring(0, 200)}{(entry.description?.length || 0) > 200 ? '...' : ''}</td>
                     </tr>
                   ))}
                 </tbody>

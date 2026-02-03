@@ -1,4 +1,3 @@
-// Package parser provides HTML parsing for SSG table files.
 package parser
 
 import (
@@ -11,6 +10,9 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/cyw0ng95/v2e/pkg/ssg"
 )
+
+// Regular expressions compiled once for performance
+var tableIDPattern = regexp.MustCompile(`^table-([^-]+)-(.+)`)
 
 // ParseTableFile parses an SSG HTML table file and extracts table and entries.
 func ParseTableFile(path string) (*ssg.SSGTable, []ssg.SSGTableEntry, error) {
@@ -60,10 +62,9 @@ func extractTableIDFromPath(path string) (id, product, tableType string) {
 	// Remove .html extension
 	id = strings.TrimSuffix(filename, ".html")
 
-	// Extract product and table type from name
+	// Extract product and table type from name using pre-compiled regex
 	// Format: table-{product}-{type}.html
-	re := regexp.MustCompile(`^table-([^-]+)-(.+)`)
-	matches := re.FindStringSubmatch(id)
+	matches := tableIDPattern.FindStringSubmatch(id)
 	if len(matches) == 3 {
 		product = matches[1]
 		tableType = matches[2]
