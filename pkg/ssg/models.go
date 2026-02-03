@@ -190,6 +190,51 @@ func (SSGTableEntry) TableName() string {
 	return "ssg_table_entries"
 }
 
+// SSGManifest represents a product manifest from SSG containing profile definitions.
+// Manifests are JSON files that list available profiles and their associated rules.
+type SSGManifest struct {
+	ID          string    `gorm:"primaryKey" json:"id"`    // e.g., "manifest-al2023"
+	Product     string    `gorm:"index" json:"product"`    // al2023, rhel8, etc.
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for SSGManifest.
+func (SSGManifest) TableName() string {
+	return "ssg_manifests"
+}
+
+// SSGProfile represents a security profile from a manifest.
+// Profiles define sets of rules for specific compliance frameworks (CIS, STIG, etc.).
+type SSGProfile struct {
+	ID          string    `gorm:"primaryKey" json:"id"`       // e.g., "al2023:cis"
+	ManifestID  string    `gorm:"index" json:"manifest_id"`   // Foreign key to manifest
+	Product     string    `gorm:"index" json:"product"`       // Denormalized for queries
+	ProfileID   string    `gorm:"index" json:"profile_id"`    // e.g., "cis"
+	RuleCount   int       `json:"rule_count"`                 // Number of rules in this profile
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for SSGProfile.
+func (SSGProfile) TableName() string {
+	return "ssg_profiles"
+}
+
+// SSGProfileRule represents a many-to-many relationship between profiles and rules.
+// Links profiles to their constituent rules by rule short ID.
+type SSGProfileRule struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	ProfileID   string    `gorm:"index" json:"profile_id"`    // Foreign key to SSGProfile
+	RuleShortID string    `gorm:"index" json:"rule_short_id"` // e.g., "aide_build_database"
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// TableName specifies the table name for SSGProfileRule.
+func (SSGProfileRule) TableName() string {
+	return "ssg_profile_rules"
+}
+
 // BeforeCreate is a GORM hook called before creating a new record.
 func (t *SSGTable) BeforeCreate(tx *gorm.DB) error {
 	now := time.Now()
@@ -215,5 +260,39 @@ func (e *SSGTableEntry) BeforeCreate(tx *gorm.DB) error {
 // BeforeUpdate is a GORM hook called before updating a record.
 func (e *SSGTableEntry) BeforeUpdate(tx *gorm.DB) error {
 	e.UpdatedAt = time.Now()
+	return nil
+}
+
+// BeforeCreate is a GORM hook called before creating a new manifest record.
+func (m *SSGManifest) BeforeCreate(tx *gorm.DB) error {
+	now := time.Now()
+	m.CreatedAt = now
+	m.UpdatedAt = now
+	return nil
+}
+
+// BeforeUpdate is a GORM hook called before updating a manifest record.
+func (m *SSGManifest) BeforeUpdate(tx *gorm.DB) error {
+	m.UpdatedAt = time.Now()
+	return nil
+}
+
+// BeforeCreate is a GORM hook called before creating a new profile record.
+func (p *SSGProfile) BeforeCreate(tx *gorm.DB) error {
+	now := time.Now()
+	p.CreatedAt = now
+	p.UpdatedAt = now
+	return nil
+}
+
+// BeforeUpdate is a GORM hook called before updating a profile record.
+func (p *SSGProfile) BeforeUpdate(tx *gorm.DB) error {
+	p.UpdatedAt = time.Now()
+	return nil
+}
+
+// BeforeCreate is a GORM hook called before creating a new profile rule record.
+func (pr *SSGProfileRule) BeforeCreate(tx *gorm.DB) error {
+	pr.CreatedAt = time.Now()
 	return nil
 }
