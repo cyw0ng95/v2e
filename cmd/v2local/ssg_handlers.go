@@ -3,10 +3,12 @@ package main
 
 import (
 	"context"
+	"os"
 	"fmt"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/ssg"
 	ssgparser "github.com/cyw0ng95/v2e/pkg/ssg/parser"
 	"github.com/cyw0ng95/v2e/pkg/ssg/local"
 )
@@ -523,6 +525,34 @@ logger.Info("RPC handler registered: RPCSSGGetProfile")
 
 sp.RegisterHandler("RPCSSGGetProfileRules", createSSGGetProfileRulesHandler(store, logger))
 logger.Info("RPC handler registered: RPCSSGGetProfileRules")
+
+// Data Stream handlers
+sp.RegisterHandler("RPCSSGImportDataStream", createSSGImportDataStreamHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGImportDataStream")
+
+sp.RegisterHandler("RPCSSGListDataStreams", createSSGListDataStreamsHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGListDataStreams")
+
+sp.RegisterHandler("RPCSSGGetDataStream", createSSGGetDataStreamHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetDataStream")
+
+sp.RegisterHandler("RPCSSGListDSProfiles", createSSGListDSProfilesHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGListDSProfiles")
+
+sp.RegisterHandler("RPCSSGGetDSProfile", createSSGGetDSProfileHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetDSProfile")
+
+sp.RegisterHandler("RPCSSGGetDSProfileRules", createSSGGetDSProfileRulesHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetDSProfileRules")
+
+sp.RegisterHandler("RPCSSGListDSGroups", createSSGListDSGroupsHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGListDSGroups")
+
+sp.RegisterHandler("RPCSSGListDSRules", createSSGListDSRulesHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGListDSRules")
+
+sp.RegisterHandler("RPCSSGGetDSRule", createSSGGetDSRuleHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetDSRule")
 }
 
 // createSSGImportManifestHandler creates a handler for importing manifest files
@@ -674,6 +704,302 @@ return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get profile rules
 return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 "rules": rules,
 "count": len(rules),
+})
+}
+}
+
+// ============================================================================
+// Data Stream Handlers
+// ============================================================================
+
+// createSSGImportDataStreamHandler creates a handler for importing a data stream from a file
+func createSSGImportDataStreamHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+FilePath string `json:"file_path"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.FilePath, "file_path"); errMsg != nil {
+return errMsg, nil
+}
+
+// Open file
+file, err := os.Open(req.FilePath)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to open file: %s", err)), nil
+}
+defer file.Close()
+
+// Parse the data stream file
+ds, benchmark, profiles, groups, rules, err := ssgparser.ParseDataStreamFile(file, req.FilePath)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse data stream: %s", err)), nil
+}
+
+// Extract nested data from parsed structures
+var profileRules []ssg.SSGDSProfileRule
+var references []ssg.SSGDSRuleReference
+var identifiers []ssg.SSGDSRuleIdentifier
+
+// Extract profile rules from profiles
+for _, profile := range profiles {
+for _, selectedRule := range profile.SelectedRules {
+profileRules = append(profileRules, selectedRule)
+}
+}
+
+// Extract references and identifiers from rules  
+for _, rule := range rules {
+for _, ref := range rule.References {
+references = append(references, ref)
+}
+for _, ident := range rule.Identifiers {
+identifiers = append(identifiers, ident)
+}
+}
+
+// Save to store
+if err := store.SaveDataStream(ds, benchmark, profiles, profileRules, groups, rules, references, identifiers); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save data stream: %s", err)), nil
+}
+
+logger.Info("Imported data stream: %s (product: %s, %d profiles, %d groups, %d rules)", 
+ds.ID, ds.Product, len(profiles), len(groups), len(rules))
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"data_stream_id": ds.ID,
+"product":        ds.Product,
+"profiles_count": len(profiles),
+"groups_count":   len(groups),
+"rules_count":    len(rules),
+})
+}
+}
+
+// createSSGListDataStreamsHandler creates a handler for listing data streams
+func createSSGListDataStreamsHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+Product string `json:"product"`
+Limit   int    `json:"limit"`
+Offset  int    `json:"offset"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+
+dataStreams, err := store.ListDataStreams(req.Product, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list data streams: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"data_streams": dataStreams,
+"count":        len(dataStreams),
+})
+}
+}
+
+// createSSGGetDataStreamHandler creates a handler for getting a data stream
+func createSSGGetDataStreamHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+DataStreamID string `json:"data_stream_id"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.DataStreamID, "data_stream_id"); errMsg != nil {
+return errMsg, nil
+}
+
+ds, err := store.GetDataStream(req.DataStreamID)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get data stream: %s", err)), nil
+}
+
+// Also get the benchmark
+benchmark, err := store.GetBenchmark(req.DataStreamID)
+if err != nil {
+logger.Warn("Failed to get benchmark for data stream %s: %s", req.DataStreamID, err)
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"data_stream": ds,
+"benchmark":   benchmark,
+})
+}
+}
+
+// createSSGListDSProfilesHandler creates a handler for listing data stream profiles
+func createSSGListDSProfilesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+DataStreamID string `json:"data_stream_id"`
+Limit        int    `json:"limit"`
+Offset       int    `json:"offset"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.DataStreamID, "data_stream_id"); errMsg != nil {
+return errMsg, nil
+}
+
+profiles, err := store.ListDSProfiles(req.DataStreamID, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list profiles: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"profiles": profiles,
+"count":    len(profiles),
+})
+}
+}
+
+// createSSGGetDSProfileHandler creates a handler for getting a data stream profile
+func createSSGGetDSProfileHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+ProfileID string `json:"profile_id"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.ProfileID, "profile_id"); errMsg != nil {
+return errMsg, nil
+}
+
+profile, err := store.GetDSProfile(req.ProfileID)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get profile: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"profile": profile,
+})
+}
+}
+
+// createSSGGetDSProfileRulesHandler creates a handler for getting data stream profile rules
+func createSSGGetDSProfileRulesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+ProfileID string `json:"profile_id"`
+Limit     int    `json:"limit"`
+Offset    int    `json:"offset"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.ProfileID, "profile_id"); errMsg != nil {
+return errMsg, nil
+}
+
+rules, err := store.GetDSProfileRules(req.ProfileID, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get profile rules: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"rules": rules,
+"count": len(rules),
+})
+}
+}
+
+// createSSGListDSGroupsHandler creates a handler for listing data stream groups
+func createSSGListDSGroupsHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+DataStreamID string `json:"data_stream_id"`
+Limit        int    `json:"limit"`
+Offset       int    `json:"offset"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.DataStreamID, "data_stream_id"); errMsg != nil {
+return errMsg, nil
+}
+
+groups, err := store.ListDSGroups(req.DataStreamID, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list groups: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"groups": groups,
+"count":  len(groups),
+})
+}
+}
+
+// createSSGListDSRulesHandler creates a handler for listing data stream rules
+func createSSGListDSRulesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+DataStreamID string `json:"data_stream_id"`
+Severity     string `json:"severity"`
+Limit        int    `json:"limit"`
+Offset       int    `json:"offset"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.DataStreamID, "data_stream_id"); errMsg != nil {
+return errMsg, nil
+}
+
+rules, total, err := store.ListDSRules(req.DataStreamID, req.Severity, req.Limit, req.Offset)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list rules: %s", err)), nil
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"rules": rules,
+"count": len(rules),
+"total": total,
+})
+}
+}
+
+// createSSGGetDSRuleHandler creates a handler for getting a data stream rule
+func createSSGGetDSRuleHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+var req struct {
+RuleID string `json:"rule_id"`
+}
+if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+}
+if errMsg := subprocess.RequireField(msg, req.RuleID, "rule_id"); errMsg != nil {
+return errMsg, nil
+}
+
+rule, err := store.GetDSRule(req.RuleID)
+if err != nil {
+return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get rule: %s", err)), nil
+}
+
+// Get references and identifiers
+references, err := store.GetDSRuleReferences(req.RuleID, 0, 0)
+if err != nil {
+logger.Warn("Failed to get references for rule %s: %s", req.RuleID, err)
+}
+
+identifiers, err := store.GetDSRuleIdentifiers(req.RuleID)
+if err != nil {
+logger.Warn("Failed to get identifiers for rule %s: %s", req.RuleID, err)
+}
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"rule":        rule,
+"references":  references,
+"identifiers": identifiers,
 })
 }
 }

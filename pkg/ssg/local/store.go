@@ -488,3 +488,258 @@ return nil, err
 }
 return profileRules, nil
 }
+
+// SaveDataStream saves a data stream and all its associated components.
+// This is an atomic operation that saves: data stream, benchmark, profiles, profile rules, groups, rules, references, and identifiers.
+func (s *Store) SaveDataStream(
+ds *ssg.SSGDataStream,
+benchmark *ssg.SSGBenchmark,
+profiles []ssg.SSGDSProfile,
+profileRules []ssg.SSGDSProfileRule,
+groups []ssg.SSGDSGroup,
+rules []ssg.SSGDSRule,
+references []ssg.SSGDSRuleReference,
+identifiers []ssg.SSGDSRuleIdentifier,
+) error {
+return s.db.Transaction(func(tx *gorm.DB) error {
+// Save data stream
+if err := tx.Save(ds).Error; err != nil {
+return fmt.Errorf("failed to save data stream: %w", err)
+}
+
+// Delete existing components for this data stream
+if err := tx.Where("data_stream_id = ?", ds.ID).Delete(&ssg.SSGBenchmark{}).Error; err != nil {
+return fmt.Errorf("failed to delete old benchmark: %w", err)
+}
+if err := tx.Where("data_stream_id = ?", ds.ID).Delete(&ssg.SSGDSProfile{}).Error; err != nil {
+return fmt.Errorf("failed to delete old profiles: %w", err)
+}
+if err := tx.Where("data_stream_id = ?", ds.ID).Delete(&ssg.SSGDSGroup{}).Error; err != nil {
+return fmt.Errorf("failed to delete old groups: %w", err)
+}
+if err := tx.Where("data_stream_id = ?", ds.ID).Delete(&ssg.SSGDSRule{}).Error; err != nil {
+return fmt.Errorf("failed to delete old rules: %w", err)
+}
+
+// Save benchmark
+if benchmark != nil {
+if err := tx.Save(benchmark).Error; err != nil {
+return fmt.Errorf("failed to save benchmark: %w", err)
+}
+}
+
+// Save profiles
+if len(profiles) > 0 {
+if err := tx.Create(&profiles).Error; err != nil {
+return fmt.Errorf("failed to save profiles: %w", err)
+}
+}
+
+// Save profile rules in batches
+if len(profileRules) > 0 {
+if err := tx.CreateInBatches(&profileRules, 100).Error; err != nil {
+return fmt.Errorf("failed to save profile rules: %w", err)
+}
+}
+
+// Save groups in batches
+if len(groups) > 0 {
+if err := tx.CreateInBatches(&groups, 100).Error; err != nil {
+return fmt.Errorf("failed to save groups: %w", err)
+}
+}
+
+// Save rules in batches
+if len(rules) > 0 {
+if err := tx.CreateInBatches(&rules, 100).Error; err != nil {
+return fmt.Errorf("failed to save rules: %w", err)
+}
+}
+
+// Save references in batches
+if len(references) > 0 {
+if err := tx.CreateInBatches(&references, 500).Error; err != nil {
+return fmt.Errorf("failed to save references: %w", err)
+}
+}
+
+// Save identifiers in batches
+if len(identifiers) > 0 {
+if err := tx.CreateInBatches(&identifiers, 100).Error; err != nil {
+return fmt.Errorf("failed to save identifiers: %w", err)
+}
+}
+
+return nil
+})
+}
+
+// GetDataStream retrieves a data stream by ID.
+func (s *Store) GetDataStream(id string) (*ssg.SSGDataStream, error) {
+var ds ssg.SSGDataStream
+if err := s.db.First(&ds, "id = ?", id).Error; err != nil {
+return nil, err
+}
+return &ds, nil
+}
+
+// ListDataStreams retrieves all data streams, optionally filtered by product.
+func (s *Store) ListDataStreams(product string, limit, offset int) ([]ssg.SSGDataStream, error) {
+var dataStreams []ssg.SSGDataStream
+query := s.db.Order("product ASC, id ASC")
+
+if product != "" {
+query = query.Where("product = ?", product)
+}
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&dataStreams).Error; err != nil {
+return nil, err
+}
+return dataStreams, nil
+}
+
+// GetBenchmark retrieves the benchmark for a data stream.
+func (s *Store) GetBenchmark(dataStreamID string) (*ssg.SSGBenchmark, error) {
+var benchmark ssg.SSGBenchmark
+if err := s.db.Where("data_stream_id = ?", dataStreamID).First(&benchmark).Error; err != nil {
+return nil, err
+}
+return &benchmark, nil
+}
+
+// ListDSProfiles retrieves all profiles for a data stream.
+func (s *Store) ListDSProfiles(dataStreamID string, limit, offset int) ([]ssg.SSGDSProfile, error) {
+var profiles []ssg.SSGDSProfile
+query := s.db.Where("data_stream_id = ?", dataStreamID).Order("profile_id ASC")
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&profiles).Error; err != nil {
+return nil, err
+}
+return profiles, nil
+}
+
+// GetDSProfile retrieves a specific profile from a data stream.
+func (s *Store) GetDSProfile(id string) (*ssg.SSGDSProfile, error) {
+var profile ssg.SSGDSProfile
+if err := s.db.First(&profile, "id = ?", id).Error; err != nil {
+return nil, err
+}
+return &profile, nil
+}
+
+// GetDSProfileRules retrieves all rule selections for a profile.
+func (s *Store) GetDSProfileRules(profileID string, limit, offset int) ([]ssg.SSGDSProfileRule, error) {
+var profileRules []ssg.SSGDSProfileRule
+query := s.db.Where("profile_id = ?", profileID).Order("rule_id ASC")
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&profileRules).Error; err != nil {
+return nil, err
+}
+return profileRules, nil
+}
+
+// ListDSGroups retrieves all groups for a data stream.
+func (s *Store) ListDSGroups(dataStreamID string, limit, offset int) ([]ssg.SSGDSGroup, error) {
+var groups []ssg.SSGDSGroup
+query := s.db.Where("data_stream_id = ?", dataStreamID).Order("level ASC, title ASC")
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&groups).Error; err != nil {
+return nil, err
+}
+return groups, nil
+}
+
+// ListDSRules retrieves all rules for a data stream with optional filters.
+func (s *Store) ListDSRules(dataStreamID string, severity string, limit, offset int) ([]ssg.SSGDSRule, int64, error) {
+var rules []ssg.SSGDSRule
+var total int64
+
+query := s.db.Model(&ssg.SSGDSRule{}).Where("data_stream_id = ?", dataStreamID)
+
+if severity != "" {
+query = query.Where("severity = ?", severity)
+}
+
+// Count total
+if err := query.Count(&total).Error; err != nil {
+return nil, 0, err
+}
+
+// Apply pagination
+if limit <= 0 {
+limit = 100
+}
+if offset < 0 {
+offset = 0
+}
+
+if err := query.Offset(offset).Limit(limit).Order("title ASC").Find(&rules).Error; err != nil {
+return nil, 0, err
+}
+
+return rules, total, nil
+}
+
+// GetDSRule retrieves a specific rule by ID.
+func (s *Store) GetDSRule(id string) (*ssg.SSGDSRule, error) {
+var rule ssg.SSGDSRule
+if err := s.db.First(&rule, "id = ?", id).Error; err != nil {
+return nil, err
+}
+return &rule, nil
+}
+
+// GetDSRuleReferences retrieves all references for a rule.
+func (s *Store) GetDSRuleReferences(ruleID string, limit, offset int) ([]ssg.SSGDSRuleReference, error) {
+var references []ssg.SSGDSRuleReference
+query := s.db.Where("rule_id = ?", ruleID).Order("href ASC")
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&references).Error; err != nil {
+return nil, err
+}
+return references, nil
+}
+
+// GetDSRuleIdentifiers retrieves all identifiers for a rule.
+func (s *Store) GetDSRuleIdentifiers(ruleID string) ([]ssg.SSGDSRuleIdentifier, error) {
+var identifiers []ssg.SSGDSRuleIdentifier
+if err := s.db.Where("rule_id = ?", ruleID).Order("system ASC").Find(&identifiers).Error; err != nil {
+return nil, err
+}
+return identifiers, nil
+}
