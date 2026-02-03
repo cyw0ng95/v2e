@@ -66,6 +66,23 @@ Fetches CVE (Common Vulnerabilities and Exposures) data from the NVD (National V
   - **Request**: {"start_index": 0, "results_per_page": 10}
   - **Response**: {"views": [...]}
 
+### 5. RPCFetchSSGPackage
+- **Description**: Downloads SSG (SCAP Security Guide) package from GitHub and verifies its SHA512 checksum
+- **Request Parameters**:
+  - `version` (string, optional): SSG version to fetch (default: "0.1.79")
+- **Response**:
+  - `package_data` (bytes): The tar.gz package data
+  - `sha512` (string): SHA512 checksum
+  - `verified` (bool): Whether checksum verification passed
+  - `version` (string): The version that was fetched
+- **Errors**:
+  - Download failed: Failed to download SSG package from GitHub
+  - Verification failed: SHA512 checksum mismatch
+  - Network error: HTTP request failed
+- **Example**:
+  - **Request**: {"version": "0.1.79"}
+  - **Response**: {"package_data": <binary>, "sha512": "abc123...", "verified": true, "version": "0.1.79"}
+
 ## Configuration
 - **NVD API Key**: Configurable via `NVD_API_KEY` environment variable (optional, increases rate limits)
 - **View Fetch URL**: Configurable via `VIEW_FETCH_URL` environment variable (default: "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip")
@@ -75,5 +92,7 @@ Fetches CVE (Common Vulnerabilities and Exposures) data from the NVD (National V
 - Automatically retries failed requests with exponential backoff
 - Downloads and parses CWE views from GitHub repository
 - Uses ZIP archive extraction to retrieve JSON files from GitHub repository
+- SSG packages are fetched from ComplianceAsCode/content GitHub releases
+- SHA512 checksums are verified to ensure package integrity
 - All requests are routed through the broker for centralized management
 - Service runs as a subprocess managed by the broker
