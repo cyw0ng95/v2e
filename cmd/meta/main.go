@@ -39,6 +39,7 @@ const (
 	DataTypeCWE    = taskflow.DataTypeCWE
 	DataTypeCAPEC  = taskflow.DataTypeCAPEC
 	DataTypeATTACK = taskflow.DataTypeATTACK
+	DataTypeSSG    = taskflow.DataTypeSSG
 )
 
 // Alias the DataType from the taskflow package so local code can use it directly
@@ -69,6 +70,8 @@ func (c *DataPopulationController) StartDataPopulation(ctx context.Context, data
 		return c.startCAPECImport(ctx, sessionID, params)
 	case DataTypeATTACK:
 		return c.startATTACKImport(ctx, sessionID, params)
+	case DataTypeSSG:
+		return c.startSSGImport(ctx, sessionID, params)
 	default:
 		return "", fmt.Errorf("unsupported data type: %s", dataType)
 	}
@@ -162,6 +165,72 @@ func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessio
 	}
 
 	c.logger.Info("ATT&CK import started successfully: session_id=%s", sessionID)
+	return sessionID, nil
+}
+
+// startSSGImport starts an SSG import job
+func (c *DataPopulationController) startSSGImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
+	// Get version parameter, default to 0.1.79
+	version, ok := params["version"].(string)
+	if !ok {
+		version = "0.1.79" // default version
+	}
+
+	c.logger.Info("Starting SSG import: session_id=%s, version=%s", sessionID, version)
+
+	// Step 1: Fetch SSG package from remote service
+	c.logger.Info("Fetching SSG package from remote service (version=%s)", version)
+	ctx1, cancel1 := context.WithTimeout(ctx, 300*time.Second) // Allow 5 minutes for download
+	defer cancel1()
+
+	fetchParams := map[string]interface{}{"version": version}
+	resp, err := c.rpcClient.InvokeRPC(ctx1, "remote", "RPCFetchSSGPackage", fetchParams)
+	if err != nil {
+		c.logger.Error("Failed to fetch SSG package: %v", err)
+		return "", fmt.Errorf("failed to fetch SSG package: %w", err)
+	}
+
+	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
+		c.logger.Error("SSG package fetch returned error: %s", errMsg)
+		return "", fmt.Errorf("SSG package fetch failed: %s", errMsg)
+	}
+
+	// Extract package data from response payload
+	var fetchResult struct {
+		PackageData []byte `json:"package_data"`
+		SHA512      string `json:"sha512"`
+		Verified    bool   `json:"verified"`
+		Version     string `json:"version"`
+	}
+
+	if err := subprocess.UnmarshalPayload(resp, &fetchResult); err != nil {
+		return "", fmt.Errorf("failed to unmarshal fetch response: %w", err)
+	}
+
+	if !fetchResult.Verified {
+		return "", fmt.Errorf("SSG package verification failed")
+	}
+
+	c.logger.Info("SSG package fetched and verified successfully (%d bytes)", len(fetchResult.PackageData))
+
+	// Step 2: Deploy package to local service
+	c.logger.Info("Deploying SSG package to local service")
+	ctx2, cancel2 := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel2()
+
+	deployParams := map[string]interface{}{"package_data": fetchResult.PackageData}
+	resp, err = c.rpcClient.InvokeRPC(ctx2, "local", "RPCDeploySSGPackage", deployParams)
+	if err != nil {
+		c.logger.Error("Failed to deploy SSG package: %v", err)
+		return "", fmt.Errorf("failed to deploy SSG package: %w", err)
+	}
+
+	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
+		c.logger.Error("SSG package deployment returned error: %s", errMsg)
+		return "", fmt.Errorf("SSG package deployment failed: %s", errMsg)
+	}
+
+	c.logger.Info("SSG import completed successfully: session_id=%s", sessionID)
 	return sessionID, nil
 }
 

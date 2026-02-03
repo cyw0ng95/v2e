@@ -178,13 +178,14 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - RPC error: Failed to communicate with backend services
 
 #### 8. RPCStartTypedSession
-- **Description**: Starts a new typed data fetching session for CVE, CWE, CAPEC, or ATT&CK data
+- **Description**: Starts a new typed data fetching session for CVE, CWE, CAPEC, ATT&CK, or SSG data
 - **Request Parameters**:
   - `session_id` (string, required): Unique identifier for the session
-  - `data_type` (string, required): Type of data to fetch - "cve", "cwe", "capec", or "attack"
+  - `data_type` (string, required): Type of data to fetch - "cve", "cwe", "capec", "attack", or "ssg"
   - `start_index` (int, optional): Index to start fetching from (default: 0)
   - `results_per_batch` (int, optional): Number of results per batch (default: 100)
   - `params` (object, optional): Additional parameters for the job
+    - For SSG: `version` (string): SSG version to fetch (default: "0.1.79")
 - **Response**:
   - `success` (bool): true if session started successfully
   - `session_id` (string): ID of the started session
@@ -197,7 +198,7 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
 - **Errors**:
   - Missing session ID: `session_id` parameter is required
   - Session exists: A session is already running
-  - Invalid data type: `data_type` must be one of "cve", "cwe", "capec", or "attack"
+  - Invalid data type: `data_type` must be one of "cve", "cwe", "capec", "attack", or "ssg"
   - RPC error: Failed to communicate with backend services
 
 #### 9. RPCStopSession
@@ -220,7 +221,7 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - `has_session` (bool): true if a session exists
   - `session_id` (string): ID of the session (if exists)
   - `state` (string): Current state of the session ("running", "paused", "stopped")
-  - `data_type` (string): Type of data being fetched ("cve", "cwe", "capec", "attack")
+  - `data_type` (string): Type of data being fetched ("cve", "cwe", "capec", "attack", "ssg")
   - `start_index` (int): Index where the session started
   - `results_per_batch` (int): Number of results per batch
   - `created_at` (string): Timestamp when session was created
