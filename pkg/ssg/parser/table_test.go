@@ -123,9 +123,7 @@ func TestParseTableFile(t *testing.T) {
 	if !strings.Contains(table.Title, "CCE Identifiers") {
 		t.Errorf("table.Title = %v, should contain 'CCE Identifiers'", table.Title)
 	}
-	if len(table.HTMLContent) == 0 {
-		t.Error("table.HTMLContent should not be empty")
-	}
+	// Table no longer stores HTML content - data is in individual entries
 
 	// Check entries
 	if len(entries) != 2 {

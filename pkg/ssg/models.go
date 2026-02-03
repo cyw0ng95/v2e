@@ -156,13 +156,13 @@ func (r *SSGRule) BeforeUpdate(tx *gorm.DB) error {
 
 // SSGTable represents a mapping table from SSG (e.g., CCE mappings, NIST refs).
 // Tables contain flat lists of rules with their mappings to security identifiers.
+// The actual table data is stored in SSGTableEntry records, not as HTML.
 type SSGTable struct {
 	ID          string    `gorm:"primaryKey" json:"id"`           // e.g., "table-al2023-cces"
 	Product     string    `gorm:"index" json:"product"`           // al2023, rhel9, etc.
 	TableType   string    `gorm:"index" json:"table_type"`        // cces, nistrefs, stig, etc.
 	Title       string    `json:"title"`                          // e.g., "CCE Identifiers in Guide..."
 	Description string    `json:"description"`                    // Optional description
-	HTMLContent string    `gorm:"type:text" json:"html_content"` // Full HTML content
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

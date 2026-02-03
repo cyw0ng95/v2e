@@ -1111,7 +1111,6 @@ export interface SSGTable {
   tableType: string;
   title: string;
   description: string;
-  htmlContent: string;
   createdAt: string;
   updatedAt: string;
 }

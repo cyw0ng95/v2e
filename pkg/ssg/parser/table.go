@@ -36,14 +36,13 @@ func ParseTableFile(path string) (*ssg.SSGTable, []ssg.SSGTableEntry, error) {
 		title = tableID // Fallback to ID if no title found
 	}
 
-	// Create table
+	// Create table (no HTML content - data is in individual entries)
 	table := &ssg.SSGTable{
 		ID:          tableID,
 		Product:     product,
 		TableType:   tableType,
 		Title:       title,
 		Description: "",
-		HTMLContent: string(htmlContent),
 	}
 
 	// Parse table entries
