@@ -322,9 +322,11 @@ func (e *JobExecutor) RecoverRuns(ctx context.Context) error {
 func (e *JobExecutor) executeJob(ctx context.Context, runID string) {
 	// Signal completion when done (Pause/Stop will wait for this)
 	defer func() {
+		e.mu.Lock()
 		if e.doneChan != nil {
 			close(e.doneChan)
 		}
+		e.mu.Unlock()
 	}()
 
 	// Get run details
