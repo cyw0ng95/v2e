@@ -340,6 +340,8 @@ Orchestrate SSG import: pull git, import all guides.
 
 ### Cost: 1-2 hours
 
+**Status: ✅ COMPLETED** (No changes needed - existing /restful/rpc endpoint handles all SSG RPCs)
+
 ---
 
 ## Step 8: Frontend - TypeScript Types
@@ -398,6 +400,8 @@ interface SSGTree {
 
 ### Cost: 0.5-1 hours
 
+**Status: ✅ COMPLETED**
+
 ---
 
 ## Step 9: Frontend - SSG Pages
@@ -423,7 +427,20 @@ interface SSGTree {
 - `website/app/ssg/rule/[id]/page.tsx`
 - `website/components/ssg/*.tsx`
 
+### Implementation:
+- Added SSG tab to main page (`website/app/page.tsx`)
+- Created `SSGViews` component (`website/components/ssg-views.tsx`) with:
+  - Job control buttons (Start, Stop, Pause, Resume)
+  - Job status display with progress tracking
+  - Guide list with filtering by product/profile
+  - Tree viewer with expandable/collapsible nodes
+  - Detail panel for groups and rules
+- Added SSG RPC client methods (`website/lib/rpc-client.ts`)
+- Added SSG hooks (`website/lib/hooks.ts`)
+
 ### Cost: 6-8 hours (tree viewer is complex)
+
+**Status: ✅ COMPLETED**
 
 ---
 

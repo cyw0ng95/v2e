@@ -90,6 +90,15 @@ const AttackViews = dynamic(() => import('@/components/attack-views').then(mod =
   ),
 });
 
+const SSGViews = dynamic(() => import('@/components/ssg-views').then(mod => mod.SSGViews), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 // Memoized Right Column Component for tab content
 const RightColumn = memo(function RightColumn({ 
   viewMode, 
@@ -136,6 +145,7 @@ const RightColumn = memo(function RightColumn({
                   <TabsTrigger value="capec">CAPEC</TabsTrigger>
                   <TabsTrigger value="attack">ATT&CK</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
+                  <TabsTrigger value="ssg">SSG Guides</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
                   <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
@@ -150,6 +160,7 @@ const RightColumn = memo(function RightColumn({
                   <TabsTrigger value="capec">CAPEC</TabsTrigger>
                   <TabsTrigger value="attack">ATT&CK</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
+                  <TabsTrigger value="ssg">SSG Guides</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
                   <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
@@ -185,6 +196,14 @@ const RightColumn = memo(function RightColumn({
               <div className="h-full flex flex-col">
                 <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                   <CWEViews />
+                </Suspense>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="ssg" className="h-full">
+              <div className="h-full flex flex-col">
+                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                  <SSGViews />
                 </Suspense>
               </div>
             </TabsContent>

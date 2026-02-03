@@ -1364,6 +1364,72 @@ export class RPCClient {
   async revertBookmarkState(params: RevertBookmarkStateRequest): Promise<RPCResponse<RevertBookmarkStateResponse>> {
     return this.call<RevertBookmarkStateRequest, RevertBookmarkStateResponse>('RPCRevertBookmarkState', params, 'local');
   }
+
+  // ==========================================================================
+  // SSG (SCAP Security Guide) Methods
+  // ==========================================================================
+
+  // SSG Import Job Methods
+  async startSSGImportJob(runId?: string): Promise<RPCResponse<{ success: boolean; runId: string }>> {
+    return this.call<{ runId?: string }, { success: boolean; runId: string }>('RPCSSGStartImportJob', { runId }, 'meta');
+  }
+
+  async stopSSGImportJob(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<undefined, { success: boolean }>('RPCSSGStopImportJob', undefined, 'meta');
+  }
+
+  async pauseSSGImportJob(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<undefined, { success: boolean }>('RPCSSGPauseImportJob', undefined, 'meta');
+  }
+
+  async resumeSSGImportJob(runId: string): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{ runId: string }, { success: boolean }>('RPCSSGResumeImportJob', { runId }, 'meta');
+  }
+
+  async getSSGImportStatus(): Promise<RPCResponse<any>> {
+    return this.call<undefined, any>('RPCSSGGetImportStatus', undefined, 'meta');
+  }
+
+  // SSG Guide Methods
+  async listSSGGuides(product?: string, profileId?: string): Promise<RPCResponse<{ guides: any[]; count: number }>> {
+    return this.call<{ product?: string; profileId?: string }, { guides: any[]; count: number }>('RPCSSGListGuides', { product, profileId }, 'local');
+  }
+
+  async getSSGGuide(id: string): Promise<RPCResponse<{ guide: any }>> {
+    return this.call<{ id: string }, { guide: any }>('RPCSSGGetGuide', { id }, 'local');
+  }
+
+  async getSSGTree(guideId: string): Promise<RPCResponse<{ tree: any }>> {
+    return this.call<{ guideId: string }, { tree: any }>('RPCSSGGetTree', { guideId }, 'local');
+  }
+
+  async getSSGTreeNodes(guideId: string): Promise<RPCResponse<{ nodes: any[]; count: number }>> {
+    return this.call<{ guideId: string }, { nodes: any[]; count: number }>('RPCSSGGetTreeNode', { guideId }, 'local');
+  }
+
+  async getSSGGroup(id: string): Promise<RPCResponse<{ group: any }>> {
+    return this.call<{ id: string }, { group: any }>('RPCSSGGetGroup', { id }, 'local');
+  }
+
+  async getSSGChildGroups(parentId?: string): Promise<RPCResponse<{ groups: any[]; count: number }>> {
+    return this.call<{ parentId?: string }, { groups: any[]; count: number }>('RPCSSGGetChildGroups', { parentId }, 'local');
+  }
+
+  async getSSGRule(id: string): Promise<RPCResponse<{ rule: any }>> {
+    return this.call<{ id: string }, { rule: any }>('RPCSSGGetRule', { id }, 'local');
+  }
+
+  async listSSGRules(groupId?: string, severity?: string, offset?: number, limit?: number): Promise<RPCResponse<{ rules: any[]; total: number }>> {
+    return this.call<{ groupId?: string; severity?: string; offset?: number; limit?: number }, { rules: any[]; total: number }>('RPCSSGListRules', { groupId, severity, offset, limit }, 'local');
+  }
+
+  async getSSGChildRules(groupId: string): Promise<RPCResponse<{ rules: any[]; count: number }>> {
+    return this.call<{ groupId: string }, { rules: any[]; count: number }>('RPCSSGGetChildRules', { groupId }, 'local');
+  }
+
+  async deleteSSGGuide(id: string): Promise<RPCResponse<{ success: boolean; id: string }>> {
+    return this.call<{ id: string }, { success: boolean; id: string }>('RPCSSGDeleteGuide', { id }, 'local');
+  }
 }
 
 // ============================================================================

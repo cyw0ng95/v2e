@@ -1055,3 +1055,244 @@ export interface RevertBookmarkStateResponse {
   success: boolean;
   message: string;
 }
+
+// ============================================================================
+// SSG (SCAP Security Guide) Data Types
+// ============================================================================
+
+export interface SSGGuide {
+  id: string;
+  product: string;
+  profileId: string;
+  shortId: string;
+  title: string;
+  htmlContent: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGGroup {
+  id: string;
+  guideId: string;
+  parentId: string;
+  title: string;
+  description: string;
+  level: number;
+  groupCount: number;
+  ruleCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGReference {
+  href: string;
+  label: string;
+  value: string;
+}
+
+export interface SSGRule {
+  id: string;
+  guideId: string;
+  groupId: string;
+  shortId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  severity: 'low' | 'medium' | 'high';
+  references: SSGReference[];
+  level: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGTree {
+  guide: SSGGuide;
+  groups: SSGGroup[];
+  rules: SSGRule[];
+}
+
+export interface TreeNode {
+  id: string;
+  parentId: string;
+  level: number;
+  type: 'group' | 'rule';
+  group?: SSGGroup;
+  rule?: SSGRule;
+  children: TreeNode[];
+}
+
+// SSG RPC Request/Response Types
+
+export interface SSGImportGuideRequest {
+  path: string;
+}
+
+export interface SSGImportGuideResponse {
+  success: boolean;
+  guideId: string;
+  groupCount: number;
+  ruleCount: number;
+}
+
+export interface SSGGetGuideRequest {
+  id: string;
+}
+
+export interface SSGGetGuideResponse {
+  guide: SSGGuide;
+}
+
+export interface SSGListGuidesRequest {
+  product?: string;
+  profileId?: string;
+}
+
+export interface SSGListGuidesResponse {
+  guides: SSGGuide[];
+  count: number;
+}
+
+export interface SSGGetTreeRequest {
+  guideId: string;
+}
+
+export interface SSGGetTreeResponse {
+  tree: SSGTree;
+}
+
+export interface SSGGetTreeNodeRequest {
+  guideId: string;
+}
+
+export interface SSGGetTreeNodeResponse {
+  nodes: TreeNode[];
+  count: number;
+}
+
+export interface SSGGetGroupRequest {
+  id: string;
+}
+
+export interface SSGGetGroupResponse {
+  group: SSGGroup;
+}
+
+export interface SSGGetChildGroupsRequest {
+  parentId?: string;
+}
+
+export interface SSGGetChildGroupsResponse {
+  groups: SSGGroup[];
+  count: number;
+}
+
+export interface SSGGetRuleRequest {
+  id: string;
+}
+
+export interface SSGGetRuleResponse {
+  rule: SSGRule;
+}
+
+export interface SSGListRulesRequest {
+  groupId?: string;
+  severity?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface SSGListRulesResponse {
+  rules: SSGRule[];
+  total: number;
+}
+
+export interface SSGGetChildRulesRequest {
+  groupId: string;
+}
+
+export interface SSGGetChildRulesResponse {
+  rules: SSGRule[];
+  count: number;
+}
+
+export interface SSGDeleteGuideRequest {
+  id: string;
+}
+
+export interface SSGDeleteGuideResponse {
+  success: boolean;
+  id: string;
+}
+
+// SSG Import Job RPC Types
+
+export interface SSGStartImportJobRequest {
+  runId?: string;
+}
+
+export interface SSGStartImportJobResponse {
+  success: boolean;
+  runId: string;
+}
+
+export interface SSGStopImportJobResponse {
+  success: boolean;
+}
+
+export interface SSGPauseImportJobResponse {
+  success: boolean;
+}
+
+export interface SSGResumeImportJobRequest {
+  runId: string;
+}
+
+export interface SSGResumeImportJobResponse {
+  success: boolean;
+}
+
+export interface SSGGetImportStatusResponse {
+  id: string;
+  dataType: string;
+  state: 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'stopped';
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+  progress: {
+    totalGuides: number;
+    processedGuides: number;
+    failedGuides: number;
+    currentFile: string;
+  };
+  metadata?: Record<string, string>;
+}
+
+// SSG Remote Service RPC Types (Git operations)
+
+export interface SSGCloneRepoResponse {
+  success: boolean;
+  path: string;
+}
+
+export interface SSGPullRepoResponse {
+  success: boolean;
+}
+
+export interface SSGGetRepoStatusResponse {
+  commitHash: string;
+  branch: string;
+  isClean: boolean;
+}
+
+export interface SSGListGuideFilesResponse {
+  files: string[];
+  count: number;
+}
+
+export interface SSGGetFilePathRequest {
+  filename: string;
+}
+
+export interface SSGGetFilePathResponse {
+  path: string;
+}

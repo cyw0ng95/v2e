@@ -1068,11 +1068,11 @@ export function useAttackGroupById(id: string) {
       try {
         setIsLoading(true);
         const response = await rpcClient.getAttackGroup(id);
-        
+
         if (response.retcode !== 0) {
           throw new Error(response.message || `Failed to fetch attack group ${id}`);
         }
-        
+
         setData(response.payload);
         setError(null);
       } catch (err: any) {
@@ -1086,6 +1086,368 @@ export function useAttackGroupById(id: string) {
     fetchData();
 
     // Cleanup function
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+// ============================================================================
+// SSG (SCAP Security Guide) Hooks
+// ============================================================================
+
+// SSG Import Job Hooks
+export function useSSGImportStatus() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGImportStatus();
+
+        if (response.retcode !== 0) {
+          // Not an error if no active job
+          setData(null);
+          setError(null);
+          return;
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        // Not an error if no active job
+        setData(null);
+        setError(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, []);
+
+  const refetch = async () => {
+    try {
+      setIsLoading(true);
+      const response = await rpcClient.getSSGImportStatus();
+
+      if (response.retcode !== 0) {
+        setData(null);
+        setError(null);
+        return;
+      }
+
+      setData(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setData(null);
+      setError(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { data, isLoading, error, refetch };
+}
+
+export function useStartSSGImportJob() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params: { runId?: string } = {}, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    const { runId } = params;
+
+    try {
+      setIsPending(true);
+      setError(null);
+
+      const response = await rpcClient.startSSGImportJob(runId);
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start SSG import job');
+      }
+
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error starting SSG import job', err, { runId });
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+export function useStopSSGImportJob() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (_: undefined, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+
+      const response = await rpcClient.stopSSGImportJob();
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to stop SSG import job');
+      }
+
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error stopping SSG import job', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+export function usePauseSSGImportJob() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (_: undefined, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    try {
+      setIsPending(true);
+      setError(null);
+
+      const response = await rpcClient.pauseSSGImportJob();
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to pause SSG import job');
+      }
+
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error pausing SSG import job', err);
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+export function useResumeSSGImportJob() {
+  const [isPending, setIsPending] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = async (params: { runId: string }, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
+    const { runId } = params;
+
+    try {
+      setIsPending(true);
+      setError(null);
+
+      const response = await rpcClient.resumeSSGImportJob(runId);
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to resume SSG import job');
+      }
+
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error resuming SSG import job', err, { runId });
+      if (options?.onError) {
+        options.onError(err);
+      }
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending, error };
+}
+
+// SSG Guide Hooks
+export function useSSGGuides(product?: string, profileId?: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listSSGGuides(product, profileId);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG guides');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG guides', err, { product, profileId });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [product, profileId]);
+
+  const refetch = async () => {
+    try {
+      setIsLoading(true);
+      const response = await rpcClient.listSSGGuides(product, profileId);
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to fetch SSG guides');
+      }
+
+      setData(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error fetching SSG guides', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { data, isLoading, error, refetch };
+}
+
+export function useSSGTree(guideId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!guideId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGTree(guideId);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG tree');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG tree', err, { guideId });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [guideId]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGGroup(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGGroup(id);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG group');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG group', err, { id });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGRule(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGRule(id);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG rule');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG rule', err, { id });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
     return () => {};
   }, [id]);
 
