@@ -525,8 +525,135 @@ This section documents the CWE "View" feature and how it is implemented in the l
 ---
 
 ## Notes
-- Uses SQLite databases for local storage of CVE, CWE, CAPEC, and ATT&CK data
+- Uses SQLite databases for local storage of CVE, CWE, CAPEC, ATT&CK, and SSG data
 - Automatically imports ATT&CK data from XLSX files in the assets directory at startup
-- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK) in separate databases
+- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK, SSG) in separate databases
 - Provides comprehensive CRUD operations for all data types
 - Includes pagination support for listing operations
+
+---
+
+# SSG Local Service
+
+## Service Type
+RPC (stdin/stdout message passing)
+
+## Description
+Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLite database. Provides CRUD operations for SSG guides, groups, and rules with hierarchical tree structure support.
+
+## Available RPC Methods
+
+### 55. RPCSSGGetGuide
+- **Description**: Retrieves an SSG guide by ID
+- **Request Parameters**:
+  - `id` (string, required): Guide identifier
+- **Response**:
+  - Guide object with all fields (id, product, profile_id, title, html_content, etc.)
+- **Errors**:
+  - Missing id: `id` parameter is required
+  - Not found: Guide not found in database
+  - Database error: Failed to query database
+
+### 56. RPCSSGListGuides
+- **Description**: Lists SSG guides with optional filters
+- **Request Parameters**:
+  - `product` (string, optional): Filter by product (e.g., "al2023", "rhel9")
+  - `profile_id` (string, optional): Filter by profile ID
+- **Response**:
+  - `guides` (array): Array of guide objects
+  - `count` (int): Number of guides returned
+- **Errors**:
+  - Database error: Failed to query database
+
+### 57. RPCSSGGetTree
+- **Description**: Retrieves the complete tree structure for a guide (flat groups + rules)
+- **Request Parameters**:
+  - `guide_id` (string, required): Guide identifier
+- **Response**:
+  - SSGTree object containing guide, groups array, and rules array
+- **Errors**:
+  - Missing guide_id: `guide_id` parameter is required
+  - Not found: Guide not found in database
+  - Database error: Failed to query database
+
+### 58. RPCSSGGetTreeNode
+- **Description**: Retrieves the tree structure for a guide as hierarchical TreeNode pointers
+- **Request Parameters**:
+  - `guide_id` (string, required): Guide identifier
+- **Response**:
+  - `nodes` (array): Root TreeNode pointers with nested children
+  - `count` (int): Number of root nodes
+- **Errors**:
+  - Missing guide_id: `guide_id` parameter is required
+  - Not found: Guide not found in database
+  - Database error: Failed to build tree
+
+### 59. RPCSSGGetGroup
+- **Description**: Retrieves an SSG group by ID
+- **Request Parameters**:
+  - `id` (string, required): Group identifier
+- **Response**:
+  - Group object with all fields
+- **Errors**:
+  - Missing id: `id` parameter is required
+  - Not found: Group not found in database
+  - Database error: Failed to query database
+
+### 60. RPCSSGGetChildGroups
+- **Description**: Retrieves direct child groups of a parent group
+- **Request Parameters**:
+  - `parent_id` (string, optional): Parent group ID (empty for top-level groups)
+- **Response**:
+  - `groups` (array): Array of child group objects
+  - `count` (int): Number of groups returned
+- **Errors**:
+  - Database error: Failed to query database
+
+### 61. RPCSSGGetRule
+- **Description**: Retrieves an SSG rule by ID with references
+- **Request Parameters**:
+  - `id` (string, required): Rule identifier
+- **Response**:
+  - Rule object with all fields including references array
+- **Errors**:
+  - Missing id: `id` parameter is required
+  - Not found: Rule not found in database
+  - Database error: Failed to query database
+
+### 62. RPCSSGListRules
+- **Description**: Lists SSG rules with optional filters and pagination
+- **Request Parameters**:
+  - `group_id` (string, optional): Filter by parent group
+  - `severity` (string, optional): Filter by severity (low, medium, high)
+  - `offset` (int, optional): Pagination offset (default: 0)
+  - `limit` (int, optional): Pagination limit (default: 100)
+- **Response**:
+  - `rules` (array): Array of rule objects with references
+  - `total` (int): Total number of rules matching filters
+- **Errors**:
+  - Database error: Failed to query database
+
+### 63. RPCSSGGetChildRules
+- **Description**: Retrieves direct child rules of a group
+- **Request Parameters**:
+  - `group_id` (string, required): Parent group ID
+- **Response**:
+  - `rules` (array): Array of child rule objects with references
+  - `count` (int): Number of rules returned
+- **Errors**:
+  - Missing group_id: `group_id` parameter is required
+  - Database error: Failed to query database
+
+### 64. RPCSSGDeleteGuide
+- **Description**: Deletes a guide and all associated groups and rules
+- **Request Parameters**:
+  - `id` (string, required): Guide identifier
+- **Response**:
+  - `success` (bool): true if deleted successfully
+  - `id` (string): The deleted guide ID
+- **Errors**:
+  - Missing id: `id` parameter is required
+  - Database error: Failed to delete from database
+
+## Configuration
+- **SSG Database Path**: Configurable via `SSG_DB_PATH` environment variable (default: "ssg.db")

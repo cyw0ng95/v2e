@@ -24,6 +24,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/notes"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	ssglocal "github.com/cyw0ng95/v2e/pkg/ssg/local"
 )
 
 // importATTACKDataAtStartup automatically imports ATT&CK data from XLSX files in the assets directory at startup
@@ -200,6 +201,23 @@ func main() {
 	}
 	logger.Info("Notes service initialized and migrations completed")
 
+	// Initialize SSG store
+	ssgDBPath := os.Getenv("SSG_DB_PATH")
+	if ssgDBPath == "" {
+		ssgDBPath = ssglocal.DefaultDBPath()
+	}
+	logger.Info("SSG DB path configured: %s", ssgDBPath)
+	ssgStore, err := ssglocal.NewStore(ssgDBPath)
+	if err != nil {
+		logger.Error("Failed to open SSG DB: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("SSG DB opened: %s", ssgDBPath)
+	defer func() {
+		logger.Info("SSG DB closing: %s", ssgDBPath)
+		ssgStore.Close()
+	}()
+
 	// Register RPC handlers
 	logger.Info("Registering RPC handlers...")
 	sp.RegisterHandler("RPCSaveCVEByID", createSaveCVEByIDHandler(db, logger))
@@ -289,6 +307,10 @@ func main() {
 	sp.RegisterHandler("RPCDeleteMemoryCard", deleteMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
 	sp.RegisterHandler("RPCListMemoryCards", listMemoryCardsHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
 	logger.Info("Memory Card handlers registered")
+
+	// Register SSG handlers
+	RegisterSSGHandlers(sp, ssgStore, logger)
+	logger.Info("SSG handlers registered")
 
 	logger.Info(LogMsgServiceStarting, sp.ID)
 	logger.Info(LogMsgServiceStarted)

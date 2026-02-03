@@ -217,6 +217,8 @@ Implement SQLite storage with tree queries.
 
 ### Cost: 3-5 hours
 
+**Status: ✅ COMPLETED**
+
 ---
 
 ## Step 5: HTML Guide Parser
