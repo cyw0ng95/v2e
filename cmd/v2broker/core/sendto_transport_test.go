@@ -3,7 +3,7 @@ package core
 import (
 	"testing"
 
-	"github.com/cyw0ng95/v2e/cmd/broker/transport"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 

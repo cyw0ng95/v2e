@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cyw0ng95/v2e/cmd/broker/core"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/core"
 )
 
 func TestGenerateCorrelationID_Concurrent(t *testing.T) {

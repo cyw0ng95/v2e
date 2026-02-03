@@ -1,7 +1,7 @@
 package transport
 
 // Build-time configuration variable for UDS base path
-// Set via: -X 'github.com/cyw0ng95/v2e/cmd/broker/transport/manager.buildUDSBasePath=/tmp/v2e_uds'
+// Set via: -X 'github.com/cyw0ng95/v2e/cmd/v2broker/transport/manager.buildUDSBasePath=/tmp/v2e_uds'
 var buildUDSBasePath string
 
 // buildUDSBasePathValue returns the UDS base path from build-time configuration.
