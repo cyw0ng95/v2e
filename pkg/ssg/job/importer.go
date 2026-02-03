@@ -58,8 +58,11 @@ type JobProgress struct {
 	TotalManifests    int    `json:"total_manifests"`
 	ProcessedManifests int   `json:"processed_manifests"`
 	FailedManifests   int    `json:"failed_manifests"`
+	TotalDataStreams    int    `json:"total_data_streams"`
+	ProcessedDataStreams int   `json:"processed_data_streams"`
+	FailedDataStreams   int    `json:"failed_data_streams"`
 	CurrentFile       string `json:"current_file,omitempty"`
-	CurrentPhase      string `json:"current_phase,omitempty"` // "tables", "guides", or "manifests"
+	CurrentPhase      string `json:"current_phase,omitempty"` // "tables", "guides", "manifests", or "datastreams"
 }
 
 // RPCInvoker is an interface for making RPC calls to other services
@@ -219,41 +222,49 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		}
 	}()
 
-	imp.logger.Info("SSG import workflow started for run: %s (tick-tock-tock mode)", runID)
+	imp.logger.Info("SSG import workflow started for run: %s (tick-tock-tock-tock mode)", runID)
 
 	// Step 1: Pull latest changes from SSG repository
-	imp.logger.Info("[Step 1/6] Pulling SSG repository...")
+	imp.logger.Info("[Step 1/7] Pulling SSG repository...")
 	_, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGPullRepo", nil)
 	if err != nil {
 		imp.setFailed(runID, fmt.Sprintf("failed to pull repository: %v", err))
-		imp.logger.Error("[Step 1/6] Failed to pull SSG repository: %v", err)
+		imp.logger.Error("[Step 1/7] Failed to pull SSG repository: %v", err)
 		return
 	}
-	imp.logger.Info("[Step 1/6] SSG repository pull completed successfully")
+	imp.logger.Info("[Step 1/7] SSG repository pull completed successfully")
 
 	// Step 2: List table files
-	imp.logger.Info("[Step 2/6] Listing table files...")
+	imp.logger.Info("[Step 2/7] Listing table files...")
 	tableFiles, err := imp.listFiles(ctx, runID, "RPCSSGListTableFiles", "tables")
 	if err != nil {
 		return // Error already logged and state set
 	}
-	imp.logger.Info("[Step 2/6] Found %d table files to import", len(tableFiles))
+	imp.logger.Info("[Step 2/7] Found %d table files to import", len(tableFiles))
 
 	// Step 3: List guide files
-	imp.logger.Info("[Step 3/6] Listing guide files...")
+	imp.logger.Info("[Step 3/7] Listing guide files...")
 	guideFiles, err := imp.listFiles(ctx, runID, "RPCSSGListGuideFiles", "guides")
 	if err != nil {
 		return // Error already logged and state set
 	}
-	imp.logger.Info("[Step 3/6] Found %d guide files to import", len(guideFiles))
+	imp.logger.Info("[Step 3/7] Found %d guide files to import", len(guideFiles))
 
 	// Step 4: List manifest files
-	imp.logger.Info("[Step 4/6] Listing manifest files...")
+	imp.logger.Info("[Step 4/7] Listing manifest files...")
 	manifestFiles, err := imp.listFiles(ctx, runID, "RPCSSGListManifestFiles", "manifests")
 	if err != nil {
 		return // Error already logged and state set
 	}
-	imp.logger.Info("[Step 4/6] Found %d manifest files to import", len(manifestFiles))
+	imp.logger.Info("[Step 4/7] Found %d manifest files to import", len(manifestFiles))
+
+	// Step 5: List data stream files
+	imp.logger.Info("[Step 5/7] Listing data stream files...")
+	dataStreamFiles, err := imp.listFiles(ctx, runID, "RPCSSGListDataStreamFiles", "data streams")
+	if err != nil {
+		return // Error already logged and state set
+	}
+	imp.logger.Info("[Step 5/7] Found %d data stream files to import", len(dataStreamFiles))
 
 	// Update progress with totals
 	imp.mu.Lock()
@@ -261,12 +272,14 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		imp.activeRun.Progress.TotalTables = len(tableFiles)
 		imp.activeRun.Progress.TotalGuides = len(guideFiles)
 		imp.activeRun.Progress.TotalManifests = len(manifestFiles)
+		imp.activeRun.Progress.TotalDataStreams = len(dataStreamFiles)
 	}
 	imp.mu.Unlock()
 
-	// Step 5: Import in tick-tock-tock fashion (alternate between tables, guides, and manifests)
-	imp.logger.Info("[Step 5/6] Starting tick-tock-tock import: %d tables, %d guides, %d manifests", len(tableFiles), len(guideFiles), len(manifestFiles))
-	maxLen := max(len(tableFiles), len(guideFiles), len(manifestFiles))
+	// Step 6: Import in tick-tock-tock-tock fashion (alternate between tables, guides, manifests, and data streams)
+	imp.logger.Info("[Step 6/7] Starting tick-tock-tock-tock import: %d tables, %d guides, %d manifests, %d data streams", 
+		len(tableFiles), len(guideFiles), len(manifestFiles), len(dataStreamFiles))
+	maxLen := max(len(tableFiles), len(guideFiles), len(manifestFiles), len(dataStreamFiles))
 
 	for i := 0; i < maxLen; i++ {
 		// Check for cancellation/pause before each iteration
@@ -355,6 +368,35 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 				imp.mu.Unlock()
 			}
 		}
+
+		// Check for cancellation/pause
+		if !imp.checkRunning(runID) {
+			return
+		}
+
+		// Tock-tock-tock: Import data stream (if available)
+		if i < len(dataStreamFiles) {
+			imp.mu.Lock()
+			if imp.activeRun != nil && imp.activeRun.ID == runID {
+				imp.activeRun.Progress.CurrentPhase = "datastreams"
+			}
+			imp.mu.Unlock()
+
+			if !imp.importFile(ctx, runID, dataStreamFiles[i], "data stream", "RPCSSGImportDataStream") {
+				// Import failed, but continue with other files
+				imp.mu.Lock()
+				if imp.activeRun != nil && imp.activeRun.ID == runID {
+					imp.activeRun.Progress.FailedDataStreams++
+				}
+				imp.mu.Unlock()
+			} else {
+				imp.mu.Lock()
+				if imp.activeRun != nil && imp.activeRun.ID == runID {
+					imp.activeRun.Progress.ProcessedDataStreams++
+				}
+				imp.mu.Unlock()
+			}
+		}
 	}
 
 	// Mark job as completed
@@ -365,12 +407,14 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		imp.activeRun.CompletedAt = &now
 		imp.activeRun.Progress.CurrentFile = ""
 		imp.activeRun.Progress.CurrentPhase = ""
-		imp.logger.Info("[Step 6/6] SSG import job completed: %s (tables: %d/%d, guides: %d/%d, manifests: %d/%d, failed: %d tables, %d guides, %d manifests)",
+		imp.logger.Info("[Step 7/7] SSG import job completed: %s (tables: %d/%d, guides: %d/%d, manifests: %d/%d, data streams: %d/%d, failed: %d tables, %d guides, %d manifests, %d data streams)",
 			runID,
 			imp.activeRun.Progress.ProcessedTables, imp.activeRun.Progress.TotalTables,
 			imp.activeRun.Progress.ProcessedGuides, imp.activeRun.Progress.TotalGuides,
 			imp.activeRun.Progress.ProcessedManifests, imp.activeRun.Progress.TotalManifests,
-			imp.activeRun.Progress.FailedTables, imp.activeRun.Progress.FailedGuides, imp.activeRun.Progress.FailedManifests)
+			imp.activeRun.Progress.ProcessedDataStreams, imp.activeRun.Progress.TotalDataStreams,
+			imp.activeRun.Progress.FailedTables, imp.activeRun.Progress.FailedGuides, 
+			imp.activeRun.Progress.FailedManifests, imp.activeRun.Progress.FailedDataStreams)
 	}
 	imp.mu.Unlock()
 }
