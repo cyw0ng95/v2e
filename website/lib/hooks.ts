@@ -1453,3 +1453,133 @@ export function useSSGRule(id: string) {
 
   return { data, isLoading, error };
 }
+
+// SSG Table Hooks
+
+export function useSSGTables(product?: string, tableType?: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listSSGTables(product, tableType);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG tables');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG tables', err, { product, tableType });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [product, tableType]);
+
+  const refetch = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await rpcClient.listSSGTables(product, tableType);
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to fetch SSG tables');
+      }
+
+      setData(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error refetching SSG tables', err, { product, tableType });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [product, tableType]);
+
+  return { data, isLoading, error, refetch };
+}
+
+export function useSSGTable(id: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGTable(id);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG table');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG table', err, { id });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [id]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGTableEntries(tableId: string, offset?: number, limit?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!tableId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGTableEntries(tableId, offset, limit);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG table entries');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG table entries', err, { tableId, offset, limit });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [tableId, offset, limit]);
+
+  return { data, isLoading, error };
+}

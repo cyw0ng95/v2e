@@ -1105,6 +1105,28 @@ export interface SSGRule {
   updatedAt: string;
 }
 
+export interface SSGTable {
+  id: string;
+  product: string;
+  tableType: string;
+  title: string;
+  description: string;
+  htmlContent: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGTableEntry {
+  id: number;
+  tableId: string;
+  mapping: string;
+  ruleTitle: string;
+  description: string;
+  rationale: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SSGTree {
   guide: SSGGuide;
   groups: SSGGroup[];
@@ -1224,6 +1246,56 @@ export interface SSGDeleteGuideResponse {
   id: string;
 }
 
+// SSG Table RPC Types
+
+export interface SSGListTablesRequest {
+  product?: string;
+  tableType?: string;
+}
+
+export interface SSGListTablesResponse {
+  tables: SSGTable[];
+  count: number;
+}
+
+export interface SSGGetTableRequest {
+  id: string;
+}
+
+export interface SSGGetTableResponse {
+  table: SSGTable;
+}
+
+export interface SSGGetTableEntriesRequest {
+  tableId: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface SSGGetTableEntriesResponse {
+  entries: SSGTableEntry[];
+  total: number;
+}
+
+export interface SSGImportTableRequest {
+  path: string;
+}
+
+export interface SSGImportTableResponse {
+  success: boolean;
+  tableId: string;
+  entryCount: number;
+}
+
+export interface SSGDeleteTableRequest {
+  id: string;
+}
+
+export interface SSGDeleteTableResponse {
+  success: boolean;
+  id: string;
+}
+
 // SSG Import Job RPC Types
 
 export interface SSGStartImportJobRequest {
@@ -1262,7 +1334,11 @@ export interface SSGGetImportStatusResponse {
     totalGuides: number;
     processedGuides: number;
     failedGuides: number;
+    totalTables: number;
+    processedTables: number;
+    failedTables: number;
     currentFile: string;
+    currentPhase?: string;
   };
   metadata?: Record<string, string>;
 }

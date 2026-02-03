@@ -1430,6 +1430,23 @@ export class RPCClient {
   async deleteSSGGuide(id: string): Promise<RPCResponse<{ success: boolean; id: string }>> {
     return this.call<{ id: string }, { success: boolean; id: string }>('RPCSSGDeleteGuide', { id }, 'local');
   }
+
+  // SSG Table Methods
+  async listSSGTables(product?: string, tableType?: string): Promise<RPCResponse<{ tables: any[]; count: number }>> {
+    return this.call<{ product?: string; tableType?: string }, { tables: any[]; count: number }>('RPCSSGListTables', { product, tableType }, 'local');
+  }
+
+  async getSSGTable(id: string): Promise<RPCResponse<{ table: any }>> {
+    return this.call<{ id: string }, { table: any }>('RPCSSGGetTable', { id }, 'local');
+  }
+
+  async getSSGTableEntries(tableId: string, offset?: number, limit?: number): Promise<RPCResponse<{ entries: any[]; total: number }>> {
+    return this.call<{ tableId: string; offset?: number; limit?: number }, { entries: any[]; total: number }>('RPCSSGGetTableEntries', { tableId, offset, limit }, 'local');
+  }
+
+  async deleteSSGTable(id: string): Promise<RPCResponse<{ success: boolean; id: string }>> {
+    return this.call<{ id: string }, { success: boolean; id: string }>('RPCSSGDeleteTable', { id }, 'local');
+  }
 }
 
 // ============================================================================
