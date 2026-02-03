@@ -47,8 +47,17 @@ func TestOfferDropOldest(t *testing.T) {
 		t.Fatal("expected m3 accepted under drop_oldest policy")
 	}
 
-	// let worker process messages
-	time.Sleep(50 * time.Millisecond)
+	// Wait for worker to process messages using a deadline instead of fixed sleep
+	deadline := time.Now().Add(200 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		router.mu.Lock()
+		count := len(router.msgs)
+		router.mu.Unlock()
+		if count >= 2 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond) // Small poll interval
+	}
 
 	router.mu.Lock()
 	ids := make(map[string]bool)
@@ -80,8 +89,17 @@ func TestBatching(t *testing.T) {
 		}
 	}
 
-	// allow time for batching and processing
-	time.Sleep(500 * time.Millisecond)
+	// Poll for all messages to be processed instead of fixed sleep
+	deadline := time.Now().Add(1 * time.Second)
+	for time.Now().Before(deadline) {
+		router.mu.Lock()
+		count := len(router.msgs)
+		router.mu.Unlock()
+		if count >= 5 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond) // Small poll interval
+	}
 
 	router.mu.Lock()
 	count := len(router.msgs)

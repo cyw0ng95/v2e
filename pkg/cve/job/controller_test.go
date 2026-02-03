@@ -228,8 +228,14 @@ func TestControllerIsRunning(t *testing.T) {
 		t.Error("Controller should be running after Start()")
 	}
 
-	// Give the job a moment to complete (since we return empty results)
-	time.Sleep(100 * time.Millisecond)
+	// Poll for job to complete instead of fixed sleep
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if !controller.IsRunning() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 
 	// Job should stop itself when no more CVEs
 	if controller.IsRunning() {
@@ -267,8 +273,14 @@ func TestJobLoop_EmptyResults(t *testing.T) {
 	ctx := context.Background()
 	controller.Start(ctx)
 
-	// Wait for job to complete
-	time.Sleep(200 * time.Millisecond)
+	// Poll for job to complete instead of fixed sleep
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if !controller.IsRunning() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 
 	// Verify job stopped
 	if controller.IsRunning() {
@@ -337,22 +349,37 @@ func TestJobLoop_WithResults(t *testing.T) {
 		fetchResponse: firstMsg,
 		saveResponse:  saveMsg,
 	}
-
-	// After first fetch, change to empty response
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		mockRPC.mu.Lock()
-		mockRPC.fetchResponse = emptyMsg
-		mockRPC.mu.Unlock()
-	}()
-
 	controller := NewController(mockRPC, sessionManager, logger)
+
+	sessionManager.CreateSession("test-session", 0, 100)
 
 	ctx := context.Background()
 	controller.Start(ctx)
 
-	// Wait for job to complete
-	time.Sleep(2 * time.Second)
+	// After first fetch, change to empty response using polling
+	go func() {
+		for i := 0; i < 100; i++ {
+			mockRPC.mu.Lock()
+			calls := mockRPC.fetchCalls
+			mockRPC.mu.Unlock()
+			if calls > 0 {
+				mockRPC.mu.Lock()
+				mockRPC.fetchResponse = emptyMsg
+				mockRPC.mu.Unlock()
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	// Poll for job to complete instead of fixed 2-second sleep
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if !controller.IsRunning() {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 
 	// Verify job stopped
 	if controller.IsRunning() {
