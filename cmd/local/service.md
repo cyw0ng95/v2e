@@ -543,7 +543,24 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
 
 ## Available RPC Methods
 
-### 55. RPCSSGGetGuide
+### 55. RPCSSGImportGuide
+- **Description**: Imports an SSG guide from an HTML file into the database
+- **Request Parameters**:
+  - `path` (string, required): Absolute or relative path to the HTML guide file
+- **Response**:
+  - `success` (bool): true if imported successfully
+  - `guide_id` (string): ID of the imported guide
+  - `group_count` (int): Number of groups imported
+  - `rule_count` (int): Number of rules imported
+- **Errors**:
+  - Missing path: `path` parameter is required
+  - Parse error: Failed to parse HTML file
+  - Database error: Failed to save to database
+- **Example**:
+  - **Request**: {"path": "/path/to/ssg-al2023-guide-cis.html"}
+  - **Response**: {"success": true, "guide_id": "ssg-al2023-guide-cis", "group_count": 106, "rule_count": 356}
+
+### 56. RPCSSGGetGuide
 - **Description**: Retrieves an SSG guide by ID
 - **Request Parameters**:
   - `id` (string, required): Guide identifier
@@ -554,7 +571,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
   - Not found: Guide not found in database
   - Database error: Failed to query database
 
-### 56. RPCSSGListGuides
+### 57. RPCSSGListGuides
 - **Description**: Lists SSG guides with optional filters
 - **Request Parameters**:
   - `product` (string, optional): Filter by product (e.g., "al2023", "rhel9")
@@ -565,7 +582,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
 - **Errors**:
   - Database error: Failed to query database
 
-### 57. RPCSSGGetTree
+### 58. RPCSSGGetTree
 - **Description**: Retrieves the complete tree structure for a guide (flat groups + rules)
 - **Request Parameters**:
   - `guide_id` (string, required): Guide identifier
@@ -576,7 +593,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
   - Not found: Guide not found in database
   - Database error: Failed to query database
 
-### 58. RPCSSGGetTreeNode
+### 59. RPCSSGGetTreeNode
 - **Description**: Retrieves the tree structure for a guide as hierarchical TreeNode pointers
 - **Request Parameters**:
   - `guide_id` (string, required): Guide identifier
@@ -588,7 +605,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
   - Not found: Guide not found in database
   - Database error: Failed to build tree
 
-### 59. RPCSSGGetGroup
+### 60. RPCSSGGetGroup
 - **Description**: Retrieves an SSG group by ID
 - **Request Parameters**:
   - `id` (string, required): Group identifier
@@ -599,7 +616,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
   - Not found: Group not found in database
   - Database error: Failed to query database
 
-### 60. RPCSSGGetChildGroups
+### 61. RPCSSGGetChildGroups
 - **Description**: Retrieves direct child groups of a parent group
 - **Request Parameters**:
   - `parent_id` (string, optional): Parent group ID (empty for top-level groups)
@@ -609,7 +626,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
 - **Errors**:
   - Database error: Failed to query database
 
-### 61. RPCSSGGetRule
+### 62. RPCSSGGetRule
 - **Description**: Retrieves an SSG rule by ID with references
 - **Request Parameters**:
   - `id` (string, required): Rule identifier
@@ -620,7 +637,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
   - Not found: Rule not found in database
   - Database error: Failed to query database
 
-### 62. RPCSSGListRules
+### 63. RPCSSGListRules
 - **Description**: Lists SSG rules with optional filters and pagination
 - **Request Parameters**:
   - `group_id` (string, optional): Filter by parent group
@@ -633,7 +650,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
 - **Errors**:
   - Database error: Failed to query database
 
-### 63. RPCSSGGetChildRules
+### 64. RPCSSGGetChildRules
 - **Description**: Retrieves direct child rules of a group
 - **Request Parameters**:
   - `group_id` (string, required): Parent group ID
@@ -644,7 +661,7 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
   - Missing group_id: `group_id` parameter is required
   - Database error: Failed to query database
 
-### 64. RPCSSGDeleteGuide
+### 65. RPCSSGDeleteGuide
 - **Description**: Deletes a guide and all associated groups and rules
 - **Request Parameters**:
   - `id` (string, required): Guide identifier

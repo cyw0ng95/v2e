@@ -7,6 +7,7 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	ssgparser "github.com/cyw0ng95/v2e/pkg/ssg/parser"
 	"github.com/cyw0ng95/v2e/pkg/ssg/local"
 )
 
@@ -255,6 +256,62 @@ func createSSGGetChildRulesHandler(store *local.Store, logger *common.Logger) su
 	}
 }
 
+// createSSGImportGuideHandler creates a handler for RPCSSGImportGuide
+// Parses an HTML guide file and imports it into the database
+func createSSGImportGuideHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCSSGImportGuide request")
+		var req struct {
+			Path string `json:"path"`
+		}
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse RPCSSGImportGuide request: %v", errResp.Error)
+			return errResp, nil
+		}
+		if errMsg := subprocess.RequireField(msg, req.Path, "path"); errMsg != nil {
+			logger.Warn("path is required for RPCSSGImportGuide")
+			return errMsg, nil
+		}
+
+		// Parse the guide file
+		guide, groups, rules, err := ssgparser.ParseGuideFile(req.Path)
+		if err != nil {
+			logger.Warn("Failed to parse guide file: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse guide: %v", err)), nil
+		}
+
+		// Save guide to database
+		if err := store.SaveGuide(guide); err != nil {
+			logger.Warn("Failed to save guide: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save guide: %v", err)), nil
+		}
+
+		// Save all groups
+		for i := range groups {
+			if err := store.SaveGroup(&groups[i]); err != nil {
+				logger.Warn("Failed to save group %s: %v", groups[i].ID, err)
+				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save group: %v", err)), nil
+			}
+		}
+
+		// Save all rules with references
+		for i := range rules {
+			if err := store.SaveRule(&rules[i]); err != nil {
+				logger.Warn("Failed to save rule %s: %v", rules[i].ID, err)
+				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save rule: %v", err)), nil
+			}
+		}
+
+		logger.Info("Imported guide %s: %d groups, %d rules", guide.ID, len(groups), len(rules))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success":    true,
+			"guide_id":   guide.ID,
+			"group_count": len(groups),
+			"rule_count":  len(rules),
+		})
+	}
+}
+
 // createSSGDeleteGuideHandler creates a handler for RPCSSGDeleteGuide
 func createSSGDeleteGuideHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
@@ -284,6 +341,9 @@ func createSSGDeleteGuideHandler(store *local.Store, logger *common.Logger) subp
 
 // RegisterSSGHandlers registers all SSG local RPC handlers
 func RegisterSSGHandlers(sp *subprocess.Subprocess, store *local.Store, logger *common.Logger) {
+	sp.RegisterHandler("RPCSSGImportGuide", createSSGImportGuideHandler(store, logger))
+	logger.Info("RPC handler registered: RPCSSGImportGuide")
+
 	sp.RegisterHandler("RPCSSGGetGuide", createSSGGetGuideHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGGetGuide")
 
