@@ -25,6 +25,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
+	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
@@ -243,6 +244,10 @@ func main() {
 	logger.Info(LogMsgCWEJobControllerCreated)
 	cweJobController := cwejob.NewController(rpcAdapter, logger)
 
+	// Create SSG import job orchestrator
+	logger.Info("SSG import job orchestrator created")
+	ssgImporter := ssgjob.NewImporter(rpcAdapter, logger)
+
 	// Create data population controller for all data types
 	logger.Info(LogMsgDataPopControllerCreated)
 	dataPopController := NewDataPopulationController(rpcClient, logger)
@@ -312,6 +317,9 @@ func main() {
 	sp.RegisterHandler("RPCStartATTACKImport", createStartATTACKImportHandler(dataPopController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartATTACKImport")
 	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartATTACKImport")
+
+	// Register SSG import job RPC handlers
+	RegisterSSGJobHandlers(sp, ssgImporter, logger)
 
 	// Register Memory Card proxy handlers
 	registerMemoryCardProxyHandlers(sp, rpcClient, logger)

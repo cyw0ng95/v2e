@@ -291,3 +291,79 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
 - Automatically imports CWE data from "assets/cwe-raw.json" at startup
 - Automatically imports CAPEC data from "assets/capec_contents_latest.xml" at startup if not already present
 - Recovers running sessions after restart (auto-resumes running sessions, keeps paused sessions paused)
+
+---
+
+# SSG Meta Service
+
+## Service Type
+RPC (stdin/stdout message passing)
+
+## Description
+Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remote and local services. Pulls SSG repository, lists guide files, and imports HTML guides into the local database.
+
+## Available RPC Methods
+
+#### 15. RPCSSGStartImportJob
+- **Description**: Starts a new SSG import job that pulls repository and imports all guides
+- **Request Parameters**:
+  - `run_id` (string, optional): Unique identifier for the run (auto-generated if not provided)
+- **Response**:
+  - `success` (bool): true if job started successfully
+  - `run_id` (string): ID of the started job
+- **Errors**:
+  - Job running: An import job is already running
+  - RPC error: Failed to communicate with backend services
+
+#### 16. RPCSSGStopImportJob
+- **Description**: Stops the currently running SSG import job
+- **Request Parameters**: None
+- **Response**:
+  - `success` (bool): true if job stopped successfully
+- **Errors**:
+  - No running job: No import job is currently running
+  - RPC error: Failed to communicate with backend services
+
+#### 17. RPCSSGPauseImportJob
+- **Description**: Pauses the currently running SSG import job
+- **Request Parameters**: None
+- **Response**:
+  - `success` (bool): true if job paused successfully
+- **Errors**:
+  - No running job: No import job is currently running
+  - Not running: Job is not in running state
+
+#### 18. RPCSSGResumeImportJob
+- **Description**: Resumes a paused SSG import job
+- **Request Parameters**:
+  - `run_id` (string, required): ID of the job to resume
+- **Response**:
+  - `success` (bool): true if job resumed successfully
+- **Errors**:
+  - No paused job: No import job is currently paused
+  - RPC error: Failed to communicate with backend services
+
+#### 19. RPCSSGGetImportStatus
+- **Description**: Gets the current status of the SSG import job
+- **Request Parameters**: None
+- **Response**:
+  - `id` (string): Job run ID
+  - `data_type` (string): Type of data ("ssg")
+  - `state` (string): Current state ("queued", "running", "paused", "completed", "failed", "stopped")
+  - `started_at` (string): Timestamp when job started
+  - `completed_at` (string, optional): Timestamp when job completed
+  - `error` (string, optional): Error message if job failed
+  - `progress` (object): Progress details
+    - `total_guides` (int): Total number of guides to import
+    - `processed_guides` (int): Number of guides successfully imported
+    - `failed_guides` (int): Number of guides that failed to import
+    - `current_file` (string): Currently processing file
+  - `metadata` (object, optional): Additional metadata
+- **Errors**:
+  - No active job: No import job is currently running
+
+## Notes
+- SSG import job workflow: 1) Pull repository, 2) List guide files, 3) Import each guide
+- Job state is in-memory only (not persisted across restarts)
+- Supports pause/resume during import process
+- Only one SSG import job can run at a time
