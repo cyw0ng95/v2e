@@ -1,0 +1,3 @@
+[submodule "assets/ssg-static"]
+	path = assets/ssg-static
+	url = https://github.com/cyw0ng95/scap-security-guide-0.1.79
