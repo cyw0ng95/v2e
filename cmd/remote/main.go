@@ -21,6 +21,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	ssgremote "github.com/cyw0ng95/v2e/pkg/ssg/remote"
 )
 
 func main() {
@@ -53,6 +54,11 @@ func main() {
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCFetchCVEs")
 	sp.RegisterHandler("RPCFetchViews", createFetchViewsHandler())
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCFetchViews")
+
+	// Create SSG Git client and register handlers
+	ssgGitClient := ssgremote.NewGitClient(ssgremote.DefaultRepoURL(), ssgremote.DefaultRepoPath())
+	ssgremote.RegisterHandlers(sp, ssgGitClient)
+	logger.Info(LogMsgRPCHandlerRegistered, "SSG Git handlers")
 
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)
