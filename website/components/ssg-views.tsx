@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import {
   useSSGGuides,
   useSSGTables,
+  useSSGManifests,
+  useSSGProfiles,
   useSSGImportStatus,
   useStartSSGImportJob,
   useStopSSGImportJob,
@@ -194,9 +196,11 @@ function DetailPanel({ selectedNode, onClose }: { selectedNode: TreeNode | null;
 }
 
 export function SSGViews() {
-  const [activeTab, setActiveTab] = useState<'guides' | 'tables'>('guides');
+  const [activeTab, setActiveTab] = useState<'guides' | 'tables' | 'manifests'>('guides');
   const [selectedGuide, setSelectedGuide] = useState<any | null>(null);
   const [selectedTable, setSelectedTable] = useState<any | null>(null);
+  const [selectedManifest, setSelectedManifest] = useState<any | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 
   // Guide hooks
@@ -204,6 +208,10 @@ export function SSGViews() {
   
   // Table hooks
   const { data: tablesData, isLoading: tablesLoading, error: tablesError, refetch: refetchTables } = useSSGTables();
+
+  // Manifest hooks
+  const { data: manifestsData, isLoading: manifestsLoading, error: manifestsError } = useSSGManifests();
+  const { data: profilesData, isLoading: profilesLoading } = useSSGProfiles();
 
   // Job control hooks
   const { data: jobStatus, isLoading: jobLoading, refetch: refetchJobStatus } = useSSGImportStatus();
@@ -334,14 +342,20 @@ export function SSGViews() {
                         {jobProgress.processedGuides} / {jobProgress.totalGuides}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Manifests:</span>
+                      <span>
+                        {jobProgress.processedManifests} / {jobProgress.totalManifests}
+                      </span>
+                    </div>
                     {jobProgress.currentFile && (
                       <div className="text-muted-foreground truncate" title={jobProgress.currentFile}>
                         {jobProgress.currentFile}
                       </div>
                     )}
-                    {(jobProgress.failedTables > 0 || jobProgress.failedGuides > 0) && (
+                    {(jobProgress.failedTables > 0 || jobProgress.failedGuides > 0 || jobProgress.failedManifests > 0) && (
                       <div className="text-destructive">
-                        {jobProgress.failedTables + jobProgress.failedGuides} failed
+                        {jobProgress.failedTables + jobProgress.failedGuides + jobProgress.failedManifests} failed
                       </div>
                     )}
                   </>
@@ -350,11 +364,12 @@ export function SSGViews() {
             )}
           </div>
 
-          {/* Tabs for Guides and Tables */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'guides' | 'tables')} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid w-full grid-cols-2">
+          {/* Tabs for Guides, Tables, and Manifests */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'guides' | 'tables' | 'manifests')} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="guides">Guides</TabsTrigger>
               <TabsTrigger value="tables">Tables</TabsTrigger>
+              <TabsTrigger value="manifests">Manifests</TabsTrigger>
             </TabsList>
             
             <TabsContent value="guides" className="flex-1 overflow-auto mt-4">
@@ -444,11 +459,49 @@ export function SSGViews() {
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="manifests" className="flex-1 overflow-auto mt-4">
+              {manifestsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : manifestsError ? (
+                <div className="text-sm text-destructive">Error loading manifests: {manifestsError.message}</div>
+              ) : !manifestsData || manifestsData.manifests.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No manifests found</div>
+              ) : (
+                <div className="space-y-1">
+                  {manifestsData.manifests.map((manifest: any) => (
+                    <div
+                      key={manifest.id}
+                      onClick={() => setSelectedManifest(manifest)}
+                      className={`p-3 rounded-md cursor-pointer transition-colors ${
+                        selectedManifest?.id === manifest.id
+                          ? 'bg-accent text-accent-foreground'
+                          : 'hover:bg-accent/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          Manifest: {manifest.product}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground ml-6 mt-1">
+                        <span>Product: {manifest.product}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
-      {/* Right Panel: Tree View or Table View or Detail */}
+      {/* Right Panel: Tree View or Table View or Manifest View or Detail */}
       <Card className="flex-1 flex flex-col">
         {selectedNode ? (
           <>
@@ -466,6 +519,11 @@ export function SSGViews() {
             table={selectedTable}
             onBack={() => setSelectedTable(null)}
           />
+        ) : selectedManifest ? (
+          <SelectedManifestView
+            manifest={selectedManifest}
+            onBack={() => setSelectedManifest(null)}
+          />
         ) : selectedGuide ? (
           <SelectedGuideTree
             guideId={selectedGuide.id}
@@ -474,7 +532,7 @@ export function SSGViews() {
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            Select a guide or table to view details
+            Select a guide, table, or manifest to view details
           </div>
         )}
       </Card>
@@ -571,6 +629,69 @@ function SelectedTableView({
               </div>
             )}
           </>
+        )}
+      </CardContent>
+    </>
+  );
+}
+
+// Component for displaying selected manifest view with profiles
+function SelectedManifestView({
+  manifest,
+  onBack,
+}: {
+  manifest: any;
+  onBack: () => void;
+}) {
+  const { data: profilesData, isLoading, error } = useSSGProfiles(manifest.product);
+
+  const profiles: any[] = (profilesData && Array.isArray(profilesData.profiles)) ? profilesData.profiles : [];
+
+  return (
+    <>
+      <CardHeader className="pb-2">
+        <Button variant="ghost" size="sm" className="w-fit" onClick={onBack}>
+          ← Back to list
+        </Button>
+        <CardTitle className="text-base">Manifest: {manifest.product}</CardTitle>
+        <CardDescription>
+          Product: {manifest.product}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : error ? (
+          <div className="text-sm text-destructive">Error loading profiles: {error.message}</div>
+        ) : profiles.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No profiles found for this manifest</div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Profiles ({profiles.length})</div>
+            <div className="space-y-2 overflow-auto">
+              {profiles.map((profile: any) => (
+                <div
+                  key={profile.id}
+                  className="p-3 border rounded-md space-y-2 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {profile.profileId}
+                    </Badge>
+                  </div>
+                  {profile.description && (
+                    <div className="text-sm text-muted-foreground">
+                      {profile.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </CardContent>
     </>
