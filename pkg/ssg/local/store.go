@@ -33,7 +33,17 @@ func NewStore(dbPath string) (*Store, error) {
 	}
 
 	// Auto-migrate schemas
-	if err := db.AutoMigrate(&ssg.SSGGuide{}, &ssg.SSGGroup{}, &ssg.SSGRule{}, &ssg.SSGReference{}, &ssg.SSGTable{}, &ssg.SSGTableEntry{}); err != nil {
+	if err := db.AutoMigrate(
+		&ssg.SSGGuide{},
+		&ssg.SSGGroup{},
+		&ssg.SSGRule{},
+		&ssg.SSGReference{},
+		&ssg.SSGTable{},
+		&ssg.SSGTableEntry{},
+		&ssg.SSGManifest{},
+		&ssg.SSGProfile{},
+		&ssg.SSGProfileRule{},
+	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -393,4 +403,152 @@ func (s *Store) DeleteTable(id string) error {
 
 		return nil
 	})
+}
+
+// SaveManifest saves a manifest and its associated profiles and profile rules.
+// This is an atomic operation - all or nothing.
+func (s *Store) SaveManifest(manifest *ssg.SSGManifest, profiles []ssg.SSGProfile, profileRules []ssg.SSGProfileRule) error {
+return s.db.Transaction(func(tx *gorm.DB) error {
+// Save manifest
+if err := tx.Save(manifest).Error; err != nil {
+return fmt.Errorf("failed to save manifest: %w", err)
+}
+
+// Delete existing profiles for this manifest
+if err := tx.Where("manifest_id = ?", manifest.ID).Delete(&ssg.SSGProfile{}).Error; err != nil {
+return fmt.Errorf("failed to delete old profiles: %w", err)
+}
+
+// Delete existing profile rules for profiles of this manifest
+if err := tx.Where("profile_id LIKE ?", manifest.Product+":%").Delete(&ssg.SSGProfileRule{}).Error; err != nil {
+return fmt.Errorf("failed to delete old profile rules: %w", err)
+}
+
+// Save new profiles
+if len(profiles) > 0 {
+if err := tx.Create(&profiles).Error; err != nil {
+return fmt.Errorf("failed to save profiles: %w", err)
+}
+}
+
+// Save profile rules in batches
+if len(profileRules) > 0 {
+if err := tx.CreateInBatches(&profileRules, 100).Error; err != nil {
+return fmt.Errorf("failed to save profile rules: %w", err)
+}
+}
+
+return nil
+})
+}
+
+// GetManifest retrieves a manifest by ID.
+func (s *Store) GetManifest(id string) (*ssg.SSGManifest, error) {
+var manifest ssg.SSGManifest
+if err := s.db.First(&manifest, "id = ?", id).Error; err != nil {
+return nil, err
+}
+return &manifest, nil
+}
+
+// ListManifests retrieves all manifests, optionally filtered by product.
+func (s *Store) ListManifests(product string, limit, offset int) ([]ssg.SSGManifest, error) {
+var manifests []ssg.SSGManifest
+query := s.db.Order("product ASC, id ASC")
+
+if product != "" {
+query = query.Where("product = ?", product)
+}
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&manifests).Error; err != nil {
+return nil, err
+}
+return manifests, nil
+}
+
+// DeleteManifest deletes a manifest and all associated profiles and profile rules.
+func (s *Store) DeleteManifest(id string) error {
+return s.db.Transaction(func(tx *gorm.DB) error {
+// Get manifest to find product
+var manifest ssg.SSGManifest
+if err := tx.First(&manifest, "id = ?", id).Error; err != nil {
+return err
+}
+
+// Delete profile rules for this manifest's profiles
+if err := tx.Where("profile_id LIKE ?", manifest.Product+":%").Delete(&ssg.SSGProfileRule{}).Error; err != nil {
+return err
+}
+
+// Delete profiles
+if err := tx.Where("manifest_id = ?", id).Delete(&ssg.SSGProfile{}).Error; err != nil {
+return err
+}
+
+// Delete manifest
+if err := tx.Delete(&ssg.SSGManifest{}, "id = ?", id).Error; err != nil {
+return err
+}
+
+return nil
+})
+}
+
+// ListProfiles retrieves profiles, optionally filtered by product or profile ID.
+func (s *Store) ListProfiles(product, profileID string, limit, offset int) ([]ssg.SSGProfile, error) {
+var profiles []ssg.SSGProfile
+query := s.db.Order("product ASC, profile_id ASC")
+
+if product != "" {
+query = query.Where("product = ?", product)
+}
+if profileID != "" {
+query = query.Where("profile_id = ?", profileID)
+}
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&profiles).Error; err != nil {
+return nil, err
+}
+return profiles, nil
+}
+
+// GetProfile retrieves a profile by ID.
+func (s *Store) GetProfile(id string) (*ssg.SSGProfile, error) {
+var profile ssg.SSGProfile
+if err := s.db.First(&profile, "id = ?", id).Error; err != nil {
+return nil, err
+}
+return &profile, nil
+}
+
+// GetProfileRules retrieves all rule short IDs for a given profile.
+func (s *Store) GetProfileRules(profileID string, limit, offset int) ([]ssg.SSGProfileRule, error) {
+var profileRules []ssg.SSGProfileRule
+query := s.db.Where("profile_id = ?", profileID).Order("rule_short_id ASC")
+
+if limit > 0 {
+query = query.Limit(limit)
+}
+if offset > 0 {
+query = query.Offset(offset)
+}
+
+if err := query.Find(&profileRules).Error; err != nil {
+return nil, err
+}
+return profileRules, nil
 }

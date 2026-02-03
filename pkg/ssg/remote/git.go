@@ -166,13 +166,41 @@ func (c *GitClient) ListTableFiles() ([]string, error) {
 	return tableFiles, nil
 }
 
+// ListManifestFiles returns a list of all manifest JSON files in the repository.
+func (c *GitClient) ListManifestFiles() ([]string, error) {
+	manifestsDir := filepath.Join(c.repoPath, "manifests")
+
+	entries, err := os.ReadDir(manifestsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifests directory: %w", err)
+	}
+
+	var manifestFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Match manifest-*.json pattern
+		if matchManifestFilePattern(name) {
+			manifestFiles = append(manifestFiles, name)
+		}
+	}
+
+	return manifestFiles, nil
+}
+
 // GetFilePath returns the absolute path to a file in the repository.
 // Guide files are located in the "guides" subdirectory.
 // Table files are located in the "tables" subdirectory.
+// Manifest files are located in the "manifests" subdirectory.
 func (c *GitClient) GetFilePath(filename string) string {
 	// Determine subdirectory based on filename pattern
 	if matchTableFilePattern(filename) {
 		return filepath.Join(c.repoPath, "tables", filename)
+	}
+	if matchManifestFilePattern(filename) {
+		return filepath.Join(c.repoPath, "manifests", filename)
 	}
 	return filepath.Join(c.repoPath, "guides", filename)
 }
@@ -204,6 +232,17 @@ func matchTableFilePattern(filename string) bool {
 
 	// Check for "table-" prefix
 	return len(filename) > 6 && filename[:6] == "table-"
+}
+
+// matchManifestFilePattern checks if filename matches manifest-*.json pattern.
+func matchManifestFilePattern(filename string) bool {
+	// Check for .json extension
+	if filepath.Ext(filename) != ".json" {
+		return false
+	}
+
+	// Check for "manifest-" prefix
+	return len(filename) > 9 && filename[:9] == "manifest-"
 }
 
 // contains checks if a string contains a substring.

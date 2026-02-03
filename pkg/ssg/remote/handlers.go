@@ -15,6 +15,7 @@ func RegisterHandlers(sp *subprocess.Subprocess, gitClient *GitClient) {
 	sp.RegisterHandler("RPCSSGGetRepoStatus", createGetRepoStatusHandler(gitClient))
 	sp.RegisterHandler("RPCSSGListGuideFiles", createListGuideFilesHandler(gitClient))
 	sp.RegisterHandler("RPCSSGListTableFiles", createListTableFilesHandler(gitClient))
+	sp.RegisterHandler("RPCSSGListManifestFiles", createListManifestFilesHandler(gitClient))
 	sp.RegisterHandler("RPCSSGGetFilePath", createGetFilePathHandler(gitClient))
 }
 
@@ -82,6 +83,21 @@ func createListTableFilesHandler(gitClient *GitClient) subprocess.Handler {
 		files, err := gitClient.ListTableFiles()
 		if err != nil {
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list table files: %s", err)), nil
+		}
+
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"files": files,
+			"count": len(files),
+		})
+	}
+}
+
+// createListManifestFilesHandler creates a handler for RPCSSGListManifestFiles.
+func createListManifestFilesHandler(gitClient *GitClient) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		files, err := gitClient.ListManifestFiles()
+		if err != nil {
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list manifest files: %s", err)), nil
 		}
 
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
