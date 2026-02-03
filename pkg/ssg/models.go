@@ -153,3 +153,67 @@ func (r *SSGRule) BeforeUpdate(tx *gorm.DB) error {
 	r.UpdatedAt = time.Now()
 	return nil
 }
+
+// SSGTable represents a mapping table from SSG (e.g., CCE mappings, NIST refs).
+// Tables contain flat lists of rules with their mappings to security identifiers.
+type SSGTable struct {
+	ID          string    `gorm:"primaryKey" json:"id"`           // e.g., "table-al2023-cces"
+	Product     string    `gorm:"index" json:"product"`           // al2023, rhel9, etc.
+	TableType   string    `gorm:"index" json:"table_type"`        // cces, nistrefs, stig, etc.
+	Title       string    `json:"title"`                          // e.g., "CCE Identifiers in Guide..."
+	Description string    `json:"description"`                    // Optional description
+	HTMLContent string    `gorm:"type:text" json:"html_content"` // Full HTML content
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for SSGTable.
+func (SSGTable) TableName() string {
+	return "ssg_tables"
+}
+
+// SSGTableEntry represents a single row in an SSG mapping table.
+// Each entry maps a rule to a security identifier (CCE, NIST, STIG, etc.).
+type SSGTableEntry struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	TableID     string    `gorm:"index" json:"table_id"`     // Foreign key to SSGTable
+	Mapping     string    `gorm:"index" json:"mapping"`      // e.g., "CCE-80644-8", "NIST 800-53"
+	RuleTitle   string    `json:"rule_title"`                // e.g., "Install the tmux Package"
+	Description string    `gorm:"type:text" json:"description"` // Full description
+	Rationale   string    `gorm:"type:text" json:"rationale"`   // Rationale text
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for SSGTableEntry.
+func (SSGTableEntry) TableName() string {
+	return "ssg_table_entries"
+}
+
+// BeforeCreate is a GORM hook called before creating a new record.
+func (t *SSGTable) BeforeCreate(tx *gorm.DB) error {
+	now := time.Now()
+	t.CreatedAt = now
+	t.UpdatedAt = now
+	return nil
+}
+
+// BeforeUpdate is a GORM hook called before updating a record.
+func (t *SSGTable) BeforeUpdate(tx *gorm.DB) error {
+	t.UpdatedAt = time.Now()
+	return nil
+}
+
+// BeforeCreate is a GORM hook called before creating a new record.
+func (e *SSGTableEntry) BeforeCreate(tx *gorm.DB) error {
+	now := time.Now()
+	e.CreatedAt = now
+	e.UpdatedAt = now
+	return nil
+}
+
+// BeforeUpdate is a GORM hook called before updating a record.
+func (e *SSGTableEntry) BeforeUpdate(tx *gorm.DB) error {
+	e.UpdatedAt = time.Now()
+	return nil
+}

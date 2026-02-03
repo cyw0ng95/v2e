@@ -33,7 +33,7 @@ func NewStore(dbPath string) (*Store, error) {
 	}
 
 	// Auto-migrate schemas
-	if err := db.AutoMigrate(&ssg.SSGGuide{}, &ssg.SSGGroup{}, &ssg.SSGRule{}, &ssg.SSGReference{}); err != nil {
+	if err := db.AutoMigrate(&ssg.SSGGuide{}, &ssg.SSGGroup{}, &ssg.SSGRule{}, &ssg.SSGReference{}, &ssg.SSGTable{}, &ssg.SSGTableEntry{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -302,6 +302,92 @@ func (s *Store) DeleteGuide(id string) error {
 
 		// Delete guide
 		if err := tx.Delete(&ssg.SSGGuide{}, "id = ?", id).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// SaveTable saves or updates a table in the database.
+func (s *Store) SaveTable(table *ssg.SSGTable) error {
+	return s.db.Save(table).Error
+}
+
+// GetTable retrieves a table by ID.
+func (s *Store) GetTable(id string) (*ssg.SSGTable, error) {
+	var table ssg.SSGTable
+	result := s.db.First(&table, "id = ?", id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &table, nil
+}
+
+// ListTables lists tables with optional filters.
+// product and tableType are optional filters; pass empty string to ignore.
+func (s *Store) ListTables(product, tableType string) ([]ssg.SSGTable, error) {
+	var tables []ssg.SSGTable
+	query := s.db.Model(&ssg.SSGTable{})
+
+	if product != "" {
+		query = query.Where("product = ?", product)
+	}
+	if tableType != "" {
+		query = query.Where("table_type = ?", tableType)
+	}
+
+	result := query.Order("created_at DESC").Find(&tables)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return tables, nil
+}
+
+// SaveTableEntry saves or updates a table entry in the database.
+func (s *Store) SaveTableEntry(entry *ssg.SSGTableEntry) error {
+	return s.db.Save(entry).Error
+}
+
+// GetTableEntries retrieves all entries for a table.
+// offset and limit control pagination.
+func (s *Store) GetTableEntries(tableID string, offset, limit int) ([]ssg.SSGTableEntry, int64, error) {
+	var entries []ssg.SSGTableEntry
+	var total int64
+
+	query := s.db.Model(&ssg.SSGTableEntry{}).Where("table_id = ?", tableID)
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply pagination
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		limit = 100 // Default limit
+	}
+
+	result := query.Offset(offset).Limit(limit).Order("id ASC").Find(&entries)
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	return entries, total, nil
+}
+
+// DeleteTable deletes a table and all associated entries.
+func (s *Store) DeleteTable(id string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Delete entries
+		if err := tx.Where("table_id = ?", id).Delete(&ssg.SSGTableEntry{}).Error; err != nil {
+			return err
+		}
+
+		// Delete table
+		if err := tx.Delete(&ssg.SSGTable{}, "id = ?", id).Error; err != nil {
 			return err
 		}
 

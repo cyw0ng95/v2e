@@ -346,16 +346,199 @@ func createSSGDeleteGuideHandler(store *local.Store, logger *common.Logger) subp
 	}
 }
 
+// createSSGImportTableHandler creates a handler for RPCSSGImportTable
+// Parses an HTML table file and imports it into the database
+func createSSGImportTableHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCSSGImportTable request")
+		var req struct {
+			Path string `json:"path"`
+		}
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse RPCSSGImportTable request: %v", errResp.Error)
+			return errResp, nil
+		}
+		if errMsg := subprocess.RequireField(msg, req.Path, "path"); errMsg != nil {
+			logger.Warn("path is required for RPCSSGImportTable")
+			return errMsg, nil
+		}
+
+		logger.Info("Starting SSG table import from path: %s", req.Path)
+
+		// Parse the table file
+		table, entries, err := ssgparser.ParseTableFile(req.Path)
+		if err != nil {
+			logger.Error("Failed to parse table file %s: %v", req.Path, err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse table: %v", err)), nil
+		}
+		logger.Info("Parsed table %s: product=%s type=%s entries=%d", table.ID, table.Product, table.TableType, len(entries))
+
+		// Save table to database
+		if err := store.SaveTable(table); err != nil {
+			logger.Error("Failed to save table %s to database: %v", table.ID, err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save table: %v", err)), nil
+		}
+		logger.Debug("Saved table %s to database", table.ID)
+
+		// Save all entries
+		for i := range entries {
+			if err := store.SaveTableEntry(&entries[i]); err != nil {
+				logger.Error("Failed to save entry %d for table %s: %v", i, table.ID, err)
+				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to save entry: %v", err)), nil
+			}
+		}
+		logger.Debug("Saved %d entries for table %s", len(entries), table.ID)
+
+		logger.Info("Successfully imported table %s: product=%s type=%s entries=%d", table.ID, table.Product, table.TableType, len(entries))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success":     true,
+			"table_id":    table.ID,
+			"entry_count": len(entries),
+		})
+	}
+}
+
+// createSSGListTablesHandler creates a handler for RPCSSGListTables
+func createSSGListTablesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCSSGListTables request")
+		var req struct {
+			Product   string `json:"product"`
+			TableType string `json:"table_type"`
+		}
+		// Default to empty filters
+		req.Product = ""
+		req.TableType = ""
+		if msg.Payload != nil {
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn("Failed to parse RPCSSGListTables request: %v", errResp.Error)
+				return errResp, nil
+			}
+		}
+		logger.Debug("Listing SSG tables with filters: product=%s table_type=%s", req.Product, req.TableType)
+		tables, err := store.ListTables(req.Product, req.TableType)
+		if err != nil {
+			logger.Error("Failed to list SSG tables: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list tables: %v", err)), nil
+		}
+		logger.Info("Listed %d SSG tables (product=%s table_type=%s)", len(tables), req.Product, req.TableType)
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"tables": tables,
+			"count":  len(tables),
+		})
+	}
+}
+
+// createSSGGetTableHandler creates a handler for RPCSSGGetTable
+func createSSGGetTableHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCSSGGetTable request")
+		var req struct {
+			ID string `json:"id"`
+		}
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse RPCSSGGetTable request: %v", errResp.Error)
+			return errResp, nil
+		}
+		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
+			logger.Warn("id is required for RPCSSGGetTable")
+			return errResp, nil
+		}
+		table, err := store.GetTable(req.ID)
+		if err != nil {
+			logger.Warn("Failed to get table: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get table: %v", err)), nil
+		}
+		logger.Info("Got table %s", req.ID)
+		return subprocess.NewSuccessResponse(msg, table)
+	}
+}
+
+// createSSGGetTableEntriesHandler creates a handler for RPCSSGGetTableEntries
+func createSSGGetTableEntriesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCSSGGetTableEntries request")
+		var req struct {
+			TableID string `json:"table_id"`
+			Offset  int    `json:"offset"`
+			Limit   int    `json:"limit"`
+		}
+		// Set defaults
+		req.Offset = 0
+		req.Limit = 100
+		if msg.Payload != nil {
+			if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+				logger.Warn("Failed to parse RPCSSGGetTableEntries request: %v", errResp.Error)
+				return errResp, nil
+			}
+		}
+		if errResp := subprocess.RequireField(msg, req.TableID, "table_id"); errResp != nil {
+			logger.Warn("table_id is required for RPCSSGGetTableEntries")
+			return errResp, nil
+		}
+		entries, total, err := store.GetTableEntries(req.TableID, req.Offset, req.Limit)
+		if err != nil {
+			logger.Warn("Failed to get table entries: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get table entries: %v", err)), nil
+		}
+		logger.Info("Got %d table entries for table %s (total: %d)", len(entries), req.TableID, total)
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"entries": entries,
+			"total":   total,
+		})
+	}
+}
+
+// createSSGDeleteTableHandler creates a handler for RPCSSGDeleteTable
+func createSSGDeleteTableHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("Processing RPCSSGDeleteTable request")
+		var req struct {
+			ID string `json:"id"`
+		}
+		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+			logger.Warn("Failed to parse RPCSSGDeleteTable request: %v", errResp.Error)
+			return errResp, nil
+		}
+		if errResp := subprocess.RequireField(msg, req.ID, "id"); errResp != nil {
+			logger.Warn("id is required for RPCSSGDeleteTable")
+			return errResp, nil
+		}
+		if err := store.DeleteTable(req.ID); err != nil {
+			logger.Warn("Failed to delete table: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to delete table: %v", err)), nil
+		}
+		logger.Info("Deleted table %s", req.ID)
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": true,
+			"id":      req.ID,
+		})
+	}
+}
+
+
 // RegisterSSGHandlers registers all SSG local RPC handlers
 func RegisterSSGHandlers(sp *subprocess.Subprocess, store *local.Store, logger *common.Logger) {
 	sp.RegisterHandler("RPCSSGImportGuide", createSSGImportGuideHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGImportGuide")
+
+	sp.RegisterHandler("RPCSSGImportTable", createSSGImportTableHandler(store, logger))
+	logger.Info("RPC handler registered: RPCSSGImportTable")
 
 	sp.RegisterHandler("RPCSSGGetGuide", createSSGGetGuideHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGGetGuide")
 
 	sp.RegisterHandler("RPCSSGListGuides", createSSGListGuidesHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGListGuides")
+
+	sp.RegisterHandler("RPCSSGListTables", createSSGListTablesHandler(store, logger))
+	logger.Info("RPC handler registered: RPCSSGListTables")
+
+	sp.RegisterHandler("RPCSSGGetTable", createSSGGetTableHandler(store, logger))
+	logger.Info("RPC handler registered: RPCSSGGetTable")
+
+	sp.RegisterHandler("RPCSSGGetTableEntries", createSSGGetTableEntriesHandler(store, logger))
+	logger.Info("RPC handler registered: RPCSSGGetTableEntries")
 
 	sp.RegisterHandler("RPCSSGGetTree", createSSGGetTreeHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGGetTree")
@@ -380,4 +563,7 @@ func RegisterSSGHandlers(sp *subprocess.Subprocess, store *local.Store, logger *
 
 	sp.RegisterHandler("RPCSSGDeleteGuide", createSSGDeleteGuideHandler(store, logger))
 	logger.Info("RPC handler registered: RPCSSGDeleteGuide")
+
+	sp.RegisterHandler("RPCSSGDeleteTable", createSSGDeleteTableHandler(store, logger))
+	logger.Info("RPC handler registered: RPCSSGDeleteTable")
 }

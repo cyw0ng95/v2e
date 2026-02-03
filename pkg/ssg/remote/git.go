@@ -142,9 +142,38 @@ func (c *GitClient) ListGuideFiles() ([]string, error) {
 	return guideFiles, nil
 }
 
+// ListTableFiles returns a list of all table HTML files in the repository.
+func (c *GitClient) ListTableFiles() ([]string, error) {
+	tablesDir := filepath.Join(c.repoPath, "tables")
+
+	entries, err := os.ReadDir(tablesDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tables directory: %w", err)
+	}
+
+	var tableFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Match table-*.html pattern
+		if matchTableFilePattern(name) {
+			tableFiles = append(tableFiles, name)
+		}
+	}
+
+	return tableFiles, nil
+}
+
 // GetFilePath returns the absolute path to a file in the repository.
 // Guide files are located in the "guides" subdirectory.
+// Table files are located in the "tables" subdirectory.
 func (c *GitClient) GetFilePath(filename string) string {
+	// Determine subdirectory based on filename pattern
+	if matchTableFilePattern(filename) {
+		return filepath.Join(c.repoPath, "tables", filename)
+	}
 	return filepath.Join(c.repoPath, "guides", filename)
 }
 
@@ -161,6 +190,20 @@ func matchGuideFilePattern(filename string) bool {
 	// Check for "-guide-" in the name
 	base := filename[:len(filename)-5] // Remove .html
 	return contains(base, "-guide-")
+}
+
+// matchTableFilePattern checks if filename matches table-*.html pattern.
+func matchTableFilePattern(filename string) bool {
+	// Check for .html extension
+	if len(filename) < 5 {
+		return false
+	}
+	if filepath.Ext(filename) != ".html" {
+		return false
+	}
+
+	// Check for "table-" prefix
+	return len(filename) > 6 && filename[:6] == "table-"
 }
 
 // contains checks if a string contains a substring.
