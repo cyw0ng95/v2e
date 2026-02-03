@@ -16,6 +16,7 @@ func RegisterHandlers(sp *subprocess.Subprocess, gitClient *GitClient) {
 	sp.RegisterHandler("RPCSSGListGuideFiles", createListGuideFilesHandler(gitClient))
 	sp.RegisterHandler("RPCSSGListTableFiles", createListTableFilesHandler(gitClient))
 	sp.RegisterHandler("RPCSSGListManifestFiles", createListManifestFilesHandler(gitClient))
+	sp.RegisterHandler("RPCSSGListDataStreamFiles", createListDataStreamFilesHandler(gitClient))
 	sp.RegisterHandler("RPCSSGGetFilePath", createGetFilePathHandler(gitClient))
 }
 
@@ -126,6 +127,21 @@ func createGetFilePathHandler(gitClient *GitClient) subprocess.Handler {
 
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"path": path,
+		})
+	}
+}
+
+// createListDataStreamFilesHandler creates a handler for RPCSSGListDataStreamFiles.
+func createListDataStreamFilesHandler(gitClient *GitClient) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		files, err := gitClient.ListDataStreamFiles()
+		if err != nil {
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list data stream files: %s", err)), nil
+		}
+
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"files": files,
+			"count": len(files),
 		})
 	}
 }
