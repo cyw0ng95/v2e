@@ -138,6 +138,8 @@ func buildRepoPath() string {
 
 ### Cost: 3-5 hours
 
+**Status: ✅ COMPLETED**
+
 ---
 
 ## Step 2: Local Service - Data Models
@@ -160,6 +162,8 @@ func buildSSGDBPath() string {
 ```
 
 ### Cost: 1.5-2.5 hours
+
+**Status: ✅ COMPLETED**
 
 ---
 
@@ -188,6 +192,8 @@ Implement SQLite storage with tree queries.
 - `pkg/ssg/local/store_test.go` - Unit tests
 
 ### Cost: 5-7 hours
+
+**Status: ✅ COMPLETED**
 
 ---
 
