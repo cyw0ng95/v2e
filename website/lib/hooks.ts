@@ -1583,3 +1583,186 @@ export function useSSGTableEntries(tableId: string, offset?: number, limit?: num
 
   return { data, isLoading, error };
 }
+// ============================================================================
+// SSG Manifest Hooks
+// ============================================================================
+
+export function useSSGManifests(product?: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listSSGManifests(product, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG manifests');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG manifests', err, { product, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [product, limit, offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGManifest(manifestId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!manifestId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGManifest(manifestId);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG manifest');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG manifest', err, { manifestId });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [manifestId]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGProfiles(product?: string, profileId?: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listSSGProfiles(product, profileId, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG profiles');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG profiles', err, { product, profileId, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [product, profileId, limit, offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGProfile(profileId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!profileId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGProfile(profileId);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG profile');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG profile', err, { profileId });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [profileId]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGProfileRules(profileId: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!profileId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGProfileRules(profileId, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG profile rules');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG profile rules', err, { profileId, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [profileId, limit, offset]);
+
+  return { data, isLoading, error };
+}

@@ -1447,6 +1447,27 @@ export class RPCClient {
   async deleteSSGTable(id: string): Promise<RPCResponse<{ success: boolean; id: string }>> {
     return this.call<{ id: string }, { success: boolean; id: string }>('RPCSSGDeleteTable', { id }, 'local');
   }
+
+  // SSG Manifest Methods
+  async listSSGManifests(product?: string, limit?: number, offset?: number): Promise<RPCResponse<{ manifests: any[]; count: number }>> {
+    return this.call<{ product?: string; limit?: number; offset?: number }, { manifests: any[]; count: number }>('RPCSSGListManifests', { product, limit, offset }, 'local');
+  }
+
+  async getSSGManifest(manifestId: string): Promise<RPCResponse<{ manifest: any }>> {
+    return this.call<{ manifestId: string }, { manifest: any }>('RPCSSGGetManifest', { manifestId }, 'local');
+  }
+
+  async listSSGProfiles(product?: string, profileId?: string, limit?: number, offset?: number): Promise<RPCResponse<{ profiles: any[]; count: number }>> {
+    return this.call<{ product?: string; profileId?: string; limit?: number; offset?: number }, { profiles: any[]; count: number }>('RPCSSGListProfiles', { product, profileId, limit, offset }, 'local');
+  }
+
+  async getSSGProfile(profileId: string): Promise<RPCResponse<{ profile: any }>> {
+    return this.call<{ profileId: string }, { profile: any }>('RPCSSGGetProfile', { profileId }, 'local');
+  }
+
+  async getSSGProfileRules(profileId: string, limit?: number, offset?: number): Promise<RPCResponse<{ rules: any[]; count: number }>> {
+    return this.call<{ profileId: string; limit?: number; offset?: number }, { rules: any[]; count: number }>('RPCSSGGetProfileRules', { profileId, limit, offset }, 'local');
+  }
 }
 
 // ============================================================================

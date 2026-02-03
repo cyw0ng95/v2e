@@ -1126,6 +1126,29 @@ export interface SSGTableEntry {
   updatedAt: string;
 }
 
+export interface SSGManifest {
+  id: string;
+  product: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGProfile {
+  id: string;
+  manifestId: string;
+  profileId: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGProfileRule {
+  id: number;
+  profileId: string;
+  ruleShortId: string;
+  createdAt: string;
+}
+
 export interface SSGTree {
   guide: SSGGuide;
   groups: SSGGroup[];
@@ -1295,6 +1318,58 @@ export interface SSGDeleteTableResponse {
   id: string;
 }
 
+// SSG Manifest RPC Types
+
+export interface SSGListManifestsRequest {
+  product?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListManifestsResponse {
+  manifests: SSGManifest[];
+  count: number;
+}
+
+export interface SSGGetManifestRequest {
+  manifestId: string;
+}
+
+export interface SSGGetManifestResponse {
+  manifest: SSGManifest;
+}
+
+export interface SSGListProfilesRequest {
+  product?: string;
+  profileId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListProfilesResponse {
+  profiles: SSGProfile[];
+  count: number;
+}
+
+export interface SSGGetProfileRequest {
+  profileId: string;
+}
+
+export interface SSGGetProfileResponse {
+  profile: SSGProfile;
+}
+
+export interface SSGGetProfileRulesRequest {
+  profileId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGGetProfileRulesResponse {
+  rules: SSGProfileRule[];
+  count: number;
+}
+
 // SSG Import Job RPC Types
 
 export interface SSGStartImportJobRequest {
@@ -1336,6 +1411,9 @@ export interface SSGGetImportStatusResponse {
     totalTables: number;
     processedTables: number;
     failedTables: number;
+    totalManifests: number;
+    processedManifests: number;
+    failedManifests: number;
     currentFile: string;
     currentPhase?: string;
   };
