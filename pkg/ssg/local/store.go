@@ -43,6 +43,14 @@ func NewStore(dbPath string) (*Store, error) {
 		&ssg.SSGManifest{},
 		&ssg.SSGProfile{},
 		&ssg.SSGProfileRule{},
+		&ssg.SSGDataStream{},
+		&ssg.SSGBenchmark{},
+		&ssg.SSGDSProfile{},
+		&ssg.SSGDSProfileRule{},
+		&ssg.SSGDSGroup{},
+		&ssg.SSGDSRule{},
+		&ssg.SSGDSRuleReference{},
+		&ssg.SSGDSRuleIdentifier{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}

@@ -235,6 +235,158 @@ func (SSGProfileRule) TableName() string {
 	return "ssg_profile_rules"
 }
 
+// ============================================================================
+// Data Stream Models (SCAP XML)
+// ============================================================================
+
+// SSGDataStream represents a SCAP data stream collection file (ssg-*-ds.xml).
+// Data streams contain comprehensive XCCDF benchmarks, OVAL definitions, and OCIL questionnaires.
+type SSGDataStream struct {
+	ID          string    `gorm:"primaryKey" json:"id"` // e.g., "scap_org.open-scap_datastream_from_xccdf_ssg-al2023-xccdf.xml"
+	Product     string    `gorm:"index" json:"product"` // al2023, rhel9, etc.
+	ScapVersion string    `json:"scap_version"`         // e.g., "1.3"
+	Timestamp   string    `json:"timestamp"`            // ISO 8601 timestamp from data stream
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for SSGDataStream.
+func (SSGDataStream) TableName() string {
+	return "ssg_data_streams"
+}
+
+// SSGBenchmark represents an XCCDF Benchmark from a data stream.
+// Benchmarks contain the complete security guidance hierarchy (profiles, groups, rules).
+type SSGBenchmark struct {
+	ID            string    `gorm:"primaryKey" json:"id"`   // e.g., "xccdf_org.ssgproject.content_benchmark_AL-2023"
+	DataStreamID  string    `gorm:"index" json:"data_stream_id"`
+	Title         string    `json:"title"`        // e.g., "Guide to the Secure Configuration of Amazon Linux 2023"
+	Description   string    `gorm:"type:text" json:"description"`
+	Version       string    `json:"version"`      // Benchmark version
+	Status        string    `json:"status"`       // draft, accepted, etc.
+	StatusDate    string    `json:"status_date"`  // ISO 8601 date
+	ProfileCount  int       `json:"profile_count"` // Number of profiles in benchmark
+	GroupCount    int       `json:"group_count"`   // Number of groups
+	RuleCount     int       `json:"rule_count"`    // Number of rules
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for SSGBenchmark.
+func (SSGBenchmark) TableName() string {
+	return "ssg_benchmarks"
+}
+
+// SSGDSProfile represents an XCCDF Profile from a data stream.
+// Profiles define specific security baselines (CIS, STIG, ANSSI, etc.) by selecting rules.
+type SSGDSProfile struct {
+	ID          string    `gorm:"primaryKey" json:"id"` // e.g., "xccdf_org.ssgproject.content_profile_cis"
+	BenchmarkID string    `gorm:"index" json:"benchmark_id"`
+	Title       string    `json:"title"`                       // e.g., "CIS Amazon Linux 2023 Benchmark for Level 2 - Server"
+	Description string    `gorm:"type:text" json:"description"`
+	Version     string    `json:"version"`                     // Profile version (e.g., "1.0.0")
+	RuleCount   int       `json:"rule_count"`                  // Number of selected rules
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+
+	// Relationships
+	SelectedRules []SSGDSProfileRule `gorm:"foreignKey:ProfileID" json:"selected_rules,omitempty"`
+}
+
+// TableName specifies the table name for SSGDSProfile.
+func (SSGDSProfile) TableName() string {
+	return "ssg_ds_profiles"
+}
+
+// SSGDSProfileRule represents a rule selection in a data stream profile.
+// Maps profiles to their selected rules with selection status.
+type SSGDSProfileRule struct {
+	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	ProfileID string    `gorm:"index" json:"profile_id"`
+	RuleID    string    `gorm:"index" json:"rule_id"` // Full XCCDF rule ID
+	Selected  bool      `json:"selected"`              // true if selected, false if deselected
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// TableName specifies the table name for SSGDSProfileRule.
+func (SSGDSProfileRule) TableName() string {
+	return "ssg_ds_profile_rules"
+}
+
+// SSGDSGroup represents an XCCDF Group from a data stream.
+// Groups organize rules into a hierarchical structure (similar to HTML guide groups but from XML).
+type SSGDSGroup struct {
+	ID          string    `gorm:"primaryKey" json:"id"` // e.g., "xccdf_org.ssgproject.content_group_system"
+	BenchmarkID string    `gorm:"index" json:"benchmark_id"`
+	ParentID    string    `gorm:"index" json:"parent_id"` // Parent group (empty for top-level)
+	Title       string    `json:"title"`                  // e.g., "System Settings"
+	Description string    `gorm:"type:text" json:"description"`
+	Level       int       `json:"level"`                  // Tree depth (0, 1, 2...)
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName specifies the table name for SSGDSGroup.
+func (SSGDSGroup) TableName() string {
+	return "ssg_ds_groups"
+}
+
+// SSGDSRule represents an XCCDF Rule from a data stream.
+// Rules are the atomic security configuration items with detailed metadata.
+type SSGDSRule struct {
+	ID          string    `gorm:"primaryKey" json:"id"` // e.g., "xccdf_org.ssgproject.content_rule_package_aide_installed"
+	BenchmarkID string    `gorm:"index" json:"benchmark_id"`
+	GroupID     string    `gorm:"index" json:"group_id"`       // Parent group
+	Title       string    `json:"title"`                       // e.g., "Install AIDE"
+	Description string    `gorm:"type:text" json:"description"`
+	Rationale   string    `gorm:"type:text" json:"rationale"`
+	Severity    string    `json:"severity"`                    // low, medium, high, unknown
+	Selected    bool      `json:"selected"`                    // Default selection state
+	Weight      string    `json:"weight"`                      // Rule weight (importance)
+	Version     string    `json:"version"`                     // Rule version
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+
+	// Relationships
+	References []SSGDSRuleReference `gorm:"foreignKey:RuleID" json:"references,omitempty"`
+	Identifiers []SSGDSRuleIdentifier `gorm:"foreignKey:RuleID" json:"identifiers,omitempty"`
+}
+
+// TableName specifies the table name for SSGDSRule.
+func (SSGDSRule) TableName() string {
+	return "ssg_ds_rules"
+}
+
+// SSGDSRuleReference represents a reference/citation for a data stream rule.
+// Rules typically reference multiple standards (CIS, NIST, PCI-DSS, etc.).
+type SSGDSRuleReference struct {
+	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	RuleID    string    `gorm:"index" json:"rule_id"`
+	Href      string    `json:"href"`      // URL to standard
+	RefID     string    `json:"ref_id"`    // Specific section/control (e.g., "1.3.1", "CM-6(a)")
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// TableName specifies the table name for SSGDSRuleReference.
+func (SSGDSRuleReference) TableName() string {
+	return "ssg_ds_rule_references"
+}
+
+// SSGDSRuleIdentifier represents an external identifier for a data stream rule.
+// Common identifiers: CCE, CVE, OVAL check references.
+type SSGDSRuleIdentifier struct {
+	ID         uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	RuleID     string    `gorm:"index" json:"rule_id"`
+	System     string    `json:"system"`     // e.g., "http://cce.mitre.org"
+	Identifier string    `gorm:"index" json:"identifier"` // e.g., "CCE-80644-8"
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// TableName specifies the table name for SSGDSRuleIdentifier.
+func (SSGDSRuleIdentifier) TableName() string {
+	return "ssg_ds_rule_identifiers"
+}
+
 // BeforeCreate is a GORM hook called before creating a new record.
 func (t *SSGTable) BeforeCreate(tx *gorm.DB) error {
 	now := time.Now()
