@@ -1,7 +1,7 @@
 package main
 
 import (
-	core "github.com/cyw0ng95/v2e/cmd/broker/core"
+	core "github.com/cyw0ng95/v2e/cmd/v2broker/core"
 )
 
 // Re-export core types for compatibility within cmd/broker package.
