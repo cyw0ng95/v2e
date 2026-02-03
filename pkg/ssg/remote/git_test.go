@@ -119,7 +119,7 @@ func TestMatchGuideFilePattern(t *testing.T) {
 func TestGitClient_GetFilePath(t *testing.T) {
 	client := NewGitClient("", "/test/repo")
 	want := filepath.Join("/test/repo", "guides", "test.html")
-	got := client.GetFilePath("guides/test.html")
+	got := client.GetFilePath("test.html")
 	if got != want {
 		t.Errorf("GetFilePath() = %s, want %s", got, want)
 	}

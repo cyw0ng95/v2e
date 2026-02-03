@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // DataType represents the type of job data
@@ -82,9 +83,15 @@ func (imp *Importer) StartImport(ctx context.Context, runID string) error {
 	imp.mu.Lock()
 	defer imp.mu.Unlock()
 
-	// Check if a job is already running
+	// Check if a job is already running (or paused)
+	// Allow starting new job if previous job is in terminal state (failed, completed, stopped)
 	if imp.activeRun != nil {
-		return fmt.Errorf("import job already running: %s (state: %s)", imp.activeRun.ID, imp.activeRun.State)
+		if imp.activeRun.State == StateRunning || imp.activeRun.State == StateQueued || imp.activeRun.State == StatePaused {
+			return fmt.Errorf("import job already running: %s (state: %s)", imp.activeRun.ID, imp.activeRun.State)
+		}
+		// Previous job is in terminal state, clear it
+		imp.activeRun = nil
+		imp.cancelCtx = nil
 	}
 
 	// Create new run
@@ -226,7 +233,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 
 	// Step 2: List guide files
 	imp.logger.Info("Step 2: Listing guide files...")
-	result, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGListGuideFiles", nil)
+	resultMsg, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGListGuideFiles", nil)
 	if err != nil {
 		imp.mu.Lock()
 		if imp.activeRun.ID == runID {
@@ -240,8 +247,40 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		return
 	}
 
+	// Extract payload from subprocess.Message
+	msg, ok := resultMsg.(*subprocess.Message)
+	if !ok || msg == nil {
+		imp.mu.Lock()
+		if imp.activeRun.ID == runID {
+			imp.activeRun.State = StateFailed
+			imp.activeRun.Error = "invalid response format from RPCSSGListGuideFiles"
+			now := time.Now()
+			imp.activeRun.CompletedAt = &now
+		}
+		imp.mu.Unlock()
+		imp.logger.Error("Invalid response format from RPCSSGListGuideFiles")
+		return
+	}
+
+	// Unmarshal payload
+	var result map[string]interface{}
+	if msg.Payload != nil {
+		if err := subprocess.UnmarshalPayload(msg, &result); err != nil {
+			imp.mu.Lock()
+			if imp.activeRun.ID == runID {
+				imp.activeRun.State = StateFailed
+				imp.activeRun.Error = fmt.Sprintf("failed to unmarshal response: %v", err)
+				now := time.Now()
+				imp.activeRun.CompletedAt = &now
+			}
+			imp.mu.Unlock()
+			imp.logger.Error("Failed to unmarshal response: %v", err)
+			return
+		}
+	}
+
 	// Extract files from response
-	files, ok := result.(map[string]interface{})["files"].([]interface{})
+	files, ok := result["files"].([]interface{})
 	if !ok {
 		imp.mu.Lock()
 		if imp.activeRun.ID == runID {
@@ -316,7 +355,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		imp.mu.Unlock()
 
 		// Get file path from remote service
-		pathResult, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGGetFilePath", map[string]interface{}{
+		pathResultMsg, err := imp.rpcInvoker.InvokeRPC(ctx, "remote", "RPCSSGGetFilePath", map[string]interface{}{
 			"filename": filename,
 		})
 		if err != nil {
@@ -329,18 +368,55 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 			continue
 		}
 
-		path, ok := pathResult.(map[string]interface{})["path"].(string)
+		// Extract payload from subprocess.Message
+		pathMsg, ok := pathResultMsg.(*subprocess.Message)
+		if !ok || pathMsg == nil {
+			imp.logger.Warn("Invalid path response for %s", filename)
+			continue
+		}
+
+		// Unmarshal payload
+		var pathResult map[string]interface{}
+		if pathMsg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(pathMsg, &pathResult); err != nil {
+				imp.logger.Warn("Failed to unmarshal path response for %s: %v", filename, err)
+				continue
+			}
+		}
+
+		path, ok := pathResult["path"].(string)
 		if !ok {
 			imp.logger.Warn("Invalid path response for %s", filename)
 			continue
 		}
 
 		// Import the guide
-		_, err = imp.rpcInvoker.InvokeRPC(ctx, "local", "RPCSSGImportGuide", map[string]interface{}{
+		respMsg, err := imp.rpcInvoker.InvokeRPC(ctx, "local", "RPCSSGImportGuide", map[string]interface{}{
 			"path": path,
 		})
 		if err != nil {
 			imp.logger.Warn("Failed to import %s: %v", filename, err)
+			imp.mu.Lock()
+			if imp.activeRun.ID == runID {
+				imp.activeRun.Progress.FailedGuides++
+			}
+			imp.mu.Unlock()
+			continue
+		}
+
+		// Check if the response is an error message
+		msg, ok := respMsg.(*subprocess.Message)
+		if !ok {
+			imp.logger.Warn("Invalid response type for %s", filename)
+			imp.mu.Lock()
+			if imp.activeRun.ID == runID {
+				imp.activeRun.Progress.FailedGuides++
+			}
+			imp.mu.Unlock()
+			continue
+		}
+		if msg.Type == subprocess.MessageTypeError {
+			imp.logger.Warn("Failed to import %s: %s", filename, msg.Error)
 			imp.mu.Lock()
 			if imp.activeRun.ID == runID {
 				imp.activeRun.Progress.FailedGuides++

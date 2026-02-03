@@ -143,8 +143,9 @@ func (c *GitClient) ListGuideFiles() ([]string, error) {
 }
 
 // GetFilePath returns the absolute path to a file in the repository.
+// Guide files are located in the "guides" subdirectory.
 func (c *GitClient) GetFilePath(filename string) string {
-	return filepath.Join(c.repoPath, filename)
+	return filepath.Join(c.repoPath, "guides", filename)
 }
 
 // matchGuideFilePattern checks if filename matches *-guide-*.html pattern.
