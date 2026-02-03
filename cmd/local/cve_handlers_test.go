@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -28,14 +28,9 @@ func makeMsgWithPayload(t *testing.T, payload interface{}) *subprocess.Message {
 }
 
 func TestCVEHandlers(t *testing.T) {
-	// temp sqlite DB
-	f, err := os.CreateTemp("", "cve-test-*.db")
-	if err != nil {
-		t.Fatalf("temp db: %v", err)
-	}
-	dbPath := f.Name()
-	f.Close()
-	defer os.Remove(dbPath)
+	// Use t.TempDir() for cleaner cleanup
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "cve-test.db")
 
 	// logger with buffer
 	var buf bytes.Buffer

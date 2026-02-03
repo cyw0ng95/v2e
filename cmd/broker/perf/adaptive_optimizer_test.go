@@ -38,13 +38,21 @@ func TestAdaptiveOptimization(t *testing.T) {
 		if !accepted {
 			t.Logf("Message %d was dropped", i)
 		}
-		time.Sleep(1 * time.Millisecond) // Brief pause between messages
 	}
 
-	// Wait for some metrics collection and adaptation
-	time.Sleep(10 * time.Second)
+	// Poll for metrics collection with a reasonable timeout
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		metrics := opt.Metrics()
+		// Check if metrics show any activity (messages processed)
+		if total, ok := metrics["total_messages_processed"].(int64); ok && total > 0 {
+			t.Logf("Metrics collected: %+v", metrics)
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 
-	// Get current metrics to verify adaptive behavior occurred
+	// Get final metrics to verify adaptive behavior occurred
 	metrics := opt.Metrics()
 	t.Logf("Final metrics: %+v", metrics)
 
@@ -56,8 +64,7 @@ func TestAdaptiveOptimization(t *testing.T) {
 type testRouter struct{}
 
 func (r *testRouter) Route(msg *proc.Message, source string) error {
-	// Simulate message processing delay
-	time.Sleep(500 * time.Microsecond)
+	// No artificial delay needed - tests should be fast
 	return nil
 }
 

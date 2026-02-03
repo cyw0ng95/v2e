@@ -3,16 +3,14 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestLoadConfig(t *testing.T) {
-	// Create a temporary config file for testing
-	tempFile, err := os.CreateTemp("", "test-config-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tempFile.Name())
+	// Use t.TempDir() for cleaner cleanup
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "test-config.json")
 
 	testConfig := Config{
 		Build: BuildSection{
@@ -33,13 +31,12 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("Failed to marshal test config: %v", err)
 	}
 
-	if _, err := tempFile.Write(jsonData); err != nil {
-		t.Fatalf("Failed to write to temp file: %v", err)
+	if err := os.WriteFile(configPath, jsonData, 0600); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
 	}
-	tempFile.Close()
 
 	// Test loading the config
-	config, err := LoadConfig(tempFile.Name())
+	config, err := LoadConfig(configPath)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
@@ -79,20 +76,17 @@ func TestSaveConfig(t *testing.T) {
 		},
 	}
 
-	tempFile, err := os.CreateTemp("", "test-save-config-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	os.Remove(tempFile.Name()) // Remove the file so SaveConfig can create it
+	// Use t.TempDir() for cleaner cleanup
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "test-save-config.json")
 
-	err = SaveConfig(tempFile.Name(), config)
+	err := SaveConfig(configPath, config)
 	if err != nil {
 		t.Fatalf("Failed to save config: %v", err)
 	}
-	defer os.Remove(tempFile.Name())
 
 	// Load the saved config and verify it
-	loadedConfig, err := LoadConfig(tempFile.Name())
+	loadedConfig, err := LoadConfig(configPath)
 	if err != nil {
 		t.Fatalf("Failed to load saved config: %v", err)
 	}

@@ -57,7 +57,15 @@ func TestBroker_SetLogger(t *testing.T) {
 
 	// Spawn a process to generate logs
 	_, _ = broker.Spawn("test", "echo", "hello")
-	time.Sleep(200 * time.Millisecond)
+	
+	// Poll for process to start and generate logs
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if len(buf.String()) > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 
 	output := buf.String()
 	if len(output) == 0 {
@@ -83,8 +91,21 @@ func TestBroker_Shutdown(t *testing.T) {
 		t.Fatalf("Spawn failed: %v", err)
 	}
 
-	// Give process time to start
-	time.Sleep(100 * time.Millisecond)
+	// Poll for process to start instead of fixed sleep
+	deadline := time.Now().Add(500 * time.Millisecond)
+	var processStarted bool
+	for time.Now().Before(deadline) {
+		info, err := broker.GetProcess("test-1")
+		if err == nil && info.Status == ProcessStatusRunning {
+			processStarted = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	
+	if !processStarted {
+		t.Fatal("Process did not start within timeout")
+	}
 
 	err = broker.Shutdown()
 	if err != nil {

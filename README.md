@@ -638,6 +638,55 @@ For macOS users or when isolation is required, the project includes a containeri
 ### Testing Methodologies
 
 - **Unit Tests**: Standard Go unit tests with coverage reporting
+  ```bash
+  # Run all unit tests (excludes fuzz tests)
+  ./build.sh -t
+  
+  # Run tests for specific packages
+  go test -run='^Test' ./pkg/cve/...
+  go test -run='^Test' ./cmd/broker/...
+  
+  # Run tests with coverage
+  go test -run='^Test' -coverprofile=coverage.out ./...
+  go tool cover -html=coverage.out
+  ```
+
 - **Fuzz Tests**: Fuzz testing for key interfaces to discover edge cases
+  ```bash
+  # Run all fuzz tests (5 seconds per target)
+  ./build.sh -f
+  
+  # Run specific fuzz test with custom duration
+  go test -fuzz=FuzzValidateCVEID -fuzztime=30s ./pkg/cve/remote
+  go test -fuzz=FuzzSaveCVE -fuzztime=1m ./pkg/cve/local
+  
+  # Note: Fuzz tests automatically discover edge cases and save failing inputs to testdata/fuzz/
+  ```
+
 - **Performance Benchmarks**: Comprehensive benchmarking with statistical analysis
+  ```bash
+  # Run all benchmarks with full reporting
+  ./build.sh -m
+  
+  # Run specific benchmarks
+  go test -bench=BenchmarkSendMessage -benchmem ./pkg/proc/subprocess
+  go test -bench=BenchmarkGetCVE -benchmem ./pkg/cve/local
+  
+  # Run benchmarks with memory allocation profiling
+  go test -bench=. -benchmem -memprofile=mem.out ./cmd/broker/perf
+  go tool pprof -http=:8080 mem.out
+  
+  # Compare benchmark results
+  go test -bench=. -count=5 ./pkg/cve/local > old.txt
+  # ... make changes ...
+  go test -bench=. -count=5 ./pkg/cve/local > new.txt
+  benchstat old.txt new.txt
+  ```
+
 - **Integration Tests**: Pytest-based integration tests in the `tests/` directory
+  ```bash
+  # Run integration tests (requires broker to be running)
+  ./build.sh -r  # Start full system first
+  # In another terminal:
+  pytest tests/
+  ```
