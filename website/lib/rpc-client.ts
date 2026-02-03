@@ -987,6 +987,149 @@ export class RPCClient {
         };
       }
 
+      case 'RPCListSSGProfiles': {
+        const req = params as { offset?: number; limit?: number } | undefined;
+        const mockProfiles = [
+          {
+            id: 'xccdf_org.ssgproject.content_profile_ospp',
+            title: 'Protection Profile for General Purpose Operating Systems',
+            description: 'This profile reflects mandatory requirements for operating systems',
+            ruleCount: 156,
+          },
+          {
+            id: 'xccdf_org.ssgproject.content_profile_pci-dss',
+            title: 'PCI-DSS v4.0 Control Baseline',
+            description: 'Payment Card Industry Data Security Standard requirements',
+            ruleCount: 203,
+          },
+          {
+            id: 'xccdf_org.ssgproject.content_profile_cis',
+            title: 'CIS Red Hat Enterprise Linux 9 Benchmark',
+            description: 'This profile defines a baseline that aligns to CIS benchmark',
+            ruleCount: 178,
+          },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            profiles: mockProfiles.slice(0, req?.limit || mockProfiles.length),
+            offset: req?.offset || 0,
+            limit: req?.limit || mockProfiles.length,
+            total: mockProfiles.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetSSGProfile': {
+        const req = params as { profileId: string } | undefined;
+        const mockProfile = {
+          id: req?.profileId || 'xccdf_org.ssgproject.content_profile_ospp',
+          title: 'Protection Profile for General Purpose Operating Systems',
+          description: 'This profile reflects mandatory requirements for operating systems',
+          ruleCount: 156,
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { profile: mockProfile } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCListSSGRules': {
+        const req = params as { offset?: number; limit?: number; severity?: string } | undefined;
+        const mockRules = [
+          {
+            id: 'xccdf_org.ssgproject.content_rule_accounts_password_minlen_login_defs',
+            title: 'Set Password Minimum Length in login.defs',
+            severity: 'medium',
+            description: 'To specify password length requirements for new accounts, edit the file /etc/login.defs',
+          },
+          {
+            id: 'xccdf_org.ssgproject.content_rule_sshd_disable_root_login',
+            title: 'Disable SSH Root Login',
+            severity: 'high',
+            description: 'The root user should never be allowed to login to a system directly over a network',
+          },
+          {
+            id: 'xccdf_org.ssgproject.content_rule_file_permissions_var_log_messages',
+            title: 'Verify Permissions on /var/log/messages File',
+            severity: 'low',
+            description: 'System logs should be protected from unauthorized access',
+          },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            rules: mockRules.slice(0, req?.limit || mockRules.length),
+            offset: req?.offset || 0,
+            limit: req?.limit || mockRules.length,
+            total: mockRules.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetSSGRule': {
+        const req = params as { ruleId: string } | undefined;
+        const mockRule = {
+          id: req?.ruleId || 'xccdf_org.ssgproject.content_rule_sshd_disable_root_login',
+          title: 'Disable SSH Root Login',
+          severity: 'high',
+          description: 'The root user should never be allowed to login to a system directly over a network',
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { rule: mockRule } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCSearchSSGContent': {
+        const req = params as { query: string; offset?: number; limit?: number } | undefined;
+        const mockResults = [
+          {
+            type: 'rule',
+            id: 'xccdf_org.ssgproject.content_rule_sshd_disable_root_login',
+            title: 'Disable SSH Root Login',
+            snippet: '...root user should never be allowed to login...',
+          },
+          {
+            type: 'profile',
+            id: 'xccdf_org.ssgproject.content_profile_ospp',
+            title: 'Protection Profile for General Purpose Operating Systems',
+            snippet: '...mandatory requirements for operating systems...',
+          },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            results: mockResults.slice(0, req?.limit || mockResults.length),
+            offset: req?.offset || 0,
+            limit: req?.limit || mockResults.length,
+            total: mockResults.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetSSGMetadata': {
+        const mockMetadata = {
+          version: '0.1.74',
+          benchmarkId: 'xccdf_org.ssgproject.content_benchmark_RHEL-9',
+          title: 'SCAP Security Guide for Red Hat Enterprise Linux 9',
+          description: 'This guide presents a catalog of security-relevant configuration settings',
+          profileCount: 8,
+          ruleCount: 487,
+          lastUpdated: new Date().toISOString(),
+        };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { metadata: mockMetadata } as unknown as TResponse,
+        };
+      }
+
       default:
         return {
           retcode: 0,
@@ -1245,6 +1388,35 @@ export class RPCClient {
 
   async getAttackImportMetadata(): Promise<RPCResponse<any>> {
     return this.call<undefined, any>('RPCGetAttackImportMetadata', undefined, 'local');
+  }
+
+  // SSG Methods
+  async listSSGProfiles(offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
+    return this.call<{ offset: number, limit: number }, any>('RPCListSSGProfiles', { offset, limit }, 'local');
+  }
+
+  async getSSGProfile(profileId: string): Promise<RPCResponse<any>> {
+    return this.call<{ profileId: string }, any>('RPCGetSSGProfile', { profileId }, 'local');
+  }
+
+  async listSSGRules(offset: number = 0, limit: number = 100, severity?: string): Promise<RPCResponse<any>> {
+    const params: any = { offset, limit };
+    if (severity) {
+      params.severity = severity;
+    }
+    return this.call<any, any>('RPCListSSGRules', params, 'local');
+  }
+
+  async getSSGRule(ruleId: string): Promise<RPCResponse<any>> {
+    return this.call<{ ruleId: string }, any>('RPCGetSSGRule', { ruleId }, 'local');
+  }
+
+  async searchSSGContent(query: string, offset: number = 0, limit: number = 100): Promise<RPCResponse<any>> {
+    return this.call<{ query: string, offset: number, limit: number }, any>('RPCSearchSSGContent', { query, offset, limit }, 'local');
+  }
+
+  async getSSGMetadata(): Promise<RPCResponse<any>> {
+    return this.call<undefined, any>('RPCGetSSGMetadata', undefined, 'local');
   }
 
   // ==========================================================================

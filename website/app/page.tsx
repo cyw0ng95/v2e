@@ -90,6 +90,15 @@ const AttackViews = dynamic(() => import('@/components/attack-views').then(mod =
   ),
 });
 
+const SSGTable = dynamic(() => import('@/components/ssg-table').then(mod => mod.SSGTable), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 // Memoized Right Column Component for tab content
 const RightColumn = memo(function RightColumn({ 
   viewMode, 
@@ -135,6 +144,7 @@ const RightColumn = memo(function RightColumn({
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
                   <TabsTrigger value="capec">CAPEC</TabsTrigger>
                   <TabsTrigger value="attack">ATT&CK</TabsTrigger>
+                  <TabsTrigger value="ssg">SSG</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
@@ -149,6 +159,7 @@ const RightColumn = memo(function RightColumn({
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
                   <TabsTrigger value="capec">CAPEC</TabsTrigger>
                   <TabsTrigger value="attack">ATT&CK</TabsTrigger>
+                  <TabsTrigger value="ssg">SSG</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="cve">CVE Database</TabsTrigger>
                   <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
@@ -177,6 +188,14 @@ const RightColumn = memo(function RightColumn({
               <div className="h-full flex flex-col">
                 <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                   <AttackViews />
+                </Suspense>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="ssg" className="h-full">
+              <div className="h-full flex flex-col">
+                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                  <SSGTable />
                 </Suspense>
               </div>
             </TabsContent>

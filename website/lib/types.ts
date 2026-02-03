@@ -1055,3 +1055,86 @@ export interface RevertBookmarkStateResponse {
   success: boolean;
   message: string;
 }
+
+// ============================================================================
+// SSG (SCAP Security Guide) Types
+// ============================================================================
+
+export interface SSGProfile {
+  id: string;
+  title: string;
+  description: string;
+  ruleCount: number;
+}
+
+export interface SSGRule {
+  id: string;
+  title: string;
+  severity: string;
+  description: string;
+}
+
+export interface SSGMetadata {
+  version: string;
+  benchmarkId: string;
+  title: string;
+  description: string;
+  profileCount: number;
+  ruleCount: number;
+  lastUpdated?: string;
+}
+
+export interface ListSSGProfilesRequest {
+  offset?: number;
+  limit?: number;
+}
+
+export interface ListSSGProfilesResponse {
+  profiles: SSGProfile[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface GetSSGProfileResponse {
+  profile: SSGProfile;
+}
+
+export interface ListSSGRulesRequest {
+  offset?: number;
+  limit?: number;
+  severity?: string;
+}
+
+export interface ListSSGRulesResponse {
+  rules: SSGRule[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface GetSSGRuleResponse {
+  rule: SSGRule;
+}
+
+export interface SearchSSGContentRequest {
+  query: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface SearchSSGContentResponse {
+  results: Array<{
+    type: string;
+    id: string;
+    title: string;
+    snippet: string;
+  }>;
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface GetSSGMetadataResponse {
+  metadata: SSGMetadata;
+}
