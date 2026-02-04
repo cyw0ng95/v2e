@@ -1259,15 +1259,6 @@ export interface SSGGetChildRulesResponse {
   count: number;
 }
 
-export interface SSGDeleteGuideRequest {
-  id: string;
-}
-
-export interface SSGDeleteGuideResponse {
-  success: boolean;
-  id: string;
-}
-
 // SSG Table RPC Types
 
 export interface SSGListTablesRequest {
@@ -1307,15 +1298,6 @@ export interface SSGImportTableResponse {
   success: boolean;
   tableId: string;
   entryCount: number;
-}
-
-export interface SSGDeleteTableRequest {
-  id: string;
-}
-
-export interface SSGDeleteTableResponse {
-  success: boolean;
-  id: string;
 }
 
 // SSG Manifest RPC Types

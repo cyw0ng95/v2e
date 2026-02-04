@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { rpcClient } from './rpc-client';
 import { createLogger } from './logger';
 
@@ -1801,7 +1801,26 @@ export function useSSGDataStreams(product?: string, limit?: number, offset?: num
     return () => {};
   }, [product, limit, offset]);
 
-  return { data, isLoading, error };
+  const refetch = async () => {
+    try {
+      setIsLoading(true);
+      const response = await rpcClient.listSSGDataStreams(product, limit, offset);
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to fetch SSG data streams');
+      }
+
+      setData(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error refetching SSG data streams', err, { product, limit, offset });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { data, isLoading, error, refetch };
 }
 
 export function useSSGDataStream(dataStreamId: string) {
