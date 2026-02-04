@@ -352,3 +352,31 @@ func TestParseTreeNodeStructure(t *testing.T) {
 	})
 
 }
+
+// ============================================================================
+// Benchmark Tests
+// ============================================================================
+
+// BenchmarkParseGuideFile_RealFile benchmarks parsing a real SSG HTML guide file.
+// This measures the performance of HTML parsing, tree structure extraction,
+// and node traversal. The current implementation has O(N^2) complexity due to
+// repeated full-document searches in parseGroupFromNode and parseRuleFromNode.
+func BenchmarkParseGuideFile_RealFile(b *testing.B) {
+	// Path to real SSG guide file in submodule
+	guidePath := filepath.Join("..", "..", "..", "assets", "ssg-static", "guides", "ssg-al2023-guide-cis.html")
+
+	// Check if file exists (skip benchmark if submodule not initialized)
+	if _, err := os.Stat(guidePath); os.IsNotExist(err) {
+		b.Skip("Skipping benchmark: SSG submodule not initialized. Run: git submodule update --init --recursive")
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_, _, _, err := ParseGuideFile(guidePath)
+		if err != nil {
+			b.Fatalf("ParseGuideFile failed: %v", err)
+		}
+	}
+}

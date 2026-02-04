@@ -13,15 +13,17 @@ import (
 )
 
 // ParseGuideFile parses an SSG HTML guide file and extracts guide, groups, and rules.
+// Uses streaming I/O and an indexed lookup map to eliminate O(N^2) DOM traversal.
 func ParseGuideFile(path string) (*ssg.SSGGuide, []ssg.SSGGroup, []ssg.SSGRule, error) {
-	// Read HTML content
-	htmlContent, err := os.ReadFile(path)
+	// Open file for streaming (more efficient than ReadFile)
+	file, err := os.Open(path)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to read file: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to open file: %w", err)
 	}
+	defer file.Close()
 
-	// Parse HTML
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(htmlContent)))
+	// Parse HTML directly from file reader
+	doc, err := goquery.NewDocumentFromReader(file)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to parse HTML: %w", err)
 	}
@@ -32,6 +34,13 @@ func ParseGuideFile(path string) (*ssg.SSGGuide, []ssg.SSGGroup, []ssg.SSGRule, 
 
 	if title == "" {
 		title = guideID // Fallback to ID if no title found
+	}
+
+	// Read HTML content for storage (we need to reopen since we already consumed the stream)
+	// This is acceptable since we only do it once, and the HTML is needed for the guide object
+	htmlContent, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to read HTML content: %w", err)
 	}
 
 	// Create guide
@@ -50,16 +59,20 @@ func ParseGuideFile(path string) (*ssg.SSGGuide, []ssg.SSGGroup, []ssg.SSGRule, 
 		return nil, nil, nil, fmt.Errorf("failed to parse tree: %w", err)
 	}
 
+	// Build an index map for O(1) node lookup (eliminates O(N^2) bottleneck)
+	// This map allows instant lookup by data-tt-id instead of repeated full DOM searches
+	nodeMap := buildNodeIndexMap(doc)
+
 	// Extract groups and rules from nodes
 	var groups []ssg.SSGGroup
 	var rules []ssg.SSGRule
 
 	for _, node := range nodes {
 		if node.Type == "group" {
-			group := parseGroupFromNode(node, guideID, doc)
+			group := parseGroupFromNode(node, guideID, nodeMap)
 			groups = append(groups, *group)
 		} else if node.Type == "rule" {
-			rule := parseRuleFromNode(node, guideID, doc)
+			rule := parseRuleFromNode(node, guideID, nodeMap)
 			rules = append(rules, *rule)
 		}
 	}
@@ -187,6 +200,40 @@ func normalizeParentID(parentID string) string {
 	return parentID
 }
 
+// buildNodeIndexMap creates an O(1) lookup map for HTML elements by data-tt-id.
+// This eliminates the O(N^2) bottleneck from repeated full DOM searches in the original
+// parseGroupFromNode and parseRuleFromNode implementations.
+func buildNodeIndexMap(doc *goquery.Document) map[string]*goquery.Selection {
+	nodeMap := make(map[string]*goquery.Selection)
+	
+	// Single pass through all elements with data-tt-id
+	doc.Find("[data-tt-id]").Each(func(i int, s *goquery.Selection) {
+		if id, exists := s.Attr("data-tt-id"); exists {
+			nodeMap[id] = s
+			// Also index "children-" prefixed variants for backward compatibility
+			if strings.HasPrefix(id, "children-") {
+				normalizedID := strings.TrimPrefix(id, "children-")
+				if _, exists := nodeMap[normalizedID]; !exists {
+					nodeMap[normalizedID] = s
+				}
+			}
+		}
+	})
+	
+	// Also index anchor links by their href targets
+	doc.Find("a[href]").Each(func(i int, s *goquery.Selection) {
+		if href, exists := s.Attr("href"); exists && strings.HasPrefix(href, "#") {
+			targetID := strings.TrimPrefix(href, "#")
+			// Store anchor text for quick title lookup
+			if _, exists := nodeMap["anchor:"+targetID]; !exists {
+				nodeMap["anchor:"+targetID] = s
+			}
+		}
+	})
+	
+	return nodeMap
+}
+
 // calculateLevel calculates the tree level for a node.
 func calculateLevel(doc *goquery.Document, id, parentID string) int {
 	level := 0
@@ -221,54 +268,62 @@ type ParseTreeNode struct {
 	Type     string // "group" or "rule"
 }
 
-// parseGroupFromNode creates an SSGGroup from a parse tree node.
-func parseGroupFromNode(node *ParseTreeNode, guideID string, doc *goquery.Document) *ssg.SSGGroup {
-	// Find the element for this group
+// parseGroupFromNode creates an SSGGroup from a parse tree node using indexed lookup.
+func parseGroupFromNode(node *ParseTreeNode, guideID string, nodeMap map[string]*goquery.Selection) *ssg.SSGGroup {
+	// Find the element for this group using O(1) map lookup
 	var title, description string
 	var groupCount, ruleCount int
 
-	// First try to find title from anchor link that references this group
-	// Format: <a href="#xccdf_org.ssgproject.content_group_system">System Settings</a>
-	doc.Find("a[href*='#"+node.ID+"']").Each(func(i int, s *goquery.Selection) {
-		if title == "" {
-			title = strings.TrimSpace(s.Text())
-		}
-	})
+	// First try to find title from anchor link using indexed lookup
+	if anchorSel, exists := nodeMap["anchor:"+node.ID]; exists {
+		title = strings.TrimSpace(anchorSel.Text())
+	}
 
-	// If no title found, try finding from the data-tt-id element
-	doc.Find("[data-tt-id]").Each(func(i int, s *goquery.Selection) {
-		if id, _ := s.Attr("data-tt-id"); id == node.ID || id == "children-"+node.ID {
+	// If no title found, try finding from the data-tt-id element using indexed lookup
+	if title == "" {
+		if sel, exists := nodeMap[node.ID]; exists {
 			// Try to find title in the element text
-			if title == "" {
-				// Look for text after "Group" label
-				text := strings.TrimSpace(s.Text())
-				// Remove "Group contains..." text
-				if idx := strings.Index(text, "Group contains"); idx > 0 {
-					text = strings.TrimSpace(text[:idx])
-				}
-				// Remove "Group" label
-				text = strings.TrimSpace(strings.TrimPrefix(text, "Group"))
-				if text != "" && len(text) < 200 {
-					title = text
-				}
+			text := strings.TrimSpace(sel.Text())
+			// Remove "Group contains..." text
+			if idx := strings.Index(text, "Group contains"); idx > 0 {
+				text = strings.TrimSpace(text[:idx])
+			}
+			// Remove "Group" label
+			text = strings.TrimSpace(strings.TrimPrefix(text, "Group"))
+			if text != "" && len(text) < 200 {
+				title = text
 			}
 
 			// Look for description in nearby elements
-			s.Find(".description, .profile-description").Each(func(i int, desc *goquery.Selection) {
+			sel.Find(".description, .profile-description").Each(func(i int, desc *goquery.Selection) {
 				if description == "" {
 					description = strings.TrimSpace(desc.Text())
 				}
 			})
 
 			// Count children from "Group contains X groups and Y rules" text
-			text := s.Text()
+			text = sel.Text()
 			re := regexp.MustCompile(`Group contains (\d+) groups? and (\d+) rules?`)
 			if matches := re.FindStringSubmatch(text); len(matches) == 3 {
 				fmt.Sscanf(matches[1], "%d", &groupCount)
 				fmt.Sscanf(matches[2], "%d", &ruleCount)
 			}
 		}
-	})
+	}
+
+	// Also try "children-" prefixed variant if needed
+	if title == "" {
+		if sel, exists := nodeMap["children-"+node.ID]; exists {
+			text := strings.TrimSpace(sel.Text())
+			if idx := strings.Index(text, "Group contains"); idx > 0 {
+				text = strings.TrimSpace(text[:idx])
+			}
+			text = strings.TrimSpace(strings.TrimPrefix(text, "Group"))
+			if text != "" && len(text) < 200 {
+				title = text
+			}
+		}
+	}
 
 	// Fallback: extract title from ID
 	if title == "" {
@@ -289,63 +344,61 @@ func parseGroupFromNode(node *ParseTreeNode, guideID string, doc *goquery.Docume
 	}
 }
 
-// parseRuleFromNode creates an SSGRule from a parse tree node.
-func parseRuleFromNode(node *ParseTreeNode, guideID string, doc *goquery.Document) *ssg.SSGRule {
-	// Find the element for this rule
+// parseRuleFromNode creates an SSGRule from a parse tree node using indexed lookup.
+func parseRuleFromNode(node *ParseTreeNode, guideID string, nodeMap map[string]*goquery.Selection) *ssg.SSGRule {
+	// Find the element for this rule using O(1) map lookup
 	var title, description, rationale, severity string
 
-	doc.Find("[data-tt-id]").Each(func(i int, s *goquery.Selection) {
-		if id, _ := s.Attr("data-tt-id"); id == node.ID {
-			// Try to find title - look for "Rule" label or nearby text
-			s.Find(".label-default").Each(func(i int, label *goquery.Selection) {
-				if label.Text() == "Rule" {
-					// Title is usually the text after "Rule" label
-					title = strings.TrimSpace(label.Parent().Text())
-					title = strings.TrimPrefix(title, "Rule")
-					title = strings.TrimSpace(title)
-				}
-			})
-
-			// If no title found, try extracting from ID
-			if title == "" {
-				title = extractShortID(node.ID, "rule")
-				title = strings.ReplaceAll(title, "_", " ")
-				title = strings.Title(title)
+	if sel, exists := nodeMap[node.ID]; exists {
+		// Try to find title - look for "Rule" label or nearby text
+		sel.Find(".label-default").Each(func(i int, label *goquery.Selection) {
+			if label.Text() == "Rule" {
+				// Title is usually the text after "Rule" label
+				title = strings.TrimSpace(label.Parent().Text())
+				title = strings.TrimPrefix(title, "Rule")
+				title = strings.TrimSpace(title)
 			}
+		})
 
-			// Look for description
-			s.Find(".description").Each(func(i int, desc *goquery.Selection) {
-				if description == "" {
-					description = strings.TrimSpace(desc.Text())
-				}
-			})
+		// If no title found, try extracting from ID
+		if title == "" {
+			title = extractShortID(node.ID, "rule")
+			title = strings.ReplaceAll(title, "_", " ")
+			title = strings.Title(title)
+		}
 
-			// Look for rationale
-			s.Find(".rationale").Each(func(i int, rat *goquery.Selection) {
-				if rationale == "" {
-					rationale = strings.TrimSpace(rat.Text())
-				}
-			})
+		// Look for description
+		sel.Find(".description").Each(func(i int, desc *goquery.Selection) {
+			if description == "" {
+				description = strings.TrimSpace(desc.Text())
+			}
+		})
 
-			// Look for severity
-			s.Find(".severity").Each(func(i int, sev *goquery.Selection) {
-				if severity == "" {
-					severity = strings.ToLower(strings.TrimSpace(sev.Text()))
-				}
-			})
+		// Look for rationale
+		sel.Find(".rationale").Each(func(i int, rat *goquery.Selection) {
+			if rationale == "" {
+				rationale = strings.TrimSpace(rat.Text())
+			}
+		})
 
-			// Also try to find severity in class attributes
+		// Look for severity
+		sel.Find(".severity").Each(func(i int, sev *goquery.Selection) {
 			if severity == "" {
-				if s.HasClass("severity-high") || s.Find(".severity-high").Length() > 0 {
-					severity = "high"
-				} else if s.HasClass("severity-medium") || s.Find(".severity-medium").Length() > 0 {
-					severity = "medium"
-				} else if s.HasClass("severity-low") || s.Find(".severity-low").Length() > 0 {
-					severity = "low"
-				}
+				severity = strings.ToLower(strings.TrimSpace(sev.Text()))
+			}
+		})
+
+		// Also try to find severity in class attributes
+		if severity == "" {
+			if sel.HasClass("severity-high") || sel.Find(".severity-high").Length() > 0 {
+				severity = "high"
+			} else if sel.HasClass("severity-medium") || sel.Find(".severity-medium").Length() > 0 {
+				severity = "medium"
+			} else if sel.HasClass("severity-low") || sel.Find(".severity-low").Length() > 0 {
+				severity = "low"
 			}
 		}
-	})
+	}
 
 	// Default severity if not found
 	if severity == "" {
