@@ -9,13 +9,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// Reuse existing setupTestDB from service_test.go which returns (*gorm.DB, error)
+// Reuse existing setupTestDB from service_test.go which returns *gorm.DB
 func setupTestDBForSvc(t *testing.T) *gorm.DB {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("setup DB failed: %v", err)
-	}
-	return db
+	return setupTestDB(t)
 }
 
 func TestCanTransition(t *testing.T) {

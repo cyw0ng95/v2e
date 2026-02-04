@@ -12,8 +12,7 @@ import (
 
 func TestBookmarkStatistics(t *testing.T) {
 	// Create a temporary database for testing
-	db, err := setupTestDB()
-	require.NoError(t, err, "Failed to setup test database")
+	db := setupTestDB(t)
 	defer cleanupTestDB(db)
 
 	// Create bookmark service

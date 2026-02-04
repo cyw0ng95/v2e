@@ -4,37 +4,36 @@ import (
 	"context"
 	"testing"
 
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB() (*gorm.DB, error) {
+func setupTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
-		return nil, err
+		t.Fatalf("Failed to open database: %v", err)
 	}
 
 	// Run migrations
 	if err := MigrateNotesTables(db); err != nil {
-		return nil, err
+		t.Fatalf("Failed to migrate tables: %v", err)
 	}
 
-	return db, nil
+	return db
 }
 
 func TestBookmarkService(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
-
-	bookmarkService := NewBookmarkService(db)
-
+	db := setupTestDB(t)
 	ctx := context.Background()
 
-	t.Run("CreateBookmark", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "CreateBookmark", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		
 		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-123", "CVE", "CVE-2021-1234", "Test CVE", "A test CVE for bookmarking")
 		if err != nil {
 			t.Fatalf("Failed to create bookmark: %v", err)
@@ -53,7 +52,9 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	t.Run("GetBookmarkByID", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "GetBookmarkByID", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		
 		// First create a bookmark
 		createdBookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-456", "CWE", "CWE-123", "Test CWE", "A test CWE for bookmarking")
 		if err != nil {
@@ -75,7 +76,8 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	t.Run("GetBookmarksByGlobalItemID", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "GetBookmarksByGlobalItemID", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
 		globalItemID := "global-item-789"
 
 		// Create multiple bookmarks with the same global item ID
@@ -100,7 +102,9 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	t.Run("UpdateBookmark", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "UpdateBookmark", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		
 		// Create a bookmark first
 		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-update", "ATT&CK", "T1001", "Test ATT&CK Technique", "A test ATT&CK technique for bookmarking")
 		if err != nil {
@@ -130,7 +134,9 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	t.Run("UpdateLearningState", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "UpdateLearningState", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		
 		// Create a bookmark first
 		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-state", "CVE", "CVE-2022-1234", "Test CVE State", "A test CVE for state updates")
 		if err != nil {
@@ -154,7 +160,9 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	t.Run("GetBookmarksByLearningState", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "GetBookmarksByLearningState", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		
 		// Create a bookmark with a specific learning state
 		_, _, err := bookmarkService.CreateBookmark(ctx, "global-item-filter", "CWE", "CWE-456", "Test Filter", "A test item for filtering")
 		if err != nil {
@@ -177,31 +185,27 @@ func TestBookmarkService(t *testing.T) {
 			t.Fatalf("Failed to get bookmarks by learning state: %v", err)
 		}
 
-		// Check if at least one bookmark has the learning state (could be more from other tests)
-		if len(learningBookmarks) < 1 {
-			t.Errorf("Expected at least 1 bookmark with learning state '%s', got %d", string(LearningStateLearning), len(learningBookmarks))
+		// Should have exactly the one we created with learning state
+		if len(learningBookmarks) != 1 {
+			t.Errorf("Expected 1 bookmark with learning state '%s', got %d", string(LearningStateLearning), len(learningBookmarks))
 		}
 	})
 }
 
 func TestNoteService(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
-
-	bookmarkService := NewBookmarkService(db)
-	noteService := NewNoteService(db)
-
+	db := setupTestDB(t)
 	ctx := context.Background()
 
-	// Create a bookmark first to attach notes to
-	bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-note-test", "CVE", "CVE-2023-1234", "Note Test CVE", "A test CVE for note testing")
-	if err != nil {
-		t.Fatalf("Failed to create bookmark: %v", err)
-	}
+	testutils.RunWithDB(t, testutils.Level2, "AddNote", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		noteService := NewNoteService(tx)
+		
+		// Create a bookmark first to attach notes to
+		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-note-test", "CVE", "CVE-2023-1234", "Note Test CVE", "A test CVE for note testing")
+		if err != nil {
+			t.Fatalf("Failed to create bookmark: %v", err)
+		}
 
-	t.Run("AddNote", func(t *testing.T) {
 		note, err := noteService.AddNote(ctx, bookmark.ID, "This is a test note", nil, false)
 		if err != nil {
 			t.Fatalf("Failed to add note: %v", err)
@@ -216,9 +220,18 @@ func TestNoteService(t *testing.T) {
 		}
 	})
 
-	t.Run("GetNotesByBookmarkID", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "GetNotesByBookmarkID", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		noteService := NewNoteService(tx)
+		
+		// Create a bookmark
+		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-note-test", "CVE", "CVE-2023-1234", "Note Test CVE", "A test CVE for note testing")
+		if err != nil {
+			t.Fatalf("Failed to create bookmark: %v", err)
+		}
+
 		// Add a couple of notes
-		_, err := noteService.AddNote(ctx, bookmark.ID, "First note", nil, false)
+		_, err = noteService.AddNote(ctx, bookmark.ID, "First note", nil, false)
 		if err != nil {
 			t.Fatalf("Failed to add note: %v", err)
 		}
@@ -234,12 +247,21 @@ func TestNoteService(t *testing.T) {
 			t.Fatalf("Failed to get notes by bookmark ID: %v", err)
 		}
 
-		if len(notes) != 3 { // Including the note from the previous test
-			t.Errorf("Expected 3 notes, got %d", len(notes))
+		if len(notes) != 2 {
+			t.Errorf("Expected 2 notes, got %d", len(notes))
 		}
 	})
 
-	t.Run("UpdateNote", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "UpdateNote", db, func(t *testing.T, tx *gorm.DB) {
+		bookmarkService := NewBookmarkService(tx)
+		noteService := NewNoteService(tx)
+		
+		// Create a bookmark
+		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-note-test", "CVE", "CVE-2023-1234", "Note Test CVE", "A test CVE for note testing")
+		if err != nil {
+			t.Fatalf("Failed to create bookmark: %v", err)
+		}
+
 		// Add a note first
 		note, err := noteService.AddNote(ctx, bookmark.ID, "Original note content", nil, false)
 		if err != nil {
@@ -275,16 +297,12 @@ func TestNoteService(t *testing.T) {
 }
 
 func TestCrossReferenceService(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
-
-	crossRefService := NewCrossReferenceService(db)
-
+	db := setupTestDB(t)
 	ctx := context.Background()
 
-	t.Run("CreateCrossReference", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "CreateCrossReference", db, func(t *testing.T, tx *gorm.DB) {
+		crossRefService := NewCrossReferenceService(tx)
+		
 		description := "Test relationship"
 		crossRef, err := crossRefService.CreateCrossReference(ctx, "global-source-123", "global-target-456", "CVE", "CWE", string(RelationshipTypeExploits), 0.8, &description)
 		if err != nil {
@@ -312,7 +330,8 @@ func TestCrossReferenceService(t *testing.T) {
 		}
 	})
 
-	t.Run("GetCrossReferencesBySource", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "GetCrossReferencesBySource", db, func(t *testing.T, tx *gorm.DB) {
+		crossRefService := NewCrossReferenceService(tx)
 		sourceID := "global-source-get-test"
 
 		// Create multiple cross-references from the same source
@@ -337,7 +356,9 @@ func TestCrossReferenceService(t *testing.T) {
 		}
 	})
 
-	t.Run("GetCrossReferencesByType", func(t *testing.T) {
+	testutils.RunWithDB(t, testutils.Level2, "GetCrossReferencesByType", db, func(t *testing.T, tx *gorm.DB) {
+		crossRefService := NewCrossReferenceService(tx)
+		
 		// Create a cross-reference with a specific type
 		_, err := crossRefService.CreateCrossReference(ctx, "global-src-type", "global-target-type", "CWE", "CVE", string(RelationshipTypeMitigates), 0.6, nil)
 		if err != nil {
@@ -357,10 +378,7 @@ func TestCrossReferenceService(t *testing.T) {
 }
 
 func TestMemoryCardService(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
+	db := setupTestDB(t)
 
 	bookmarkService := NewBookmarkService(db)
 	memoryCardService := NewMemoryCardService(db)
@@ -488,10 +506,7 @@ func TestMemoryCardService(t *testing.T) {
 }
 
 func TestHistoryService(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
+	db := setupTestDB(t)
 
 	bookmarkService := NewBookmarkService(db)
 	historyService := NewHistoryService(db)
