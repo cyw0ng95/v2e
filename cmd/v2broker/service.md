@@ -94,6 +94,56 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `count` (int): Total number of messages processed (sent + received)
 - **Errors**: None
 
+### 7. RPCRequestPermits
+- **Description**: Requests worker permits from the broker's global pool for concurrent execution
+- **Request Parameters**:
+  - `provider_id` (string, required): Unique identifier for the requesting provider
+  - `permit_count` (int, required): Number of permits requested (must be > 0)
+- **Response**:
+  - `granted` (int): Number of permits granted (may be less than requested)
+  - `available` (int): Total permits still available in the pool
+  - `provider_id` (string): The provider ID
+- **Errors**:
+  - Invalid request: Missing provider_id or permit_count <= 0
+  - No permits available: No permits currently available in the pool
+
+### 8. RPCReleasePermits
+- **Description**: Returns worker permits to the broker's global pool
+- **Request Parameters**:
+  - `provider_id` (string, required): Unique identifier for the provider releasing permits
+  - `permit_count` (int, required): Number of permits to release (must be > 0)
+- **Response**:
+  - `success` (bool): true if permits were released successfully
+  - `available` (int): Total permits available after release
+  - `provider_id` (string): The provider ID
+- **Errors**:
+  - Invalid request: Missing provider_id or permit_count <= 0
+  - Provider not found: No permits allocated to this provider
+
+### 9. RPCOnQuotaUpdate
+- **Description**: Event broadcast from broker to providers when permits are revoked due to kernel metrics breaches
+- **Request Parameters**: None (this is a broker-initiated event)
+- **Response**: Not applicable (event only)
+- **Event Payload**:
+  - `revoked_permits` (int): Number of permits being revoked globally
+  - `reason` (string): Reason for revocation (e.g., "P99 latency exceeded 50ms")
+  - `kernel_metrics` (object): Current kernel performance metrics
+- **Notes**: Providers should transition to WAITING_QUOTA state when receiving this event
+
+### 10. RPCGetKernelMetrics
+- **Description**: Retrieves current kernel performance metrics from the broker
+- **Request Parameters**: None
+- **Response**:
+  - `p99_latency_ms` (float): 99th percentile message routing latency in milliseconds
+  - `buffer_saturation` (float): Message buffer saturation percentage (0-100)
+  - `active_workers` (int): Number of currently active workers
+  - `total_permits` (int): Total permits in the global pool
+  - `allocated_permits` (int): Number of permits currently allocated
+  - `available_permits` (int): Number of permits available for allocation
+  - `message_rate` (float): Messages per second
+  - `error_rate` (float): Errors per second
+- **Errors**: None
+
 ---
 
 ## Configuration

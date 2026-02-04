@@ -367,3 +367,61 @@ Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remot
 - Job state is in-memory only (not persisted across restarts)
 - Supports pause/resume during import process
 - Only one SSG import job can run at a time
+
+---
+
+# ETL Engine Monitoring
+
+## Service Type
+RPC (stdin/stdout message passing)
+
+## Description
+Provides observability into the Unified ETL Engine's hierarchical FSM structure and permit allocations.
+
+## Available RPC Methods
+
+#### 20. RPCGetEtlTree
+- **Description**: Retrieves the hierarchical ETL tree showing Macro FSM and all Provider FSMs
+- **Request Parameters**: None
+- **Response**:
+  - `macro_fsm` (object): Macro FSM state
+    - `id` (string): Macro FSM identifier
+    - `state` (string): Current macro state ("BOOTSTRAPPING", "ORCHESTRATING", "STABILIZING", "DRAINING")
+    - `created_at` (string): Creation timestamp
+    - `updated_at` (string): Last update timestamp
+  - `providers` (array): List of Provider FSM states
+    - `id` (string): Provider FSM identifier
+    - `provider_type` (string): Type of provider ("cve", "cwe", "capec", "attack")
+    - `state` (string): Current provider state ("IDLE", "ACQUIRING", "RUNNING", "WAITING_QUOTA", "WAITING_BACKOFF", "PAUSED", "TERMINATED")
+    - `last_checkpoint` (string): URN of last processed item
+    - `processed_count` (int): Number of items processed
+    - `error_count` (int): Number of errors encountered
+    - `created_at` (string): Creation timestamp
+    - `updated_at` (string): Last update timestamp
+    - `permits_allocated` (int): Number of permits currently allocated to this provider
+  - `total_checkpoints` (int): Total number of checkpoints saved
+- **Errors**:
+  - No active ETL session: No ETL orchestration is currently active
+
+#### 21. RPCGetProviderCheckpoints
+- **Description**: Retrieves checkpoints for a specific provider
+- **Request Parameters**:
+  - `provider_id` (string, required): Provider FSM identifier
+  - `limit` (int, optional): Maximum number of checkpoints to return (default: 100)
+  - `success_only` (bool, optional): Only return successful checkpoints (default: false)
+- **Response**:
+  - `checkpoints` (array): List of checkpoints
+    - `urn` (string): Full URN of the checkpoint
+    - `provider_id` (string): Provider FSM identifier
+    - `processed_at` (string): When the checkpoint was created
+    - `success` (bool): Whether processing was successful
+    - `error_message` (string, optional): Error message if not successful
+  - `total` (int): Total number of checkpoints for this provider
+- **Errors**:
+  - Provider not found: No provider with the given ID exists
+
+## Notes
+- ETL tree provides real-time view of orchestration hierarchy
+- Checkpoints are stored every 100 items for resilience
+- Provider states persist across service restarts
+- Macro FSM coordinates all provider FSMs
