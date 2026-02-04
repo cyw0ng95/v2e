@@ -55,6 +55,7 @@ type LocalConfig struct {
 	CVEDBPath   string `json:"cve_db_path,omitempty"`
 	CWEDBPath   string `json:"cwe_db_path,omitempty"`
 	CAPECDBPath string `json:"capec_db_path,omitempty"`
+	ASVSDBPath  string `json:"asvs_db_path,omitempty"`
 }
 
 // MetaConfig holds meta service settings
@@ -73,6 +74,7 @@ type AssetsConfig struct {
 	CWERawPath   string `json:"cwe_raw_path,omitempty"`
 	CAPECXMLPath string `json:"capec_xml_path,omitempty"`
 	CAPECXSDPath string `json:"capec_xsd_path,omitempty"`
+	ASVSCSVURL   string `json:"asvs_csv_url,omitempty"`
 }
 
 // CapecConfig holds CAPEC-specific toggles

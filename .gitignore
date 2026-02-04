@@ -45,7 +45,9 @@ go.work.sum
 logs/
 
 # Database files
-cve.db
+*.db
+*.db-shm
+*.db-wal
 
 # Editor/IDE
 # .idea/

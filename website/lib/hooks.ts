@@ -852,6 +852,112 @@ export function useCWEList(params: { offset?: number; limit?: number; search?: s
   return { data, isLoading, error };
 }
 
+// ============================================================================
+// ASVS Hooks
+// ============================================================================
+
+export function useASVSList(params: { offset?: number; limit?: number; chapter?: string; level?: number } = {}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const { offset = 0, limit = 100, chapter = '', level = 0 } = params;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listASVS({ offset, limit, chapter, level });
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ASVS list');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching ASVS list:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [offset, limit, chapter, level]);
+
+  return { data, isLoading, error };
+}
+
+export function useASVS(requirementId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!requirementId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getASVS(requirementId);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ASVS requirement');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        console.error('Error fetching ASVS requirement:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {};
+  }, [requirementId]);
+
+  return { data, isLoading, error };
+}
+
+export function useImportASVS() {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const importASVS = async (url: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await rpcClient.importASVS(url);
+      
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to import ASVS requirements');
+      }
+      
+      return response.payload;
+    } catch (err: any) {
+      setError(err);
+      console.error('Error importing ASVS:', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { importASVS, isLoading, error };
+}
+
 // Individual ATT&CK item hooks
 export function useAttackTechnique(id: string) {
   const [data, setData] = useState<any>(null);

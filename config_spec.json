@@ -8,6 +8,24 @@
       "type": "string",
       "default": "INFO",
       "values": ["DEBUG", "INFO", "WARN", "ERROR"]
+    },
+    "CONFIG_ASVS_DBPATH": {
+      "description": "Database path for ASVS data",
+      "type": "string",
+      "default": "asvs.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/asvs.buildASVSDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_ASVS_CSVURL": {
+      "description": "URL for fetching OWASP ASVS v5.0.0 CSV data",
+      "type": "string",
+      "default": "https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.csv",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/asvs.buildASVSCSVURL",
+      "major_class": "proc",
+      "minor_class": "remote"
     }
   }
 }

@@ -36,6 +36,14 @@ import type {
   ListCWEViewsResponse,
   CWEView,
   GetCWEViewResponse,
+  // ASVS Types
+  ASVSItem,
+  ListASVSRequest,
+  ListASVSResponse,
+  GetASVSByIDRequest,
+  GetASVSByIDResponse,
+  ImportASVSRequest,
+  ImportASVSResponse,
   // Notes Framework Types
   Bookmark,
   CreateBookmarkRequest,
@@ -161,6 +169,17 @@ const MOCK_CVE_DATA: CVEItem = {
       tags: ['Vendor Advisory'],
     },
   ],
+};
+
+const MOCK_ASVS_DATA: ASVSItem = {
+  requirementID: '1.1.1',
+  chapter: 'V1',
+  section: 'Architecture, Design and Threat Modeling',
+  description: 'Verify the use of a secure software development lifecycle that addresses security in all stages of development.',
+  level1: true,
+  level2: true,
+  level3: true,
+  cwe: 'CWE-1127',
 };
 
 // ============================================================================
@@ -450,6 +469,44 @@ export class RPCClient {
           retcode: 0,
           message: 'success',
           payload: item as unknown as TResponse,
+        };
+      }
+
+      case 'RPCListASVS': {
+        const lp = params as ListASVSRequest | undefined;
+        const sample: ASVSItem[] = [
+          { ...MOCK_ASVS_DATA },
+          { ...MOCK_ASVS_DATA, requirementID: '1.1.2', description: 'Verify the use of threat modeling for every design change or sprint planning to identify threats, plan for countermeasures, facilitate appropriate risk responses, and guide security testing.', level1: false },
+          { ...MOCK_ASVS_DATA, requirementID: '2.1.1', chapter: 'V2', section: 'Authentication', description: 'Verify that user set passwords are at least 12 characters in length.', cwe: 'CWE-521' },
+        ];
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: {
+            requirements: sample.slice(0, lp?.limit || sample.length),
+            offset: lp?.offset || 0,
+            limit: lp?.limit || sample.length,
+            total: sample.length,
+          } as unknown as TResponse,
+        };
+      }
+
+      case 'RPCGetASVSByID': {
+        const req = params as GetASVSByIDRequest | undefined;
+        const requirementId = req?.requirementId || '1.1.1';
+        const item: ASVSItem = { ...MOCK_ASVS_DATA, requirementID: requirementId };
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: item as unknown as TResponse,
+        };
+      }
+
+      case 'RPCImportASVS': {
+        return {
+          retcode: 0,
+          message: 'success',
+          payload: { success: true } as unknown as TResponse,
         };
       }
 
@@ -971,6 +1028,31 @@ export class RPCClient {
 
   async getCWE(cweId: string): Promise<RPCResponse<{ cwe: CWEItem }>> {
     return this.call<{ cweId: string }, { cwe: CWEItem }>('RPCGetCWEByID', { cweId }, 'local');
+  }
+
+  // ASVS Methods
+  async listASVS(params?: ListASVSRequest): Promise<RPCResponse<ListASVSResponse>> {
+    return this.call<ListASVSRequest, ListASVSResponse>(
+      'RPCListASVS',
+      params,
+      'local'
+    );
+  }
+
+  async getASVS(requirementId: string): Promise<RPCResponse<ASVSItem>> {
+    return this.call<GetASVSByIDRequest, ASVSItem>(
+      'RPCGetASVSByID',
+      { requirementId },
+      'local'
+    );
+  }
+
+  async importASVS(url: string): Promise<RPCResponse<ImportASVSResponse>> {
+    return this.call<ImportASVSRequest, ImportASVSResponse>(
+      'RPCImportASVS',
+      { url },
+      'local'
+    );
   }
 
   // ATT&CK Methods
