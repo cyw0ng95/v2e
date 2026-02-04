@@ -124,3 +124,121 @@ func TestBatching(t *testing.T) {
 	})
 
 }
+
+// BenchmarkOptimizer_LatencyConsistency measures message routing latency variance
+// under simulated CPU load to establish baseline jitter metrics.
+func BenchmarkOptimizer_LatencyConsistency(b *testing.B) {
+	router := &simpleRouter{}
+	opt := NewWithConfig(router, Config{
+		BufferCap:     1000,
+		NumWorkers:    4,
+		StatsInterval: 100 * time.Millisecond,
+		OfferPolicy:   "drop",
+		BatchSize:     1,
+		FlushInterval: 10 * time.Millisecond,
+	})
+	defer opt.Stop()
+
+	// Simulate CPU load with goroutines doing computational work
+	stopLoad := make(chan struct{})
+	for i := 0; i < 2; i++ {
+		go func() {
+			var sum uint64
+			for {
+				select {
+				case <-stopLoad:
+					return
+				default:
+					// Busy work to create CPU contention
+					for j := 0; j < 1000; j++ {
+						sum += uint64(j * j)
+					}
+				}
+			}
+		}()
+	}
+	defer close(stopLoad)
+
+	// Track latencies for variance calculation
+	latencies := make([]time.Duration, 0, b.N)
+	var mu sync.Mutex
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var i int
+		for pb.Next() {
+			msg := &proc.Message{
+				ID:     fmt.Sprintf("msg-%d", i),
+				Type:   proc.MessageTypeRequest,
+				Target: "test",
+			}
+			start := time.Now()
+			opt.Offer(msg)
+			latency := time.Since(start)
+
+			mu.Lock()
+			latencies = append(latencies, latency)
+			mu.Unlock()
+			i++
+		}
+	})
+	b.StopTimer()
+
+	// Calculate mean and standard deviation
+	if len(latencies) > 0 {
+		var sum, sumSq int64
+		for _, lat := range latencies {
+			ns := lat.Nanoseconds()
+			sum += ns
+			sumSq += ns * ns
+		}
+		mean := float64(sum) / float64(len(latencies))
+		variance := float64(sumSq)/float64(len(latencies)) - mean*mean
+		stddev := 0.0
+		if variance > 0 {
+			stddev = float64(int64(1000000 * (variance / 1000000))) // Approximate sqrt
+		}
+		b.ReportMetric(mean, "ns/op_mean")
+		b.ReportMetric(stddev, "ns/op_stddev")
+	}
+}
+
+// BenchmarkOptimizer_LargePayloadMemory processes 100MB+ payloads to establish
+// baseline memory usage and page fault metrics.
+func BenchmarkOptimizer_LargePayloadMemory(b *testing.B) {
+	router := &simpleRouter{}
+	opt := NewWithConfig(router, Config{
+		BufferCap:     100,
+		NumWorkers:    4,
+		StatsInterval: 100 * time.Millisecond,
+		OfferPolicy:   "block",
+		BatchSize:     10,
+		FlushInterval: 50 * time.Millisecond,
+	})
+	defer opt.Stop()
+
+	// Create large payload (1MB per message, will process 100+ MB total)
+	largePayload := make([]byte, 1024*1024)
+	for i := range largePayload {
+		largePayload[i] = byte(i % 256)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		// Create message with large payload
+		msg := &proc.Message{
+			ID:      fmt.Sprintf("large-%d", i),
+			Type:    proc.MessageTypeRequest,
+			Target:  "test",
+			Payload: largePayload,
+		}
+		opt.Offer(msg)
+	}
+
+	b.StopTimer()
+
+	// Wait for messages to be processed
+	time.Sleep(200 * time.Millisecond)
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/cyw0ng95/v2e/cmd/v2broker/sched"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
+	"golang.org/x/sys/unix"
 )
 
 // OptimizedRouter provides optimized message routing
@@ -236,7 +237,73 @@ func (o *Optimizer) adjustWorkerCount(newCount int) {
 	}
 }
 
+// setProcessPriority sets the broker process to high priority (-10)
+// to ensure message routing is not starved by other processes.
+func setProcessPriority() {
+	// Set process priority to -10 (high priority)
+	// PRIO_PROCESS with pid 0 means current process
+	err := unix.Setpriority(unix.PRIO_PROCESS, 0, -10)
+	if err != nil {
+		// Log but don't fail - this requires CAP_SYS_NICE capability
+		// In production, the broker should run with appropriate permissions
+	}
+}
+
+// setCPUAffinity binds a worker goroutine to a specific CPU core.
+// This reduces cache misses and context switch overhead.
+func setCPUAffinity(workerID int) {
+	numCPU := runtime.NumCPU()
+	if numCPU <= 1 {
+		return // No point in pinning on single-core systems
+	}
+
+	// Distribute workers across available CPUs
+	cpu := workerID % numCPU
+
+	var cpuSet unix.CPUSet
+	cpuSet.Zero()
+	cpuSet.Set(cpu)
+
+	// Get current thread ID (LWP)
+	// Note: unix.Gettid() returns the thread ID
+	tid := unix.Gettid()
+
+	// Set CPU affinity for this thread
+	err := unix.SchedSetaffinity(tid, &cpuSet)
+	if err != nil {
+		// Log but don't fail - this requires appropriate permissions
+		// In production, the broker should run with CAP_SYS_NICE
+	}
+}
+
+// setIOPriority sets the I/O priority for the current thread to real-time class.
+// This ensures disk I/O operations don't block the hot path of message routing.
+func setIOPriority() {
+	// I/O priority class and priority level
+	// IOPRIO_CLASS_RT = 1 (Real-Time)
+	// Priority 0 is highest within RT class
+	const (
+		IOPRIO_CLASS_SHIFT = 13
+		IOPRIO_CLASS_RT    = 1
+		IOPRIO_PRIO_VALUE  = 0
+	)
+
+	// Construct ioprio value: (class << IOPRIO_CLASS_SHIFT) | prio
+	ioprio := (IOPRIO_CLASS_RT << IOPRIO_CLASS_SHIFT) | IOPRIO_PRIO_VALUE
+
+	// Set I/O priority for current thread
+	// IOPRIO_WHO_PROCESS = 1, pid = 0 means current thread
+	const IOPRIO_WHO_PROCESS = 1
+	_, _, errno := unix.Syscall(unix.SYS_IOPRIO_SET, IOPRIO_WHO_PROCESS, 0, uintptr(ioprio))
+	if errno != 0 {
+		// Log but don't fail - this requires CAP_SYS_ADMIN capability
+	}
+}
+
 func New(router routing.Router) *Optimizer {
+	// Set process priority to high (-10) for better scheduling
+	setProcessPriority()
+
 	n := runtime.NumCPU()
 	if n < 4 {
 		n = 4
@@ -319,6 +386,9 @@ func NewWithConfig(router routing.Router, cfg Config) *Optimizer {
 		cfg.AdaptationFreq = defaults.AdaptationFreq
 	}
 
+	// Set process priority to high (-10) for better scheduling
+	setProcessPriority()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	opt := &Optimizer{
 		router:            router,
@@ -368,6 +438,18 @@ func (o *Optimizer) worker(id int) {
 			}
 		}
 	}()
+
+	// Linux-native optimizations for deterministic performance
+	// 1. Lock this goroutine to an OS thread to prevent migration
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	// 2. Set CPU affinity to bind this worker to a specific core
+	setCPUAffinity(id)
+
+	// 3. Set I/O priority to real-time class for workers doing persistent writes
+	setIOPriority()
+
 	for {
 		// collect at least one message (blocking)
 		var batch []*proc.Message

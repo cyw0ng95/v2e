@@ -7,10 +7,43 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unsafe"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/cyw0ng95/v2e/pkg/ssg"
+	"golang.org/x/sys/unix"
 )
+
+// applyHTMLSequentialHint applies madvise hints for sequential read-ahead on HTML buffers.
+// This signals the kernel to prefetch pages, reducing page faults during HTML parsing.
+func applyHTMLSequentialHint(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+
+	// Get the pointer and length
+	ptr := unsafe.Pointer(&data[0])
+	length := len(data)
+
+	// Apply MADV_SEQUENTIAL to tell kernel we'll read sequentially
+	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_SEQUENTIAL)
+
+	// Apply MADV_WILLNEED to prefetch pages into memory
+	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_WILLNEED)
+}
+
+// reclaimHTMLMemory signals the kernel to reclaim physical memory immediately.
+func reclaimHTMLMemory(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+
+	ptr := unsafe.Pointer(&data[0])
+	length := len(data)
+
+	// Apply MADV_DONTNEED to tell kernel these pages can be reclaimed immediately
+	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_DONTNEED)
+}
 
 // ParseGuideFile parses an SSG HTML guide file and extracts guide, groups, and rules.
 // Uses streaming I/O and an indexed lookup map to eliminate O(N^2) DOM traversal.
@@ -41,6 +74,13 @@ func ParseGuideFile(path string) (*ssg.SSGGuide, []ssg.SSGGroup, []ssg.SSGRule, 
 	htmlContent, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to read HTML content: %w", err)
+	}
+
+	// Apply Linux kernel memory hints for large HTML buffers
+	// This enables sequential read-ahead and reduces page faults during storage operations
+	if len(htmlContent) > 64*1024 { // Only for buffers > 64KB
+		applyHTMLSequentialHint(htmlContent)
+		defer reclaimHTMLMemory(htmlContent) // Reclaim memory after parsing
 	}
 
 	// Create guide
