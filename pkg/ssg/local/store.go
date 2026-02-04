@@ -51,6 +51,7 @@ func NewStore(dbPath string) (*Store, error) {
 		&ssg.SSGDSRule{},
 		&ssg.SSGDSRuleReference{},
 		&ssg.SSGDSRuleIdentifier{},
+		&ssg.SSGCrossReference{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}

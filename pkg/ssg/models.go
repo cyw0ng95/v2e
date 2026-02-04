@@ -448,3 +448,28 @@ func (pr *SSGProfileRule) BeforeCreate(tx *gorm.DB) error {
 	pr.CreatedAt = time.Now()
 	return nil
 }
+
+// SSGCrossReference represents a link between SSG objects.
+// Enables navigation between guides, tables, manifests, and data streams
+// based on common identifiers (Rule IDs, CCE, Products, Profiles).
+type SSGCrossReference struct {
+	ID         uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	SourceType string    `gorm:"index:idx_source;not null" json:"source_type"` // "guide", "table", "manifest", "datastream"
+	SourceID   string    `gorm:"index:idx_source;not null" json:"source_id"`   // UUID of source object
+	TargetType string    `gorm:"index:idx_target;not null" json:"target_type"` // "guide", "table", "manifest", "datastream"
+	TargetID   string    `gorm:"index:idx_target;not null" json:"target_id"`   // UUID of target object
+	LinkType   string    `gorm:"index;not null" json:"link_type"`              // "rule_id", "cce", "product", "profile_id"
+	Metadata   string    `gorm:"type:text" json:"metadata"`                    // JSON with additional context (e.g., rule short ID, CCE number)
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// TableName specifies the table name for SSGCrossReference.
+func (SSGCrossReference) TableName() string {
+	return "ssg_cross_references"
+}
+
+// BeforeCreate is a GORM hook called before creating a new cross-reference record.
+func (cr *SSGCrossReference) BeforeCreate(tx *gorm.DB) error {
+	cr.CreatedAt = time.Now()
+	return nil
+}
