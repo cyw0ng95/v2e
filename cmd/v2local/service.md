@@ -661,16 +661,77 @@ Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLi
   - Missing group_id: `group_id` parameter is required
   - Database error: Failed to query database
 
-### 65. RPCSSGDeleteGuide
-- **Description**: Deletes a guide and all associated groups and rules
+### 65. RPCSSGGetCrossReferences
+- **Description**: Retrieves cross-references for a given SSG object (source or target)
 - **Request Parameters**:
-  - `id` (string, required): Guide identifier
+  - `source_type` (string, optional): Type of source object ("guide", "table", "manifest", "datastream")
+  - `source_id` (string, optional): Source object identifier
+  - `target_type` (string, optional): Type of target object ("guide", "table", "manifest", "datastream")
+  - `target_id` (string, optional): Target object identifier
+  - `limit` (int, optional): Maximum number of results
+  - `offset` (int, optional): Pagination offset
 - **Response**:
-  - `success` (bool): true if deleted successfully
-  - `id` (string): The deleted guide ID
+  - `cross_references` (array): Array of cross-reference objects
+  - `count` (int): Number of cross-references returned
 - **Errors**:
-  - Missing id: `id` parameter is required
-  - Database error: Failed to delete from database
+  - Missing parameters: Must provide either source_type/source_id or target_type/target_id
+  - Database error: Failed to query database
+- **Example**:
+  ```json
+  Request:  {"source_type": "guide", "source_id": "guide-al2023-cis"}
+  Response: {
+    "cross_references": [
+      {
+        "id": 1,
+        "source_type": "guide",
+        "source_id": "guide-al2023-cis",
+        "target_type": "datastream",
+        "target_id": "ds-al2023",
+        "link_type": "rule_id",
+        "metadata": "{\"rule_short_id\":\"aide_installed\"}"
+      }
+    ],
+    "count": 1
+  }
+  ```
+
+### 66. RPCSSGFindRelatedObjects
+- **Description**: Finds all objects related to a given SSG object via cross-references (bidirectional)
+- **Request Parameters**:
+  - `object_type` (string, required): Type of object ("guide", "table", "manifest", "datastream")
+  - `object_id` (string, required): Object identifier
+  - `link_type` (string, optional): Filter by link type ("rule_id", "cce", "product", "profile_id")
+  - `limit` (int, optional): Maximum number of results
+  - `offset` (int, optional): Pagination offset
+- **Response**:
+  - `related_objects` (array): Array of cross-reference objects (both incoming and outgoing)
+  - `count` (int): Number of related objects returned
+- **Errors**:
+  - Missing object_type: `object_type` parameter is required
+  - Missing object_id: `object_id` parameter is required
+  - Database error: Failed to query database
+- **Example**:
+  ```json
+  Request:  {"object_type": "guide", "object_id": "guide-al2023-cis", "link_type": "rule_id"}
+  Response: {
+    "related_objects": [
+      {
+        "id": 1,
+        "source_type": "guide",
+        "source_id": "guide-al2023-cis",
+        "target_type": "datastream",
+        "target_id": "ds-al2023",
+        "link_type": "rule_id",
+        "metadata": "{\"rule_short_id\":\"aide_installed\"}"
+      }
+    ],
+    "count": 1
+  }
+  ```
 
 ## Configuration
 - **SSG Database Path**: Configurable via `SSG_DB_PATH` environment variable (default: "ssg.db")
+
+## Notes
+- SSG data is read-only after import (no update or delete operations)
+- Cross-references enable navigation between related SSG objects based on rule IDs, CCE identifiers, products, and profile IDs
