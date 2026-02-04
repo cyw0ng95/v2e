@@ -19,6 +19,14 @@
 /meta
 /bin/
 
+# v2e binaries (v2* prefix)
+v2local
+v2remote
+v2meta
+v2broker
+v2access
+v2sysmon
+
 # Test binary, built with `go test -c`
 *.test
 

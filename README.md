@@ -4,7 +4,7 @@ A sophisticated Go-based system that demonstrates a broker-first architecture fo
 
 ## Executive Summary
 
-The v2e project implements a broker-first architecture where `cmd/broker` serves as the central process manager that spawns, monitors, and manages all subprocess services. This design enforces a strict communication pattern where all inter-service communication flows through the broker, preventing direct subprocess-to-subprocess interaction. The architecture ensures clean separation of concerns while maintaining robust message routing and process lifecycle management.
+The v2e project implements a broker-first architecture where `cmd/v2broker` serves as the central process manager that spawns, monitors, and manages all subprocess services. This design enforces a strict communication pattern where all inter-service communication flows through the broker, preventing direct subprocess-to-subprocess interaction. The architecture ensures clean separation of concerns while maintaining robust message routing and process lifecycle management.
 
 Key architectural principles:
 - **Centralized Process Management**: The broker is the sole orchestrator of all subprocess services
@@ -65,7 +65,7 @@ The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permis
 
 ### Core Services
 
-- **Broker Service** ([cmd/broker](cmd/broker)): The central orchestrator responsible for:
+- **Broker Service** ([cmd/v2broker](cmd/v2broker)): The central orchestrator responsible for:
   - Spawning and managing all subprocess services with robust supervision and restart policies
   - Routing RPC messages via a high-performance Unix Domain Sockets (UDS) transport layer
   - Utilizing `bytedance/sonic` for zero-copy JSON serialization/deserialization
@@ -76,13 +76,13 @@ The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permis
   - Providing dynamic configuration of performance parameters via adaptive optimization algorithms
   - **Linux-native performance optimizations**: CPU affinity binding, thread pinning, process/I/O priority tuning for deterministic low-latency message routing (see [docs/LINUX_PERFORMANCE.md](docs/LINUX_PERFORMANCE.md))
 
-- **Access Service** ([cmd/access](cmd/access)): The REST gateway that:
+- **Access Service** ([cmd/v2access](cmd/v2access)): The REST gateway that:
   - Serves as the primary interface for the Next.js frontend
   - Exposes `/restful/rpc` endpoint for RPC forwarding
   - Translates HTTP requests to RPC calls and responses back
   - Provides health checks and basic service discovery
 
-- **Meta Service** ([cmd/meta](cmd/meta)): The orchestration layer that:
+- **Meta Service** ([cmd/v2meta](cmd/v2meta)): The orchestration layer that:
   - Manages job scheduling and execution using go-taskflow
   - Coordinates complex multi-step operations
   - Handles session management and state persistence
@@ -93,7 +93,7 @@ The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permis
     - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
     - RPCDeleteMemoryCard, RPCListMemoryCards
 
-- **Local Service** ([cmd/local](cmd/local)): The data persistence layer that:
+- **Local Service** ([cmd/v2local](cmd/v2local)): The data persistence layer that:
   - Manages local SQLite databases for CVE, CWE, CAPEC, and ATT&CK data
   - Provides CRUD operations for vulnerability information
   - Handles data indexing and querying
@@ -106,13 +106,13 @@ The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permis
     - RPCDeleteMemoryCard, RPCListMemoryCards
     - Supports TipTap JSON content, classification fields, and metadata
 
-- **Remote Service** ([cmd/remote](cmd/remote)): The data acquisition layer that:
+- **Remote Service** ([cmd/v2remote](cmd/v2remote)): The data acquisition layer that:
   - Fetches vulnerability data from external APIs (NVD, etc.)
   - Implements rate limiting and retry mechanisms
   - Handles data transformation and normalization
   - Manages API credentials and authentication
 
-- **SysMon Service** ([cmd/sysmon](cmd/sysmon)): The system monitoring layer that:
+- **SysMon Service** ([cmd/v2sysmon](cmd/v2sysmon)): The system monitoring layer that:
   - Collects performance metrics and system statistics
   - Monitors resource utilization across services
   - Provides health indicators for operational awareness
@@ -498,12 +498,12 @@ Available metrics include:
 ## Project Layout
 
 - **cmd/** - Service implementations
-  - broker/ - Process manager and RPC router with message optimization
-  - access/ - REST gateway (subprocess)
-  - local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK)
-  - remote/ - Remote data fetching service
-  - meta/ - Orchestration and job control (with Taskflow)
-  - sysmon/ - System monitoring service
+  - v2broker/ - Process manager and RPC router with message optimization
+  - v2access/ - REST gateway (subprocess)
+  - v2local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK)
+  - v2remote/ - Remote data fetching service
+  - v2meta/ - Orchestration and job control (with Taskflow)
+  - v2sysmon/ - System monitoring service
 - **pkg/** - Shared packages
   - proc/subprocess - Subprocess framework (stdin/stdout RPC)
   - proc/message - Optimized message handling with pooling
@@ -527,14 +527,14 @@ Available metrics include:
 
 The broker (microkernel) is organized into three primary layers:
 
-### 1. Core Layer (`cmd/broker/core`)
+### 1. Core Layer (`cmd/v2broker/core`)
 Central management logic responsible for process supervision and message routing.
 - **Broker**: The main struct orchestrating the system.
 - **Process**: Represents a managed subprocess with its lifecycle state (`ProcessInfo`) and I/O pipes.
 - **ProcessInfo**: Serializable struct containing PID, status (`running`, `exited`, `failed`), command, and start/end times.
 - **Router Interface**: Defines how messages are routed between processes.
 
-### 2. Transport Layer (`cmd/broker/transport`)
+### 2. Transport Layer (`cmd/v2broker/transport`)
 Handles low-level communication mechanics.
 - **Transport Interface**: Defines the contract for IPC.
   - `Connect() error`: Establishes the connection.
@@ -543,7 +543,7 @@ Handles low-level communication mechanics.
   - `Receive() (*proc.Message, error)`: Reads a structured message.
 - **UDSTransport**: High-performance implementation using Unix Domain Sockets.
 
-### 3. Performance Layer (`cmd/broker/perf`)
+### 3. Performance Layer (`cmd/v2broker/perf`)
 Decoupled optimization module for high-throughput message handling.
 - **Optimizer**: Manages worker pools and message batching.
 - **AdaptiveOptimizer**: Monitors system load and dynamically adjusts:
@@ -616,11 +616,11 @@ The broker implements intelligent adaptive tuning that responds to system and ap
 
 ## Where to Look Next
 
-- [cmd/broker](cmd/broker) — Broker implementation and message routing
+- [cmd/v2broker](cmd/v2broker) — Broker implementation and message routing
 - [pkg/proc/subprocess](pkg/proc/subprocess) — Helper framework for subprocesses
 - [pkg/cve/taskflow](pkg/cve/taskflow) — Taskflow-based job executor
-- [cmd/access](cmd/access) — REST gateway and example of using the RPC client
-- [cmd/meta](cmd/meta) — Job orchestration and session management
+- [cmd/v2access](cmd/v2access) — REST gateway and example of using the RPC client
+- [cmd/v2meta](cmd/v2meta) — Job orchestration and session management
 - [website/](website/) — Next.js frontend implementation
 - [tests/](tests/) — Integration tests demonstrating usage patterns
 
@@ -725,7 +725,7 @@ In CI, V2E_TEST_LEVEL=3 runs all tests in a single job for comprehensive coverag
   
   # Run tests for specific packages
   go test -run='^Test' ./pkg/cve/...
-  go test -run='^Test' ./cmd/broker/...
+  go test -run='^Test' ./cmd/v2broker/...
   
   # Run tests with coverage
   go test -run='^Test' -coverprofile=coverage.out ./...
@@ -754,7 +754,7 @@ In CI, V2E_TEST_LEVEL=3 runs all tests in a single job for comprehensive coverag
   go test -bench=BenchmarkGetCVE -benchmem ./pkg/cve/local
   
   # Run benchmarks with memory allocation profiling
-  go test -bench=. -benchmem -memprofile=mem.out ./cmd/broker/perf
+  go test -bench=. -benchmem -memprofile=mem.out ./cmd/v2broker/perf
   go tool pprof -http=:8080 mem.out
   
   # Compare benchmark results
