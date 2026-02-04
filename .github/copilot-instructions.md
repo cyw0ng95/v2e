@@ -30,10 +30,27 @@ to be productive in this repo. Keep edits small, preserve broker-first rules.
    and tools call `cmd/access` REST endpoint `/restful/rpc` with `target=<service>`.
 
 - **Build / test commands:** use the repository `build.sh` wrapper:
-   - `./build.sh -t` → run Go unit tests
+   - `./build.sh -t` → run Go unit tests (default: Level 1)
+   - `V2E_TEST_LEVEL=2 ./build.sh -t` → run Level 1 and 2 tests (includes database tests)
+   - `V2E_TEST_LEVEL=3 ./build.sh -t` → run all test levels
    - `./build.sh -i` → run integration tests (pytest; broker must be started)
    - `./build.sh -m` → run benchmarks
    Use `runenv.sh` or the broker config (`config.json`) to start local runs.
+
+- **Hierarchical testing system:**
+   - Always use `testutils.Run()` for Level 1 tests (pure logic, no DB)
+   - Always use `testutils.RunWithDB()` for Level 2+ tests (database operations)
+   - RunWithDB automatically creates transactions and rolls them back (no persistent side effects)
+   - All tests run in parallel automatically via the wrapper
+   - Example:
+     ```go
+     testutils.Run(t, testutils.Level1, "TestName", func(t *testing.T) {
+         // Test implementation
+     })
+     testutils.RunWithDB(t, testutils.Level2, "DBTest", db, func(t *testing.T, tx *gorm.DB) {
+         // Use tx for all database operations
+     })
+     ```
 
 - **Conventions & expectations:**
    - Keep changes minimal and focused; follow Go module style.

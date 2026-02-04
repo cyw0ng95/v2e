@@ -637,6 +637,78 @@ For macOS users or when isolation is required, the project includes a containeri
 
 ### Testing Methodologies
 
+The v2e project uses a hierarchical testing system that organizes tests by complexity and resource requirements. This allows developers to run fast unit tests during development while ensuring comprehensive testing in CI.
+
+#### Test Levels
+
+Tests are organized into three levels controlled by the `V2E_TEST_LEVEL` environment variable:
+
+- **Level 1 (Fundamental)**: Pure logic, mock-based, no external dependencies, minimal database operations
+  - Fast execution (milliseconds)
+  - Safe for parallel execution
+  - Default level if `V2E_TEST_LEVEL` is not set
+  
+- **Level 2 (Integration)**: Database (GORM) operations with transaction isolation
+  - Uses automatic transaction rollback for test isolation
+  - Tests run in parallel within transactions
+  - No persistent side effects
+  
+- **Level 3 (Comprehensive)**: External APIs, E2E, and heavy integration tests
+  - May require external services
+  - Longer execution time
+  - Run in CI for comprehensive validation
+
+#### Writing Tests with testutils.Run()
+
+All tests should use the `testutils.Run()` wrapper for automatic parallelization and level filtering:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/testutils"
+
+// Level 1: Pure logic test
+func TestBusinessLogic(t *testing.T) {
+    testutils.Run(t, testutils.Level1, "BasicCalculation", func(t *testing.T) {
+        // Test implementation
+        result := Calculate(10, 20)
+        if result != 30 {
+            t.Errorf("Expected 30, got %d", result)
+        }
+    })
+}
+
+// Level 2: Database test with automatic transaction isolation
+func TestDatabaseOperation(t *testing.T) {
+    db, _ := setupTestDB()
+    
+    testutils.RunWithDB(t, testutils.Level2, "InsertRecord", db, func(t *testing.T, tx *gorm.DB) {
+        // All database operations use tx (transaction)
+        // Automatic rollback ensures no side effects
+        record := &MyRecord{Name: "test"}
+        if err := tx.Create(record).Error; err != nil {
+            t.Fatalf("Failed to create: %v", err)
+        }
+    })
+}
+```
+
+#### Running Tests at Different Levels
+
+```bash
+# Run Level 1 tests only (default, fastest)
+./build.sh -t
+
+# Run Level 1 and Level 2 tests
+V2E_TEST_LEVEL=2 ./build.sh -t
+
+# Run all tests (Level 1, 2, and 3)
+V2E_TEST_LEVEL=3 ./build.sh -t
+
+# Run specific test at a specific level
+V2E_TEST_LEVEL=2 go test -v ./pkg/notes/...
+```
+
+In CI, all three levels are tested in parallel to ensure comprehensive coverage while maintaining fast feedback.
+
 - **Unit Tests**: Standard Go unit tests with coverage reporting
   ```bash
   # Run all unit tests (excludes fuzz tests)
