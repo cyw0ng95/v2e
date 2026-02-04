@@ -42,11 +42,11 @@ func TestAttackPatternValidation(t *testing.T) {
 		}
 
 		// Insert the technique using the import mechanism
-		tx := store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&validTechnique).Error; err != nil {
+		dbTx := store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&validTechnique).Error; err != nil {
 			t.Fatalf("Failed to create technique: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Test retrieval
 		retrievedTechnique, err := store.GetTechniqueByID(ctx, "T1001")
@@ -71,11 +71,11 @@ func TestAttackPatternValidation(t *testing.T) {
 			Modified:    "2023-06-01",
 		}
 
-		tx = store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&validTactic).Error; err != nil {
+		dbTx = store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&validTactic).Error; err != nil {
 			t.Fatalf("Failed to create tactic: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Test retrieval
 		retrievedTactic, err := store.GetTacticByID(ctx, "TA0001")
@@ -100,11 +100,11 @@ func TestAttackPatternValidation(t *testing.T) {
 			Modified:    "2023-06-01",
 		}
 
-		tx = store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&validMitigation).Error; err != nil {
+		dbTx = store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&validMitigation).Error; err != nil {
 			t.Fatalf("Failed to create mitigation: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Test retrieval
 		retrievedMitigation, err := store.GetMitigationByID(ctx, "M1001")
@@ -177,13 +177,13 @@ func TestDataTransformation(t *testing.T) {
 		}
 
 		// Insert multiple techniques
-		tx := store.db.WithContext(ctx).Begin()
+		dbTx := store.db.WithContext(ctx).Begin()
 		for _, tech := range techniques {
-			if err := tx.Create(&tech).Error; err != nil {
+			if err := dbTx.Create(&tech).Error; err != nil {
 				t.Fatalf("Failed to create technique %s: %v", tech.ID, err)
 			}
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Test pagination with multiple records
 		page1, total, err := store.ListTechniquesPaginated(ctx, 0, 2)
@@ -333,13 +333,13 @@ func TestPerformanceBenchmark(t *testing.T) {
 
 		// Measure insertion performance
 		startTime := time.Now()
-		tx := store.db.WithContext(ctx).Begin()
+		dbTx := store.db.WithContext(ctx).Begin()
 		for _, tech := range techniques {
-			if err := tx.Create(&tech).Error; err != nil {
+			if err := dbTx.Create(&tech).Error; err != nil {
 				t.Fatalf("Failed to create technique: %v", err)
 			}
 		}
-		tx.Commit()
+		dbTx.Commit()
 		insertDuration := time.Since(startTime)
 
 		t.Logf("Inserted %d techniques in %v", numTechniques, insertDuration)
@@ -415,13 +415,13 @@ func TestConcurrentAccess(t *testing.T) {
 			{ID: "T1003", Name: "Test Technique 3", Domain: "enterprise-attack"},
 		}
 
-		tx := store.db.WithContext(ctx).Begin()
+		dbTx := store.db.WithContext(ctx).Begin()
 		for _, tech := range testTechniques {
-			if err := tx.Create(&tech).Error; err != nil {
+			if err := dbTx.Create(&tech).Error; err != nil {
 				t.Fatalf("Failed to create technique: %v", err)
 			}
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		var wg sync.WaitGroup
 		const numGoroutines = 10
@@ -492,14 +492,14 @@ func TestRelationshipFunctionality(t *testing.T) {
 			Modified:    "2023-06-01",
 		}
 
-		tx := store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&technique).Error; err != nil {
+		dbTx := store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&technique).Error; err != nil {
 			t.Fatalf("Failed to create technique: %v", err)
 		}
-		if err := tx.Create(&tactic).Error; err != nil {
+		if err := dbTx.Create(&tactic).Error; err != nil {
 			t.Fatalf("Failed to create tactic: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Create a relationship between tactic and technique (tactic has sub-technique)
 		relationship := AttackRelationship{
@@ -515,11 +515,11 @@ func TestRelationshipFunctionality(t *testing.T) {
 			Modified:         "2023-06-01",
 		}
 
-		tx = store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&relationship).Error; err != nil {
+		dbTx = store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&relationship).Error; err != nil {
 			t.Fatalf("Failed to create relationship: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Test getting related techniques by tactic
 		relatedTechniques, err := store.GetRelatedTechniquesByTactic(ctx, "TA0005")
@@ -573,11 +573,11 @@ func TestSoftwareAndGroupFunctionality(t *testing.T) {
 			Modified:    "2023-06-01",
 		}
 
-		tx := store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&software).Error; err != nil {
+		dbTx := store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&software).Error; err != nil {
 			t.Fatalf("Failed to create software: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Retrieve software
 		retrievedSoftware, err := store.GetSoftwareByID(ctx, "S0001")
@@ -602,11 +602,11 @@ func TestSoftwareAndGroupFunctionality(t *testing.T) {
 			Modified:    "2023-06-01",
 		}
 
-		tx = store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&group).Error; err != nil {
+		dbTx = store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&group).Error; err != nil {
 			t.Fatalf("Failed to create group: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Retrieve group
 		retrievedGroup, err := store.GetGroupByID(ctx, "G0001")
@@ -672,11 +672,11 @@ func TestImportMetadata(t *testing.T) {
 			ImportVersion: "1.0",
 		}
 
-		tx := store.db.WithContext(ctx).Begin()
-		if err := tx.Create(&metadata).Error; err != nil {
+		dbTx := store.db.WithContext(ctx).Begin()
+		if err := dbTx.Create(&metadata).Error; err != nil {
 			t.Fatalf("Failed to create metadata: %v", err)
 		}
-		tx.Commit()
+		dbTx.Commit()
 
 		// Retrieve metadata
 		retrievedMetadata, err := store.GetImportMetadata(ctx)
