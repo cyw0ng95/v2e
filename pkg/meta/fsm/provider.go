@@ -1,0 +1,378 @@
+package fsm
+
+import (
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/meta/storage"
+	"github.com/cyw0ng95/v2e/pkg/urn"
+)
+
+// BaseProviderFSM provides a base implementation of ProviderFSM
+// Concrete providers (CVE, CWE, etc.) can embed this and override Execute()
+type BaseProviderFSM struct {
+	mu              sync.RWMutex
+	id              string
+	providerType    string
+	state           ProviderState
+	storage         *storage.Store
+	eventHandler    func(*Event) error
+	createdAt       time.Time
+	updatedAt       time.Time
+	lastCheckpoint  string
+	processedCount  int64
+	errorCount      int64
+	permitsHeld     int
+	executor        func() error // Custom execution logic
+}
+
+// ProviderConfig holds configuration for creating a provider FSM
+type ProviderConfig struct {
+	ID           string
+	ProviderType string
+	Storage      *storage.Store
+	Executor     func() error // Custom execution logic
+}
+
+// NewBaseProviderFSM creates a new base provider FSM
+func NewBaseProviderFSM(config ProviderConfig) (*BaseProviderFSM, error) {
+	if config.ID == "" {
+		return nil, fmt.Errorf("provider ID cannot be empty")
+	}
+	if config.ProviderType == "" {
+		return nil, fmt.Errorf("provider type cannot be empty")
+	}
+
+	p := &BaseProviderFSM{
+		id:           config.ID,
+		providerType: config.ProviderType,
+		state:        ProviderIdle,
+		storage:      config.Storage,
+		createdAt:    time.Now(),
+		updatedAt:    time.Now(),
+		executor:     config.Executor,
+	}
+
+	// Try to load existing state from storage
+	if config.Storage != nil {
+		if err := p.loadState(); err != nil {
+			// If no state exists, that's fine (new provider)
+		}
+	}
+
+	return p, nil
+}
+
+// GetID returns the provider ID
+func (p *BaseProviderFSM) GetID() string {
+	return p.id
+}
+
+// GetType returns the provider type
+func (p *BaseProviderFSM) GetType() string {
+	return p.providerType
+}
+
+// GetState returns the current provider state
+func (p *BaseProviderFSM) GetState() ProviderState {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.state
+}
+
+// Transition attempts to transition to a new state
+func (p *BaseProviderFSM) Transition(newState ProviderState) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Validate transition
+	if err := ValidateProviderTransition(p.state, newState); err != nil {
+		return err
+	}
+
+	oldState := p.state
+	p.state = newState
+	p.updatedAt = time.Now()
+
+	// Persist state to storage
+	if p.storage != nil {
+		providerState := &storage.ProviderFSMState{
+			ID:             p.id,
+			ProviderType:   p.providerType,
+			State:          storage.ProviderState(p.state),
+			LastCheckpoint: p.lastCheckpoint,
+			ProcessedCount: p.processedCount,
+			ErrorCount:     p.errorCount,
+			CreatedAt:      p.createdAt,
+			UpdatedAt:      p.updatedAt,
+		}
+		if err := p.storage.SaveProviderState(providerState); err != nil {
+			// Rollback state on persistence failure
+			p.state = oldState
+			return fmt.Errorf("failed to persist state transition: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Start begins execution (IDLE -> ACQUIRING -> RUNNING)
+func (p *BaseProviderFSM) Start() error {
+	currentState := p.GetState()
+	
+	if currentState != ProviderIdle {
+		return fmt.Errorf("cannot start from state %s, must be IDLE", currentState)
+	}
+
+	// Transition to ACQUIRING (waiting for permits)
+	if err := p.Transition(ProviderAcquiring); err != nil {
+		return err
+	}
+
+	// Emit event
+	p.emitEvent(EventProviderStarted)
+
+	return nil
+}
+
+// Pause pauses execution (RUNNING -> PAUSED)
+func (p *BaseProviderFSM) Pause() error {
+	currentState := p.GetState()
+	
+	if currentState != ProviderRunning {
+		return fmt.Errorf("cannot pause from state %s, must be RUNNING", currentState)
+	}
+
+	if err := p.Transition(ProviderPaused); err != nil {
+		return err
+	}
+
+	// Emit event
+	p.emitEvent(EventProviderPaused)
+
+	return nil
+}
+
+// Resume resumes execution (PAUSED -> ACQUIRING -> RUNNING)
+func (p *BaseProviderFSM) Resume() error {
+	currentState := p.GetState()
+	
+	if currentState != ProviderPaused {
+		return fmt.Errorf("cannot resume from state %s, must be PAUSED", currentState)
+	}
+
+	// Transition back to ACQUIRING to request permits again
+	if err := p.Transition(ProviderAcquiring); err != nil {
+		return err
+	}
+
+	// Emit event
+	p.emitEvent(EventProviderResumed)
+
+	return nil
+}
+
+// Stop terminates execution (any state -> TERMINATED)
+func (p *BaseProviderFSM) Stop() error {
+	if err := p.Transition(ProviderTerminated); err != nil {
+		return err
+	}
+
+	// Emit event
+	p.emitEvent(EventProviderCompleted)
+
+	return nil
+}
+
+// OnQuotaRevoked handles quota revocation from broker
+func (p *BaseProviderFSM) OnQuotaRevoked(revokedCount int) error {
+	p.mu.Lock()
+	p.permitsHeld -= revokedCount
+	if p.permitsHeld < 0 {
+		p.permitsHeld = 0
+	}
+	p.mu.Unlock()
+
+	currentState := p.GetState()
+	
+	// If running, transition to WAITING_QUOTA
+	if currentState == ProviderRunning {
+		if err := p.Transition(ProviderWaitingQuota); err != nil {
+			return err
+		}
+
+		// Emit event
+		p.emitEvent(EventQuotaRevoked)
+	}
+
+	return nil
+}
+
+// OnQuotaGranted handles quota grant from broker
+func (p *BaseProviderFSM) OnQuotaGranted(grantedCount int) error {
+	p.mu.Lock()
+	p.permitsHeld += grantedCount
+	p.mu.Unlock()
+
+	currentState := p.GetState()
+	
+	// If acquiring, transition to RUNNING
+	if currentState == ProviderAcquiring {
+		if err := p.Transition(ProviderRunning); err != nil {
+			return err
+		}
+
+		// Emit event
+		p.emitEvent(EventQuotaGranted)
+
+		// Start execution
+		go p.executeAsync()
+	} else if currentState == ProviderWaitingQuota {
+		// Retry acquisition
+		if err := p.Transition(ProviderAcquiring); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// OnRateLimited handles rate limiting (429 errors)
+func (p *BaseProviderFSM) OnRateLimited(retryAfter time.Duration) error {
+	currentState := p.GetState()
+	
+	if currentState == ProviderRunning {
+		if err := p.Transition(ProviderWaitingBackoff); err != nil {
+			return err
+		}
+
+		// Emit event
+		p.emitEvent(EventRateLimited)
+
+		// Schedule retry after backoff
+		go func() {
+			time.Sleep(retryAfter)
+			// Transition back to ACQUIRING
+			if p.GetState() == ProviderWaitingBackoff {
+				p.Transition(ProviderAcquiring)
+			}
+		}()
+	}
+
+	return nil
+}
+
+// Execute performs the actual work (called when in RUNNING state)
+func (p *BaseProviderFSM) Execute() error {
+	if p.executor != nil {
+		return p.executor()
+	}
+	return fmt.Errorf("no executor defined")
+}
+
+// executeAsync runs the executor in a goroutine
+func (p *BaseProviderFSM) executeAsync() {
+	if err := p.Execute(); err != nil {
+		p.mu.Lock()
+		p.errorCount++
+		p.mu.Unlock()
+		
+		// Emit failure event
+		p.emitEvent(EventProviderFailed)
+	}
+}
+
+// SetEventHandler sets the callback for event bubbling to MacroFSM
+func (p *BaseProviderFSM) SetEventHandler(handler func(*Event) error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.eventHandler = handler
+}
+
+// emitEvent sends an event to the event handler
+func (p *BaseProviderFSM) emitEvent(eventType EventType) {
+	p.mu.RLock()
+	handler := p.eventHandler
+	p.mu.RUnlock()
+
+	if handler != nil {
+		event := NewEvent(eventType, p.id)
+		handler(event)
+	}
+}
+
+// SaveCheckpoint saves a checkpoint with URN
+func (p *BaseProviderFSM) SaveCheckpoint(itemURN *urn.URN, success bool, errorMsg string) error {
+	if itemURN == nil {
+		return fmt.Errorf("URN cannot be nil")
+	}
+
+	p.mu.Lock()
+	p.lastCheckpoint = itemURN.Key()
+	p.processedCount++
+	if !success {
+		p.errorCount++
+	}
+	p.mu.Unlock()
+
+	// Save to storage
+	if p.storage != nil {
+		checkpoint := &storage.Checkpoint{
+			URN:          itemURN.Key(),
+			ProviderID:   p.id,
+			ProcessedAt:  time.Now(),
+			Success:      success,
+			ErrorMessage: errorMsg,
+		}
+		if err := p.storage.SaveCheckpoint(checkpoint); err != nil {
+			return fmt.Errorf("failed to save checkpoint: %w", err)
+		}
+	}
+
+	// Emit checkpoint event every 100 items
+	if p.processedCount%100 == 0 {
+		p.emitEvent(EventCheckpoint)
+	}
+
+	return nil
+}
+
+// GetStats returns provider statistics
+func (p *BaseProviderFSM) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	return map[string]interface{}{
+		"id":              p.id,
+		"provider_type":   p.providerType,
+		"state":           string(p.state),
+		"last_checkpoint": p.lastCheckpoint,
+		"processed_count": p.processedCount,
+		"error_count":     p.errorCount,
+		"permits_held":    p.permitsHeld,
+		"created_at":      p.createdAt.Format(time.RFC3339),
+		"updated_at":      p.updatedAt.Format(time.RFC3339),
+	}
+}
+
+// loadState attempts to load persisted state from storage
+func (p *BaseProviderFSM) loadState() error {
+	if p.storage == nil {
+		return fmt.Errorf("storage not configured")
+	}
+
+	state, err := p.storage.GetProviderState(p.id)
+	if err != nil {
+		return err
+	}
+
+	p.state = ProviderState(state.State)
+	p.lastCheckpoint = state.LastCheckpoint
+	p.processedCount = state.ProcessedCount
+	p.errorCount = state.ErrorCount
+	p.createdAt = state.CreatedAt
+	p.updatedAt = state.UpdatedAt
+
+	return nil
+}
