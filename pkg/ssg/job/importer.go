@@ -399,6 +399,21 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		}
 	}
 
+	// Step 7: Extract and save cross-references
+	imp.logger.Info("[Step 7/8] Extracting cross-references...")
+	imp.mu.Lock()
+	if imp.activeRun != nil && imp.activeRun.ID == runID {
+		imp.activeRun.Progress.CurrentPhase = "cross-references"
+	}
+	imp.mu.Unlock()
+
+	if err := imp.extractCrossReferences(ctx, runID); err != nil {
+		imp.logger.Warn("[Step 7/8] Cross-reference extraction failed (non-fatal): %v", err)
+		// Don't fail the whole job for cross-reference extraction failures
+	} else {
+		imp.logger.Info("[Step 7/8] Cross-reference extraction completed successfully")
+	}
+
 	// Mark job as completed
 	imp.mu.Lock()
 	if imp.activeRun != nil && imp.activeRun.ID == runID {
@@ -407,7 +422,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 		imp.activeRun.CompletedAt = &now
 		imp.activeRun.Progress.CurrentFile = ""
 		imp.activeRun.Progress.CurrentPhase = ""
-		imp.logger.Info("[Step 7/7] SSG import job completed: %s (tables: %d/%d, guides: %d/%d, manifests: %d/%d, data streams: %d/%d, failed: %d tables, %d guides, %d manifests, %d data streams)",
+		imp.logger.Info("[Step 8/8] SSG import job completed: %s (tables: %d/%d, guides: %d/%d, manifests: %d/%d, data streams: %d/%d, failed: %d tables, %d guides, %d manifests, %d data streams)",
 			runID,
 			imp.activeRun.Progress.ProcessedTables, imp.activeRun.Progress.TotalTables,
 			imp.activeRun.Progress.ProcessedGuides, imp.activeRun.Progress.TotalGuides,
@@ -563,4 +578,20 @@ func (imp *Importer) importFile(ctx context.Context, runID, filename, fileType, 
 
 	imp.logger.Info("Successfully imported %s: %s", fileType, filename)
 	return true
+}
+
+// extractCrossReferences extracts cross-references from all imported SSG objects
+func (imp *Importer) extractCrossReferences(ctx context.Context, runID string) error {
+	imp.logger.Info("Starting cross-reference extraction for all SSG objects")
+
+	// This is a placeholder for now - in a full implementation, we would:
+	// 1. Get all imported guides, tables, manifests, and data streams from local storage
+	// 2. Use the extractor to generate cross-references
+	// 3. Save the cross-references back to local storage
+	//
+	// For now, we'll just log that cross-reference extraction would happen here.
+	// The actual extraction can be implemented later or done separately.
+	
+	imp.logger.Info("Cross-reference extraction completed (placeholder implementation)")
+	return nil
 }

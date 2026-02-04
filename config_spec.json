@@ -253,6 +253,33 @@
       "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerWorkers",
       "major_class": "broker",
       "minor_class": "optimizer"
+    },
+    "CONFIG_WORKERPOOL_INITIAL_SIZE": {
+      "description": "Initial size of worker pool for subprocess RPC handling",
+      "type": "int",
+      "default": 0,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/common/workerpool.buildInitialSize",
+      "major_class": "proc",
+      "minor_class": "workerpool"
+    },
+    "CONFIG_WORKERPOOL_MIN_SIZE": {
+      "description": "Minimum size of worker pool",
+      "type": "int",
+      "default": 2,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/common/workerpool.buildMinSize",
+      "major_class": "proc",
+      "minor_class": "workerpool"
+    },
+    "CONFIG_WORKERPOOL_MAX_SIZE": {
+      "description": "Maximum size of worker pool",
+      "type": "int",
+      "default": 0,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/common/workerpool.buildMaxSize",
+      "major_class": "proc",
+      "minor_class": "workerpool"
     }
   }
 }
