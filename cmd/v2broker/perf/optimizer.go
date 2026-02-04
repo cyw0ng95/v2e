@@ -147,6 +147,9 @@ type Optimizer struct {
 	adaptationMu   sync.Mutex
 	adaptationFreq time.Duration
 	lastAdaptation time.Time
+
+	// Permit integration (Phase 2 UEE)
+	permitIntegration *PermitIntegration
 }
 
 func (o *Optimizer) EnableAdaptiveOptimization() {
