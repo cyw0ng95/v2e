@@ -1,6 +1,8 @@
 package main
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"fmt"
 	"os"
@@ -188,7 +190,7 @@ func TestRPCGetCVEByID(t *testing.T) {
 	// Create handler
 	handler := createGetCVEByIDHandler(db, logger)
 
-	t.Run("Get existing CVE", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "Get existing CVE", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message
 		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-GETTEST",
@@ -223,7 +225,7 @@ func TestRPCGetCVEByID(t *testing.T) {
 		}
 	})
 
-	t.Run("Get non-existing CVE", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "Get non-existing CVE", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message
 		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-NOTFOUND",
@@ -249,7 +251,7 @@ func TestRPCGetCVEByID(t *testing.T) {
 		}
 	})
 
-	t.Run("Empty CVE ID", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "Empty CVE ID", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message
 		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "",
@@ -297,7 +299,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 	// Create handler
 	handler := createDeleteCVEByIDHandler(db, logger)
 
-	t.Run("Delete existing CVE", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "Delete existing CVE", nil, func(t *testing.T, tx *gorm.DB) {
 		// Save a test CVE first
 		testCVE := &cve.CVEItem{
 			ID:           "CVE-2021-DELETETEST",
@@ -347,7 +349,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete non-existing CVE", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "Delete non-existing CVE", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message
 		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "CVE-2021-NOTEXIST",
@@ -373,7 +375,7 @@ func TestRPCDeleteCVEByID(t *testing.T) {
 		}
 	})
 
-	t.Run("Empty CVE ID", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "Empty CVE ID", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message
 		payload, _ := subprocess.MarshalFast(map[string]string{
 			"cve_id": "",
@@ -435,7 +437,7 @@ func TestRPCListCVEs(t *testing.T) {
 	// Create handler
 	handler := createListCVEsHandler(db, logger)
 
-	t.Run("List with default pagination", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "List with default pagination", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message with no payload (use defaults)
 		msg := &subprocess.Message{
 			Type:    subprocess.MessageTypeRequest,
@@ -473,7 +475,7 @@ func TestRPCListCVEs(t *testing.T) {
 		}
 	})
 
-	t.Run("List with custom pagination", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "List with custom pagination", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message with custom offset and limit
 		payload, _ := subprocess.MarshalFast(map[string]int{
 			"offset": 5,
@@ -516,7 +518,7 @@ func TestRPCListCVEs(t *testing.T) {
 		}
 	})
 
-	t.Run("List with offset beyond total", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "List with offset beyond total", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create request message with offset beyond total
 		payload, _ := subprocess.MarshalFast(map[string]int{
 			"offset": 20,

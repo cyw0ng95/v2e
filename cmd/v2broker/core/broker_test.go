@@ -1,6 +1,8 @@
 package core
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"bytes"
 	"os"
 	"runtime"
@@ -30,116 +32,128 @@ func (b *threadSafeBuffer) String() string {
 }
 
 func TestNewBroker(t *testing.T) {
-	broker := NewBroker()
-	if broker == nil {
-		t.Fatal("NewBroker returned nil")
-	}
+	testutils.Run(t, testutils.Level2, "TestNewBroker", nil, func(t *testing.T, tx *gorm.DB) {
+		broker := NewBroker()
+		if broker == nil {
+			t.Fatal("NewBroker returned nil")
+		}
 
-	if broker.ProcessCount() != 0 {
-		t.Error("Expected no processes on new broker")
-	}
-	if broker.MessageChannel() == nil {
-		t.Error("Expected messages channel to be initialized")
-	}
+		if broker.ProcessCount() != 0 {
+			t.Error("Expected no processes on new broker")
+		}
+		if broker.MessageChannel() == nil {
+			t.Error("Expected messages channel to be initialized")
+		}
 
-	// Clean up
-	_ = broker.Shutdown()
+		// Clean up
+		_ = broker.Shutdown()
+	})
+
 }
 
 func TestBroker_SetLogger(t *testing.T) {
-	broker := NewBroker()
-	defer broker.Shutdown()
+	testutils.Run(t, testutils.Level2, "TestBroker_SetLogger", nil, func(t *testing.T, tx *gorm.DB) {
+		broker := NewBroker()
+		defer broker.Shutdown()
 
-	buf := &threadSafeBuffer{}
-	logger := common.NewLogger(buf, "", common.DebugLevel)
+		buf := &threadSafeBuffer{}
+		logger := common.NewLogger(buf, "", common.DebugLevel)
 
-	broker.SetLogger(logger)
+		broker.SetLogger(logger)
 
-	// Spawn a process to generate logs
-	_, _ = broker.Spawn("test", "echo", "hello")
+		// Spawn a process to generate logs
+		_, _ = broker.Spawn("test", "echo", "hello")
 	
-	// Poll for process to start and generate logs
-	deadline := time.Now().Add(500 * time.Millisecond)
-	for time.Now().Before(deadline) {
-		if len(buf.String()) > 0 {
-			break
+		// Poll for process to start and generate logs
+		deadline := time.Now().Add(500 * time.Millisecond)
+		for time.Now().Before(deadline) {
+			if len(buf.String()) > 0 {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
 
-	output := buf.String()
-	if len(output) == 0 {
-		t.Error("Expected logger to capture output")
-	}
+		output := buf.String()
+		if len(output) == 0 {
+			t.Error("Expected logger to capture output")
+		}
+	})
+
 }
 
 func TestBroker_Shutdown(t *testing.T) {
-	broker := NewBroker()
+	testutils.Run(t, testutils.Level2, "TestBroker_Shutdown", nil, func(t *testing.T, tx *gorm.DB) {
+		broker := NewBroker()
 
-	var cmd string
-	var args []string
-	if runtime.GOOS == "windows" {
-		cmd = "ping"
-		args = []string{"-n", "10", "127.0.0.1"}
-	} else {
-		cmd = "sleep"
-		args = []string{"10"}
-	}
-
-	_, err := broker.Spawn("test-1", cmd, args...)
-	if err != nil {
-		t.Fatalf("Spawn failed: %v", err)
-	}
-
-	// Poll for process to start instead of fixed sleep
-	deadline := time.Now().Add(500 * time.Millisecond)
-	var processStarted bool
-	for time.Now().Before(deadline) {
-		info, err := broker.GetProcess("test-1")
-		if err == nil && info.Status == ProcessStatusRunning {
-			processStarted = true
-			break
+		var cmd string
+		var args []string
+		if runtime.GOOS == "windows" {
+			cmd = "ping"
+			args = []string{"-n", "10", "127.0.0.1"}
+		} else {
+			cmd = "sleep"
+			args = []string{"10"}
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
+
+		_, err := broker.Spawn("test-1", cmd, args...)
+		if err != nil {
+			t.Fatalf("Spawn failed: %v", err)
+		}
+
+		// Poll for process to start instead of fixed sleep
+		deadline := time.Now().Add(500 * time.Millisecond)
+		var processStarted bool
+		for time.Now().Before(deadline) {
+			info, err := broker.GetProcess("test-1")
+			if err == nil && info.Status == ProcessStatusRunning {
+				processStarted = true
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 	
-	if !processStarted {
-		t.Fatal("Process did not start within timeout")
-	}
+		if !processStarted {
+			t.Fatal("Process did not start within timeout")
+		}
 
-	err = broker.Shutdown()
-	if err != nil {
-		t.Errorf("Shutdown failed: %v", err)
-	}
+		err = broker.Shutdown()
+		if err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
 
-	// Verify process was killed
-	info, err := broker.GetProcess("test-1")
-	if err != nil {
-		t.Fatalf("GetProcess failed: %v", err)
-	}
+		// Verify process was killed
+		info, err := broker.GetProcess("test-1")
+		if err != nil {
+			t.Fatalf("GetProcess failed: %v", err)
+		}
 
-	if info.Status != ProcessStatusExited {
-		t.Errorf("Expected Status to be ProcessStatusExited after shutdown, got %s", info.Status)
-	}
+		if info.Status != ProcessStatusExited {
+			t.Errorf("Expected Status to be ProcessStatusExited after shutdown, got %s", info.Status)
+		}
+	})
+
 }
 
 func TestProcessStatus_Constants(t *testing.T) {
-	tests := []struct {
-		status   ProcessStatus
-		expected string
-	}{
-		{ProcessStatusRunning, "running"},
-		{ProcessStatusExited, "exited"},
-		{ProcessStatusFailed, "failed"},
-	}
+	testutils.Run(t, testutils.Level2, "TestProcessStatus_Constants", nil, func(t *testing.T, tx *gorm.DB) {
+		tests := []struct {
+			status   ProcessStatus
+			expected string
+		}{
+			{ProcessStatusRunning, "running"},
+			{ProcessStatusExited, "exited"},
+			{ProcessStatusFailed, "failed"},
+		}
 
-	for _, tt := range tests {
-		t.Run(string(tt.status), func(t *testing.T) {
-			if string(tt.status) != tt.expected {
-				t.Errorf("Expected %s, got %s", tt.expected, string(tt.status))
-			}
-		})
-	}
+		for _, tt := range tests {
+			t.Run(string(tt.status), func(t *testing.T) {
+				if string(tt.status) != tt.expected {
+					t.Errorf("Expected %s, got %s", tt.expected, string(tt.status))
+				}
+			})
+		}
+	})
+
 }
 
 func TestMain(m *testing.M) {

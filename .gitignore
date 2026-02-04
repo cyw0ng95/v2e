@@ -46,6 +46,10 @@ logs/
 
 # Database files
 cve.db
+*.db
+*.db-shm
+*.db-wal
+session.db
 
 # Editor/IDE
 # .idea/

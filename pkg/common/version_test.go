@@ -1,10 +1,18 @@
 package common
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
+)
 
 func TestVersionConst(t *testing.T) {
-	v := Version()
-	if v == "" {
-		t.Fatal("Version() should not be empty")
-	}
+	testutils.Run(t, testutils.Level1, "TestVersionConst", nil, func(t *testing.T, tx *gorm.DB) {
+		v := Version()
+		if v == "" {
+			t.Fatal("Version() should not be empty")
+		}
+	})
+
 }

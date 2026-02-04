@@ -1,6 +1,7 @@
 package notes
 
 import (
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"testing"
 	"time"
@@ -12,8 +13,7 @@ import (
 
 func TestBookmarkStatistics(t *testing.T) {
 	// Create a temporary database for testing
-	db, err := setupTestDB()
-	require.NoError(t, err, "Failed to setup test database")
+	db := setupTestDB(t)
 	defer cleanupTestDB(db)
 
 	// Create bookmark service
@@ -23,7 +23,7 @@ func TestBookmarkStatistics(t *testing.T) {
 	ctx := context.Background()
 
 	// Test 1: Create a bookmark and verify initial stats
-	t.Run("CreateBookmarkWithInitialStats", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "CreateBookmarkWithInitialStats", db, func(t *testing.T, tx *gorm.DB) {
 		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-1",
@@ -57,7 +57,7 @@ func TestBookmarkStatistics(t *testing.T) {
 	})
 
 	// Test 2: Update bookmark stats with positive deltas
-	t.Run("UpdateBookmarkStatsPositiveDeltas", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "UpdateBookmarkStatsPositiveDeltas", db, func(t *testing.T, tx *gorm.DB) {
 		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-2",
@@ -105,7 +105,7 @@ func TestBookmarkStatistics(t *testing.T) {
 	})
 
 	// Test 3: Update bookmark stats with zero deltas (should still update timestamp)
-	t.Run("UpdateBookmarkStatsZeroDeltas", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "UpdateBookmarkStatsZeroDeltas", db, func(t *testing.T, tx *gorm.DB) {
 		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-3",
@@ -156,7 +156,7 @@ func TestBookmarkStatistics(t *testing.T) {
 	})
 
 	// Test 4: Verify single bookmark constraint with stats
-	t.Run("SingleBookmarkConstraintWithStats", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "SingleBookmarkConstraintWithStats", db, func(t *testing.T, tx *gorm.DB) {
 		// Create first bookmark
 		bookmark1, _, err := bookmarkService.CreateBookmark(
 			ctx,
@@ -196,7 +196,7 @@ func TestBookmarkStatistics(t *testing.T) {
 	})
 
 	// Test 5: Update stats on existing bookmark multiple times
-	t.Run("MultipleStatUpdates", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "MultipleStatUpdates", db, func(t *testing.T, tx *gorm.DB) {
 		bookmark, _, err := bookmarkService.CreateBookmark(
 			ctx,
 			"test-global-id-4",

@@ -1,53 +1,58 @@
 package taskflow
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"sync"
 	"testing"
 )
 
 // Test concurrent UpdateProgress calls aggregate correctly.
 func TestRunStore_UpdateProgress_Concurrent(t *testing.T) {
-	rs := NewTempRunStore(t)
-	defer rs.Close()
+	testutils.Run(t, testutils.Level2, "TestRunStore_UpdateProgress_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
+		rs := NewTempRunStore(t)
+		defer rs.Close()
 
-	runID := "concurrent-run"
-	if _, err := rs.CreateRun(runID, 0, 10, DataTypeCVE); err != nil {
-		t.Fatalf("CreateRun failed: %v", err)
-	}
+		runID := "concurrent-run"
+		if _, err := rs.CreateRun(runID, 0, 10, DataTypeCVE); err != nil {
+			t.Fatalf("CreateRun failed: %v", err)
+		}
 
-	const goroutines = 10
-	const perG = 20
+		const goroutines = 10
+		const perG = 20
 
-	var wg sync.WaitGroup
-	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
-		go func() {
-			defer wg.Done()
-			for i := 0; i < perG; i++ {
-				if err := rs.UpdateProgress(runID, 1, 2, 0); err != nil {
-					t.Errorf("UpdateProgress failed: %v", err)
-					return
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for g := 0; g < goroutines; g++ {
+			go func() {
+				defer wg.Done()
+				for i := 0; i < perG; i++ {
+					if err := rs.UpdateProgress(runID, 1, 2, 0); err != nil {
+						t.Errorf("UpdateProgress failed: %v", err)
+						return
+					}
 				}
-			}
-		}()
-	}
-	wg.Wait()
+			}()
+		}
+		wg.Wait()
 
-	r, err := rs.GetRun(runID)
-	if err != nil {
-		t.Fatalf("GetRun failed: %v", err)
-	}
+		r, err := rs.GetRun(runID)
+		if err != nil {
+			t.Fatalf("GetRun failed: %v", err)
+		}
 
-	expectedFetched := int64(goroutines * perG)
-	expectedStored := int64(goroutines * perG * 2)
+		expectedFetched := int64(goroutines * perG)
+		expectedStored := int64(goroutines * perG * 2)
 
-	if r.FetchedCount != expectedFetched {
-		t.Fatalf("unexpected fetched count: got %d want %d", r.FetchedCount, expectedFetched)
-	}
-	if r.StoredCount != expectedStored {
-		t.Fatalf("unexpected stored count: got %d want %d", r.StoredCount, expectedStored)
-	}
-	if r.State == StateFailed {
-		t.Fatalf("run ended up failed unexpectedly: %+v", r)
-	}
+		if r.FetchedCount != expectedFetched {
+			t.Fatalf("unexpected fetched count: got %d want %d", r.FetchedCount, expectedFetched)
+		}
+		if r.StoredCount != expectedStored {
+			t.Fatalf("unexpected stored count: got %d want %d", r.StoredCount, expectedStored)
+		}
+		if r.State == StateFailed {
+			t.Fatalf("run ended up failed unexpectedly: %+v", r)
+		}
+	})
+
 }

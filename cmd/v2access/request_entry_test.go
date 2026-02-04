@@ -1,11 +1,16 @@
 package main
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
 )
 
 func TestRequestEntry_SignalClose(t *testing.T) {
-	// This test is now redundant as the request entry functionality
-	// is handled internally by the common RPC client
-	t.Skip("Skipped - functionality now handled by common RPC client")
+	testutils.Run(t, testutils.Level2, "TestRequestEntry_SignalClose", nil, func(t *testing.T, tx *gorm.DB) {
+		// This test is now redundant as the request entry functionality
+		// is handled internally by the common RPC client
+		t.Skip("Skipped - functionality now handled by common RPC client")
+	})
+
 }

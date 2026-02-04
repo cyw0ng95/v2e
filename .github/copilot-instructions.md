@@ -30,10 +30,31 @@ to be productive in this repo. Keep edits small, preserve broker-first rules.
    and tools call `cmd/access` REST endpoint `/restful/rpc` with `target=<service>`.
 
 - **Build / test commands:** use the repository `build.sh` wrapper:
-   - `./build.sh -t` → run Go unit tests
+   - `./build.sh -t` → run Go unit tests (default: Level 1 only)
+   - `V2E_TEST_LEVEL=2 ./build.sh -t` → run Level 1 and 2 tests (cumulative)
+   - `V2E_TEST_LEVEL=3 ./build.sh -t` → run all test levels (cumulative - 1, 2, and 3)
    - `./build.sh -i` → run integration tests (pytest; broker must be started)
    - `./build.sh -m` → run benchmarks
    Use `runenv.sh` or the broker config (`config.json`) to start local runs.
+
+- **Hierarchical testing system (CUMULATIVE):**
+   - V2E_TEST_LEVEL is cumulative: Level 3 runs 1+2+3, Level 2 runs 1+2, Level 1 runs 1 only
+   - Always use `testutils.Run()` for all tests (unified API for both DB and non-DB)
+   - For Level 1 (no DB): pass `nil` as the db parameter
+   - For Level 2+ (with DB): pass the db, and the test receives a transaction (auto-rollback)
+   - All tests run in parallel automatically via the wrapper
+   - Example:
+     ```go
+     // Level 1: No database
+     testutils.Run(t, testutils.Level1, "TestName", nil, func(t *testing.T, tx *gorm.DB) {
+         // Test implementation (tx will be nil)
+     })
+     
+     // Level 2+: With database and automatic transaction isolation
+     testutils.Run(t, testutils.Level2, "DBTest", db, func(t *testing.T, tx *gorm.DB) {
+         // Use tx for all database operations (auto-rollback)
+     })
+     ```
 
 - **Conventions & expectations:**
    - Keep changes minimal and focused; follow Go module style.

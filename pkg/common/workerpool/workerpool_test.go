@@ -1,6 +1,8 @@
 package workerpool
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"sync/atomic"
 	"testing"
@@ -8,168 +10,186 @@ import (
 )
 
 func TestWorkerPoolCreation(t *testing.T) {
-	config := &Config{
-		InitialSize: 4,
-		MinSize:     2,
-		MaxSize:     8,
-		QueueSize:   40,
-	}
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolCreation", nil, func(t *testing.T, tx *gorm.DB) {
+		config := &Config{
+			InitialSize: 4,
+			MinSize:     2,
+			MaxSize:     8,
+			QueueSize:   40,
+		}
 
-	pool := NewWorkerPool(config)
-	defer pool.Close()
+		pool := NewWorkerPool(config)
+		defer pool.Close()
 
-	if pool.Size() != 4 {
-		t.Errorf("Expected pool size 4, got %d", pool.Size())
-	}
+		if pool.Size() != 4 {
+			t.Errorf("Expected pool size 4, got %d", pool.Size())
+		}
+	})
+
 }
 
 func TestWorkerPoolSubmitTask(t *testing.T) {
-	pool := NewWorkerPool(nil) // Use defaults
-	defer pool.Close()
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolSubmitTask", nil, func(t *testing.T, tx *gorm.DB) {
+		pool := NewWorkerPool(nil) // Use defaults
+		defer pool.Close()
 
-	var counter int32
-	task := TaskFunc(func(ctx context.Context) error {
-		atomic.AddInt32(&counter, 1)
-		return nil
+		var counter int32
+		task := TaskFunc(func(ctx context.Context) error {
+			atomic.AddInt32(&counter, 1)
+			return nil
+		})
+
+		err := pool.Submit(task)
+		if err != nil {
+			t.Fatalf("Failed to submit task: %v", err)
+		}
+
+		// Wait for task to execute
+		time.Sleep(100 * time.Millisecond)
+
+		if atomic.LoadInt32(&counter) != 1 {
+			t.Errorf("Expected counter=1, got %d", counter)
+		}
 	})
 
-	err := pool.Submit(task)
-	if err != nil {
-		t.Fatalf("Failed to submit task: %v", err)
-	}
-
-	// Wait for task to execute
-	time.Sleep(100 * time.Millisecond)
-
-	if atomic.LoadInt32(&counter) != 1 {
-		t.Errorf("Expected counter=1, got %d", counter)
-	}
 }
 
 func TestWorkerPoolConcurrentTasks(t *testing.T) {
-	pool := NewWorkerPool(&Config{
-		InitialSize: 4,
-		MinSize:     2,
-		MaxSize:     8,
-		QueueSize:   100,
-	})
-	defer pool.Close()
-
-	numTasks := 50
-	var counter int32
-
-	for i := 0; i < numTasks; i++ {
-		task := TaskFunc(func(ctx context.Context) error {
-			atomic.AddInt32(&counter, 1)
-			time.Sleep(10 * time.Millisecond)
-			return nil
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolConcurrentTasks", nil, func(t *testing.T, tx *gorm.DB) {
+		pool := NewWorkerPool(&Config{
+			InitialSize: 4,
+			MinSize:     2,
+			MaxSize:     8,
+			QueueSize:   100,
 		})
-		err := pool.Submit(task)
-		if err != nil {
-			t.Fatalf("Failed to submit task %d: %v", i, err)
+		defer pool.Close()
+
+		numTasks := 50
+		var counter int32
+
+		for i := 0; i < numTasks; i++ {
+			task := TaskFunc(func(ctx context.Context) error {
+				atomic.AddInt32(&counter, 1)
+				time.Sleep(10 * time.Millisecond)
+				return nil
+			})
+			err := pool.Submit(task)
+			if err != nil {
+				t.Fatalf("Failed to submit task %d: %v", i, err)
+			}
 		}
-	}
 
-	// Wait for all tasks to complete
-	time.Sleep(2 * time.Second)
+		// Wait for all tasks to complete
+		time.Sleep(2 * time.Second)
 
-	if atomic.LoadInt32(&counter) != int32(numTasks) {
-		t.Errorf("Expected counter=%d, got %d", numTasks, counter)
-	}
+		if atomic.LoadInt32(&counter) != int32(numTasks) {
+			t.Errorf("Expected counter=%d, got %d", numTasks, counter)
+		}
+	})
+
 }
 
 func TestWorkerPoolResize(t *testing.T) {
-	pool := NewWorkerPool(&Config{
-		InitialSize: 4,
-		MinSize:     2,
-		MaxSize:     10,
-		QueueSize:   40,
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolResize", nil, func(t *testing.T, tx *gorm.DB) {
+		pool := NewWorkerPool(&Config{
+			InitialSize: 4,
+			MinSize:     2,
+			MaxSize:     10,
+			QueueSize:   40,
+		})
+		defer pool.Close()
+
+		// Scale up
+		err := pool.Resize(8)
+		if err != nil {
+			t.Fatalf("Failed to resize pool: %v", err)
+		}
+		if pool.Size() != 8 {
+			t.Errorf("Expected pool size 8 after resize, got %d", pool.Size())
+		}
+
+		// Scale down
+		err = pool.Resize(3)
+		if err != nil {
+			t.Fatalf("Failed to resize pool down: %v", err)
+		}
+		if pool.Size() != 3 {
+			t.Errorf("Expected pool size 3 after resize, got %d", pool.Size())
+		}
+
+		// Try invalid sizes
+		err = pool.Resize(1) // Below MinSize
+		if err == nil {
+			t.Error("Expected error when resizing below MinSize")
+		}
+
+		err = pool.Resize(11) // Above MaxSize
+		if err == nil {
+			t.Error("Expected error when resizing above MaxSize")
+		}
 	})
-	defer pool.Close()
 
-	// Scale up
-	err := pool.Resize(8)
-	if err != nil {
-		t.Fatalf("Failed to resize pool: %v", err)
-	}
-	if pool.Size() != 8 {
-		t.Errorf("Expected pool size 8 after resize, got %d", pool.Size())
-	}
-
-	// Scale down
-	err = pool.Resize(3)
-	if err != nil {
-		t.Fatalf("Failed to resize pool down: %v", err)
-	}
-	if pool.Size() != 3 {
-		t.Errorf("Expected pool size 3 after resize, got %d", pool.Size())
-	}
-
-	// Try invalid sizes
-	err = pool.Resize(1) // Below MinSize
-	if err == nil {
-		t.Error("Expected error when resizing below MinSize")
-	}
-
-	err = pool.Resize(11) // Above MaxSize
-	if err == nil {
-		t.Error("Expected error when resizing above MaxSize")
-	}
 }
 
 func TestWorkerPoolClose(t *testing.T) {
-	pool := NewWorkerPool(nil)
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolClose", nil, func(t *testing.T, tx *gorm.DB) {
+		pool := NewWorkerPool(nil)
 
-	// Submit some tasks
-	for i := 0; i < 5; i++ {
+		// Submit some tasks
+		for i := 0; i < 5; i++ {
+			task := TaskFunc(func(ctx context.Context) error {
+				time.Sleep(50 * time.Millisecond)
+				return nil
+			})
+			pool.Submit(task)
+		}
+
+		// Close pool
+		err := pool.Close()
+		if err != nil {
+			t.Fatalf("Failed to close pool: %v", err)
+		}
+
+		// Try to submit after close
 		task := TaskFunc(func(ctx context.Context) error {
-			time.Sleep(50 * time.Millisecond)
 			return nil
 		})
-		pool.Submit(task)
-	}
-
-	// Close pool
-	err := pool.Close()
-	if err != nil {
-		t.Fatalf("Failed to close pool: %v", err)
-	}
-
-	// Try to submit after close
-	task := TaskFunc(func(ctx context.Context) error {
-		return nil
+		err = pool.Submit(task)
+		if err != ErrPoolClosed {
+			t.Errorf("Expected ErrPoolClosed, got %v", err)
+		}
 	})
-	err = pool.Submit(task)
-	if err != ErrPoolClosed {
-		t.Errorf("Expected ErrPoolClosed, got %v", err)
-	}
+
 }
 
 func TestWorkerPoolQueueDepth(t *testing.T) {
-	pool := NewWorkerPool(&Config{
-		InitialSize: 1, // Only 1 worker
-		MinSize:     1,
-		MaxSize:     2,
-		QueueSize:   10,
-	})
-	defer pool.Close()
-
-	// Submit tasks that take time
-	numTasks := 5
-	for i := 0; i < numTasks; i++ {
-		task := TaskFunc(func(ctx context.Context) error {
-			time.Sleep(100 * time.Millisecond)
-			return nil
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolQueueDepth", nil, func(t *testing.T, tx *gorm.DB) {
+		pool := NewWorkerPool(&Config{
+			InitialSize: 1, // Only 1 worker
+			MinSize:     1,
+			MaxSize:     2,
+			QueueSize:   10,
 		})
-		pool.Submit(task)
-	}
+		defer pool.Close()
 
-	// Check queue depth (should be > 0 since worker is busy)
-	time.Sleep(10 * time.Millisecond)
-	depth := pool.QueueDepth()
-	if depth == 0 {
-		t.Log("Queue depth is 0, tasks may have been processed quickly")
-	}
+		// Submit tasks that take time
+		numTasks := 5
+		for i := 0; i < numTasks; i++ {
+			task := TaskFunc(func(ctx context.Context) error {
+				time.Sleep(100 * time.Millisecond)
+				return nil
+			})
+			pool.Submit(task)
+		}
+
+		// Check queue depth (should be > 0 since worker is busy)
+		time.Sleep(10 * time.Millisecond)
+		depth := pool.QueueDepth()
+		if depth == 0 {
+			t.Log("Queue depth is 0, tasks may have been processed quickly")
+		}
+	})
+
 }
 
 func BenchmarkWorkerPoolSubmit(b *testing.B) {

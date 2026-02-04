@@ -1,6 +1,8 @@
 package core
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
 
 	"github.com/cyw0ng95/v2e/cmd/v2broker/transport"
@@ -21,23 +23,26 @@ func (s *successTransport) Connect() error                  { return nil }
 func (s *successTransport) Close() error                    { return nil }
 
 func TestBroker_SendToProcess_UsesTransportWhenAvailable(t *testing.T) {
-	b := NewBroker()
-	// use a transport manager with a fake transport
-	tm := transport.NewTransportManager()
-	st := &successTransport{}
-	tm.RegisterTransport("p-1", st)
-	b.transportManager = tm
+	testutils.Run(t, testutils.Level2, "TestBroker_SendToProcess_UsesTransportWhenAvailable", nil, func(t *testing.T, tx *gorm.DB) {
+		b := NewBroker()
+		// use a transport manager with a fake transport
+		tm := transport.NewTransportManager()
+		st := &successTransport{}
+		tm.RegisterTransport("p-1", st)
+		b.transportManager = tm
 
-	msg, err := proc.NewRequestMessage("hello", map[string]string{"a": "b"})
-	if err != nil {
-		t.Fatalf("failed to create message: %v", err)
-	}
+		msg, err := proc.NewRequestMessage("hello", map[string]string{"a": "b"})
+		if err != nil {
+			t.Fatalf("failed to create message: %v", err)
+		}
 
-	if err := b.SendToProcess("p-1", msg); err != nil {
-		t.Fatalf("SendToProcess returned error: %v", err)
-	}
+		if err := b.SendToProcess("p-1", msg); err != nil {
+			t.Fatalf("SendToProcess returned error: %v", err)
+		}
 
-	if st.last == nil || st.last.ID != msg.ID {
-		t.Fatalf("transport did not receive message; got=%v want id=%s", st.last, msg.ID)
-	}
+		if st.last == nil || st.last.ID != msg.ID {
+			t.Fatalf("transport did not receive message; got=%v want id=%s", st.last, msg.ID)
+		}
+	})
+
 }

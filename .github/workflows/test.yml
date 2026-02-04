@@ -41,7 +41,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-
       
-      - name: Run unit tests via build.sh
+      - name: Run all unit tests (Level 3 - includes all test levels)
+        env:
+          V2E_TEST_LEVEL: 3
         run: ./build.sh -t -v
       
       - name: Upload coverage report
