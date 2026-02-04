@@ -553,6 +553,13 @@ logger.Info("RPC handler registered: RPCSSGListDSRules")
 
 sp.RegisterHandler("RPCSSGGetDSRule", createSSGGetDSRuleHandler(store, logger))
 logger.Info("RPC handler registered: RPCSSGGetDSRule")
+
+// Cross-reference handlers
+sp.RegisterHandler("RPCSSGGetCrossReferences", createSSGGetCrossReferencesHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGGetCrossReferences")
+
+sp.RegisterHandler("RPCSSGFindRelatedObjects", createSSGFindRelatedObjectsHandler(store, logger))
+logger.Info("RPC handler registered: RPCSSGFindRelatedObjects")
 }
 
 // createSSGImportManifestHandler creates a handler for importing manifest files
@@ -1002,4 +1009,75 @@ return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 "identifiers": identifiers,
 })
 }
+}
+
+// createSSGGetCrossReferencesHandler creates a handler for getting cross-references
+func createSSGGetCrossReferencesHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		var req struct {
+			SourceType string `json:"source_type"`
+			SourceID   string `json:"source_id"`
+			TargetType string `json:"target_type"`
+			TargetID   string `json:"target_id"`
+			Limit      int    `json:"limit"`
+			Offset     int    `json:"offset"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+		}
+
+		var refs []ssg.SSGCrossReference
+		var err error
+
+		// Get by source or target depending on what's provided
+		if req.SourceType != "" && req.SourceID != "" {
+			refs, err = store.GetCrossReferences(req.SourceType, req.SourceID, req.Limit, req.Offset)
+		} else if req.TargetType != "" && req.TargetID != "" {
+			refs, err = store.GetCrossReferencesByTarget(req.TargetType, req.TargetID, req.Limit, req.Offset)
+		} else {
+			return subprocess.NewErrorResponse(msg, "must provide either source_type/source_id or target_type/target_id"), nil
+		}
+
+		if err != nil {
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get cross-references: %s", err)), nil
+		}
+
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"cross_references": refs,
+			"count":            len(refs),
+		})
+	}
+}
+
+// createSSGFindRelatedObjectsHandler creates a handler for finding related objects
+func createSSGFindRelatedObjectsHandler(store *local.Store, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		var req struct {
+			ObjectType string `json:"object_type"`
+			ObjectID   string `json:"object_id"`
+			LinkType   string `json:"link_type"`
+			Limit      int    `json:"limit"`
+			Offset     int    `json:"offset"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("invalid request: %s", err)), nil
+		}
+
+		if errMsg := subprocess.RequireField(msg, req.ObjectType, "object_type"); errMsg != nil {
+			return errMsg, nil
+		}
+		if errMsg := subprocess.RequireField(msg, req.ObjectID, "object_id"); errMsg != nil {
+			return errMsg, nil
+		}
+
+		refs, err := store.FindRelatedObjects(req.ObjectType, req.ObjectID, req.LinkType, req.Limit, req.Offset)
+		if err != nil {
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to find related objects: %s", err)), nil
+		}
+
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"related_objects": refs,
+			"count":           len(refs),
+		})
+	}
 }

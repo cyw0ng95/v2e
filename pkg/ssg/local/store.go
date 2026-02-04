@@ -738,9 +738,91 @@ return references, nil
 
 // GetDSRuleIdentifiers retrieves all identifiers for a rule.
 func (s *Store) GetDSRuleIdentifiers(ruleID string) ([]ssg.SSGDSRuleIdentifier, error) {
-var identifiers []ssg.SSGDSRuleIdentifier
-if err := s.db.Where("rule_id = ?", ruleID).Order("system ASC").Find(&identifiers).Error; err != nil {
-return nil, err
+	var identifiers []ssg.SSGDSRuleIdentifier
+	if err := s.db.Where("rule_id = ?", ruleID).Order("system ASC").Find(&identifiers).Error; err != nil {
+		return nil, err
+	}
+	return identifiers, nil
 }
-return identifiers, nil
+
+// SaveCrossReferences saves cross-references in batches.
+// This is used during import to create links between SSG objects.
+func (s *Store) SaveCrossReferences(refs []ssg.SSGCrossReference) error {
+	if len(refs) == 0 {
+		return nil
+	}
+	
+	// Use batch insert for performance
+	if err := s.db.CreateInBatches(&refs, 500).Error; err != nil {
+		return fmt.Errorf("failed to save cross-references: %w", err)
+	}
+	return nil
+}
+
+// GetCrossReferences retrieves cross-references for a given source object.
+// Returns all links where the object is the source.
+func (s *Store) GetCrossReferences(sourceType, sourceID string, limit, offset int) ([]ssg.SSGCrossReference, error) {
+	var refs []ssg.SSGCrossReference
+	query := s.db.Where("source_type = ? AND source_id = ?", sourceType, sourceID).
+		Order("link_type ASC, target_type ASC, target_id ASC")
+	
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	
+	if err := query.Find(&refs).Error; err != nil {
+		return nil, err
+	}
+	return refs, nil
+}
+
+// GetCrossReferencesByTarget retrieves cross-references where the object is the target.
+// This finds all objects that reference the given object.
+func (s *Store) GetCrossReferencesByTarget(targetType, targetID string, limit, offset int) ([]ssg.SSGCrossReference, error) {
+	var refs []ssg.SSGCrossReference
+	query := s.db.Where("target_type = ? AND target_id = ?", targetType, targetID).
+		Order("link_type ASC, source_type ASC, source_id ASC")
+	
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	
+	if err := query.Find(&refs).Error; err != nil {
+		return nil, err
+	}
+	return refs, nil
+}
+
+// FindRelatedObjects finds all objects related to the given object via cross-references.
+// This includes both outgoing (source) and incoming (target) references.
+func (s *Store) FindRelatedObjects(objectType, objectID string, linkType string, limit, offset int) ([]ssg.SSGCrossReference, error) {
+	var refs []ssg.SSGCrossReference
+	query := s.db.Where(
+		"((source_type = ? AND source_id = ?) OR (target_type = ? AND target_id = ?))",
+		objectType, objectID, objectType, objectID,
+	)
+	
+	if linkType != "" {
+		query = query.Where("link_type = ?", linkType)
+	}
+	
+	query = query.Order("link_type ASC, source_type ASC, source_id ASC")
+	
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	
+	if err := query.Find(&refs).Error; err != nil {
+		return nil, err
+	}
+	return refs, nil
 }

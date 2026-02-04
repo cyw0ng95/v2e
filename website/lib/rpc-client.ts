@@ -1427,10 +1427,6 @@ export class RPCClient {
     return this.call<{ groupId: string }, { rules: any[]; count: number }>('RPCSSGGetChildRules', { groupId }, 'local');
   }
 
-  async deleteSSGGuide(id: string): Promise<RPCResponse<{ success: boolean; id: string }>> {
-    return this.call<{ id: string }, { success: boolean; id: string }>('RPCSSGDeleteGuide', { id }, 'local');
-  }
-
   // SSG Table Methods
   async listSSGTables(product?: string, tableType?: string): Promise<RPCResponse<{ tables: any[]; count: number }>> {
     return this.call<{ product?: string; tableType?: string }, { tables: any[]; count: number }>('RPCSSGListTables', { product, tableType }, 'local');
@@ -1442,10 +1438,6 @@ export class RPCClient {
 
   async getSSGTableEntries(tableId: string, offset?: number, limit?: number): Promise<RPCResponse<{ entries: any[]; total: number }>> {
     return this.call<{ tableId: string; offset?: number; limit?: number }, { entries: any[]; total: number }>('RPCSSGGetTableEntries', { tableId, offset, limit }, 'local');
-  }
-
-  async deleteSSGTable(id: string): Promise<RPCResponse<{ success: boolean; id: string }>> {
-    return this.call<{ id: string }, { success: boolean; id: string }>('RPCSSGDeleteTable', { id }, 'local');
   }
 
   // SSG Manifest Methods
@@ -1500,6 +1492,28 @@ export class RPCClient {
 
   async getDSRule(ruleId: string): Promise<RPCResponse<{ rule: any; references: any[]; identifiers: any[] }>> {
     return this.call<{ ruleId: string }, { rule: any; references: any[]; identifiers: any[] }>('RPCSSGGetDSRule', { ruleId }, 'local');
+  }
+
+  // SSG Cross-Reference Methods
+  async getSSGCrossReferences(params: {
+    sourceType?: string;
+    sourceId?: string;
+    targetType?: string;
+    targetId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RPCResponse<{ crossReferences: any[]; count: number }>> {
+    return this.call<typeof params, { crossReferences: any[]; count: number }>('RPCSSGGetCrossReferences', params, 'local');
+  }
+
+  async findSSGRelatedObjects(params: {
+    objectType: string;
+    objectId: string;
+    linkType?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RPCResponse<{ relatedObjects: any[]; count: number }>> {
+    return this.call<typeof params, { relatedObjects: any[]; count: number }>('RPCSSGFindRelatedObjects', params, 'local');
   }
 }
 

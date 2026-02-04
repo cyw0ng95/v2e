@@ -191,7 +191,7 @@ func (e *Extractor) ExtractFromManifest(manifest *ssg.SSGManifest, profiles []ss
 	for _, profile := range profiles {
 		metadata := MetadataProfile{
 			ProfileID:   profile.ProfileID,
-			ProfileName: profile.Description,
+			ProfileName: profile.ProfileID, // SSGProfile doesn't have a separate name field
 		}
 		metadataJSON, _ := json.Marshal(metadata)
 
@@ -236,12 +236,12 @@ func (e *Extractor) ExtractFromDataStream(ds *ssg.SSGDataStream, benchmark *ssg.
 
 	// Extract rule IDs from rules
 	for _, rule := range rules {
-		if rule.RuleID == "" {
+		if rule.ID == "" {
 			continue
 		}
 
 		// Extract short rule ID from full XCCDF ID
-		matches := ruleIDPattern.FindStringSubmatch(rule.RuleID)
+		matches := ruleIDPattern.FindStringSubmatch(rule.ID)
 		if len(matches) < 2 {
 			continue
 		}
@@ -276,7 +276,7 @@ func (e *Extractor) ExtractFromDataStream(ds *ssg.SSGDataStream, benchmark *ssg.
 			continue
 		}
 
-		cceID := strings.TrimSpace(identifier.IdentifierID)
+		cceID := strings.TrimSpace(identifier.Identifier)
 		if !ccePattern.MatchString(cceID) {
 			continue
 		}
@@ -303,12 +303,12 @@ func (e *Extractor) ExtractFromDataStream(ds *ssg.SSGDataStream, benchmark *ssg.
 
 	// Extract profile-based cross-references
 	for _, profile := range profiles {
-		if profile.ProfileID == "" {
+		if profile.ID == "" {
 			continue
 		}
 
 		metadata := MetadataProfile{
-			ProfileID:   profile.ProfileID,
+			ProfileID:   profile.ID,
 			ProfileName: profile.Title,
 		}
 		metadataJSON, _ := json.Marshal(metadata)
@@ -317,7 +317,7 @@ func (e *Extractor) ExtractFromDataStream(ds *ssg.SSGDataStream, benchmark *ssg.
 			SourceType: "datastream",
 			SourceID:   ds.ID,
 			TargetType: "profile",
-			TargetID:   profile.ProfileID,
+			TargetID:   profile.ID,
 			LinkType:   "profile_id",
 			Metadata:   string(metadataJSON),
 		})

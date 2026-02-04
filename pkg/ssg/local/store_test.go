@@ -560,67 +560,6 @@ func TestStore_ListRules(t *testing.T) {
 	}
 }
 
-func TestStore_DeleteGuide(t *testing.T) {
-	store := setupTestStore(t)
-	defer store.Close()
-
-	// Setup: guide with groups and rules
-	guide := &ssg.SSGGuide{
-		ID:          "test-guide",
-		Product:     "test-product",
-		ProfileID:   "test-profile",
-		ShortID:     "test",
-		Title:       "Test Guide",
-		HTMLContent: "<html></html>",
-	}
-	if err := store.SaveGuide(guide); err != nil {
-		t.Fatalf("SaveGuide() error = %v", err)
-	}
-
-	group := &ssg.SSGGroup{ID: "g1", GuideID: "test-guide", ParentID: "", Title: "G1", Level: 0}
-	if err := store.SaveGroup(group); err != nil {
-		t.Fatalf("SaveGroup() error = %v", err)
-	}
-
-	rule := &ssg.SSGRule{
-		ID:        "r1",
-		GuideID:   "test-guide",
-		GroupID:   "g1",
-		ShortID:   "r1",
-		Title:     "R1",
-		Severity:  "low",
-		References: []ssg.SSGReference{{Href: "https://test.com", Label: "test", Value: "1"}},
-		Level:     1,
-	}
-	if err := store.SaveRule(rule); err != nil {
-		t.Fatalf("SaveRule() error = %v", err)
-	}
-
-	// Delete guide
-	err := store.DeleteGuide("test-guide")
-	if err != nil {
-		t.Fatalf("DeleteGuide() error = %v", err)
-	}
-
-	// Verify guide is deleted
-	_, err = store.GetGuide("test-guide")
-	if err == nil {
-		t.Error("Expected error when getting deleted guide, got nil")
-	}
-
-	// Verify groups are deleted
-	_, err = store.GetGroup("g1")
-	if err == nil {
-		t.Error("Expected error when getting deleted group, got nil")
-	}
-
-	// Verify rules are deleted
-	_, err = store.GetRule("r1")
-	if err == nil {
-		t.Error("Expected error when getting deleted rule, got nil")
-	}
-}
-
 // setupTestStore creates a new store for testing.
 func setupTestStore(t *testing.T) *Store {
 	// Use in-memory database for faster tests
@@ -639,4 +578,99 @@ func findChildPtr(children []*ssg.TreeNode, id string) *ssg.TreeNode {
 		}
 	}
 	return nil
+}
+
+func TestStore_CrossReferences(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	// Create test cross-references
+	refs := []ssg.SSGCrossReference{
+		{
+			SourceType: "guide",
+			SourceID:   "guide-1",
+			TargetType: "table",
+			TargetID:   "table-1",
+			LinkType:   "cce",
+			Metadata:   `{"cce_number":"CCE-12345-6"}`,
+		},
+		{
+			SourceType: "guide",
+			SourceID:   "guide-1",
+			TargetType: "datastream",
+			TargetID:   "ds-1",
+			LinkType:   "rule_id",
+			Metadata:   `{"rule_short_id":"aide_installed"}`,
+		},
+		{
+			SourceType: "manifest",
+			SourceID:   "manifest-1",
+			TargetType: "guide",
+			TargetID:   "guide-1",
+			LinkType:   "product",
+			Metadata:   `{"product_name":"al2023"}`,
+		},
+	}
+
+	// Test SaveCrossReferences
+	err := store.SaveCrossReferences(refs)
+	if err != nil {
+		t.Fatalf("SaveCrossReferences() error = %v", err)
+	}
+
+	// Test GetCrossReferences (by source)
+	sourceRefs, err := store.GetCrossReferences("guide", "guide-1", 0, 0)
+	if err != nil {
+		t.Fatalf("GetCrossReferences() error = %v", err)
+	}
+	if len(sourceRefs) != 2 {
+		t.Errorf("GetCrossReferences() count = %d, want 2", len(sourceRefs))
+	}
+
+	// Test GetCrossReferencesByTarget
+	targetRefs, err := store.GetCrossReferencesByTarget("guide", "guide-1", 0, 0)
+	if err != nil {
+		t.Fatalf("GetCrossReferencesByTarget() error = %v", err)
+	}
+	if len(targetRefs) != 1 {
+		t.Errorf("GetCrossReferencesByTarget() count = %d, want 1", len(targetRefs))
+	}
+
+	// Test FindRelatedObjects (all)
+	allRefs, err := store.FindRelatedObjects("guide", "guide-1", "", 0, 0)
+	if err != nil {
+		t.Fatalf("FindRelatedObjects() error = %v", err)
+	}
+	if len(allRefs) != 3 {
+		t.Errorf("FindRelatedObjects() count = %d, want 3", len(allRefs))
+	}
+
+	// Test FindRelatedObjects with linkType filter
+	ruleRefs, err := store.FindRelatedObjects("guide", "guide-1", "rule_id", 0, 0)
+	if err != nil {
+		t.Fatalf("FindRelatedObjects(rule_id) error = %v", err)
+	}
+	if len(ruleRefs) != 1 {
+		t.Errorf("FindRelatedObjects(rule_id) count = %d, want 1", len(ruleRefs))
+	}
+
+	// Test pagination
+	pagedRefs, err := store.GetCrossReferences("guide", "guide-1", 1, 0)
+	if err != nil {
+		t.Fatalf("GetCrossReferences(limit=1) error = %v", err)
+	}
+	if len(pagedRefs) != 1 {
+		t.Errorf("GetCrossReferences(limit=1) count = %d, want 1", len(pagedRefs))
+	}
+}
+
+func TestStore_SaveCrossReferences_Empty(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	// Test with empty slice - should not error
+	err := store.SaveCrossReferences([]ssg.SSGCrossReference{})
+	if err != nil {
+		t.Errorf("SaveCrossReferences(empty) error = %v, want nil", err)
+	}
 }
