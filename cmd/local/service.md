@@ -4,7 +4,7 @@
 RPC (stdin/stdout message passing)
 
 ## Description
-Manages local storage and retrieval of CVE, CWE, CAPEC, and ATT&CK data using SQLite databases. Provides CRUD operations for CVE records and read/import operations for CWE, CAPEC, and ATT&CK records.
+Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, and ASVS data using SQLite databases. Provides CRUD operations for CVE records and read/import operations for CWE, CAPEC, ATT&CK, and ASVS records.
 
 ## Available RPC Methods
 
@@ -396,16 +396,73 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, and ATT&CK data using SQ
 - **Errors**:
   - Not found: No ATT&CK import metadata in database
 
+### 35. RPCImportASVS
+- **Description**: Imports ASVS requirements from a CSV URL
+- **Request Parameters**:
+  - `url` (string, required): URL to the ASVS CSV file
+- **Response**:
+  - `success` (bool): true if imported successfully
+- **Errors**:
+  - Missing URL: `url` parameter is required
+  - Download error: Failed to download CSV from URL
+  - Parse error: Failed to parse CSV file
+  - Database error: Failed to save ASVS requirements to database
+- **Example**:
+  - **Request**: {"url": "https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.csv"}
+  - **Response**: {"success": true}
+
+### 36. RPCListASVS
+- **Description**: Lists ASVS requirements from the local database with pagination and filtering
+- **Request Parameters**:
+  - `offset` (int, optional): Offset for pagination (default: 0)
+  - `limit` (int, optional): Limit for pagination (default: 100, max: 1000)
+  - `chapter` (string, optional): Filter by chapter (e.g., "V1", "V2")
+  - `level` (int, optional): Filter by ASVS level (1, 2, or 3)
+- **Response**:
+  - `requirements` ([]object): Array of ASVS requirement objects
+  - `total` (int): Total number of requirements matching filters
+  - `offset` (int): The offset used
+  - `limit` (int): The limit used
+- **Errors**:
+  - Database error: Failed to query database
+- **Example**:
+  - **Request**: {"offset": 0, "limit": 10, "chapter": "V1", "level": 1}
+  - **Response**: {"requirements": [...], "total": 25, "offset": 0, "limit": 10}
+
+### 37. RPCGetASVSByID
+- **Description**: Retrieves an ASVS requirement by its ID
+- **Request Parameters**:
+  - `requirement_id` (string, required): ASVS requirement identifier (e.g., "1.1.1")
+- **Response**:
+  - ASVS requirement object with fields:
+    - `requirementID` (string): Requirement identifier
+    - `chapter` (string): Chapter identifier (e.g., "V1")
+    - `section` (string): Section name
+    - `description` (string): Requirement description
+    - `level1` (bool): Applies to Level 1
+    - `level2` (bool): Applies to Level 2
+    - `level3` (bool): Applies to Level 3
+    - `cwe` (string, optional): Related CWE identifiers
+- **Errors**:
+  - Missing requirement ID: `requirement_id` parameter is required
+  - Not found: ASVS requirement not found in database
+  - Database error: Failed to query database
+- **Example**:
+  - **Request**: {"requirement_id": "1.1.1"}
+  - **Response**: {"requirementID": "1.1.1", "chapter": "V1", "section": "Architecture", "description": "...", "level1": true, "level2": true, "level3": true, "cwe": "CWE-1127"}
+
 ## Configuration
 - **CVE Database Path**: Configurable via `CVE_DB_PATH` environment variable (default: "cve.db")
 - **CWE Database Path**: Configurable via `CWE_DB_PATH` environment variable (default: "cwe.db")
 - **CAPEC Database Path**: Configurable via `CAPEC_DB_PATH` environment variable (default: "capec.db")
 - **ATT&CK Database Path**: Configurable via `ATTACK_DB_PATH` environment variable (default: "attack.db")
+- **ASVS Database Path**: Configurable via `ASVS_DB_PATH` environment variable (default: "asvs.db")
 - **CAPEC Strict XSD Validation**: Enabled via `CAPEC_STRICT_XSD` environment variable (default: disabled)
 
 ## Notes
-- Uses SQLite databases for local storage of CVE, CWE, CAPEC, and ATT&CK data
+- Uses SQLite databases for local storage of CVE, CWE, CAPEC, ATT&CK, and ASVS data
 - Automatically imports ATT&CK data from XLSX files in the assets directory at startup
-- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK) in separate databases
+- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK, ASVS) in separate databases
 - Provides comprehensive CRUD operations for all data types
+- ASVS data can be imported from the official OWASP ASVS v5.0.0 CSV file on GitHub
 - Includes pagination support for listing operations
