@@ -2088,3 +2088,95 @@ export function useDSRule(ruleId: string) {
 
   return { data, isLoading, error };
 }
+
+// SSG Cross-Reference Hooks
+
+export function useSSGCrossReferences(params: {
+  sourceType?: string;
+  sourceId?: string;
+  targetType?: string;
+  targetId?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // Only fetch if we have either source or target params
+    if ((!params.sourceType || !params.sourceId) && (!params.targetType || !params.targetId)) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGCrossReferences(params);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch cross-references');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching cross-references', err, params);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [params.sourceType, params.sourceId, params.targetType, params.targetId, params.limit, params.offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGRelatedObjects(params: {
+  objectType: string;
+  objectId: string;
+  linkType?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!params.objectType || !params.objectId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.findSSGRelatedObjects(params);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to find related objects');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error finding related objects', err, params);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [params.objectType, params.objectId, params.linkType, params.limit, params.offset]);
+
+  return { data, isLoading, error };
+}

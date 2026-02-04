@@ -1493,6 +1493,28 @@ export class RPCClient {
   async getDSRule(ruleId: string): Promise<RPCResponse<{ rule: any; references: any[]; identifiers: any[] }>> {
     return this.call<{ ruleId: string }, { rule: any; references: any[]; identifiers: any[] }>('RPCSSGGetDSRule', { ruleId }, 'local');
   }
+
+  // SSG Cross-Reference Methods
+  async getSSGCrossReferences(params: {
+    sourceType?: string;
+    sourceId?: string;
+    targetType?: string;
+    targetId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RPCResponse<{ crossReferences: any[]; count: number }>> {
+    return this.call<typeof params, { crossReferences: any[]; count: number }>('RPCSSGGetCrossReferences', params, 'local');
+  }
+
+  async findSSGRelatedObjects(params: {
+    objectType: string;
+    objectId: string;
+    linkType?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RPCResponse<{ relatedObjects: any[]; count: number }>> {
+    return this.call<typeof params, { relatedObjects: any[]; count: number }>('RPCSSGFindRelatedObjects', params, 'local');
+  }
 }
 
 // ============================================================================
