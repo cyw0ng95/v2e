@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cyw0ng95/v2e/cmd/v2broker/core"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/permits"
 )
 
 // RevocationThreshold defines when permits should be revoked
@@ -25,7 +25,7 @@ func DefaultRevocationThreshold() RevocationThreshold {
 
 // PermitIntegration adds permit management capabilities to the Optimizer
 type PermitIntegration struct {
-	permitManager *core.PermitManager
+	permitManager *permits.PermitManager
 	metrics       *MetricsCollector
 	threshold     RevocationThreshold
 	
@@ -34,7 +34,7 @@ type PermitIntegration struct {
 }
 
 // SetPermitManager attaches a PermitManager to the optimizer
-func (o *Optimizer) SetPermitManager(pm *core.PermitManager) {
+func (o *Optimizer) SetPermitManager(pm *permits.PermitManager) {
 	o.permitIntegration = &PermitIntegration{
 		permitManager: pm,
 		threshold:     DefaultRevocationThreshold(),

@@ -98,6 +98,12 @@ func (b *Broker) ProcessMessage(msg *proc.Message) error {
 		respMsg, err = b.HandleRPCGetMessageStats(msg)
 	case "RPCGetMessageCount":
 		respMsg, err = b.HandleRPCGetMessageCount(msg)
+	case "RPCRequestPermits":
+		respMsg, err = b.HandleRPCRequestPermits(msg)
+	case "RPCReleasePermits":
+		respMsg, err = b.HandleRPCReleasePermits(msg)
+	case "RPCGetKernelMetrics":
+		respMsg, err = b.HandleRPCGetKernelMetrics(msg)
 	default:
 		errMsg := proc.NewErrorMessage(msg.ID, fmt.Errorf("unknown RPC method: %s", msg.ID))
 		errMsg.Source = "broker"

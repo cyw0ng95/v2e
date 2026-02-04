@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/cyw0ng95/v2e/cmd/v2broker/mq"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/perf"
+	"github.com/cyw0ng95/v2e/cmd/v2broker/permits"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/broker"
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -34,6 +36,8 @@ type Broker struct {
 	optimizer OptimizerInterface
 	// transportManager manages communication transports for processes
 	transportManager *transport.TransportManager
+	// permitManager manages the global worker permit pool (Phase 2 UEE)
+	permitManager *permits.PermitManager
 }
 
 // NewBroker creates a new Broker instance.
@@ -129,6 +133,16 @@ func (b *Broker) SetOptimizer(o OptimizerInterface) {
 	}
 }
 
+// SetPermitManager attaches a permit manager to the Broker.
+func (b *Broker) SetPermitManager(pm *permits.PermitManager) {
+	b.mu.Lock()
+	b.permitManager = pm
+	b.mu.Unlock()
+	if pm != nil && b.logger != nil {
+		b.logger.Info("PermitManager attached")
+	}
+}
+
 // Context returns the broker's context.
 func (b *Broker) Context() context.Context {
 	return b.ctx
@@ -141,4 +155,5 @@ type OptimizerInterface interface {
 	Stop()
 	Metrics() map[string]interface{}
 	SetLogger(l *common.Logger)
+	GetKernelMetrics() *perf.KernelMetrics
 }
