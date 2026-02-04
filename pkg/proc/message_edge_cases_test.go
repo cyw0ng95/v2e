@@ -13,7 +13,7 @@ import (
 
 // TestMessageSerialization_Deserialization tests message serialization and deserialization with various payloads
 func TestMessageSerialization_Deserialization(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageSerialization_Deserialization", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageSerialization_Deserialization", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name     string
 			payload  interface{}
@@ -144,7 +144,7 @@ func TestMessageSerialization_Deserialization(t *testing.T) {
 
 // TestMessage_ErrorHandling tests error handling in message operations
 func TestMessage_ErrorHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_ErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_ErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test unmarshaling invalid JSON
 		_, err := Unmarshal([]byte(`{invalid json`))
 		if err == nil {
@@ -199,7 +199,7 @@ func TestMessage_ErrorHandling(t *testing.T) {
 
 // TestConcurrentMessageProcessing tests concurrent message processing to ensure thread safety
 func TestConcurrentMessageProcessing(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentMessageProcessing", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentMessageProcessing", nil, func(t *testing.T, tx *gorm.DB) {
 		const numGoroutines = 20
 		const messagesPerGoroutine = 100
 
@@ -277,7 +277,7 @@ func TestConcurrentMessageProcessing(t *testing.T) {
 
 // TestMessagePoolReuse tests that message objects are properly reused from the pool
 func TestMessagePoolReuse(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessagePoolReuse", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessagePoolReuse", nil, func(t *testing.T, tx *gorm.DB) {
 		// Get a message and set some fields
 		msg1 := GetMessage()
 		msg1.Type = MessageTypeRequest
@@ -321,7 +321,7 @@ func TestMessagePoolReuse(t *testing.T) {
 
 // TestMessageMaxSize tests behavior with large messages
 func TestMessageMaxSize(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageMaxSize", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageMaxSize", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a payload that's larger than typical
 		largePayload := make(map[string]string)
 		for i := 0; i < 5000; i++ {
@@ -370,7 +370,7 @@ func TestMessageMaxSize(t *testing.T) {
 
 // TestMessageRoutingFields tests the routing-related fields of messages
 func TestMessageRoutingFields(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageRoutingFields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageRoutingFields", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := NewMessage(MessageTypeRequest, "test-id")
 		msg.Source = "source-service"
 		msg.Target = "target-service"
@@ -428,7 +428,7 @@ func TestMessageRoutingFields(t *testing.T) {
 
 // TestErrorMessageCreation tests error message creation and handling
 func TestErrorMessageCreation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestErrorMessageCreation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestErrorMessageCreation", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with regular error
 		testErr := errors.New("this is a test error")
 		errMsg := NewErrorMessage("error-1", testErr)
@@ -472,7 +472,7 @@ func TestErrorMessageCreation(t *testing.T) {
 
 // TestMessageFieldValidation tests validation of message fields
 func TestMessageFieldValidation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageFieldValidation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageFieldValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with various special characters in ID
 		specialIDs := []string{
 			"normal-id",
@@ -518,7 +518,7 @@ func TestMessageFieldValidation(t *testing.T) {
 
 // TestMessageTypes tests all message types
 func TestMessageTypes(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageTypes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageTypes", nil, func(t *testing.T, tx *gorm.DB) {
 		types := []MessageType{MessageTypeRequest, MessageTypeResponse, MessageTypeEvent, MessageTypeError}
 
 		for _, msgType := range types {
@@ -554,7 +554,7 @@ func TestMessageTypes(t *testing.T) {
 
 // TestMessageRaceCondition tests potential race conditions in message pool
 func TestMessageRaceCondition(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageRaceCondition", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageRaceCondition", nil, func(t *testing.T, tx *gorm.DB) {
 		const numGoroutines = 50
 		var wg sync.WaitGroup
 		wg.Add(numGoroutines)
@@ -621,7 +621,7 @@ func TestMessageRaceCondition(t *testing.T) {
 
 // TestMessageWithUnicode tests messages with Unicode content
 func TestMessageWithUnicode(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageWithUnicode", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageWithUnicode", nil, func(t *testing.T, tx *gorm.DB) {
 		unicodePayload := map[string]string{
 			"greeting":    "Hello 世界 🌍",
 			"description": "日本語 Ελληνικά عربى русский язык",

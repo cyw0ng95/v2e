@@ -15,7 +15,7 @@ import (
 
 // TestViewRendering tests view rendering functionality
 func TestViewRendering(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestViewRendering", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestViewRendering", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe_view_test.db")
 
@@ -208,7 +208,7 @@ func TestViewRendering(t *testing.T) {
 
 // TestDataRelationships tests data relationship functionality
 func TestDataRelationships(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDataRelationships", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDataRelationships", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe_relationships_test.db")
 
@@ -303,7 +303,7 @@ func TestDataRelationships(t *testing.T) {
 
 // TestErrorHandling tests error handling scenarios
 func TestErrorHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe_error_test.db")
 		jsonPath := filepath.Join(tempDir, "test_data.json")
@@ -372,7 +372,7 @@ func TestErrorHandling(t *testing.T) {
 
 // TestPerformanceWithLargeDatasets tests performance with large datasets
 func TestPerformanceWithLargeDatasets(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestPerformanceWithLargeDatasets", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestPerformanceWithLargeDatasets", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe_performance_test.db")
 
@@ -444,7 +444,7 @@ func TestPerformanceWithLargeDatasets(t *testing.T) {
 
 // TestFilteringAndSearch tests filtering and search functionality
 func TestFilteringAndSearch(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFilteringAndSearch", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFilteringAndSearch", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe_filter_test.db")
 
@@ -553,7 +553,7 @@ func TestFilteringAndSearch(t *testing.T) {
 
 // TestConcurrentAccess tests concurrent access to the store
 func TestConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe_concurrent_test.db")
 
@@ -618,7 +618,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 // TestJSONImportFunctionality tests the JSON import functionality
 func TestJSONImportFunctionality(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJSONImportFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJSONImportFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe_import_test.db")
 		jsonPath := filepath.Join(tempDir, "cwe_data.json")

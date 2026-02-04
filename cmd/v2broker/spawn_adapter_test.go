@@ -7,7 +7,7 @@ import (
 )
 
 func TestSetSpawnerAndToResult(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetSpawnerAndToResult", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetSpawnerAndToResult", nil, func(t *testing.T, tx *gorm.DB) {
 		b := NewBroker()
 		adapter := NewSpawnAdapter(b)
 		b.SetSpawner(adapter)
@@ -38,7 +38,7 @@ func TestSetSpawnerAndToResult(t *testing.T) {
 }
 
 func TestToResult_NilSafe(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestToResult_NilSafe", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestToResult_NilSafe", nil, func(t *testing.T, tx *gorm.DB) {
 		if toResult(nil) != nil {
 			t.Fatalf("expected nil when input info is nil")
 		}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestJobState_IsTerminal(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobState_IsTerminal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobState_IsTerminal", nil, func(t *testing.T, tx *gorm.DB) {
 		terminal := []JobState{StateCompleted, StateFailed, StateStopped}
 		nonTerminal := []JobState{StateQueued, StateRunning, StatePaused}
 
@@ -27,7 +27,7 @@ func TestJobState_IsTerminal(t *testing.T) {
 }
 
 func TestJobState_CanTransitionTo_Matrix(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobState_CanTransitionTo_Matrix", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobState_CanTransitionTo_Matrix", nil, func(t *testing.T, tx *gorm.DB) {
 		states := []JobState{StateQueued, StateRunning, StatePaused, StateCompleted, StateFailed, StateStopped}
 
 		allowed := map[JobState]map[JobState]bool{

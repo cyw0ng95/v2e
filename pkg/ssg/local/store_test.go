@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewStore(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewStore", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewStore", nil, func(t *testing.T, tx *gorm.DB) {
 		// Use in-memory database for testing
 		store, err := NewStore(":memory:")
 		if err != nil {
@@ -33,7 +33,7 @@ func TestNewStore(t *testing.T) {
 }
 
 func TestDefaultDBPath(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDefaultDBPath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDefaultDBPath", nil, func(t *testing.T, tx *gorm.DB) {
 		path := DefaultDBPath()
 		if path == "" {
 			t.Error("DefaultDBPath returned empty string")
@@ -46,7 +46,7 @@ func TestDefaultDBPath(t *testing.T) {
 }
 
 func TestStore_SaveGuide(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_SaveGuide", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_SaveGuide", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -81,7 +81,7 @@ func TestStore_SaveGuide(t *testing.T) {
 }
 
 func TestStore_ListGuides(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_ListGuides", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_ListGuides", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -146,7 +146,7 @@ func TestStore_ListGuides(t *testing.T) {
 }
 
 func TestStore_SaveGroup(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_SaveGroup", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_SaveGroup", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -182,7 +182,7 @@ func TestStore_SaveGroup(t *testing.T) {
 }
 
 func TestStore_GetChildGroups(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_GetChildGroups", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_GetChildGroups", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -239,7 +239,7 @@ func TestStore_GetChildGroups(t *testing.T) {
 }
 
 func TestStore_SaveRule(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_SaveRule", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_SaveRule", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -303,7 +303,7 @@ func TestStore_SaveRule(t *testing.T) {
 }
 
 func TestStore_GetChildRules(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_GetChildRules", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_GetChildRules", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -372,7 +372,7 @@ func TestStore_GetChildRules(t *testing.T) {
 }
 
 func TestStore_GetTree(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_GetTree", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_GetTree", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -430,7 +430,7 @@ func TestStore_GetTree(t *testing.T) {
 }
 
 func TestStore_BuildTreeNodes(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_BuildTreeNodes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_BuildTreeNodes", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -518,7 +518,7 @@ func TestStore_BuildTreeNodes(t *testing.T) {
 }
 
 func TestStore_ListRules(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_ListRules", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_ListRules", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -616,7 +616,7 @@ func findChildPtr(children []*ssg.TreeNode, id string) *ssg.TreeNode {
 }
 
 func TestStore_CrossReferences(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_CrossReferences", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_CrossReferences", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -703,7 +703,7 @@ func TestStore_CrossReferences(t *testing.T) {
 }
 
 func TestStore_SaveCrossReferences_Empty(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStore_SaveCrossReferences_Empty", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStore_SaveCrossReferences_Empty", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 

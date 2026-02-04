@@ -10,7 +10,7 @@ import (
 )
 
 func TestLocalCWEStore_InMemoryCRUDAndPagination(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLocalCWEStore_InMemoryCRUDAndPagination", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLocalCWEStore_InMemoryCRUDAndPagination", nil, func(t *testing.T, tx *gorm.DB) {
 		store, err := NewLocalCWEStore(":memory:")
 		require.NoError(t, err)
 
@@ -57,7 +57,7 @@ func TestLocalCWEStore_InMemoryCRUDAndPagination(t *testing.T) {
 }
 
 func TestLocalCWEStore_GetByID_NotFound(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLocalCWEStore_GetByID_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLocalCWEStore_GetByID_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
 		store, err := NewLocalCWEStore(":memory:")
 		require.NoError(t, err)
 

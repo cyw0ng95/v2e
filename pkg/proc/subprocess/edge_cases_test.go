@@ -12,7 +12,7 @@ import (
 
 // TestMalformedJSON tests handling of invalid JSON input
 func TestMalformedJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMalformedJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMalformedJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -58,7 +58,7 @@ func TestMalformedJSON(t *testing.T) {
 
 // TestInvalidMessageTypes tests handling of invalid message types
 func TestInvalidMessageTypes(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestInvalidMessageTypes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestInvalidMessageTypes", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -102,7 +102,7 @@ func TestInvalidMessageTypes(t *testing.T) {
 
 // TestMissingRequiredFields tests messages with missing required fields
 func TestMissingRequiredFields(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMissingRequiredFields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMissingRequiredFields", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -138,7 +138,7 @@ func TestMissingRequiredFields(t *testing.T) {
 
 // TestOversizedPayload tests handling of very large payloads
 func TestOversizedPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestOversizedPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestOversizedPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -168,7 +168,7 @@ func TestOversizedPayload(t *testing.T) {
 
 // TestEmptyAndNullValues tests handling of empty and null values
 func TestEmptyAndNullValues(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestEmptyAndNullValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestEmptyAndNullValues", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -211,7 +211,7 @@ func TestEmptyAndNullValues(t *testing.T) {
 
 // TestRapidMessageSequence tests handling of rapid message sequences
 func TestRapidMessageSequence(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRapidMessageSequence", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRapidMessageSequence", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -241,7 +241,7 @@ func TestRapidMessageSequence(t *testing.T) {
 
 // TestSpecialCharactersInFields tests handling of special characters
 func TestSpecialCharactersInFields(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSpecialCharactersInFields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSpecialCharactersInFields", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -281,7 +281,7 @@ func TestSpecialCharactersInFields(t *testing.T) {
 
 // TestConcurrentUnmarshalPayload tests concurrent payload unmarshaling
 func TestConcurrentUnmarshalPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentUnmarshalPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentUnmarshalPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		payload := map[string]string{"key": "value"}
 		data, _ := json.Marshal(payload)
 
@@ -316,7 +316,7 @@ func TestConcurrentUnmarshalPayload(t *testing.T) {
 
 // TestInvalidPayloadUnmarshal tests unmarshaling invalid payloads
 func TestInvalidPayloadUnmarshal(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestInvalidPayloadUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestInvalidPayloadUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
 		testCases := []struct {
 			name    string
 			payload json.RawMessage

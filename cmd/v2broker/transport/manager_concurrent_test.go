@@ -13,7 +13,7 @@ import (
 // TestTransportManager_ConcurrentRegisterAndSend ensures concurrent RegisterTransport
 // and SendToProcess work without races and all messages are delivered.
 func TestTransportManager_ConcurrentRegisterAndSend(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestTransportManager_ConcurrentRegisterAndSend", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestTransportManager_ConcurrentRegisterAndSend", nil, func(t *testing.T, tx *gorm.DB) {
 		tm := NewTransportManager()
 
 		const workers = 20

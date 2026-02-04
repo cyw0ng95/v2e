@@ -13,7 +13,7 @@ import (
 
 // TestUDSTransport_EdgeCases tests various edge cases for UDS transport
 func TestUDSTransport_EdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name       string
 			socketPath string
@@ -59,7 +59,7 @@ func TestUDSTransport_EdgeCases(t *testing.T) {
 
 // TestUDSTransport_ReconnectOptions tests reconnect option configuration
 func TestUDSTransport_ReconnectOptions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_ReconnectOptions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_ReconnectOptions", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name        string
 			maxAttempts int
@@ -100,7 +100,7 @@ func TestUDSTransport_ReconnectOptions(t *testing.T) {
 
 // TestUDSTransport_CallbackConfiguration tests callback setup
 func TestUDSTransport_CallbackConfiguration(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_CallbackConfiguration", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_CallbackConfiguration", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "test.sock"), true)
 	
 		transport.SetReconnectCallback(func(err error) {
@@ -128,7 +128,7 @@ func TestUDSTransport_CallbackConfiguration(t *testing.T) {
 
 // TestUDSTransport_ConcurrentSetters tests concurrent configuration changes
 func TestUDSTransport_ConcurrentSetters(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_ConcurrentSetters", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_ConcurrentSetters", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "test.sock"), true)
 	
 		var wg sync.WaitGroup
@@ -179,7 +179,7 @@ func TestUDSTransport_ConcurrentSetters(t *testing.T) {
 
 // TestUDSTransport_MessageSendEdgeCases tests edge cases for sending messages
 func TestUDSTransport_MessageSendEdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_MessageSendEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_MessageSendEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		// This tests the message creation and validation
 		tests := []struct {
 			name    string
@@ -217,7 +217,7 @@ func TestUDSTransport_MessageSendEdgeCases(t *testing.T) {
 
 // TestUDSTransport_PathValidation tests various socket path scenarios
 func TestUDSTransport_PathValidation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_PathValidation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_PathValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 	
 		tests := []struct {
@@ -264,7 +264,7 @@ func TestUDSTransport_PathValidation(t *testing.T) {
 
 // TestUDSTransport_StateValidation tests transport state management
 func TestUDSTransport_StateValidation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_StateValidation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_StateValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "state.sock"), true)
 	
 		// Initial state checks
@@ -300,7 +300,7 @@ func TestUDSTransport_StateValidation(t *testing.T) {
 
 // TestUDSTransport_DefaultValues tests default configuration values
 func TestUDSTransport_DefaultValues(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_DefaultValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_DefaultValues", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "defaults.sock"), true)
 	
 		tests := []struct {
@@ -329,7 +329,7 @@ func TestUDSTransport_DefaultValues(t *testing.T) {
 
 // TestUDSTransport_BoundaryConditions tests boundary value conditions
 func TestUDSTransport_BoundaryConditions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUDSTransport_BoundaryConditions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_BoundaryConditions", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name        string
 			maxAttempts int

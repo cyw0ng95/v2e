@@ -15,7 +15,7 @@ import (
 )
 
 func TestCWEViewHandlers_CreateGetListDelete(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEViewHandlers_CreateGetListDelete", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEViewHandlers_CreateGetListDelete", nil, func(t *testing.T, tx *gorm.DB) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "test_cwe_handlers.db")
 		store, err := cwe.NewLocalCWEStore(dbPath)

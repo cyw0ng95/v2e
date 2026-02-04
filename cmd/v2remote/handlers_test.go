@@ -14,7 +14,7 @@ import (
 )
 
 func TestCreateFetchViewsHandler_Success(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateFetchViewsHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateFetchViewsHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
 		entries := map[string][]byte{
 			"REST-API-wg-main/json_repo/V/test.json": []byte(`{"ID":"VIEW-1","Name":"Test View"}`),
 		}
@@ -52,7 +52,7 @@ func TestCreateFetchViewsHandler_Success(t *testing.T) {
 }
 
 func TestCreateFetchViewsHandler_HTTPError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateFetchViewsHandler_HTTPError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateFetchViewsHandler_HTTPError", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 		}))
@@ -74,7 +74,7 @@ func TestCreateFetchViewsHandler_HTTPError(t *testing.T) {
 }
 
 func TestCreateFetchViewsHandler_MalformedZip(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateFetchViewsHandler_MalformedZip", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateFetchViewsHandler_MalformedZip", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.Write([]byte("not a zip"))

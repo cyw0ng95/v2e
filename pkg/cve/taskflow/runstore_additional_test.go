@@ -7,7 +7,7 @@ import (
 )
 
 func TestRunStore_GetActiveRun_None(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_GetActiveRun_None", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_GetActiveRun_None", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 		active, err := rs.GetActiveRun()
 		if err != nil {
@@ -21,7 +21,7 @@ func TestRunStore_GetActiveRun_None(t *testing.T) {
 }
 
 func TestRunStore_UpdateProgress_Increments(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_UpdateProgress_Increments", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_UpdateProgress_Increments", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 		_, _ = rs.CreateRun("r1", 0, 1, DataTypeCVE)
 		if err := rs.UpdateProgress("r1", 2, 3, 4); err != nil {
@@ -36,7 +36,7 @@ func TestRunStore_UpdateProgress_Increments(t *testing.T) {
 }
 
 func TestRunStore_DeleteRun_RemovesEntry(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_DeleteRun_RemovesEntry", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_DeleteRun_RemovesEntry", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 		_, _ = rs.CreateRun("r2", 0, 1, DataTypeCVE)
 		if err := rs.DeleteRun("r2"); err != nil {
@@ -50,7 +50,7 @@ func TestRunStore_DeleteRun_RemovesEntry(t *testing.T) {
 }
 
 func TestRunStore_GetLatestRun_PicksMostRecent(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_GetLatestRun_PicksMostRecent", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_GetLatestRun_PicksMostRecent", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 		_, _ = rs.CreateRun("old", 0, 1, DataTypeCVE)
 		// update state to bump UpdatedAt

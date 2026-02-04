@@ -14,7 +14,7 @@ import (
 // TestBusConcurrentSendReceive stresses the Bus with multiple senders and receivers
 // to ensure it handles concurrent operations and updates stats correctly.
 func TestBusConcurrentSendReceive(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBusConcurrentSendReceive", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBusConcurrentSendReceive", nil, func(t *testing.T, tx *gorm.DB) {
 		const senders = 10
 		const perSender = 100
 

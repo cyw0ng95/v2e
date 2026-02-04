@@ -11,7 +11,7 @@ import (
 )
 
 func TestUnmarshal_Concurrent(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshal_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshal_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
 		const goroutines = 50
 		const perG = 50
 

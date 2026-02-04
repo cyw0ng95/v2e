@@ -15,7 +15,7 @@ import (
 // TestConcurrentDatabaseAccess verifies that concurrent database operations
 // don't cause "database is locked" errors after our fixes
 func TestConcurrentDatabaseAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentDatabaseAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentDatabaseAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "concurrent_test.db")
 
@@ -128,7 +128,7 @@ func containsDatabaseLockedError(err error) bool {
 
 // TestRetryLogic verifies that the retry mechanism works for database locking
 func TestRetryLogic(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRetryLogic", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRetryLogic", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "retry_test.db")
 

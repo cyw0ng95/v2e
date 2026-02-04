@@ -15,7 +15,7 @@ import (
 
 // TestDatabaseConnectionFailure tests handling of database connection failures
 func TestDatabaseConnectionFailure(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDatabaseConnectionFailure", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDatabaseConnectionFailure", nil, func(t *testing.T, tx *gorm.DB) {
 		// Try to create a store with an invalid path
 		invalidPath := "/invalid/path/that/does/not/exist/capec.db"
 		store, err := NewLocalCAPECStore(invalidPath)
@@ -59,7 +59,7 @@ func TestDatabaseConnectionFailure(t *testing.T) {
 
 // TestConcurrentAccess tests concurrent access to the CAPEC store
 func TestConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_concurrent_test.db")
 
@@ -119,7 +119,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 // TestPaginationEdgeCases tests pagination edge cases
 func TestPaginationEdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestPaginationEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestPaginationEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_pagination_test.db")
 
@@ -219,7 +219,7 @@ func TestPaginationEdgeCases(t *testing.T) {
 
 // TestMalformedXMLImport tests importing malformed XML
 func TestMalformedXMLImport(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMalformedXMLImport", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMalformedXMLImport", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_malformed_test.db")
 		xmlPath := filepath.Join(tempDir, "malformed.xml")
@@ -281,7 +281,7 @@ func TestMalformedXMLImport(t *testing.T) {
 
 // TestImportValidation tests import validation functionality
 func TestImportValidation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportValidation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_validation_test.db")
 		xmlPath := filepath.Join(tempDir, "valid.xml")
@@ -362,7 +362,7 @@ func TestImportValidation(t *testing.T) {
 
 // TestImportVersionCheck tests the version checking functionality during import
 func TestImportVersionCheck(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportVersionCheck", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportVersionCheck", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_version_test.db")
 		xmlPath1 := filepath.Join(tempDir, "capec_v1.xml")
@@ -461,7 +461,7 @@ func TestImportVersionCheck(t *testing.T) {
 
 // TestGetMethods tests the various Get methods with edge cases
 func TestGetMethods(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetMethods", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetMethods", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_get_methods_test.db")
 
@@ -626,7 +626,7 @@ func TestGetMethods(t *testing.T) {
 
 // TestRaceConditionDuringImport tests potential race conditions during import
 func TestRaceConditionDuringImport(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRaceConditionDuringImport", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRaceConditionDuringImport", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_race_test.db")
 		xmlPath := filepath.Join(tempDir, "race_test.xml")
@@ -691,7 +691,7 @@ func TestRaceConditionDuringImport(t *testing.T) {
 
 // TestTransactionRollbackOnFailure tests that transactions are properly rolled back on failure
 func TestTransactionRollbackOnFailure(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestTransactionRollbackOnFailure", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestTransactionRollbackOnFailure", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "capec_rollback_test.db")
 		xmlPath := filepath.Join(tempDir, "rollback_test.xml")

@@ -7,7 +7,7 @@ import (
 )
 
 func TestUnmarshalFast_EmptyOrTruncated(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalFast_EmptyOrTruncated", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalFast_EmptyOrTruncated", nil, func(t *testing.T, tx *gorm.DB) {
 		if _, err := UnmarshalFast([]byte{}); err == nil {
 			t.Fatalf("expected error for empty input")
 		}
@@ -19,7 +19,7 @@ func TestUnmarshalFast_EmptyOrTruncated(t *testing.T) {
 }
 
 func TestNewResponseMessage_MarshalError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewResponseMessage_MarshalError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewResponseMessage_MarshalError", nil, func(t *testing.T, tx *gorm.DB) {
 		// channels are not JSON-marshalable; expect an error from NewResponseMessage
 		_, err := NewResponseMessage("id", make(chan int))
 		if err == nil {

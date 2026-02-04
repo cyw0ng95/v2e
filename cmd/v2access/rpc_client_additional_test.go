@@ -14,7 +14,7 @@ import (
 )
 
 func TestInvokeRPCWithUnmarshalableParams(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestInvokeRPCWithUnmarshalableParams", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestInvokeRPCWithUnmarshalableParams", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := subprocess.New("test-client")
 		logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
 		client := NewRPCClientWithSubprocess(sp, logger, time.Second)
@@ -32,7 +32,7 @@ func TestInvokeRPCWithUnmarshalableParams(t *testing.T) {
 }
 
 func TestInvokeRPCWithTimeout(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestInvokeRPCWithTimeout", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestInvokeRPCWithTimeout", nil, func(t *testing.T, tx *gorm.DB) {
 		// Removed: this test relied on a very short (10ms) timeout which is
 		// unreliable on CI. Timeouts and pending-request cleanup are covered by
 		// other tests in the common RPC client package.

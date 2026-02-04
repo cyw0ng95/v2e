@@ -53,7 +53,7 @@ func (m *mockRPCInvoker) InvokeRPC(ctx context.Context, target, method string, p
 }
 
 func TestNewController(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewController", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewController", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_controller_session.db")
 
@@ -83,7 +83,7 @@ func TestNewController(t *testing.T) {
 }
 
 func TestControllerStart_NoSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestControllerStart_NoSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestControllerStart_NoSession", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_start_no_session.db")
 
@@ -104,7 +104,7 @@ func TestControllerStart_NoSession(t *testing.T) {
 }
 
 func TestControllerStart_AlreadyRunning(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestControllerStart_AlreadyRunning", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestControllerStart_AlreadyRunning", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_start_already_running.db")
 
@@ -150,7 +150,7 @@ func TestControllerStart_AlreadyRunning(t *testing.T) {
 }
 
 func TestControllerStop_NotRunning(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestControllerStop_NotRunning", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestControllerStop_NotRunning", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_stop_not_running.db")
 
@@ -169,7 +169,7 @@ func TestControllerStop_NotRunning(t *testing.T) {
 }
 
 func TestControllerPause_NotRunning(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestControllerPause_NotRunning", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestControllerPause_NotRunning", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_pause_not_running.db")
 
@@ -188,7 +188,7 @@ func TestControllerPause_NotRunning(t *testing.T) {
 }
 
 func TestControllerResume_NotPaused(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestControllerResume_NotPaused", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestControllerResume_NotPaused", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_resume_not_paused.db")
 
@@ -212,7 +212,7 @@ func TestControllerResume_NotPaused(t *testing.T) {
 }
 
 func TestControllerIsRunning(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestControllerIsRunning", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestControllerIsRunning", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_is_running.db")
 
@@ -267,7 +267,7 @@ func TestControllerIsRunning(t *testing.T) {
 }
 
 func TestJobLoop_EmptyResults(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobLoop_EmptyResults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobLoop_EmptyResults", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_job_empty.db")
 
@@ -320,7 +320,7 @@ func TestJobLoop_EmptyResults(t *testing.T) {
 }
 
 func TestJobLoop_WithResults(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobLoop_WithResults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobLoop_WithResults", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_job_with_results.db")
 

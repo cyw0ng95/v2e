@@ -15,7 +15,7 @@ import (
 // This test demonstrates the ability to save CVEs to cve.db and allows
 // users to download the database after tests run.
 func TestCreateCVEDatabase(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateCVEDatabase", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateCVEDatabase", nil, func(t *testing.T, tx *gorm.DB) {
 		// Get the project root directory (4 levels up from pkg/cve/local)
 		cwd, err := os.Getwd()
 		if err != nil {

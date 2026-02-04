@@ -7,7 +7,7 @@ import (
 )
 
 func TestUnmarshalPayload_NilPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalPayload_NilPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalPayload_NilPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := &Message{Payload: nil}
 		var v interface{}
 		if err := UnmarshalPayload(msg, &v); err == nil {
@@ -18,7 +18,7 @@ func TestUnmarshalPayload_NilPayload(t *testing.T) {
 }
 
 func TestUnmarshalPayload_InvalidJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalPayload_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalPayload_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := &Message{Payload: []byte("not-json")}
 		var v interface{}
 		if err := UnmarshalPayload(msg, &v); err == nil {
@@ -29,7 +29,7 @@ func TestUnmarshalPayload_InvalidJSON(t *testing.T) {
 }
 
 func TestUnmarshalPayload_ValidJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalPayload_ValidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalPayload_ValidJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := &Message{Payload: []byte(`{"x":123}`)}
 		var v map[string]interface{}
 		if err := UnmarshalPayload(msg, &v); err != nil {

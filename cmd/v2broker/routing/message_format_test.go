@@ -13,7 +13,7 @@ import (
 
 // TestRoute_MessageTypeVariations covers different message types in routing.
 func TestRoute_MessageTypeVariations(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_MessageTypeVariations", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_MessageTypeVariations", nil, func(t *testing.T, tx *gorm.DB) {
 		types := []proc.MessageType{
 			proc.MessageTypeRequest,
 			proc.MessageTypeResponse,
@@ -41,7 +41,7 @@ func TestRoute_MessageTypeVariations(t *testing.T) {
 
 // TestRoute_TargetFormats validates various target process formats.
 func TestRoute_TargetFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_TargetFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_TargetFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		targets := []string{
 			"meta",
 			"local",
@@ -74,7 +74,7 @@ func TestRoute_TargetFormats(t *testing.T) {
 
 // TestRoute_SourceFormats validates various source process formats.
 func TestRoute_SourceFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_SourceFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_SourceFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		sources := []string{
 			"broker",
 			"access",
@@ -102,7 +102,7 @@ func TestRoute_SourceFormats(t *testing.T) {
 
 // TestRoute_CorrelationIDs validates correlation ID formats.
 func TestRoute_CorrelationIDs(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_CorrelationIDs", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_CorrelationIDs", nil, func(t *testing.T, tx *gorm.DB) {
 		correlationIDs := []string{
 			"req-1",
 			"12345678-1234-1234-1234-123456789012", // UUID
@@ -129,7 +129,7 @@ func TestRoute_CorrelationIDs(t *testing.T) {
 
 // TestRoute_PayloadSizes validates routing with various payload sizes.
 func TestRoute_PayloadSizes(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_PayloadSizes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_PayloadSizes", nil, func(t *testing.T, tx *gorm.DB) {
 		sizes := []int{0, 10, 100, 1024, 10240}
 
 		for _, size := range sizes {
@@ -160,7 +160,7 @@ func TestRoute_PayloadSizes(t *testing.T) {
 
 // TestRoute_ErrorMessages validates error message routing.
 func TestRoute_ErrorMessages(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_ErrorMessages", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_ErrorMessages", nil, func(t *testing.T, tx *gorm.DB) {
 		errors := []string{
 			"simple error",
 			"error with\nmultiple\nlines",
@@ -188,7 +188,7 @@ func TestRoute_ErrorMessages(t *testing.T) {
 
 // TestMessage_JSONRoundTripForRouting validates message serialization for routing.
 func TestMessage_JSONRoundTripForRouting(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_JSONRoundTripForRouting", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_JSONRoundTripForRouting", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			msg  proc.Message
@@ -268,7 +268,7 @@ func TestMessage_JSONRoundTripForRouting(t *testing.T) {
 
 // TestRoute_PayloadFormats validates various payload content types.
 func TestRoute_PayloadFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_PayloadFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_PayloadFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name    string
 			payload interface{}
@@ -321,7 +321,7 @@ func TestRoute_PayloadFormats(t *testing.T) {
 
 // TestRoute_UnicodeInFields validates unicode handling in all fields.
 func TestRoute_UnicodeInFields(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_UnicodeInFields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_UnicodeInFields", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := &proc.Message{
 			Type:    proc.MessageTypeRequest,
 			ID:      "请求-αβγ-🎉",
@@ -355,7 +355,7 @@ func TestRoute_UnicodeInFields(t *testing.T) {
 
 // TestRoute_SpecialCharactersInIDs validates ID field edge cases.
 func TestRoute_SpecialCharactersInIDs(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_SpecialCharactersInIDs", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_SpecialCharactersInIDs", nil, func(t *testing.T, tx *gorm.DB) {
 		ids := []string{
 			"simple-id",
 			"id_with_underscores",
@@ -399,7 +399,7 @@ func TestRoute_SpecialCharactersInIDs(t *testing.T) {
 
 // TestRoute_RequestResponsePairs validates request-response correlation.
 func TestRoute_RequestResponsePairs(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_RequestResponsePairs", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_RequestResponsePairs", nil, func(t *testing.T, tx *gorm.DB) {
 		requestID := "req-12345"
 		correlationID := requestID
 
@@ -428,7 +428,7 @@ func TestRoute_RequestResponsePairs(t *testing.T) {
 
 // TestRoute_EmptyFields validates handling of empty field values.
 func TestRoute_EmptyFields(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRoute_EmptyFields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRoute_EmptyFields", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			msg  proc.Message

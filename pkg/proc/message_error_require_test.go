@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewRequestMessage_MarshalFailure(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewRequestMessage_MarshalFailure", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewRequestMessage_MarshalFailure", nil, func(t *testing.T, tx *gorm.DB) {
 		// payload containing a channel should fail to marshal
 		payload := struct{ C chan int }{C: make(chan int)}
 		msg, err := NewRequestMessage("test-id", payload)

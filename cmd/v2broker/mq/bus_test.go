@@ -12,7 +12,7 @@ import (
 )
 
 func TestBusSendReceiveStats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBusSendReceiveStats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBusSendReceiveStats", nil, func(t *testing.T, tx *gorm.DB) {
 		ctx := context.Background()
 		bus := NewBus(ctx, 4)
 
@@ -66,7 +66,7 @@ func TestBusSendReceiveStats(t *testing.T) {
 }
 
 func TestBusSendCanceled(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBusSendCanceled", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBusSendCanceled", nil, func(t *testing.T, tx *gorm.DB) {
 		bus := NewBus(context.Background(), 0)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -80,7 +80,7 @@ func TestBusSendCanceled(t *testing.T) {
 }
 
 func TestBusSendOnClosedChannel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBusSendOnClosedChannel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBusSendOnClosedChannel", nil, func(t *testing.T, tx *gorm.DB) {
 		bus := NewBus(context.Background(), 1)
 		bus.Close()
 
@@ -96,7 +96,7 @@ func TestBusSendOnClosedChannel(t *testing.T) {
 }
 
 func TestBusReceiveCanceled(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBusReceiveCanceled", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBusReceiveCanceled", nil, func(t *testing.T, tx *gorm.DB) {
 		bus := NewBus(context.Background(), 1)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -109,7 +109,7 @@ func TestBusReceiveCanceled(t *testing.T) {
 }
 
 func TestSendRespectsBusContext(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendRespectsBusContext", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendRespectsBusContext", nil, func(t *testing.T, tx *gorm.DB) {
 		busCtx, cancelBus := context.WithCancel(context.Background())
 		bus := NewBus(busCtx, 0)
 		cancelBus()
@@ -123,7 +123,7 @@ func TestSendRespectsBusContext(t *testing.T) {
 }
 
 func TestFirstAndLastMessageTimesSet(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFirstAndLastMessageTimesSet", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFirstAndLastMessageTimesSet", nil, func(t *testing.T, tx *gorm.DB) {
 		bus := NewBus(context.Background(), 1)
 		msg := &proc.Message{Type: proc.MessageTypeEvent, Source: "s", Target: "t"}
 

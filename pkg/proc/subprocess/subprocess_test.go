@@ -14,7 +14,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNew", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNew", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-subprocess")
 		if sp.ID != "test-subprocess" {
 			t.Errorf("Expected ID to be 'test-subprocess', got '%s'", sp.ID)
@@ -27,14 +27,14 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewWithFDs(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewWithFDs", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewWithFDs", nil, func(t *testing.T, tx *gorm.DB) {
 		t.Skip("Skipping FD pipe test - UDS-only transport")
 	})
 
 }
 
 func TestRegisterHandler(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRegisterHandler", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRegisterHandler", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		handler := func(ctx context.Context, msg *Message) (*Message, error) {
 			return nil, nil
@@ -54,7 +54,7 @@ func TestRegisterHandler(t *testing.T) {
 }
 
 func TestSendMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -93,7 +93,7 @@ func TestSendMessage(t *testing.T) {
 }
 
 func TestSendResponse(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendResponse", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendResponse", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -127,7 +127,7 @@ func TestSendResponse(t *testing.T) {
 }
 
 func TestSendEvent(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendEvent", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendEvent", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -151,7 +151,7 @@ func TestSendEvent(t *testing.T) {
 }
 
 func TestHandleMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestHandleMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestHandleMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -192,7 +192,7 @@ func TestHandleMessage(t *testing.T) {
 }
 
 func TestRunWithMessages(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunWithMessages", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunWithMessages", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 
 		// Create input with test messages
@@ -239,7 +239,7 @@ func TestRunWithMessages(t *testing.T) {
 }
 
 func TestUnmarshalPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		payload := map[string]string{"key": "value"}
 		data, _ := sonic.Marshal(payload)
 
@@ -262,7 +262,7 @@ func TestUnmarshalPayload(t *testing.T) {
 }
 
 func TestUnmarshalPayload_NoPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalPayload_NoPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalPayload_NoPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := &Message{
 			Type: MessageTypeEvent,
 			ID:   "test",
@@ -278,7 +278,7 @@ func TestUnmarshalPayload_NoPayload(t *testing.T) {
 }
 
 func TestSendError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendError", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -305,7 +305,7 @@ func TestSendError(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestStop", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestStop", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 
 		// Start the message writer
@@ -329,7 +329,7 @@ func TestStop(t *testing.T) {
 }
 
 func TestFlush(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFlush", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFlush", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -356,7 +356,7 @@ func TestFlush(t *testing.T) {
 }
 
 func TestSetInput(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetInput", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetInput", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		input := &bytes.Buffer{}
 
@@ -370,7 +370,7 @@ func TestSetInput(t *testing.T) {
 }
 
 func TestMessageBatching(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageBatching", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageBatching", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.output = output

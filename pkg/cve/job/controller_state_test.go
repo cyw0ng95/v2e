@@ -52,7 +52,7 @@ func (m *mockJobStateRPCInvoker) InvokeRPC(ctx context.Context, target, method s
 
 // TestController_StartStop ensures basic start/stop lifecycle.
 func TestController_StartStop(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_StartStop", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_StartStop", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)
@@ -93,7 +93,7 @@ func TestController_StartStop(t *testing.T) {
 
 // TestController_PauseResume ensures pause/resume transitions work correctly.
 func TestController_PauseResume(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_PauseResume", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_PauseResume", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)
@@ -134,7 +134,7 @@ func TestController_PauseResume(t *testing.T) {
 
 // TestController_StopNotRunning ensures Stop fails when not running.
 func TestController_StopNotRunning(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_StopNotRunning", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_StopNotRunning", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)
@@ -154,7 +154,7 @@ func TestController_StopNotRunning(t *testing.T) {
 
 // TestController_PauseNotRunning ensures Pause fails when not running.
 func TestController_PauseNotRunning(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_PauseNotRunning", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_PauseNotRunning", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)
@@ -174,7 +174,7 @@ func TestController_PauseNotRunning(t *testing.T) {
 
 // TestController_ResumeNotPaused ensures Resume fails when session is not paused.
 func TestController_ResumeNotPaused(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_ResumeNotPaused", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_ResumeNotPaused", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)
@@ -196,7 +196,7 @@ func TestController_ResumeNotPaused(t *testing.T) {
 
 // TestController_StartWithNoSession ensures Start fails when no session exists.
 func TestController_StartWithNoSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_StartWithNoSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_StartWithNoSession", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)
@@ -219,7 +219,7 @@ func TestController_StartWithNoSession(t *testing.T) {
 
 // TestController_ConcurrentStartAttempts ensures only one Start succeeds.
 func TestController_ConcurrentStartAttempts(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_ConcurrentStartAttempts", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_ConcurrentStartAttempts", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)
@@ -262,7 +262,7 @@ func TestController_ConcurrentStartAttempts(t *testing.T) {
 
 // TestController_JobContextCancellation ensures job stops when context is cancelled.
 func TestController_JobContextCancellation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_JobContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_JobContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		sessMgr, _ := session.NewManager(tmpDir+"/session.db", logger)

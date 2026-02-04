@@ -13,7 +13,7 @@ import (
 )
 
 func TestImportBlueBoxingDescription(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportBlueBoxingDescription", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportBlueBoxingDescription", nil, func(t *testing.T, tx *gorm.DB) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "capec_test.db")
 		xmlPath := filepath.Join(dir, "capec_blueboxing.xml")

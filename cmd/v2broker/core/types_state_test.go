@@ -11,7 +11,7 @@ import (
 
 // TestProcessInfo_StatusTransitions covers state transitions for process info.
 func TestProcessInfo_StatusTransitions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestProcessInfo_StatusTransitions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestProcessInfo_StatusTransitions", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name        string
 			startStatus ProcessStatus
@@ -45,7 +45,7 @@ func TestProcessInfo_StatusTransitions(t *testing.T) {
 
 // TestProcess_SetStatus verifies thread-safe status updates.
 func TestProcess_SetStatus(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestProcess_SetStatus", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestProcess_SetStatus", nil, func(t *testing.T, tx *gorm.DB) {
 		proc := NewTestProcess("test", ProcessStatusRunning)
 
 		if proc.info.Status != ProcessStatusRunning {
@@ -67,7 +67,7 @@ func TestProcess_SetStatus(t *testing.T) {
 
 // TestProcess_IOSetters ensures stdin/stdout can be set independently.
 func TestProcess_IOSetters(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestProcess_IOSetters", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestProcess_IOSetters", nil, func(t *testing.T, tx *gorm.DB) {
 		t.Skip("Skipping stdin/stdout setter test - UDS-only transport")
 	})
 
@@ -75,7 +75,7 @@ func TestProcess_IOSetters(t *testing.T) {
 
 // TestRestartConfig_State covers restart counter increments.
 func TestRestartConfig_State(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRestartConfig_State", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRestartConfig_State", nil, func(t *testing.T, tx *gorm.DB) {
 		config := &RestartConfig{
 			Enabled:      true,
 			MaxRestarts:  5,
@@ -102,7 +102,7 @@ func TestRestartConfig_State(t *testing.T) {
 
 // TestPendingRequest_Timestamps ensures timestamp field is set.
 func TestPendingRequest_Timestamps(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestPendingRequest_Timestamps", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestPendingRequest_Timestamps", nil, func(t *testing.T, tx *gorm.DB) {
 		before := time.Now()
 		req := &PendingRequest{
 			SourceProcess: "source",
@@ -128,7 +128,7 @@ func TestPendingRequest_Timestamps(t *testing.T) {
 
 // TestProcessInfo_Fields ensures all fields can be set and retrieved.
 func TestProcessInfo_Fields(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestProcessInfo_Fields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestProcessInfo_Fields", nil, func(t *testing.T, tx *gorm.DB) {
 		info := &ProcessInfo{
 			ID:       "proc1",
 			PID:      12345,
@@ -163,7 +163,7 @@ func TestProcessInfo_Fields(t *testing.T) {
 
 // TestProcess_DoneChannel verifies done channel behavior.
 func TestProcess_DoneChannel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestProcess_DoneChannel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestProcess_DoneChannel", nil, func(t *testing.T, tx *gorm.DB) {
 		proc := NewTestProcess("done-test", ProcessStatusRunning)
 
 		select {

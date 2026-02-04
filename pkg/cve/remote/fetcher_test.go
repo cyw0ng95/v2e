@@ -10,7 +10,7 @@ import (
 )
 
 func TestFetchCVEByID_Success(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFetchCVEByID_Success", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFetchCVEByID_Success", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			q := r.URL.Query().Get("cveId")
 			if q == "CVE-TEST-1" {
@@ -36,7 +36,7 @@ func TestFetchCVEByID_Success(t *testing.T) {
 }
 
 func TestFetchCVEByID_RateLimited(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFetchCVEByID_RateLimited", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFetchCVEByID_RateLimited", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(429)
 		}))
@@ -53,7 +53,7 @@ func TestFetchCVEByID_RateLimited(t *testing.T) {
 }
 
 func TestFetchCVEs_ParamValidation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFetchCVEs_ParamValidation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFetchCVEs_ParamValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		f := NewFetcher("")
 		if _, err := f.FetchCVEs(-1, 10); err == nil {
 			t.Fatalf("expected error for negative startIndex")
@@ -66,7 +66,7 @@ func TestFetchCVEs_ParamValidation(t *testing.T) {
 }
 
 func TestFetchCVEsConcurrent_Workers(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFetchCVEsConcurrent_Workers", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFetchCVEsConcurrent_Workers", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			q := r.URL.Query().Get("cveId")
 			if q == "" {

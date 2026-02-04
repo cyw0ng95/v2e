@@ -19,7 +19,7 @@ func writeTempFile(t *testing.T, dir, name, content string) string {
 }
 
 func TestImportFromXML_PersistsData(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportFromXML_PersistsData", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportFromXML_PersistsData", nil, func(t *testing.T, tx *gorm.DB) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "capec.db")
 		store, err := NewLocalCAPECStore(dbPath)
@@ -63,7 +63,7 @@ func TestImportFromXML_PersistsData(t *testing.T) {
 }
 
 func TestListCAPECsPaginated_ReturnsTotalAndItems(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestListCAPECsPaginated_ReturnsTotalAndItems", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestListCAPECsPaginated_ReturnsTotalAndItems", nil, func(t *testing.T, tx *gorm.DB) {
 		dir := t.TempDir()
 		store, err := NewLocalCAPECStore(filepath.Join(dir, "capec.db"))
 		if err != nil {

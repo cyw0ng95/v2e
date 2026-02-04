@@ -23,7 +23,7 @@ func (s *successTransport) Connect() error                  { return nil }
 func (s *successTransport) Close() error                    { return nil }
 
 func TestBroker_SendToProcess_UsesTransportWhenAvailable(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_SendToProcess_UsesTransportWhenAvailable", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_SendToProcess_UsesTransportWhenAvailable", nil, func(t *testing.T, tx *gorm.DB) {
 		b := NewBroker()
 		// use a transport manager with a fake transport
 		tm := transport.NewTransportManager()

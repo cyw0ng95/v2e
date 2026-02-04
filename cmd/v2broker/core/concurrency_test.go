@@ -13,7 +13,7 @@ import (
 
 // TestBroker_ConcurrentSpawn stresses the processes map lock by spawning many short-lived processes concurrently.
 func TestBroker_ConcurrentSpawn(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ConcurrentSpawn", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ConcurrentSpawn", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -60,7 +60,7 @@ func TestBroker_ConcurrentSpawn(t *testing.T) {
 
 // TestBroker_ConcurrentListAndSpawn stresses the interaction between ListProcesses (RLock) and Spawn (Lock).
 func TestBroker_ConcurrentListAndSpawn(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ConcurrentListAndSpawn", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ConcurrentListAndSpawn", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -126,7 +126,7 @@ func TestBroker_ConcurrentListAndSpawn(t *testing.T) {
 
 // TestBroker_ConcurrentRestart stresses the reapProcess logic which deletes from the map and respawns.
 func TestBroker_ConcurrentRestart(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ConcurrentRestart", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ConcurrentRestart", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -174,7 +174,7 @@ func TestBroker_ConcurrentRestart(t *testing.T) {
 
 // TestBroker_ConcurrentKillAndSpawn stresses locking between Kill (RLock then Lock on process) and Spawn.
 func TestBroker_ConcurrentKillAndSpawn(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ConcurrentKillAndSpawn", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ConcurrentKillAndSpawn", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 

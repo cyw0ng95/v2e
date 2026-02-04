@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewDB_ErrorCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewDB_ErrorCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewDB_ErrorCases", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with invalid path (try to use a directory path)
 		db, err := NewDB("/nonexistent/directory/file.db")
 		assert.Error(t, err)
@@ -26,7 +26,7 @@ func TestNewDB_ErrorCases(t *testing.T) {
 }
 
 func TestSaveCVE_EdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveCVE_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveCVE_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_save_cve_edge.db"
 		defer os.Remove(dbPath)
 
@@ -71,7 +71,7 @@ func TestSaveCVE_EdgeCases(t *testing.T) {
 }
 
 func TestSaveCVEs_EdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveCVEs_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveCVEs_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_save_cves_edge.db"
 		defer os.Remove(dbPath)
 
@@ -106,7 +106,7 @@ func TestSaveCVEs_EdgeCases(t *testing.T) {
 }
 
 func TestGetCVE_EdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetCVE_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetCVE_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_get_cve_edge.db"
 		defer os.Remove(dbPath)
 
@@ -131,7 +131,7 @@ func TestGetCVE_EdgeCases(t *testing.T) {
 }
 
 func TestListCVEs_EdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestListCVEs_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestListCVEs_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_list_cves_edge.db"
 		defer os.Remove(dbPath)
 
@@ -159,7 +159,7 @@ func TestListCVEs_EdgeCases(t *testing.T) {
 }
 
 func TestCount_EdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCount_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCount_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_count_edge.db"
 		defer os.Remove(dbPath)
 
@@ -189,7 +189,7 @@ func TestCount_EdgeCases(t *testing.T) {
 }
 
 func TestDeleteCVE_EdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDeleteCVE_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDeleteCVE_EdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_delete_cve_edge.db"
 		defer os.Remove(dbPath)
 
@@ -210,7 +210,7 @@ func TestDeleteCVE_EdgeCases(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestClose", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestClose", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_close.db"
 		defer os.Remove(dbPath)
 
@@ -231,7 +231,7 @@ func TestClose(t *testing.T) {
 }
 
 func TestCVEDataIntegrity(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCVEDataIntegrity", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCVEDataIntegrity", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_data_integrity.db"
 		defer os.Remove(dbPath)
 
@@ -278,7 +278,7 @@ func TestCVEDataIntegrity(t *testing.T) {
 }
 
 func TestConcurrentOperations(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentOperations", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentOperations", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := "/tmp/test_concurrent.db"
 		defer os.Remove(dbPath)
 

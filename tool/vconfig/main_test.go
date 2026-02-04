@@ -7,7 +7,7 @@ import (
 )
 
 func TestMainFunctionality(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMainFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMainFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test that the default config can be generated and validated
 		config := GetDefaultConfig()
 

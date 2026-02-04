@@ -63,7 +63,7 @@ func TestInvokeRPC(t *testing.T) {
 	// Note: This test requires spawning an actual RPC process
 	// For now, we test the error cases and timeout behavior
 
-	testutils.Run(t, testutils.Level1, "Invalid target process", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "Invalid target process", nil, func(t *testing.T, tx *gorm.DB) {
 		// Try to invoke RPC on non-existent process
 		_, err := broker.InvokeRPC("source", "nonexistent", "RPCTest", map[string]string{}, 100*time.Millisecond)
 		if err == nil {
@@ -71,7 +71,7 @@ func TestInvokeRPC(t *testing.T) {
 		}
 	})
 
-	testutils.Run(t, testutils.Level1, "Timeout behavior", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "Timeout behavior", nil, func(t *testing.T, tx *gorm.DB) {
 		t.Skip("Skipping stdin/stdout test - UDS-only transport")
 	})
 }
@@ -80,14 +80,14 @@ func TestLoadProcessesFromConfig(t *testing.T) {
 	broker := core.NewBroker()
 	defer broker.Shutdown()
 
-	testutils.Run(t, testutils.Level1, "Config loading - should use build-time defaults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "Config loading - should use build-time defaults", nil, func(t *testing.T, tx *gorm.DB) {
 		err := broker.LoadProcessesFromConfig(nil)
 		if err != nil {
 			t.Errorf("Expected no error with config, got: %v", err)
 		}
 	})
 
-	testutils.Run(t, testutils.Level1, "Nil config - should use build-time defaults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "Nil config - should use build-time defaults", nil, func(t *testing.T, tx *gorm.DB) {
 		err := broker.LoadProcessesFromConfig(nil)
 		if err != nil {
 			t.Errorf("Expected no error for nil config, got: %v", err)

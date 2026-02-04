@@ -22,7 +22,7 @@ func (f *fakeTransport) Connect() error                  { return nil }
 func (f *fakeTransport) Close() error                    { return nil }
 
 func TestTransportManager_RegisterAndSend(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestTransportManager_RegisterAndSend", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestTransportManager_RegisterAndSend", nil, func(t *testing.T, tx *gorm.DB) {
 		tm := NewTransportManager()
 		ft := &fakeTransport{}
 		tm.RegisterTransport("p1", ft)
@@ -65,7 +65,7 @@ func (f *fakeUDSTransport) Close() error                    { return nil }
 
 // Test that SendToProcess returns an error when the process ID is not registered.
 func TestTransportManager_SendToProcess_UnknownProcess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestTransportManager_SendToProcess_UnknownProcess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestTransportManager_SendToProcess_UnknownProcess", nil, func(t *testing.T, tx *gorm.DB) {
 		tm := NewTransportManager()
 
 		msg, err := proc.NewRequestMessage("test", map[string]string{"k": "v"})
@@ -107,7 +107,7 @@ func (m *mockUDSTransport) Close() error                    { return nil }
 
 // Test that RegisterUDSTransport returns an error when the underlying transport's Connect fails.
 func TestTransportManager_RegisterUDSTransport_ConnectFailure(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestTransportManager_RegisterUDSTransport_ConnectFailure", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestTransportManager_RegisterUDSTransport_ConnectFailure", nil, func(t *testing.T, tx *gorm.DB) {
 		tm := NewTransportManager()
 		// Set a custom base path to control socket path
 		tm.SetUdsBasePath("/tmp/test-uds")
@@ -135,7 +135,7 @@ func TestTransportManager_RegisterUDSTransport_ConnectFailure(t *testing.T) {
 // Note: This test uses the real UDS implementation but won't actually connect
 // since there's no server, but it tests the registration flow
 func TestTransportManager_RegisterUDSTransport_Success(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestTransportManager_RegisterUDSTransport_Success", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestTransportManager_RegisterUDSTransport_Success", nil, func(t *testing.T, tx *gorm.DB) {
 		tm := NewTransportManager()
 		// Use a temporary path that likely doesn't exist for this test
 		tm.SetUdsBasePath("/tmp/test-register-success")
@@ -160,7 +160,7 @@ func TestTransportManager_RegisterUDSTransport_Success(t *testing.T) {
 // Test that SetUdsBasePath affects the socket path used for UDS transports.
 // This test verifies that the base path setting works by checking internal state
 func TestTransportManager_SetUdsBasePath(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestTransportManager_SetUdsBasePath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestTransportManager_SetUdsBasePath", nil, func(t *testing.T, tx *gorm.DB) {
 		tm := NewTransportManager()
 
 		originalBasePath := tm.udsBasePath

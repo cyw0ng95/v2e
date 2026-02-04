@@ -14,7 +14,7 @@ import (
 
 // TestConcurrentLogging tests concurrent logging to ensure thread safety
 func TestConcurrentLogging(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentLogging", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentLogging", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "CONCURRENT", DebugLevel)
 
@@ -52,7 +52,7 @@ func TestConcurrentLogging(t *testing.T) {
 
 // TestLogLevel_Conversions tests conversion between our LogLevel and zerolog.Level
 func TestLogLevel_Conversions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogLevel_Conversions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogLevel_Conversions", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			logLevel        LogLevel
 			expectedZerolog string
@@ -85,7 +85,7 @@ func TestLogLevel_Conversions(t *testing.T) {
 
 // TestCustomFormatter_WriteLevel tests the custom formatter output
 func TestCustomFormatter_WriteLevel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCustomFormatter_WriteLevel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCustomFormatter_WriteLevel", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		formatter := &CustomFormatter{
 			Out:    &buf,
@@ -127,7 +127,7 @@ func TestCustomFormatter_WriteLevel(t *testing.T) {
 
 // TestLogger_Formatting tests the custom formatting of log messages
 func TestLogger_Formatting(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogger_Formatting", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogger_Formatting", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "FORMAT", InfoLevel)
 
@@ -180,7 +180,7 @@ func TestLogger_Formatting(t *testing.T) {
 
 // TestLogger_EntityFormatting tests the entity formatting in logs
 func TestLogger_EntityFormatting(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogger_EntityFormatting", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogger_EntityFormatting", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			prefix   string
 			expected string
@@ -212,7 +212,7 @@ func TestLogger_EntityFormatting(t *testing.T) {
 
 // TestNewLoggerWithFile_Errors tests error handling in NewLoggerWithFile
 func TestNewLoggerWithFile_Errors(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewLoggerWithFile_Errors", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewLoggerWithFile_Errors", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with invalid path
 		_, err := NewLoggerWithFile("/invalid/path/that/does/not/exist/log.txt", "TEST", InfoLevel)
 		if err == nil {
@@ -232,7 +232,7 @@ func TestNewLoggerWithFile_Errors(t *testing.T) {
 
 // TestLogger_OutputSwitching tests switching output destinations
 func TestLogger_OutputSwitching(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogger_OutputSwitching", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogger_OutputSwitching", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf1, buf2, buf3 bytes.Buffer
 
 		logger := NewLogger(&buf1, "OUTPUT", InfoLevel)
@@ -272,7 +272,7 @@ func TestLogger_OutputSwitching(t *testing.T) {
 
 // TestLogger_TimestampFormat tests that timestamps are formatted correctly
 func TestLogger_TimestampFormat(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogger_TimestampFormat", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogger_TimestampFormat", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "TIMESTAMP", InfoLevel)
 
@@ -313,7 +313,7 @@ func TestLogger_TimestampFormat(t *testing.T) {
 
 // TestDefaultLogger_ConcurrentAccess tests concurrent access to the default logger
 func TestDefaultLogger_ConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDefaultLogger_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDefaultLogger_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		// Save original output
 		origOutput := os.Stdout
 		r, w, _ := os.Pipe()
@@ -373,7 +373,7 @@ func TestDefaultLogger_ConcurrentAccess(t *testing.T) {
 
 // TestLogger_SetLevel_ThreadSafety tests thread safety of SetLevel/GetLevel
 func TestLogger_SetLevel_ThreadSafety(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogger_SetLevel_ThreadSafety", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogger_SetLevel_ThreadSafety", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "LEVEL-THREAD", InfoLevel)
 
@@ -409,7 +409,7 @@ func TestLogger_SetLevel_ThreadSafety(t *testing.T) {
 
 // TestCustomFormatter_Write tests the Write method of CustomFormatter
 func TestCustomFormatter_Write(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCustomFormatter_Write", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCustomFormatter_Write", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		formatter := &CustomFormatter{
 			Out:    &buf,
@@ -435,7 +435,7 @@ func TestCustomFormatter_Write(t *testing.T) {
 
 // TestLogger_FatalDoesNotPanic tests that Fatal doesn't panic in tests (os.Exit is intercepted)
 func TestLogger_FatalDoesNotPanic(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogger_FatalDoesNotPanic", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogger_FatalDoesNotPanic", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "FATAL", InfoLevel)
 
@@ -462,7 +462,7 @@ func (l *Logger) fatalForTest(format string, _ *bytes.Buffer) {
 
 // TestLogger_UnicodeSupport tests logging with Unicode characters
 func TestLogger_UnicodeSupport(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLogger_UnicodeSupport", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLogger_UnicodeSupport", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "UNICODE", InfoLevel)
 

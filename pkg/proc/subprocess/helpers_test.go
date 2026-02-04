@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewErrorResponse(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewErrorResponse", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewErrorResponse", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name              string
 			msg               *Message
@@ -100,7 +100,7 @@ func TestNewErrorResponse(t *testing.T) {
 }
 
 func TestNewErrorResponseWithPrefix(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewErrorResponseWithPrefix", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewErrorResponseWithPrefix", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name              string
 			msg               *Message
@@ -184,7 +184,7 @@ func TestNewErrorResponseWithPrefix(t *testing.T) {
 }
 
 func TestNewSuccessResponse(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewSuccessResponse", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewSuccessResponse", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name              string
 			msg               *Message
@@ -336,7 +336,7 @@ func TestNewSuccessResponse(t *testing.T) {
 }
 
 func TestIsErrorResponse(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestIsErrorResponse", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestIsErrorResponse", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name          string
 			msg           *Message
@@ -412,7 +412,7 @@ func TestIsErrorResponse(t *testing.T) {
 }
 
 func TestIsErrorResponseNilMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestIsErrorResponseNilMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestIsErrorResponseNilMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with nil message
 		isError, errMsg := IsErrorResponse(nil)
 		if isError {
@@ -426,7 +426,7 @@ func TestIsErrorResponseNilMessage(t *testing.T) {
 }
 
 func TestParseRequest(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseRequest", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseRequest", nil, func(t *testing.T, tx *gorm.DB) {
 		type TestRequest struct {
 			Name  string `json:"name"`
 			Value int    `json:"value"`
@@ -582,7 +582,7 @@ func TestParseRequest(t *testing.T) {
 }
 
 func TestRequireField(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRequireField", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRequireField", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name          string
 			msg           *Message

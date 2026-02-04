@@ -9,7 +9,7 @@ import (
 
 // Test concurrent UpdateProgress calls aggregate correctly.
 func TestRunStore_UpdateProgress_Concurrent(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_UpdateProgress_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_UpdateProgress_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 		defer rs.Close()
 

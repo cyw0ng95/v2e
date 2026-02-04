@@ -11,7 +11,7 @@ import (
 )
 
 func TestExtractTableIDFromPath(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestExtractTableIDFromPath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestExtractTableIDFromPath", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name          string
 			path          string
@@ -68,7 +68,7 @@ func TestExtractTableIDFromPath(t *testing.T) {
 }
 
 func TestParseTableFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseTableFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseTableFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a minimal test table HTML
 		tempDir := t.TempDir()
 		tablePath := filepath.Join(tempDir, "table-test-cces.html")
@@ -165,7 +165,7 @@ func TestParseTableFile(t *testing.T) {
 }
 
 func TestParseTableFile_EmptyTable(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseTableFile_EmptyTable", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseTableFile_EmptyTable", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a table with no entries
 		tempDir := t.TempDir()
 		tablePath := filepath.Join(tempDir, "table-empty-test.html")
@@ -207,7 +207,7 @@ func TestParseTableFile_EmptyTable(t *testing.T) {
 }
 
 func TestParseTableFile_InvalidFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseTableFile_InvalidFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseTableFile_InvalidFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with non-existent file
 		_, _, err := ParseTableFile("/nonexistent/table.html")
 		if err == nil {
@@ -218,7 +218,7 @@ func TestParseTableFile_InvalidFile(t *testing.T) {
 }
 
 func TestParseTableFile_MalformedHTML(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseTableFile_MalformedHTML", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseTableFile_MalformedHTML", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a malformed HTML file
 		tempDir := t.TempDir()
 		tablePath := filepath.Join(tempDir, "table-malformed.html")

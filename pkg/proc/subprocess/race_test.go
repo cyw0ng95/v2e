@@ -13,7 +13,7 @@ import (
 
 // TestConcurrentMessageSending tests sending messages from multiple goroutines
 func TestConcurrentMessageSending(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentMessageSending", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentMessageSending", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -52,7 +52,7 @@ func TestConcurrentMessageSending(t *testing.T) {
 
 // TestConcurrentHandlerRegistration tests registering handlers concurrently
 func TestConcurrentHandlerRegistration(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentHandlerRegistration", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentHandlerRegistration", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 
 		const numGoroutines = 10
@@ -88,7 +88,7 @@ func TestConcurrentHandlerRegistration(t *testing.T) {
 
 // TestConcurrentHandlerExecution tests executing handlers concurrently
 func TestConcurrentHandlerExecution(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentHandlerExecution", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentHandlerExecution", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -146,7 +146,7 @@ func TestConcurrentHandlerExecution(t *testing.T) {
 
 // TestConcurrentSendAndReceive tests sending and receiving messages concurrently
 func TestConcurrentSendAndReceive(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentSendAndReceive", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentSendAndReceive", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 
 		// Use a thread-safe buffer for output
@@ -191,7 +191,7 @@ func TestConcurrentSendAndReceive(t *testing.T) {
 
 // TestConcurrentStopAndSend tests stopping while messages are being sent
 func TestConcurrentStopAndSend(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentStopAndSend", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentStopAndSend", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -242,7 +242,7 @@ func TestConcurrentStopAndSend(t *testing.T) {
 
 // TestConcurrentFlush tests calling Flush from multiple goroutines
 func TestConcurrentFlush(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentFlush", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentFlush", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -270,7 +270,7 @@ func TestConcurrentFlush(t *testing.T) {
 
 // TestRaceOnHandlerMap tests for race conditions on handler map access
 func TestRaceOnHandlerMap(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRaceOnHandlerMap", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRaceOnHandlerMap", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 
 		const numOps = 100
@@ -312,7 +312,7 @@ func TestRaceOnHandlerMap(t *testing.T) {
 
 // TestConcurrentContextCancellation tests context cancellation during concurrent operations
 func TestConcurrentContextCancellation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)
@@ -358,7 +358,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 
 // TestHighConcurrencyMessageProcessing tests message processing under high concurrency
 func TestHighConcurrencyMessageProcessing(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestHighConcurrencyMessageProcessing", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestHighConcurrencyMessageProcessing", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		output := &bytes.Buffer{}
 		sp.SetOutput(output)

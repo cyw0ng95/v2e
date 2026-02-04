@@ -36,7 +36,7 @@ func newTestFetcher(serverURL string) *remote.Fetcher {
 }
 
 func TestCreateGetCVEByIDHandler_Validation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCVEByIDHandler_Validation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCVEByIDHandler_Validation", nil, func(t *testing.T, tx *gorm.DB) {
 		fetcher := newTestFetcher("")
 		h := createGetCVEByIDHandler(fetcher)
 
@@ -63,7 +63,7 @@ func TestCreateGetCVEByIDHandler_Validation(t *testing.T) {
 }
 
 func TestCreateGetCVEByIDHandler_Success(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCVEByIDHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCVEByIDHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("cveId") != "CVE-123" {
 				t.Fatalf("unexpected cveId query: %s", r.URL.RawQuery)
@@ -89,7 +89,7 @@ func TestCreateGetCVEByIDHandler_Success(t *testing.T) {
 }
 
 func TestCreateGetCVEByIDHandler_RateLimited(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCVEByIDHandler_RateLimited", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCVEByIDHandler_RateLimited", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusTooManyRequests)
 		}))
@@ -111,7 +111,7 @@ func TestCreateGetCVEByIDHandler_RateLimited(t *testing.T) {
 }
 
 func TestCreateGetCVECntHandler_DefaultsAndSuccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCVECntHandler_DefaultsAndSuccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCVECntHandler_DefaultsAndSuccess", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("startIndex") != "0" || r.URL.Query().Get("resultsPerPage") != "1" {
 				t.Fatalf("unexpected query params: %s", r.URL.RawQuery)
@@ -143,7 +143,7 @@ func TestCreateGetCVECntHandler_DefaultsAndSuccess(t *testing.T) {
 }
 
 func TestCreateGetCVECntHandler_RateLimited(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCVECntHandler_RateLimited", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCVECntHandler_RateLimited", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusTooManyRequests)
 		}))
@@ -164,7 +164,7 @@ func TestCreateGetCVECntHandler_RateLimited(t *testing.T) {
 }
 
 func TestCreateFetchCVEsHandler_Defaults(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateFetchCVEsHandler_Defaults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateFetchCVEsHandler_Defaults", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("startIndex") != "0" || r.URL.Query().Get("resultsPerPage") != "100" {
 				t.Fatalf("unexpected defaults: %s", r.URL.RawQuery)
@@ -189,7 +189,7 @@ func TestCreateFetchCVEsHandler_Defaults(t *testing.T) {
 }
 
 func TestCreateFetchCVEsHandler_Error(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateFetchCVEsHandler_Error", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateFetchCVEsHandler_Error", nil, func(t *testing.T, tx *gorm.DB) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))

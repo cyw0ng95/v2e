@@ -9,7 +9,7 @@ import (
 )
 
 func TestBroker_GetProcess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_GetProcess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_GetProcess", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -41,7 +41,7 @@ func TestBroker_GetProcess(t *testing.T) {
 }
 
 func TestBroker_GetProcess_NotFound(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_GetProcess_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_GetProcess_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -54,7 +54,7 @@ func TestBroker_GetProcess_NotFound(t *testing.T) {
 }
 
 func TestBroker_ListProcesses(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ListProcesses", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ListProcesses", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -87,7 +87,7 @@ func TestBroker_ListProcesses(t *testing.T) {
 }
 
 func TestBroker_Kill(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_Kill", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_Kill", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -130,7 +130,7 @@ func TestBroker_Kill(t *testing.T) {
 }
 
 func TestBroker_Kill_NotFound(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_Kill_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_Kill_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -143,7 +143,7 @@ func TestBroker_Kill_NotFound(t *testing.T) {
 }
 
 func TestBroker_Kill_AlreadyExited(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_Kill_AlreadyExited", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_Kill_AlreadyExited", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -174,7 +174,7 @@ func TestBroker_Kill_AlreadyExited(t *testing.T) {
 }
 
 func TestBroker_ProcessReaping(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ProcessReaping", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ProcessReaping", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -215,7 +215,7 @@ func TestBroker_ProcessReaping(t *testing.T) {
 }
 
 func TestBroker_ProcessReaping_SuccessfulExit(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ProcessReaping_SuccessfulExit", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ProcessReaping_SuccessfulExit", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 

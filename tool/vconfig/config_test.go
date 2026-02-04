@@ -10,7 +10,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLoadConfig", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLoadConfig", nil, func(t *testing.T, tx *gorm.DB) {
 		// Use t.TempDir() for cleaner cleanup
 		tempDir := t.TempDir()
 		configPath := filepath.Join(tempDir, "test-config.json")
@@ -67,7 +67,7 @@ func TestLoadConfig(t *testing.T) {
 }
 
 func TestSaveConfig(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveConfig", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveConfig", nil, func(t *testing.T, tx *gorm.DB) {
 		config := &Config{
 			Build: BuildSection{
 				ConfigFile: "test.config",
@@ -114,7 +114,7 @@ func TestSaveConfig(t *testing.T) {
 }
 
 func TestGetDefaultConfig(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetDefaultConfig", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetDefaultConfig", nil, func(t *testing.T, tx *gorm.DB) {
 		config := GetDefaultConfig()
 
 		if config.Build.ConfigFile != ".config" {

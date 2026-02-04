@@ -16,7 +16,7 @@ func setupTestDBForSvc(t *testing.T) *gorm.DB {
 }
 
 func TestCanTransition(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCanTransition", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCanTransition", nil, func(t *testing.T, tx *gorm.DB) {
 		if !CanTransition(StatusNew, StatusLearning) {
 			t.Fatalf("expected new->learning allowed")
 		}
@@ -28,7 +28,7 @@ func TestCanTransition(t *testing.T) {
 }
 
 func TestUpdateMemoryCardFields_StatusTransition(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestUpdateMemoryCardFields_StatusTransition", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUpdateMemoryCardFields_StatusTransition", nil, func(t *testing.T, tx *gorm.DB) {
 		db := setupTestDBForSvc(t)
 		svc := NewMemoryCardService(db)
 
@@ -63,7 +63,7 @@ func TestUpdateMemoryCardFields_StatusTransition(t *testing.T) {
 }
 
 func TestUpdateCardAfterReview_Transition(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestUpdateCardAfterReview_Transition", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUpdateCardAfterReview_Transition", nil, func(t *testing.T, tx *gorm.DB) {
 		db := setupTestDBForSvc(t)
 		svc := NewMemoryCardService(db)
 
@@ -96,7 +96,7 @@ func TestUpdateCardAfterReview_Transition(t *testing.T) {
 }
 
 func TestConcurrentStatusTransitions(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestConcurrentStatusTransitions", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentStatusTransitions", nil, func(t *testing.T, tx *gorm.DB) {
 		db := setupTestDBForSvc(t)
 		svc := NewMemoryCardService(db)
 

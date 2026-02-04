@@ -11,7 +11,7 @@ import (
 
 // TestCWEItem_JSONMarshalUnmarshal covers CWE JSON serialization edge cases.
 func TestCWEItem_JSONMarshalUnmarshal(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEItem_JSONMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEItem_JSONMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			item CWEItem
@@ -85,7 +85,7 @@ func TestCWEItem_JSONMarshalUnmarshal(t *testing.T) {
 
 // TestCWEItem_IDFormats validates various CWE ID formats.
 func TestCWEItem_IDFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEItem_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEItem_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		validIDs := []string{
 			"CWE-1",
 			"CWE-79",
@@ -119,7 +119,7 @@ func TestCWEItem_IDFormats(t *testing.T) {
 
 // TestCWEItem_AbstractionValues validates abstraction enumeration values.
 func TestCWEItem_AbstractionValues(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEItem_AbstractionValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEItem_AbstractionValues", nil, func(t *testing.T, tx *gorm.DB) {
 		abstractions := []string{
 			"Class",
 			"Base",
@@ -152,7 +152,7 @@ func TestCWEItem_AbstractionValues(t *testing.T) {
 
 // TestCWEItem_StatusValues validates status enumeration values.
 func TestCWEItem_StatusValues(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEItem_StatusValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEItem_StatusValues", nil, func(t *testing.T, tx *gorm.DB) {
 		statuses := []string{
 			"Draft",
 			"Incomplete",
@@ -186,7 +186,7 @@ func TestCWEItem_StatusValues(t *testing.T) {
 
 // TestCWEItem_LikelihoodValues validates likelihood enumeration values.
 func TestCWEItem_LikelihoodValues(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEItem_LikelihoodValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEItem_LikelihoodValues", nil, func(t *testing.T, tx *gorm.DB) {
 		likelihoods := []string{
 			"High",
 			"Medium",
@@ -219,7 +219,7 @@ func TestCWEItem_LikelihoodValues(t *testing.T) {
 
 // TestRelatedWeakness_Formats validates related weakness edge cases.
 func TestRelatedWeakness_Formats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRelatedWeakness_Formats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRelatedWeakness_Formats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name     string
 			weakness RelatedWeakness
@@ -259,7 +259,7 @@ func TestRelatedWeakness_Formats(t *testing.T) {
 
 // TestApplicablePlatform_Formats validates platform edge cases.
 func TestApplicablePlatform_Formats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestApplicablePlatform_Formats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestApplicablePlatform_Formats", nil, func(t *testing.T, tx *gorm.DB) {
 		platforms := []ApplicablePlatform{
 			{Type: "Language", Name: "Java", Prevalence: "Often"},
 			{Type: "Language", Name: "C", Prevalence: "Often"},
@@ -296,7 +296,7 @@ func TestApplicablePlatform_Formats(t *testing.T) {
 
 // TestReference_Formats validates reference structure.
 func TestReference_Formats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReference_Formats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReference_Formats", nil, func(t *testing.T, tx *gorm.DB) {
 		refs := []Reference{
 			{ExternalReferenceID: "REF-1", URL: "https://example.com"},
 			{ExternalReferenceID: "REF-2", Title: "Reference Title"},
@@ -332,7 +332,7 @@ func TestReference_Formats(t *testing.T) {
 
 // TestCWEItem_UnicodeInFields validates unicode handling.
 func TestCWEItem_UnicodeInFields(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEItem_UnicodeInFields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEItem_UnicodeInFields", nil, func(t *testing.T, tx *gorm.DB) {
 		item := CWEItem{
 			ID:                    "CWE-79",
 			Name:                  "跨站脚本-XSS",

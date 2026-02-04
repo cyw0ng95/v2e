@@ -36,7 +36,7 @@ func (s *stubCoreBroker) ProcessBrokerMessage(msg *proc.Message) error {
 }
 
 func TestBrokerRoutingSatisfiesRouterInterface(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBrokerRoutingSatisfiesRouterInterface", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBrokerRoutingSatisfiesRouterInterface", nil, func(t *testing.T, tx *gorm.DB) {
 		stub := &stubCoreBroker{}
 		msg := &proc.Message{ID: "123", Target: "broker"}
 

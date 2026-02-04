@@ -11,7 +11,7 @@ import (
 )
 
 func TestMessageType_Constants(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessageType_Constants", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessageType_Constants", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			msgType  MessageType
 			expected string
@@ -34,7 +34,7 @@ func TestMessageType_Constants(t *testing.T) {
 }
 
 func TestNewMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := NewMessage(MessageTypeRequest, "test-id")
 
 		if msg == nil {
@@ -51,7 +51,7 @@ func TestNewMessage(t *testing.T) {
 }
 
 func TestNewRequestMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewRequestMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewRequestMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		type TestPayload struct {
 			Command string   `json:"command"`
 			Args    []string `json:"args"`
@@ -87,7 +87,7 @@ func TestNewRequestMessage(t *testing.T) {
 }
 
 func TestNewRequestMessage_NilPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewRequestMessage_NilPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewRequestMessage_NilPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		msg, err := NewRequestMessage("req-1", nil)
 		if err != nil {
 			t.Fatalf("NewRequestMessage with nil payload failed: %v", err)
@@ -101,7 +101,7 @@ func TestNewRequestMessage_NilPayload(t *testing.T) {
 }
 
 func TestNewResponseMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewResponseMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewResponseMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		type TestResponse struct {
 			Status string `json:"status"`
 			Result int    `json:"result"`
@@ -137,7 +137,7 @@ func TestNewResponseMessage(t *testing.T) {
 }
 
 func TestNewEventMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewEventMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewEventMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		type TestEvent struct {
 			EventType string `json:"event_type"`
 			Data      string `json:"data"`
@@ -170,7 +170,7 @@ func TestNewEventMessage(t *testing.T) {
 }
 
 func TestNewErrorMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewErrorMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewErrorMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		testErr := errors.New("test error occurred")
 		msg := NewErrorMessage("err-1", testErr)
 
@@ -188,7 +188,7 @@ func TestNewErrorMessage(t *testing.T) {
 }
 
 func TestNewErrorMessage_NilError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewErrorMessage_NilError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewErrorMessage_NilError", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := NewErrorMessage("err-1", nil)
 
 		if msg.Type != MessageTypeError {
@@ -202,7 +202,7 @@ func TestNewErrorMessage_NilError(t *testing.T) {
 }
 
 func TestMessage_UnmarshalPayload_NoPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_UnmarshalPayload_NoPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_UnmarshalPayload_NoPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := NewMessage(MessageTypeRequest, "test-id")
 
 		var result map[string]interface{}
@@ -216,7 +216,7 @@ func TestMessage_UnmarshalPayload_NoPayload(t *testing.T) {
 }
 
 func TestMessage_Marshal(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_Marshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_Marshal", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := NewMessage(MessageTypeRequest, "test-id")
 		msg.Payload = json.RawMessage(`{"test":"value"}`)
 
@@ -246,7 +246,7 @@ func TestMessage_Marshal(t *testing.T) {
 }
 
 func TestUnmarshal(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
 		data := []byte(`{"type":"request","id":"test-id","payload":{"key":"value"}}`)
 
 		msg, err := Unmarshal(data)
@@ -274,7 +274,7 @@ func TestUnmarshal(t *testing.T) {
 }
 
 func TestUnmarshal_InvalidJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshal_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshal_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		data := []byte(`{invalid json}`)
 
 		_, err := Unmarshal(data)
@@ -286,7 +286,7 @@ func TestUnmarshal_InvalidJSON(t *testing.T) {
 }
 
 func TestMessage_MarshalUnmarshal_RoundTrip(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_MarshalUnmarshal_RoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_MarshalUnmarshal_RoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
 		type TestData struct {
 			Name  string `json:"name"`
 			Value int    `json:"value"`
@@ -331,7 +331,7 @@ func TestMessage_MarshalUnmarshal_RoundTrip(t *testing.T) {
 }
 
 func TestMarshalFast(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMarshalFast", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMarshalFast", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := &Message{
 			Type: MessageTypeRequest,
 			ID:   "test-id",
@@ -360,7 +360,7 @@ func TestMarshalFast(t *testing.T) {
 }
 
 func TestUnmarshalFast(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalFast", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalFast", nil, func(t *testing.T, tx *gorm.DB) {
 		original := &Message{
 			Type: MessageTypeResponse,
 			ID:   "resp-1",
@@ -390,7 +390,7 @@ func TestUnmarshalFast(t *testing.T) {
 }
 
 func TestPutMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestPutMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestPutMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		msg := GetMessage()
 		msg.Type = MessageTypeEvent
 		msg.ID = "event-1"

@@ -15,7 +15,7 @@ import (
 // Re-declaring tests that need fmt and strings
 
 func TestBroker_Integration_MultipleProcesses(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_Integration_MultipleProcesses", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_Integration_MultipleProcesses", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 

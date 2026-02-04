@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewDB(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewDB", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewDB", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_cve.db"
 		defer os.Remove(dbPath)
@@ -30,7 +30,7 @@ func TestNewDB(t *testing.T) {
 }
 
 func TestSaveCVE(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveCVE", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveCVE", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_save_cve.db"
 		defer os.Remove(dbPath)
@@ -75,7 +75,7 @@ func TestSaveCVE(t *testing.T) {
 }
 
 func TestSaveCVE_Update(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveCVE_Update", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveCVE_Update", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_update_cve.db"
 		defer os.Remove(dbPath)
@@ -136,7 +136,7 @@ func TestSaveCVE_Update(t *testing.T) {
 }
 
 func TestSaveCVEs(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveCVEs", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveCVEs", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_save_cves.db"
 		defer os.Remove(dbPath)
@@ -186,7 +186,7 @@ func TestSaveCVEs(t *testing.T) {
 }
 
 func TestGetCVE(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetCVE", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetCVE", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_get_cve.db"
 		defer os.Remove(dbPath)
@@ -243,7 +243,7 @@ func TestGetCVE(t *testing.T) {
 }
 
 func TestGetCVE_NotFound(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetCVE_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetCVE_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_get_cve_notfound.db"
 		defer os.Remove(dbPath)
@@ -264,7 +264,7 @@ func TestGetCVE_NotFound(t *testing.T) {
 }
 
 func TestListCVEs(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestListCVEs", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestListCVEs", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_list_cves.db"
 		defer os.Remove(dbPath)
@@ -327,7 +327,7 @@ func TestListCVEs(t *testing.T) {
 }
 
 func TestListCVEs_Pagination(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestListCVEs_Pagination", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestListCVEs_Pagination", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_list_cves_pagination.db"
 		defer os.Remove(dbPath)
@@ -383,7 +383,7 @@ func TestListCVEs_Pagination(t *testing.T) {
 }
 
 func TestCount(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCount", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCount", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_count.db"
 		defer os.Remove(dbPath)
@@ -441,7 +441,7 @@ func TestCount(t *testing.T) {
 }
 
 func TestSaveCVE_WithFullData(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveCVE_WithFullData", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveCVE_WithFullData", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database
 		dbPath := "/tmp/test_save_full_cve.db"
 		defer os.Remove(dbPath)
@@ -532,7 +532,7 @@ func TestSaveCVE_WithFullData(t *testing.T) {
 
 }
 func TestDeleteCVE(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDeleteCVE", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDeleteCVE", nil, func(t *testing.T, tx *gorm.DB) {
 		db, err := NewDB(":memory:")
 		if err != nil {
 			t.Fatalf("Failed to create DB: %v", err)
@@ -563,7 +563,7 @@ func TestDeleteCVE(t *testing.T) {
 }
 
 func TestDeleteCVE_NotFound(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDeleteCVE_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDeleteCVE_NotFound", nil, func(t *testing.T, tx *gorm.DB) {
 		db, err := NewDB(":memory:")
 		if err != nil {
 			t.Fatalf("Failed to create DB: %v", err)

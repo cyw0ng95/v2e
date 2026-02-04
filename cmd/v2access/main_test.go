@@ -22,7 +22,7 @@ import (
 // See: https://github.com/cyw0ng95/v2e/pull/74
 
 func TestHealthEndpoint(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestHealthEndpoint", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestHealthEndpoint", nil, func(t *testing.T, tx *gorm.DB) {
 		// Basic test placeholder
 		t.Skip("Access service is currently a stub pending redesign")
 	})
@@ -30,7 +30,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestNewRPCClient_Access(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewRPCClient_Access", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewRPCClient_Access", nil, func(t *testing.T, tx *gorm.DB) {
 		// This test exercised UDS network behavior and is redundant now that
 		// subprocess transport behavior is covered in dedicated transport tests.
 		// Remove to avoid flaky CI runs.
@@ -40,7 +40,7 @@ func TestNewRPCClient_Access(t *testing.T) {
 }
 
 func TestRPCClient_HandleResponse_UnknownCorrelation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCClient_HandleResponse_UnknownCorrelation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCClient_HandleResponse_UnknownCorrelation", nil, func(t *testing.T, tx *gorm.DB) {
 		client := NewRPCClient("test-access-2", common.DefaultRPCTimeout)
 		msg := &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
@@ -60,7 +60,7 @@ func TestRPCClient_HandleResponse_UnknownCorrelation(t *testing.T) {
 }
 
 func TestInvokeRPCWithTarget_ResponseDelivered(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestInvokeRPCWithTarget_ResponseDelivered", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestInvokeRPCWithTarget_ResponseDelivered", nil, func(t *testing.T, tx *gorm.DB) {
 		// Skip this test as it depends on internal implementation details
 		// that are now handled by the common RPC client
 		t.Skip("Skipped - internal implementation now handled by common RPC client")
@@ -69,7 +69,7 @@ func TestInvokeRPCWithTarget_ResponseDelivered(t *testing.T) {
 }
 
 func TestHealthEndpoint_Success(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestHealthEndpoint_Success", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestHealthEndpoint_Success", nil, func(t *testing.T, tx *gorm.DB) {
 		r := gin.Default()
 		r.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -96,7 +96,7 @@ func TestHealthEndpoint_Success(t *testing.T) {
 }
 
 func TestRPCEndpoint_ValidRequest(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCEndpoint_ValidRequest", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCEndpoint_ValidRequest", nil, func(t *testing.T, tx *gorm.DB) {
 		r := gin.Default()
 		r.POST("/rpc", func(c *gin.Context) {
 			var request struct {
@@ -137,7 +137,7 @@ func TestRPCEndpoint_ValidRequest(t *testing.T) {
 }
 
 func TestSetupRouter_StaticDir(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetupRouter_StaticDir", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetupRouter_StaticDir", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test the setupRouter function with a non-existent static dir
 		router := setupRouter(nil, 30, "/non/existent/dir")
 
@@ -159,7 +159,7 @@ func TestSetupRouter_StaticDir(t *testing.T) {
 }
 
 func TestRPCClient_InvokeRPC(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCClient_InvokeRPC", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCClient_InvokeRPC", nil, func(t *testing.T, tx *gorm.DB) {
 		client := NewRPCClient("test-access-4", 100*time.Millisecond) // Short timeout to prevent hanging
 		if client == nil {
 			t.Fatal("NewRPCClient returned nil")
@@ -189,7 +189,7 @@ func TestRPCClient_InvokeRPC(t *testing.T) {
 }
 
 func TestRPCClient_HandleError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCClient_HandleError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCClient_HandleError", nil, func(t *testing.T, tx *gorm.DB) {
 		client := NewRPCClient("test-access-5", common.DefaultRPCTimeout)
 
 		// Create a message to test error handling
@@ -215,7 +215,7 @@ func TestRPCClient_HandleError(t *testing.T) {
 }
 
 func TestRequestEntry_SignalAndClose(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRequestEntry_SignalAndClose", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRequestEntry_SignalAndClose", nil, func(t *testing.T, tx *gorm.DB) {
 		// This test is now redundant as the request entry functionality
 		// is handled internally by the common RPC client
 		t.Skip("Skipped - functionality now handled by common RPC client")
@@ -224,14 +224,14 @@ func TestRequestEntry_SignalAndClose(t *testing.T) {
 }
 
 func TestRPCClient_InvokeRPCWithTarget_Timeout(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCClient_InvokeRPCWithTarget_Timeout", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCClient_InvokeRPCWithTarget_Timeout", nil, func(t *testing.T, tx *gorm.DB) {
 		// This test relied on very short timeouts and was prone to flakes; remove.
 	})
 
 }
 
 func TestRPCClient_InvokeRPCWithTarget_ContextCancel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCClient_InvokeRPCWithTarget_ContextCancel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCClient_InvokeRPCWithTarget_ContextCancel", nil, func(t *testing.T, tx *gorm.DB) {
 		client := NewRPCClient("test-access-7", common.DefaultRPCTimeout)
 
 		// Create a context that's already cancelled

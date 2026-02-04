@@ -14,7 +14,7 @@ import (
 
 // TestMessage_StateTransitions covers edge cases in message type and field combinations.
 func TestMessage_StateTransitions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_StateTransitions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_StateTransitions", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			msg  Message
@@ -50,7 +50,7 @@ func TestMessage_StateTransitions(t *testing.T) {
 
 // TestSubprocess_HandlerRegistry covers many handler registration combinations.
 func TestSubprocess_HandlerRegistry(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSubprocess_HandlerRegistry", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSubprocess_HandlerRegistry", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test")
 		var calls []string
 		var mu sync.Mutex
@@ -97,7 +97,7 @@ func TestSubprocess_HandlerRegistry(t *testing.T) {
 
 // TestSubprocess_ConcurrentMessageHandling exercises concurrent handler invocations.
 func TestSubprocess_ConcurrentMessageHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSubprocess_ConcurrentMessageHandling", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSubprocess_ConcurrentMessageHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("concurrent-test")
 		var counter sync.WaitGroup
 		var processed int32
@@ -133,7 +133,7 @@ func TestSubprocess_ConcurrentMessageHandling(t *testing.T) {
 
 // TestSubprocess_SendMessageBatching covers batching edge cases.
 func TestSubprocess_SendMessageBatching(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSubprocess_SendMessageBatching", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSubprocess_SendMessageBatching", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		sp := New("batch-test")
 		sp.SetOutput(&buf)
@@ -164,7 +164,7 @@ func TestSubprocess_SendMessageBatching(t *testing.T) {
 
 // TestSubprocess_StateIsolation ensures each subprocess instance has isolated state.
 func TestSubprocess_StateIsolation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSubprocess_StateIsolation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSubprocess_StateIsolation", nil, func(t *testing.T, tx *gorm.DB) {
 		sp1 := New("sp1")
 		sp2 := New("sp2")
 
@@ -194,7 +194,7 @@ func TestSubprocess_StateIsolation(t *testing.T) {
 
 // TestSubprocess_ContextCancellation ensures context cancellation stops handlers.
 func TestSubprocess_ContextCancellation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSubprocess_ContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSubprocess_ContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("cancel-test")
 		var called bool
 		var mu sync.Mutex
@@ -233,7 +233,7 @@ func TestSubprocess_ContextCancellation(t *testing.T) {
 
 // TestSubprocess_MessageTypeRoutingPriority verifies type-based handler fallback.
 func TestSubprocess_MessageTypeRoutingPriority(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSubprocess_MessageTypeRoutingPriority", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSubprocess_MessageTypeRoutingPriority", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("routing-test")
 		var typeHandlerCalled, idHandlerCalled bool
 
@@ -267,7 +267,7 @@ func TestSubprocess_MessageTypeRoutingPriority(t *testing.T) {
 
 // TestSubprocess_DisableBatchingMode verifies synchronous message sending.
 func TestSubprocess_DisableBatchingMode(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSubprocess_DisableBatchingMode", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSubprocess_DisableBatchingMode", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		sp := New("no-batch-test")
 		sp.SetOutput(&buf)
@@ -289,7 +289,7 @@ func TestSubprocess_DisableBatchingMode(t *testing.T) {
 
 // TestMessage_MarshalUnmarshalEdgeCases covers JSON edge cases.
 func TestMessage_MarshalUnmarshalEdgeCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_MarshalUnmarshalEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_MarshalUnmarshalEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			msg  Message

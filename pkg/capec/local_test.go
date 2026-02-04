@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewLocalCAPECStore(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewLocalCAPECStore", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewLocalCAPECStore", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_store.db")
 
@@ -25,7 +25,7 @@ func TestNewLocalCAPECStore(t *testing.T) {
 }
 
 func TestGetByID(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetByID", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetByID", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_getbyid.db")
 
@@ -53,7 +53,7 @@ func TestGetByID(t *testing.T) {
 }
 
 func TestListCAPECsPaginated(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestListCAPECsPaginated", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestListCAPECsPaginated", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_paginated.db")
 
@@ -90,7 +90,7 @@ func TestListCAPECsPaginated(t *testing.T) {
 }
 
 func TestGetRelatedWeaknesses(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetRelatedWeaknesses", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetRelatedWeaknesses", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_related_weaknesses.db")
 
@@ -113,7 +113,7 @@ func TestGetRelatedWeaknesses(t *testing.T) {
 }
 
 func TestGetExamples(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetExamples", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetExamples", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_examples.db")
 
@@ -136,7 +136,7 @@ func TestGetExamples(t *testing.T) {
 }
 
 func TestGetMitigations(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetMitigations", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetMitigations", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_mitigations.db")
 
@@ -159,7 +159,7 @@ func TestGetMitigations(t *testing.T) {
 }
 
 func TestGetReferences(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetReferences", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetReferences", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_references.db")
 
@@ -182,7 +182,7 @@ func TestGetReferences(t *testing.T) {
 }
 
 func TestGetCatalogMeta(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetCatalogMeta", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetCatalogMeta", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_meta.db")
 
@@ -199,7 +199,7 @@ func TestGetCatalogMeta(t *testing.T) {
 }
 
 func TestUtilityFunctions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUtilityFunctions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUtilityFunctions", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test firstNonEmpty function
 		result := firstNonEmpty("first", "second")
 		assert.Equal(t, "first", result)
@@ -233,7 +233,7 @@ func TestUtilityFunctions(t *testing.T) {
 }
 
 func TestGetByIDRegexParsing(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetByIDRegexParsing", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetByIDRegexParsing", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_regex.db")
 
@@ -275,7 +275,7 @@ func TestGetByIDRegexParsing(t *testing.T) {
 }
 
 func TestImportFromXMLErrorHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportFromXMLErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportFromXMLErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary database file for testing
 		tempDB := filepath.Join(t.TempDir(), "test_capec_import_errors.db")
 

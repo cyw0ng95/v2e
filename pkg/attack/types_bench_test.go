@@ -1,7 +1,6 @@
 package attack
 
 import (
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/json"
 	"testing"
 

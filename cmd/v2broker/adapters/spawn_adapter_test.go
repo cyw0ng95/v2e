@@ -8,7 +8,7 @@ import (
 
 // TestPlaceholderExists ensures the compatibility shim package remains importable.
 func TestPlaceholderExists(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestPlaceholderExists", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestPlaceholderExists", nil, func(t *testing.T, tx *gorm.DB) {
 		// Nothing to assert: presence of this test keeps go test active for the package.
 	})
 

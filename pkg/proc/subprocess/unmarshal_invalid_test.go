@@ -7,7 +7,7 @@ import (
 )
 
 func TestUnmarshalFast_InvalidJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalFast_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalFast_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		var dst struct {
 			A int `json:"a"`
 		}

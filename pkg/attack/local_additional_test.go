@@ -11,7 +11,7 @@ import (
 )
 
 func TestImportFromXLSX_MissingFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportFromXLSX_MissingFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportFromXLSX_MissingFile", nil, func(t *testing.T, tx *gorm.DB) {
 		store, err := NewLocalAttackStore(":memory:")
 		if err != nil {
 			t.Fatalf("failed to create store: %v", err)
@@ -26,7 +26,7 @@ func TestImportFromXLSX_MissingFile(t *testing.T) {
 }
 
 func TestImportFromXLSX_AndQueries(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportFromXLSX_AndQueries", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportFromXLSX_AndQueries", nil, func(t *testing.T, tx *gorm.DB) {
 		store, err := NewLocalAttackStore(":memory:")
 		if err != nil {
 			t.Fatalf("failed to create store: %v", err)

@@ -10,7 +10,7 @@ import (
 )
 
 func TestWorkerPoolCreation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestWorkerPoolCreation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolCreation", nil, func(t *testing.T, tx *gorm.DB) {
 		config := &Config{
 			InitialSize: 4,
 			MinSize:     2,
@@ -29,7 +29,7 @@ func TestWorkerPoolCreation(t *testing.T) {
 }
 
 func TestWorkerPoolSubmitTask(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestWorkerPoolSubmitTask", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolSubmitTask", nil, func(t *testing.T, tx *gorm.DB) {
 		pool := NewWorkerPool(nil) // Use defaults
 		defer pool.Close()
 
@@ -55,7 +55,7 @@ func TestWorkerPoolSubmitTask(t *testing.T) {
 }
 
 func TestWorkerPoolConcurrentTasks(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestWorkerPoolConcurrentTasks", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolConcurrentTasks", nil, func(t *testing.T, tx *gorm.DB) {
 		pool := NewWorkerPool(&Config{
 			InitialSize: 4,
 			MinSize:     2,
@@ -90,7 +90,7 @@ func TestWorkerPoolConcurrentTasks(t *testing.T) {
 }
 
 func TestWorkerPoolResize(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestWorkerPoolResize", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolResize", nil, func(t *testing.T, tx *gorm.DB) {
 		pool := NewWorkerPool(&Config{
 			InitialSize: 4,
 			MinSize:     2,
@@ -132,7 +132,7 @@ func TestWorkerPoolResize(t *testing.T) {
 }
 
 func TestWorkerPoolClose(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestWorkerPoolClose", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolClose", nil, func(t *testing.T, tx *gorm.DB) {
 		pool := NewWorkerPool(nil)
 
 		// Submit some tasks
@@ -163,7 +163,7 @@ func TestWorkerPoolClose(t *testing.T) {
 }
 
 func TestWorkerPoolQueueDepth(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestWorkerPoolQueueDepth", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestWorkerPoolQueueDepth", nil, func(t *testing.T, tx *gorm.DB) {
 		pool := NewWorkerPool(&Config{
 			InitialSize: 1, // Only 1 worker
 			MinSize:     1,

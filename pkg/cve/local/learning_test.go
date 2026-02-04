@@ -8,7 +8,7 @@ import (
 )
 
 func TestLearningDatabaseOperations(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLearningDatabaseOperations", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLearningDatabaseOperations", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create temporary database for testing
 		dbPath := "./test_learning.db"
 		defer os.Remove(dbPath)
@@ -106,7 +106,7 @@ func TestLearningDatabaseOperations(t *testing.T) {
 }
 
 func TestLearningItemDefaults(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLearningItemDefaults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLearningItemDefaults", nil, func(t *testing.T, tx *gorm.DB) {
 		item := &LearningItem{}
 
 		// Test that defaults are set correctly
@@ -126,7 +126,7 @@ func TestLearningItemDefaults(t *testing.T) {
 }
 
 func TestAdaptiveSpacedRepetition(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAdaptiveSpacedRepetition", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestAdaptiveSpacedRepetition", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create temporary database for testing
 		dbPath := "./test_adaptive_learning.db"
 		defer os.Remove(dbPath)
@@ -184,7 +184,7 @@ func TestAdaptiveSpacedRepetition(t *testing.T) {
 }
 
 func TestBatchLearningOperations(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBatchLearningOperations", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBatchLearningOperations", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create temporary database for testing
 		dbPath := "./test_batch_learning.db"
 		defer os.Remove(dbPath)
@@ -254,7 +254,7 @@ func TestBatchLearningOperations(t *testing.T) {
 }
 
 func TestLearningAnalytics(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLearningAnalytics", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLearningAnalytics", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create temporary database for testing
 		dbPath := "./test_analytics.db"
 		defer os.Remove(dbPath)
@@ -320,7 +320,7 @@ func TestLearningAnalytics(t *testing.T) {
 }
 
 func TestLearningHistoryPersistence(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLearningHistoryPersistence", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLearningHistoryPersistence", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create temporary database for testing
 		dbPath := "./test_history.db"
 		defer os.Remove(dbPath)

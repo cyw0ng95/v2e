@@ -11,7 +11,7 @@ import (
 
 // TestCVEItem_JSONMarshalUnmarshal covers CVE JSON serialization edge cases.
 func TestCVEItem_JSONMarshalUnmarshal(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCVEItem_JSONMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCVEItem_JSONMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			item CVEItem
@@ -114,7 +114,7 @@ func TestCVEItem_JSONMarshalUnmarshal(t *testing.T) {
 
 // TestCVEItem_IDFormats validates various CVE ID formats.
 func TestCVEItem_IDFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCVEItem_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCVEItem_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		validIDs := []string{
 			"CVE-1999-0001",
 			"CVE-2000-0001",
@@ -148,7 +148,7 @@ func TestCVEItem_IDFormats(t *testing.T) {
 
 // TestDescription_Formats validates description edge cases.
 func TestDescription_Formats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDescription_Formats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDescription_Formats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			desc Description
@@ -186,7 +186,7 @@ func TestDescription_Formats(t *testing.T) {
 
 // TestReference_URLFormats validates reference URL edge cases.
 func TestReference_URLFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReference_URLFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReference_URLFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		urls := []string{
 			"http://example.com",
 			"https://example.com",
@@ -221,7 +221,7 @@ func TestReference_URLFormats(t *testing.T) {
 
 // TestCVEItem_StatusValues validates vulnerability status values.
 func TestCVEItem_StatusValues(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCVEItem_StatusValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCVEItem_StatusValues", nil, func(t *testing.T, tx *gorm.DB) {
 		statuses := []string{
 			"Analyzed",
 			"Modified",
@@ -256,7 +256,7 @@ func TestCVEItem_StatusValues(t *testing.T) {
 
 // TestCVEResponse_JSONFormats validates top-level response structure.
 func TestCVEResponse_JSONFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCVEResponse_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCVEResponse_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			resp CVEResponse

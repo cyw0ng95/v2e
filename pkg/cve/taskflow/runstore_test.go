@@ -7,7 +7,7 @@ import (
 )
 
 func TestRunStore_UpdateState_ValidAndInvalid(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_UpdateState_ValidAndInvalid", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_UpdateState_ValidAndInvalid", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 
 		runID := "run-1"
@@ -38,7 +38,7 @@ func TestRunStore_UpdateState_ValidAndInvalid(t *testing.T) {
 }
 
 func TestRunStore_SetError_SetsFailedStateAndMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_SetError_SetsFailedStateAndMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_SetError_SetsFailedStateAndMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 
 		runID := "run-err"
@@ -67,7 +67,7 @@ func TestRunStore_SetError_SetsFailedStateAndMessage(t *testing.T) {
 }
 
 func TestRunStore_StoppedFromQueuedAndPaused(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRunStore_StoppedFromQueuedAndPaused", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRunStore_StoppedFromQueuedAndPaused", nil, func(t *testing.T, tx *gorm.DB) {
 		rs := NewTempRunStore(t)
 
 		// queued -> stopped

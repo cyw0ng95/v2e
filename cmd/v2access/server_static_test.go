@@ -11,7 +11,7 @@ import (
 )
 
 func TestSetupRouter_ServeIndexAndAssets(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetupRouter_ServeIndexAndAssets", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetupRouter_ServeIndexAndAssets", nil, func(t *testing.T, tx *gorm.DB) {
 		dir := t.TempDir()
 		indexPath := filepath.Join(dir, "index.html")
 		assetPath := filepath.Join(dir, "app.js")
@@ -61,7 +61,7 @@ func TestSetupRouter_ServeIndexAndAssets(t *testing.T) {
 }
 
 func TestSetupRouter_APIPrefixReturns404(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetupRouter_APIPrefixReturns404", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetupRouter_APIPrefixReturns404", nil, func(t *testing.T, tx *gorm.DB) {
 		dir := t.TempDir()
 		// no files needed; router will skip static when not found but NoRoute must respond 404 for /restful prefix
 		router := setupRouter(nil, 1, dir)

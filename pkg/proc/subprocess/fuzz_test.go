@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
 
 	"github.com/bytedance/sonic"

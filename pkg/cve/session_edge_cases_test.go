@@ -15,7 +15,7 @@ import (
 
 // TestSessionManager_CreateSession tests creating sessions with various parameters
 func TestSessionManager_CreateSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_CreateSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_CreateSession", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_test.db")
 
@@ -76,7 +76,7 @@ func TestSessionManager_CreateSession(t *testing.T) {
 
 // TestSessionManager_GetSession tests retrieving sessions
 func TestSessionManager_GetSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_GetSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_GetSession", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_get_test.db")
 
@@ -121,7 +121,7 @@ func TestSessionManager_GetSession(t *testing.T) {
 
 // TestSessionManager_UpdateState tests updating session state
 func TestSessionManager_UpdateState(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_UpdateState", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_UpdateState", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_state_test.db")
 
@@ -189,7 +189,7 @@ func TestSessionManager_UpdateState(t *testing.T) {
 
 // TestSessionManager_UpdateProgress tests updating session progress
 func TestSessionManager_UpdateProgress(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_UpdateProgress", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_UpdateProgress", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_progress_test.db")
 
@@ -269,7 +269,7 @@ func TestSessionManager_UpdateProgress(t *testing.T) {
 
 // TestSessionManager_DeleteSession tests deleting sessions
 func TestSessionManager_DeleteSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_DeleteSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_DeleteSession", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_delete_test.db")
 
@@ -316,7 +316,7 @@ func TestSessionManager_DeleteSession(t *testing.T) {
 
 // TestSessionManager_ConcurrentAccess tests concurrent access to session manager
 func TestSessionManager_ConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_concurrent_test.db")
 
@@ -395,7 +395,7 @@ func TestSessionManager_ConcurrentAccess(t *testing.T) {
 
 // TestSessionManager_CacheBehavior tests the caching behavior of the session manager
 func TestSessionManager_CacheBehavior(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_CacheBehavior", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_CacheBehavior", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_cache_test.db")
 
@@ -443,7 +443,7 @@ func TestSessionManager_CacheBehavior(t *testing.T) {
 
 // TestSessionManager_Close tests closing the session manager
 func TestSessionManager_Close(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_Close", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_Close", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_close_test.db")
 
@@ -475,7 +475,7 @@ func TestSessionManager_Close(t *testing.T) {
 
 // TestSessionManager_SessionStates tests all session states
 func TestSessionManager_SessionStates(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_SessionStates", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_SessionStates", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_states_test.db")
 
@@ -521,7 +521,7 @@ func TestSessionManager_SessionStates(t *testing.T) {
 
 // TestSessionManager_TimeStamps tests the CreatedAt and UpdatedAt timestamps
 func TestSessionManager_TimeStamps(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManager_TimeStamps", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManager_TimeStamps", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session_timestamp_test.db")
 

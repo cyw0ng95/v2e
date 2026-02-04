@@ -11,7 +11,7 @@ import (
 
 // TestMessage_JSONRoundTrip covers comprehensive JSON serialization edge cases.
 func TestMessage_JSONRoundTrip(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_JSONRoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_JSONRoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			msg  Message
@@ -68,7 +68,7 @@ func TestMessage_JSONRoundTrip(t *testing.T) {
 
 // TestMessage_InvalidJSON covers malformed JSON handling.
 func TestMessage_InvalidJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			data string
@@ -100,7 +100,7 @@ func TestMessage_InvalidJSON(t *testing.T) {
 
 // TestMessage_PayloadFormats covers various payload structures.
 func TestMessage_PayloadFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_PayloadFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_PayloadFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name    string
 			payload string
@@ -150,7 +150,7 @@ func TestMessage_PayloadFormats(t *testing.T) {
 
 // TestMessage_TypeValidation ensures message types are preserved.
 func TestMessage_TypeValidation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_TypeValidation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_TypeValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		types := []MessageType{
 			MessageTypeRequest,
 			MessageTypeResponse,
@@ -177,7 +177,7 @@ func TestMessage_TypeValidation(t *testing.T) {
 
 // TestMessage_LargePayloads covers size edge cases.
 func TestMessage_LargePayloads(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_LargePayloads", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_LargePayloads", nil, func(t *testing.T, tx *gorm.DB) {
 		sizes := []int{0, 1, 100, 1024, 10240, 102400}
 
 		for _, size := range sizes {
@@ -206,7 +206,7 @@ func TestMessage_LargePayloads(t *testing.T) {
 
 // TestMessage_SpecialCharacters covers encoding edge cases.
 func TestMessage_SpecialCharacters(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMessage_SpecialCharacters", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMessage_SpecialCharacters", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name  string
 			value string
@@ -248,7 +248,7 @@ func TestMessage_SpecialCharacters(t *testing.T) {
 
 // TestUnmarshalPayload_TypeConversions covers payload unmarshaling edge cases.
 func TestUnmarshalPayload_TypeConversions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUnmarshalPayload_TypeConversions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUnmarshalPayload_TypeConversions", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name    string
 			payload string

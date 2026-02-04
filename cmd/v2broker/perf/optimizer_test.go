@@ -30,7 +30,7 @@ func (r *simpleRouter) ProcessBrokerMessage(msg *proc.Message) error {
 }
 
 func TestOfferDropOldest(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestOfferDropOldest", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestOfferDropOldest", nil, func(t *testing.T, tx *gorm.DB) {
 		router := &simpleRouter{}
 		opt := NewWithParams(router, 2, 1, 100*time.Millisecond, "drop_oldest", 0, 1, 10*time.Millisecond)
 		defer opt.Stop()
@@ -80,7 +80,7 @@ func TestOfferDropOldest(t *testing.T) {
 }
 
 func TestBatching(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBatching", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBatching", nil, func(t *testing.T, tx *gorm.DB) {
 		router := &simpleRouter{}
 		// batch size 3, small flush interval
 		opt := NewWithParams(router, 10, 1, 100*time.Millisecond, "drop", 0, 3, 20*time.Millisecond)

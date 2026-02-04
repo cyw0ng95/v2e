@@ -32,7 +32,7 @@ func (b *threadSafeBuffer) String() string {
 }
 
 func TestNewBroker(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewBroker", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewBroker", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		if broker == nil {
 			t.Fatal("NewBroker returned nil")
@@ -52,7 +52,7 @@ func TestNewBroker(t *testing.T) {
 }
 
 func TestBroker_SetLogger(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_SetLogger", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_SetLogger", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -82,7 +82,7 @@ func TestBroker_SetLogger(t *testing.T) {
 }
 
 func TestBroker_Shutdown(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_Shutdown", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_Shutdown", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 
 		var cmd string
@@ -135,7 +135,7 @@ func TestBroker_Shutdown(t *testing.T) {
 }
 
 func TestProcessStatus_Constants(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestProcessStatus_Constants", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestProcessStatus_Constants", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			status   ProcessStatus
 			expected string

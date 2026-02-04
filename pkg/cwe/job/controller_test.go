@@ -25,7 +25,7 @@ func (m *mockInvoker) InvokeRPC(ctx context.Context, target, method string, para
 }
 
 func TestController_StartStopStatus(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestController_StartStopStatus", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestController_StartStopStatus", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(io.Discard, "test", common.InfoLevel)
 		mock := &mockInvoker{}
 		c := NewController(mock, logger)

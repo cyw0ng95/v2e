@@ -84,7 +84,7 @@ func (e *errorWriter) Write(p []byte) (int, error) { return 0, errors.New("write
 
 // Test missing method produces 400
 func TestRPCHandler_MissingMethod(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCHandler_MissingMethod", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCHandler_MissingMethod", nil, func(t *testing.T, tx *gorm.DB) {
 		gin.SetMode(gin.TestMode)
 		sp := subprocess.New("test-client")
 		logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
@@ -106,7 +106,7 @@ func TestRPCHandler_MissingMethod(t *testing.T) {
 
 // Test RPC forward when SendMessage fails (simulate transport error)
 func TestRPCHandler_RPCSendError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCHandler_RPCSendError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCHandler_RPCSendError", nil, func(t *testing.T, tx *gorm.DB) {
 		gin.SetMode(gin.TestMode)
 		r := gin.Default()
 		rg := r.Group("/restful")
@@ -139,7 +139,7 @@ func TestRPCHandler_RPCSendError(t *testing.T) {
 
 // Test RPC returns MessageTypeError -> handler maps to retcode 500 and message
 func TestRPCHandler_MessageTypeError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCHandler_MessageTypeError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCHandler_MessageTypeError", nil, func(t *testing.T, tx *gorm.DB) {
 		gin.SetMode(gin.TestMode)
 		r := gin.Default()
 		rg := r.Group("/restful")
@@ -171,7 +171,7 @@ func TestRPCHandler_MessageTypeError(t *testing.T) {
 
 // Test invalid payload from RPC produces parse error handling
 func TestRPCHandler_InvalidPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCHandler_InvalidPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCHandler_InvalidPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		gin.SetMode(gin.TestMode)
 		r := gin.Default()
 		rg := r.Group("/restful")
@@ -201,7 +201,7 @@ func TestRPCHandler_InvalidPayload(t *testing.T) {
 
 // Test default target is broker when empty target provided
 func TestRPCHandler_DefaultTargetBroker(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCHandler_DefaultTargetBroker", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCHandler_DefaultTargetBroker", nil, func(t *testing.T, tx *gorm.DB) {
 		gin.SetMode(gin.TestMode)
 		r := gin.Default()
 		rg := r.Group("/restful")

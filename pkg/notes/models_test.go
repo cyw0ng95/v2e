@@ -10,7 +10,7 @@ import (
 // MockDBConnection creates a mock database connection for testing
 // In real tests, this would connect to a test database
 func TestBookmarkModel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBookmarkModel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBookmarkModel", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test basic struct properties
 		b := &BookmarkModel{
 			GlobalItemID:  "global-item-123",
@@ -43,7 +43,7 @@ func TestBookmarkModel(t *testing.T) {
 }
 
 func TestBookmarkHistoryModel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBookmarkHistoryModel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBookmarkHistoryModel", nil, func(t *testing.T, tx *gorm.DB) {
 		now := time.Now()
 		h := &BookmarkHistoryModel{
 			BookmarkID: 1,
@@ -69,7 +69,7 @@ func TestBookmarkHistoryModel(t *testing.T) {
 }
 
 func TestNoteModel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNoteModel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNoteModel", nil, func(t *testing.T, tx *gorm.DB) {
 		now := time.Now()
 		n := &NoteModel{
 			BookmarkID: 1,
@@ -94,7 +94,7 @@ func TestNoteModel(t *testing.T) {
 }
 
 func TestMemoryCardModel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMemoryCardModel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMemoryCardModel", nil, func(t *testing.T, tx *gorm.DB) {
 		now := time.Now()
 		c := &MemoryCardModel{
 			BookmarkID: 1,
@@ -134,7 +134,7 @@ func TestMemoryCardModel(t *testing.T) {
 }
 
 func TestLearningSessionModel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLearningSessionModel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLearningSessionModel", nil, func(t *testing.T, tx *gorm.DB) {
 		now := time.Now()
 		s := &LearningSessionModel{
 			SessionStart:  now,
@@ -158,7 +158,7 @@ func TestLearningSessionModel(t *testing.T) {
 }
 
 func TestCrossReferenceModel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCrossReferenceModel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCrossReferenceModel", nil, func(t *testing.T, tx *gorm.DB) {
 		now := time.Now()
 		cr := &CrossReferenceModel{
 			SourceItemID:     "global-source-123",
@@ -198,7 +198,7 @@ func TestCrossReferenceModel(t *testing.T) {
 }
 
 func TestGlobalItemModel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGlobalItemModel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGlobalItemModel", nil, func(t *testing.T, tx *gorm.DB) {
 		now := time.Now()
 		gi := &GlobalItemModel{
 			ID:        "global-item-789",
@@ -233,7 +233,7 @@ func TestGlobalItemModel(t *testing.T) {
 }
 
 func TestLearningStateConstants(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLearningStateConstants", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLearningStateConstants", nil, func(t *testing.T, tx *gorm.DB) {
 		states := []LearningState{
 			LearningStateToReview,
 			LearningStateLearning,
@@ -258,7 +258,7 @@ func TestLearningStateConstants(t *testing.T) {
 }
 
 func TestCardRatingConstants(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCardRatingConstants", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCardRatingConstants", nil, func(t *testing.T, tx *gorm.DB) {
 		ratings := []CardRating{
 			CardRatingAgain,
 			CardRatingHard,
@@ -283,7 +283,7 @@ func TestCardRatingConstants(t *testing.T) {
 }
 
 func TestRelationshipTypeConstants(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRelationshipTypeConstants", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRelationshipTypeConstants", nil, func(t *testing.T, tx *gorm.DB) {
 		relationships := []RelationshipType{
 			RelationshipTypeRelatedTo,
 			RelationshipTypeExploits,
@@ -312,7 +312,7 @@ func TestRelationshipTypeConstants(t *testing.T) {
 }
 
 func TestBookmarkActionConstants(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBookmarkActionConstants", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBookmarkActionConstants", nil, func(t *testing.T, tx *gorm.DB) {
 		actions := []BookmarkAction{
 			BookmarkActionCreated,
 			BookmarkActionUpdated,
@@ -341,7 +341,7 @@ func TestBookmarkActionConstants(t *testing.T) {
 }
 
 func TestItemTypeConstants(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestItemTypeConstants", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestItemTypeConstants", nil, func(t *testing.T, tx *gorm.DB) {
 		types := []ItemType{
 			ItemTypeCVE,
 			ItemTypeCWE,

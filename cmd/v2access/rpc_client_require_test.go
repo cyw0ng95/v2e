@@ -12,7 +12,7 @@ import (
 )
 
 func TestAccessRPCClient_MarshalFailure(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAccessRPCClient_MarshalFailure", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestAccessRPCClient_MarshalFailure", nil, func(t *testing.T, tx *gorm.DB) {
 		client := NewRPCClient("test-access-marshal", 50*time.Millisecond)
 		// direct access to subprocess to avoid writing to stdout
 		client.sp.SetOutput(&bytes.Buffer{})
@@ -30,7 +30,7 @@ func TestAccessRPCClient_MarshalFailure(t *testing.T) {
 }
 
 func TestAccessRPCClient_PendingCleanupOnTimeout(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAccessRPCClient_PendingCleanupOnTimeout", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestAccessRPCClient_PendingCleanupOnTimeout", nil, func(t *testing.T, tx *gorm.DB) {
 		// This timeout-based test was removed because very short timeouts (1ms)
 		// are unreliable on CI runners and caused intermittent failures.
 	})

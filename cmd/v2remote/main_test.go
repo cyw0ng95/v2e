@@ -10,7 +10,7 @@ import (
 
 // Tests that only validate request parsing and validation logic without making API calls
 func TestRPCGetCVEByID_Validation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCGetCVEByID_Validation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCGetCVEByID_Validation", nil, func(t *testing.T, tx *gorm.DB) {
 		// Directly test the request parsing and validation logic from the handler
 		// without creating a fetcher or making API calls
 
@@ -64,7 +64,7 @@ func TestRPCGetCVEByID_Validation(t *testing.T) {
 }
 
 func TestRPCGetCVEByID_MalformedPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCGetCVEByID_MalformedPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCGetCVEByID_MalformedPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with malformed JSON that should fail to parse
 		invalidJSON := []byte("{malformed json")
 
@@ -90,7 +90,7 @@ func TestRPCGetCVEByID_MalformedPayload(t *testing.T) {
 }
 
 func TestRPCGetCVECntHandler_MalformedPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCGetCVECntHandler_MalformedPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCGetCVECntHandler_MalformedPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with malformed JSON that should fail to parse
 		invalidJSON := []byte("{malformed json")
 
@@ -117,7 +117,7 @@ func TestRPCGetCVECntHandler_MalformedPayload(t *testing.T) {
 }
 
 func TestRPCFetchCVEsHandler_MalformedPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCFetchCVEsHandler_MalformedPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCFetchCVEsHandler_MalformedPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with malformed JSON that should fail to parse
 		invalidJSON := []byte("{malformed json")
 
@@ -145,7 +145,7 @@ func TestRPCFetchCVEsHandler_MalformedPayload(t *testing.T) {
 
 // Test that the handlers can be created without panicking
 func TestHandlerCreation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestHandlerCreation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestHandlerCreation", nil, func(t *testing.T, tx *gorm.DB) {
 		// This test just ensures the handler creation functions don't panic
 		// when called with a nil or dummy fetcher
 

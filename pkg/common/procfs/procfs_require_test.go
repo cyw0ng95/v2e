@@ -9,7 +9,7 @@ import (
 )
 
 func TestReadCPUUsage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReadCPUUsage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReadCPUUsage", nil, func(t *testing.T, tx *gorm.DB) {
 		load, err := ReadCPUUsage()
 		require.NoError(t, err)
 		require.GreaterOrEqual(t, load, 0.0, "load average should be non-negative")
@@ -18,7 +18,7 @@ func TestReadCPUUsage(t *testing.T) {
 }
 
 func TestReadLoadAvg(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReadLoadAvg", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReadLoadAvg", nil, func(t *testing.T, tx *gorm.DB) {
 		loads, err := ReadLoadAvg()
 		require.NoError(t, err)
 		require.Len(t, loads, 3, "expected 3 load average values")
@@ -30,7 +30,7 @@ func TestReadLoadAvg(t *testing.T) {
 }
 
 func TestReadUptime(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReadUptime", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReadUptime", nil, func(t *testing.T, tx *gorm.DB) {
 		u, err := ReadUptime()
 		require.NoError(t, err)
 		require.GreaterOrEqual(t, u, 0.0, "uptime should be non-negative")
@@ -39,7 +39,7 @@ func TestReadUptime(t *testing.T) {
 }
 
 func TestReadMemoryAndSwapUsage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReadMemoryAndSwapUsage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReadMemoryAndSwapUsage", nil, func(t *testing.T, tx *gorm.DB) {
 		mem, err := ReadMemoryUsage()
 		require.NoError(t, err)
 		require.GreaterOrEqual(t, mem, 0.0)
@@ -54,7 +54,7 @@ func TestReadMemoryAndSwapUsage(t *testing.T) {
 }
 
 func TestReadDiskUsageRoot(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReadDiskUsageRoot", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReadDiskUsageRoot", nil, func(t *testing.T, tx *gorm.DB) {
 		used, total, err := ReadDiskUsage("/")
 		require.NoError(t, err)
 		require.Greater(t, total, uint64(0), "total bytes should be > 0")
@@ -64,7 +64,7 @@ func TestReadDiskUsageRoot(t *testing.T) {
 }
 
 func TestReadNetDevDetailedAndTotals(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestReadNetDevDetailedAndTotals", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestReadNetDevDetailedAndTotals", nil, func(t *testing.T, tx *gorm.DB) {
 		detailed, err := ReadNetDevDetailed()
 		require.NoError(t, err)
 		require.NotNil(t, detailed)

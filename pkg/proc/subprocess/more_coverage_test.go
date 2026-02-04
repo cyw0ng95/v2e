@@ -12,7 +12,7 @@ import (
 // TestNewInvalidFDsFallback ensures New falls back to stdio and logs a warning
 // when RPC_INPUT_FD/RPC_OUTPUT_FD are invalid.
 func TestNewInvalidFDsFallback(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewInvalidFDsFallback", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewInvalidFDsFallback", nil, func(t *testing.T, tx *gorm.DB) {
 		// This test ensures New() falls back to stdio. No environment flags are used
 		// for configuration in the new design, so nothing to unset.
 
@@ -28,7 +28,7 @@ func TestNewInvalidFDsFallback(t *testing.T) {
 
 // TestSendResponseNilPayload verifies SendResponse works with nil payloads
 func TestSendResponseNilPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendResponseNilPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendResponseNilPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("resp-nil")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)
@@ -52,7 +52,7 @@ func TestSendResponseNilPayload(t *testing.T) {
 
 // TestSendEventNilPayload verifies SendEvent works with nil payloads
 func TestSendEventNilPayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendEventNilPayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendEventNilPayload", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("evt-nil")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)
@@ -71,7 +71,7 @@ func TestSendEventNilPayload(t *testing.T) {
 
 // TestFlushBatchJoinPath exercises the join buffer path used for moderate-sized batches
 func TestFlushBatchJoinPath(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFlushBatchJoinPath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFlushBatchJoinPath", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("join-path")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)

@@ -9,7 +9,7 @@ import (
 )
 
 func TestSetOutputDisablesBatchingAndWrites(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetOutputDisablesBatchingAndWrites", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetOutputDisablesBatchingAndWrites", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-io")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)
@@ -33,7 +33,7 @@ func TestSetOutputDisablesBatchingAndWrites(t *testing.T) {
 }
 
 func TestSetInputUpdatesReader(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetInputUpdatesReader", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetInputUpdatesReader", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-in")
 		// ensure SetInput doesn't panic and sets the input reader
 		r := bytes.NewBufferString("hello")

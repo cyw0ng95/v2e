@@ -8,7 +8,7 @@ import (
 )
 
 func TestGenerateBuildFlags(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGenerateBuildFlags", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGenerateBuildFlags", nil, func(t *testing.T, tx *gorm.DB) {
 		config := GetDefaultConfig()
 
 		flags, err := GenerateBuildFlags(&config)
@@ -26,7 +26,7 @@ func TestGenerateBuildFlags(t *testing.T) {
 }
 
 func TestGenerateBuildFlagsDefaultConfig(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGenerateBuildFlagsDefaultConfig", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGenerateBuildFlagsDefaultConfig", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a config with no enabled boolean features but with default string features
 		config := GetDefaultConfig()
 
@@ -55,7 +55,7 @@ func TestGenerateBuildFlagsDefaultConfig(t *testing.T) {
 }
 
 func TestGenerateLdflags(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGenerateLdflags", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGenerateLdflags", nil, func(t *testing.T, tx *gorm.DB) {
 		config := GetDefaultConfig()
 
 		// Make sure CONFIG_MIN_LOG_LEVEL has the proper method and target

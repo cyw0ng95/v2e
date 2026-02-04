@@ -16,7 +16,7 @@ import (
 
 // TestRPCMethod tests RPC method functionality
 func TestRPCMethod(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestRPCMethod", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCMethod", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_rpc_test.db")
 
@@ -123,7 +123,7 @@ func TestRPCMethod(t *testing.T) {
 
 // TestDataMigration tests data migration functionality
 func TestDataMigration(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestDataMigration", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDataMigration", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_migration_test.db")
 
@@ -225,7 +225,7 @@ func TestDataMigration(t *testing.T) {
 
 // TestServiceOperationErrorHandling tests service operation error handling
 func TestServiceOperationErrorHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestServiceOperationErrorHandling", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestServiceOperationErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_error_test.db")
 
@@ -330,7 +330,7 @@ func TestServiceOperationErrorHandling(t *testing.T) {
 
 // TestConcurrentAccess tests concurrent access to the service
 func TestConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestConcurrentAccess", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_concurrent_test.db")
 
@@ -425,7 +425,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 // TestMemoryCardFunctionality tests memory card functionality
 func TestMemoryCardFunctionality(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestMemoryCardFunctionality", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMemoryCardFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_memory_card_test.db")
 
@@ -524,7 +524,7 @@ func TestMemoryCardFunctionality(t *testing.T) {
 
 // TestCrossReferenceFunctionality tests cross-reference functionality
 func TestCrossReferenceFunctionality(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCrossReferenceFunctionality", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCrossReferenceFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_cross_ref_test.db")
 
@@ -596,7 +596,7 @@ func TestCrossReferenceFunctionality(t *testing.T) {
 
 // TestHistoryFunctionality tests history functionality
 func TestHistoryFunctionality(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestHistoryFunctionality", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestHistoryFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_history_test.db")
 
@@ -661,7 +661,7 @@ func TestHistoryFunctionality(t *testing.T) {
 
 // TestPerformanceWithLargeDatasets tests performance with large datasets
 func TestPerformanceWithLargeDatasets(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestPerformanceWithLargeDatasets", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestPerformanceWithLargeDatasets", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "notes_performance_test.db")
 

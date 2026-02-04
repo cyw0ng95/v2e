@@ -10,7 +10,7 @@ import (
 )
 
 func TestGenerateCorrelationID_Concurrent(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGenerateCorrelationID_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGenerateCorrelationID_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
 		b := core.NewBroker()
 		defer b.Shutdown()
 

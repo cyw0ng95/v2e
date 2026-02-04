@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewManager", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewManager", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create temporary database file
 		dbPath := filepath.Join(t.TempDir(), "test_session.db")
 
@@ -33,7 +33,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestCreateSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateSession", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_create_session.db")
 
 		// Add logger setup for NewManager calls
@@ -70,7 +70,7 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestSingleSessionEnforcement(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSingleSessionEnforcement", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSingleSessionEnforcement", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_single_session.db")
 
 		// Add logger setup for NewManager calls
@@ -98,7 +98,7 @@ func TestSingleSessionEnforcement(t *testing.T) {
 }
 
 func TestGetSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetSession", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_get_session.db")
 
 		// Add logger setup for NewManager calls
@@ -136,7 +136,7 @@ func TestGetSession(t *testing.T) {
 }
 
 func TestUpdateState(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUpdateState", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUpdateState", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_update_state.db")
 
 		// Add logger setup for NewManager calls
@@ -174,7 +174,7 @@ func TestUpdateState(t *testing.T) {
 }
 
 func TestUpdateProgress(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUpdateProgress", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUpdateProgress", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_update_progress.db")
 
 		// Add logger setup for NewManager calls
@@ -243,7 +243,7 @@ func TestUpdateProgress(t *testing.T) {
 }
 
 func TestDeleteSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDeleteSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDeleteSession", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_delete_session.db")
 
 		// Add logger setup for NewManager calls
@@ -277,7 +277,7 @@ func TestDeleteSession(t *testing.T) {
 }
 
 func TestSessionPersistence(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionPersistence", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionPersistence", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_session_persistence.db")
 
 		// Create session in first manager
@@ -334,7 +334,7 @@ func TestSessionPersistence(t *testing.T) {
 }
 
 func TestUpdateTimestamps(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestUpdateTimestamps", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestUpdateTimestamps", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_update_timestamps.db")
 
 		// Add logger setup for NewManager calls

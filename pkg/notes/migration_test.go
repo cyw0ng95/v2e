@@ -11,7 +11,7 @@ import (
 
 // TestNormalizationMigration ensures the SQL migration normalizes legacy statuses
 func TestNormalizationMigration(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestNormalizationMigration", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNormalizationMigration", nil, func(t *testing.T, tx *gorm.DB) {
 		// create in-memory sqlite DB and run base migrations
 		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 		if err != nil {

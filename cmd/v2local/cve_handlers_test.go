@@ -30,7 +30,7 @@ func makeMsgWithPayload(t *testing.T, payload interface{}) *subprocess.Message {
 }
 
 func TestCVEHandlers(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCVEHandlers", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCVEHandlers", nil, func(t *testing.T, tx *gorm.DB) {
 		// Use t.TempDir() for cleaner cleanup
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cve-test.db")

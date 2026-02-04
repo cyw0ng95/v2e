@@ -10,7 +10,7 @@ import (
 )
 
 func TestSetAndGetCachedCAPEC(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetAndGetCachedCAPEC", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetAndGetCachedCAPEC", nil, func(t *testing.T, tx *gorm.DB) {
 		s := &CachedLocalCAPECStore{
 			cache: make(map[int]*capecCacheItem),
 			ttl:   10 * time.Minute,
@@ -31,7 +31,7 @@ func TestSetAndGetCachedCAPEC(t *testing.T) {
 }
 
 func TestInvalidateCachedCAPECAndInvalidateAllCache(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestInvalidateCachedCAPECAndInvalidateAllCache", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestInvalidateCachedCAPECAndInvalidateAllCache", nil, func(t *testing.T, tx *gorm.DB) {
 		s := &CachedLocalCAPECStore{
 			cache: make(map[int]*capecCacheItem),
 			ttl:   10 * time.Minute,
@@ -54,7 +54,7 @@ func TestInvalidateCachedCAPECAndInvalidateAllCache(t *testing.T) {
 }
 
 func TestGetCachedCAPEC_TTLExpiryNoSleep(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestGetCachedCAPEC_TTLExpiryNoSleep", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestGetCachedCAPEC_TTLExpiryNoSleep", nil, func(t *testing.T, tx *gorm.DB) {
 		s := &CachedLocalCAPECStore{
 			cache: make(map[int]*capecCacheItem),
 			ttl:   5 * time.Minute,

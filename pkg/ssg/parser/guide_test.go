@@ -13,7 +13,7 @@ import (
 )
 
 func TestExtractIDFromPath(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestExtractIDFromPath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestExtractIDFromPath", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name            string
 			path            string
@@ -63,7 +63,7 @@ func TestExtractIDFromPath(t *testing.T) {
 }
 
 func TestExtractShortID(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestExtractShortID", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestExtractShortID", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name        string
 			fullID      string
@@ -102,7 +102,7 @@ func TestExtractShortID(t *testing.T) {
 }
 
 func TestNormalizeParentID(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNormalizeParentID", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNormalizeParentID", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name     string
 			parentID string
@@ -137,7 +137,7 @@ func TestNormalizeParentID(t *testing.T) {
 }
 
 func TestParseGuideFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseGuideFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseGuideFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Find the actual SSG static assets
 		guidePath := "../../../assets/ssg-static/guides/ssg-al2023-guide-cis.html"
 		if _, err := os.Stat(guidePath); os.IsNotExist(err) {
@@ -232,7 +232,7 @@ func TestParseGuideFile(t *testing.T) {
 }
 
 func TestParseIndexGuide(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseIndexGuide", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseIndexGuide", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test parsing the index guide (smaller file)
 		guidePath := "../../../assets/ssg-static/guides/ssg-al2023-guide-index.html"
 		if _, err := os.Stat(guidePath); os.IsNotExist(err) {
@@ -255,7 +255,7 @@ func TestParseIndexGuide(t *testing.T) {
 }
 
 func TestParseMultipleGuides(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseMultipleGuides", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseMultipleGuides", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test parsing multiple guide files to ensure robustness
 		guidesDir := "../../../assets/ssg-static/guides"
 		files, err := os.ReadDir(guidesDir)
@@ -302,7 +302,7 @@ func TestParseMultipleGuides(t *testing.T) {
 }
 
 func TestParseTreeNodeStructure(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseTreeNodeStructure", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseTreeNodeStructure", nil, func(t *testing.T, tx *gorm.DB) {
 		guidePath := "../../../assets/ssg-static/guides/ssg-al2023-guide-cis.html"
 		if _, err := os.Stat(guidePath); os.IsNotExist(err) {
 			t.Skip("SSG static assets not found, skipping test")

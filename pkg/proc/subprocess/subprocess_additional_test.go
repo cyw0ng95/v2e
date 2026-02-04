@@ -17,7 +17,7 @@ import (
 )
 
 func TestNewDefaults(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewDefaults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewDefaults", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("svc1")
 		if sp == nil {
 			t.Fatal("New returned nil")
@@ -33,7 +33,7 @@ func TestNewDefaults(t *testing.T) {
 }
 
 func TestSetOutputAndSendMessage_Disabled(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetOutputAndSendMessage_Disabled", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetOutputAndSendMessage_Disabled", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-out")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)
@@ -52,7 +52,7 @@ func TestSetOutputAndSendMessage_Disabled(t *testing.T) {
 }
 
 func TestSendMessage_BatchedWriter(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendMessage_BatchedWriter", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendMessage_BatchedWriter", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-batch")
 		buf := &bytes.Buffer{}
 		sp.SetInput(strings.NewReader(""))
@@ -97,7 +97,7 @@ func TestSendMessage_BatchedWriter(t *testing.T) {
 }
 
 func TestSendMessage_BatchedWriter_ImmediateClose(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendMessage_BatchedWriter_ImmediateClose", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendMessage_BatchedWriter_ImmediateClose", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-batch-close")
 		buf := &bytes.Buffer{}
 		sp.SetInput(strings.NewReader(""))
@@ -130,7 +130,7 @@ func TestSendMessage_BatchedWriter_ImmediateClose(t *testing.T) {
 }
 
 func TestSendMessage_BatchedWriter_LargePayload(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendMessage_BatchedWriter_LargePayload", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendMessage_BatchedWriter_LargePayload", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-batch-large")
 		buf := &bytes.Buffer{}
 		sp.SetInput(strings.NewReader(""))
@@ -172,7 +172,7 @@ func TestSendMessage_BatchedWriter_LargePayload(t *testing.T) {
 }
 
 func TestRun_InvalidJSON_SendsParseError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRun_InvalidJSON_SendsParseError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRun_InvalidJSON_SendsParseError", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-run")
 		in := strings.NewReader("not-a-json\n")
 		sp.SetInput(in)
@@ -193,7 +193,7 @@ func TestRun_InvalidJSON_SendsParseError(t *testing.T) {
 }
 
 func TestHandleMessage_NoHandler(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestHandleMessage_NoHandler", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestHandleMessage_NoHandler", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-handle")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)
@@ -214,7 +214,7 @@ func TestHandleMessage_NoHandler(t *testing.T) {
 }
 
 func TestRegisterHandlerAndResponse(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRegisterHandlerAndResponse", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRegisterHandlerAndResponse", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-reg")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)
@@ -236,7 +236,7 @@ func TestRegisterHandlerAndResponse(t *testing.T) {
 }
 
 func TestSetupLoggingCreatesFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetupLoggingCreatesFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetupLoggingCreatesFile", nil, func(t *testing.T, tx *gorm.DB) {
 		proc := "test-logger"
 		logger, err := SetupLogging(proc, common.DefaultLogsDir, common.InfoLevel)
 		if err != nil {
@@ -262,7 +262,7 @@ func TestSetupLoggingCreatesFile(t *testing.T) {
 }
 
 func TestSetupSignalHandlerCapacity(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSetupSignalHandlerCapacity", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSetupSignalHandlerCapacity", nil, func(t *testing.T, tx *gorm.DB) {
 		sig := SetupSignalHandler()
 		if sig == nil {
 			t.Fatal("expected non-nil channel")
@@ -279,7 +279,7 @@ func TestSetupSignalHandlerCapacity(t *testing.T) {
 }
 
 func TestFlushBatchDirectAndJoinPaths(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestFlushBatchDirectAndJoinPaths", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestFlushBatchDirectAndJoinPaths", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("bench-flush")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)
@@ -307,7 +307,7 @@ func TestFlushBatchDirectAndJoinPaths(t *testing.T) {
 }
 
 func TestSendResponseEventErrorOutput(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendResponseEventErrorOutput", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendResponseEventErrorOutput", nil, func(t *testing.T, tx *gorm.DB) {
 		sp := New("test-send-types")
 		buf := &bytes.Buffer{}
 		sp.SetOutput(buf)

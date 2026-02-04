@@ -9,7 +9,7 @@ import (
 )
 
 func TestNVDTime_UnmarshalJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNVDTime_UnmarshalJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNVDTime_UnmarshalJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name     string
 			input    string
@@ -74,7 +74,7 @@ func TestNVDTime_UnmarshalJSON(t *testing.T) {
 }
 
 func TestNVDTime_MarshalJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNVDTime_MarshalJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNVDTime_MarshalJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name     string
 			time     time.Time
@@ -110,7 +110,7 @@ func TestNVDTime_MarshalJSON(t *testing.T) {
 }
 
 func TestNewNVDTime(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNewNVDTime", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNewNVDTime", nil, func(t *testing.T, tx *gorm.DB) {
 		now := time.Now()
 		nvdTime := NewNVDTime(now)
 
@@ -122,7 +122,7 @@ func TestNewNVDTime(t *testing.T) {
 }
 
 func TestNVDTime_RoundTrip(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestNVDTime_RoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestNVDTime_RoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
 		original := NVDTime{Time: time.Date(2021, 12, 10, 10, 15, 9, 143000000, time.UTC)}
 
 		// Marshal

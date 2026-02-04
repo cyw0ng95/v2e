@@ -9,7 +9,7 @@ import (
 )
 
 func TestParseManifestFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseManifestFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseManifestFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a test manifest file
 		testJSON := `{
 	  "product_name": "test-product",
@@ -29,9 +29,7 @@ func TestParseManifestFile(t *testing.T) {
 	      ]
 	    }
 	  }
-	})
-
-}`
+	}``
 
 	// Write to temp file
 	tmpFile, err := os.CreateTemp("", "manifest-test-*.json")
@@ -106,10 +104,11 @@ func TestParseManifestFile(t *testing.T) {
 	if cisRuleCount != 3 {
 		t.Errorf("expected 3 rules for CIS profile, got %d", cisRuleCount)
 	}
+	})
 }
 
 func TestParseManifestFile_RealFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseManifestFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseManifestFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with a real manifest file from submodule if available
 		manifestPath := filepath.Join("..", "..", "..", "assets", "ssg-static", "manifests", "manifest-al2023.json")
 	
@@ -149,7 +148,7 @@ func TestParseManifestFile_RealFile(t *testing.T) {
 }
 
 func TestParseManifestFile_InvalidFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseManifestFile_InvalidFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseManifestFile_InvalidFile", nil, func(t *testing.T, tx *gorm.DB) {
 		_, _, _, err := ParseManifestFile("/nonexistent/path/manifest.json")
 		if err == nil {
 			t.Error("expected error for nonexistent file")
@@ -159,7 +158,7 @@ func TestParseManifestFile_InvalidFile(t *testing.T) {
 }
 
 func TestParseManifestFile_InvalidJSON(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseManifestFile_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseManifestFile_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a file with invalid JSON
 		tmpFile, err := os.CreateTemp("", "manifest-invalid-*.json")
 		if err != nil {
@@ -181,7 +180,7 @@ func TestParseManifestFile_InvalidJSON(t *testing.T) {
 }
 
 func TestExtractManifestIDFromPath(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestExtractManifestIDFromPath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestExtractManifestIDFromPath", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			path            string
 			expectedID      string

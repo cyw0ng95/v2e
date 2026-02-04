@@ -100,7 +100,7 @@ func (s *stubCAPECStore) GetReferences(ctx context.Context, capecID int) ([]cape
 }
 
 func TestXmlInnerToPlain_StripsTagsAndUnescapes(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestXmlInnerToPlain_StripsTagsAndUnescapes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestXmlInnerToPlain_StripsTagsAndUnescapes", nil, func(t *testing.T, tx *gorm.DB) {
 		in := "<p>Hello &amp; <strong>World</strong></p>\n<em>!</em>"
 		out := xmlInnerToPlain(in)
 		if out != "Hello & World !" {
@@ -111,7 +111,7 @@ func TestXmlInnerToPlain_StripsTagsAndUnescapes(t *testing.T) {
 }
 
 func TestXmlInnerToPlain_CoversManyCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestXmlInnerToPlain_CoversManyCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestXmlInnerToPlain_CoversManyCases", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name  string
 			input string
@@ -197,7 +197,7 @@ func TestXmlInnerToPlain_CoversManyCases(t *testing.T) {
 }
 
 func TestCreateImportCAPECsHandler_ValidatesInput(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateImportCAPECsHandler_ValidatesInput", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateImportCAPECsHandler_ValidatesInput", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{}
 		handler := createImportCAPECsHandler(store, logger)
@@ -215,7 +215,7 @@ func TestCreateImportCAPECsHandler_ValidatesInput(t *testing.T) {
 }
 
 func TestCreateImportCAPECsHandler_Succeeds(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateImportCAPECsHandler_Succeeds", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateImportCAPECsHandler_Succeeds", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{}
 		handler := createImportCAPECsHandler(store, logger)
@@ -237,7 +237,7 @@ func TestCreateImportCAPECsHandler_Succeeds(t *testing.T) {
 }
 
 func TestCreateImportCAPECsHandler_PropagatesStoreError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateImportCAPECsHandler_PropagatesStoreError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateImportCAPECsHandler_PropagatesStoreError", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{importErr: errors.New("boom")}
 		handler := createImportCAPECsHandler(store, logger)
@@ -256,7 +256,7 @@ func TestCreateImportCAPECsHandler_PropagatesStoreError(t *testing.T) {
 }
 
 func TestCreateGetCAPECCatalogMetaHandler_Error(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCAPECCatalogMetaHandler_Error", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCAPECCatalogMetaHandler_Error", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{}
 		handler := createGetCAPECCatalogMetaHandler(store, logger)
@@ -274,7 +274,7 @@ func TestCreateGetCAPECCatalogMetaHandler_Error(t *testing.T) {
 }
 
 func TestCreateGetCAPECCatalogMetaHandler_Success(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCAPECCatalogMetaHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCAPECCatalogMetaHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{meta: &capec.CAPECCatalogMeta{Version: "v1", Source: "src", ImportedAtUTC: 123}}
 		handler := createGetCAPECCatalogMetaHandler(store, logger)
@@ -299,7 +299,7 @@ func TestCreateGetCAPECCatalogMetaHandler_Success(t *testing.T) {
 }
 
 func TestCreateListCAPECsHandler_NormalizesParams(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateListCAPECsHandler_NormalizesParams", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateListCAPECsHandler_NormalizesParams", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{
 			listItems: []capec.CAPECItemModel{{CAPECID: 1, Name: "n"}},
@@ -329,7 +329,7 @@ func TestCreateListCAPECsHandler_NormalizesParams(t *testing.T) {
 }
 
 func TestCreateListCAPECsHandler_StoreError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateListCAPECsHandler_StoreError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateListCAPECsHandler_StoreError", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{listErr: errors.New("boom")}
 		handler := createListCAPECsHandler(store, logger)
@@ -347,7 +347,7 @@ func TestCreateListCAPECsHandler_StoreError(t *testing.T) {
 }
 
 func TestCreateGetCAPECByIDHandler_Validates(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCAPECByIDHandler_Validates", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCAPECByIDHandler_Validates", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{}
 		handler := createGetCAPECByIDHandler(store, logger)
@@ -365,7 +365,7 @@ func TestCreateGetCAPECByIDHandler_Validates(t *testing.T) {
 }
 
 func TestCreateGetCAPECByIDHandler_StoreError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCAPECByIDHandler_StoreError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCAPECByIDHandler_StoreError", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{getErr: errors.New("nope")}
 		handler := createGetCAPECByIDHandler(store, logger)
@@ -384,7 +384,7 @@ func TestCreateGetCAPECByIDHandler_StoreError(t *testing.T) {
 }
 
 func TestCreateGetCAPECByIDHandler_Success(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCreateGetCAPECByIDHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCreateGetCAPECByIDHandler_Success", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testWriter{t}, "test", common.ErrorLevel)
 		store := &stubCAPECStore{
 			getItem:     &capec.CAPECItemModel{CAPECID: 2, Name: "Example", Summary: "<p>S</p>", Description: "<p>D</p>", Status: "Draft", Likelihood: "High", TypicalSeverity: "Medium"},

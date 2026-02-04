@@ -9,7 +9,7 @@ import (
 )
 
 func TestSendToProcess_ErrorCases(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSendToProcess_ErrorCases", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSendToProcess_ErrorCases", nil, func(t *testing.T, tx *gorm.DB) {
 		b := NewBroker()
 
 		// Case: missing process

@@ -9,7 +9,7 @@ import (
 )
 
 func TestSaveGetDeleteView(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSaveGetDeleteView", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSaveGetDeleteView", nil, func(t *testing.T, tx *gorm.DB) {
 		dir := t.TempDir()
 		dbPath := filepath.Join(dir, "test_cwe_views.db")
 		store, err := NewLocalCWEStore(dbPath)

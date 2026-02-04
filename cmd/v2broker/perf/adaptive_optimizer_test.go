@@ -13,7 +13,7 @@ import (
 
 // TestAdaptiveOptimization validates the adaptive optimization features
 func TestAdaptiveOptimization(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAdaptiveOptimization", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestAdaptiveOptimization", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a test router for message routing
 		router := &testRouter{}
 

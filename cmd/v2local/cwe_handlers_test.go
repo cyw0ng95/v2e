@@ -15,7 +15,7 @@ import (
 )
 
 func TestCWEHandlers(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEHandlers", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEHandlers", nil, func(t *testing.T, tx *gorm.DB) {
 		// Use t.TempDir() for cleaner cleanup
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "cwe-test.db")

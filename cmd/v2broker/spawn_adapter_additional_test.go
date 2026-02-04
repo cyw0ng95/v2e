@@ -27,7 +27,7 @@ func (stubSpawnBroker) SpawnRPCWithRestart(id, command string, maxRestarts int, 
 }
 
 func TestSpawnAdapter_ErrorPropagation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSpawnAdapter_ErrorPropagation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSpawnAdapter_ErrorPropagation", nil, func(t *testing.T, tx *gorm.DB) {
 		adapter := NewSpawnAdapter(stubSpawnBroker{})
 
 		if res, err := adapter.Spawn("id", "cmd"); err == nil || res != nil {

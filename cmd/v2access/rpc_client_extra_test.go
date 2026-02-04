@@ -10,7 +10,7 @@ import (
 )
 
 func TestRPCClient_MarshalErrorAndTimeoutAndHandleResponse(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCClient_MarshalErrorAndTimeoutAndHandleResponse", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCClient_MarshalErrorAndTimeoutAndHandleResponse", nil, func(t *testing.T, tx *gorm.DB) {
 		// create rpc client with tiny timeout
 		c := NewRPCClient("test-access", 50*time.Millisecond)
 

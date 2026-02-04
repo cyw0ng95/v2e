@@ -34,7 +34,7 @@ func (mc *MetricsCollector) CollectMetrics() (map[string]interface{}, error) {
 }
 
 func TestCollectMetrics(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCollectMetrics", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCollectMetrics", nil, func(t *testing.T, tx *gorm.DB) {
 		mockCollector := &MetricsCollector{
 			ReadCPUUsage: func() (float64, error) {
 				return 50.0, nil
@@ -53,7 +53,7 @@ func TestCollectMetrics(t *testing.T) {
 }
 
 func TestSysmonService(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSysmonService", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSysmonService", nil, func(t *testing.T, tx *gorm.DB) {
 		// This test can use a similar mocking approach to validate the SysmonService behavior
 		// For example, capturing stdout and verifying the JSON output
 	})
@@ -61,7 +61,7 @@ func TestSysmonService(t *testing.T) {
 }
 
 func TestRPCGetSysMetrics(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCGetSysMetrics", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCGetSysMetrics", nil, func(t *testing.T, tx *gorm.DB) {
 		mockCollector := &MetricsCollector{
 			ReadCPUUsage: func() (float64, error) {
 				return 50.0, nil

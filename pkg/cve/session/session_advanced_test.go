@@ -18,7 +18,7 @@ import (
 // if they check for existing session before any complete. This test verifies that
 // concurrent operations don't cause database corruption.
 func TestConcurrentSessionCreation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentSessionCreation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentSessionCreation", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_concurrent_creation.db")
 
 		// Correct logger initialization
@@ -79,7 +79,7 @@ func TestConcurrentSessionCreation(t *testing.T) {
 
 // TestConcurrentStateUpdates tests concurrent state updates
 func TestConcurrentStateUpdates(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentStateUpdates", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentStateUpdates", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_concurrent_state_updates.db")
 
 		// Add logger setup for NewManager calls
@@ -137,7 +137,7 @@ func TestConcurrentStateUpdates(t *testing.T) {
 
 // TestConcurrentProgressUpdates tests concurrent progress updates
 func TestConcurrentProgressUpdates(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentProgressUpdates", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentProgressUpdates", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_concurrent_progress.db")
 
 		// Add logger setup for NewManager calls
@@ -202,7 +202,7 @@ func TestConcurrentProgressUpdates(t *testing.T) {
 
 // TestSessionDataIntegrity tests data integrity of session fields
 func TestSessionDataIntegrity(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionDataIntegrity", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionDataIntegrity", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_data_integrity.db")
 
 		// Add logger setup for NewManager calls
@@ -289,7 +289,7 @@ func TestSessionDataIntegrity(t *testing.T) {
 
 // TestMultipleSessionLifecycles tests creating/deleting sessions multiple times
 func TestMultipleSessionLifecycles(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestMultipleSessionLifecycles", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestMultipleSessionLifecycles", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_multiple_lifecycles.db")
 
 		// Add logger setup for NewManager calls
@@ -342,7 +342,7 @@ func TestMultipleSessionLifecycles(t *testing.T) {
 
 // TestSessionUpdateTimestamps tests that timestamps are updated correctly
 func TestSessionTimestampsAccuracy(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionTimestampsAccuracy", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionTimestampsAccuracy", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_timestamps_accuracy.db")
 
 		// Add logger setup for NewManager calls
@@ -407,7 +407,7 @@ func TestSessionTimestampsAccuracy(t *testing.T) {
 
 // TestSessionDatabaseCorruption tests recovery from potential database issues
 func TestSessionManagerReopen(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionManagerReopen", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionManagerReopen", nil, func(t *testing.T, tx *gorm.DB) {
 		dbPath := filepath.Join(t.TempDir(), "test_reopen.db")
 
 		// Ensure consistent logger initialization

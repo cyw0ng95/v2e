@@ -12,7 +12,7 @@ import (
 )
 
 func TestBroker_SendReceiveMessage(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_SendReceiveMessage", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_SendReceiveMessage", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -42,7 +42,7 @@ func TestBroker_SendReceiveMessage(t *testing.T) {
 }
 
 func TestBroker_ReceiveMessage_Timeout(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ReceiveMessage_Timeout", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ReceiveMessage_Timeout", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -58,7 +58,7 @@ func TestBroker_ReceiveMessage_Timeout(t *testing.T) {
 }
 
 func TestBroker_ProcessExitEvent(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ProcessExitEvent", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ProcessExitEvent", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -106,7 +106,7 @@ func TestBroker_ProcessExitEvent(t *testing.T) {
 }
 
 func TestBroker_Shutdown_MessageChannel(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_Shutdown_MessageChannel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_Shutdown_MessageChannel", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 
 		err := broker.Shutdown()

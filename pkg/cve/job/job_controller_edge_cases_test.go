@@ -114,7 +114,7 @@ func createMockResponseMessage() *subprocess.Message {
 
 // TestJobController_StartStop tests starting and stopping the job controller
 func TestJobController_StartStop(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_StartStop", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_StartStop", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_start_stop.db")
@@ -174,7 +174,7 @@ func TestJobController_StartStop(t *testing.T) {
 
 // TestJobController_PauseResume tests pausing and resuming the job controller
 func TestJobController_PauseResume(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_PauseResume", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_PauseResume", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_pause_resume.db")
@@ -252,7 +252,7 @@ func TestJobController_PauseResume(t *testing.T) {
 
 // TestJobController_ResumeWithoutPause tests resuming without pausing first
 func TestJobController_ResumeWithoutPause(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_ResumeWithoutPause", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_ResumeWithoutPause", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_resume_without_pause.db")
@@ -284,7 +284,7 @@ func TestJobController_ResumeWithoutPause(t *testing.T) {
 
 // TestJobController_RPCFailureHandling tests handling of RPC failures
 func TestJobController_RPCFailureHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_RPCFailureHandling", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_RPCFailureHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_rpc_failure_handling.db")
@@ -341,7 +341,7 @@ func TestJobController_RPCFailureHandling(t *testing.T) {
 
 // TestJobController_SaveFailureHandling tests handling of save failures
 func TestJobController_SaveFailureHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_SaveFailureHandling", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_SaveFailureHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_save_failure_handling.db")
@@ -398,7 +398,7 @@ func TestJobController_SaveFailureHandling(t *testing.T) {
 
 // TestJobController_ConcurrentAccess tests concurrent access to the controller
 func TestJobController_ConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_concurrent_access.db")
@@ -473,7 +473,7 @@ func TestJobController_ConcurrentAccess(t *testing.T) {
 
 // TestJobController_ContextCancellation tests cancellation via context
 func TestJobController_ContextCancellation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_ContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_ContextCancellation", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_context_cancellation.db")
@@ -531,7 +531,7 @@ func TestJobController_ContextCancellation(t *testing.T) {
 
 // TestJobController_SessionManagement tests proper session management
 func TestJobController_SessionManagement(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_SessionManagement", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_SessionManagement", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_session_management.db")
@@ -588,7 +588,7 @@ func TestJobController_SessionManagement(t *testing.T) {
 
 // TestJobController_NoSession tests behavior when no session exists
 func TestJobController_NoSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_NoSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_NoSession", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_no_session.db")
@@ -614,7 +614,7 @@ func TestJobController_NoSession(t *testing.T) {
 
 // TestJobController_RPCResponseTypes tests handling of different RPC response types
 func TestJobController_RPCResponseTypes(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobController_RPCResponseTypes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobController_RPCResponseTypes", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create mocks with a unique temp file for each test to avoid conflicts
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "test_job_controller_rpc_response_types.db")

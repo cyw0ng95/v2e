@@ -30,7 +30,7 @@ func TestNewLocalAttackStore(t *testing.T) {
 
 func TestHelperFunctions(t *testing.T) {
 	// Test getStringValue function
-	testutils.Run(t, testutils.Level1, "GetStringValue", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetStringValue", nil, func(t *testing.T, tx *gorm.DB) {
 		headers := []string{"ID", "Name", "Description"}
 		row := []string{"T1001", "Test Technique", "A test technique"}
 
@@ -57,7 +57,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	// Test getStringIndex function
-	testutils.Run(t, testutils.Level1, "GetStringIndex", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetStringIndex", nil, func(t *testing.T, tx *gorm.DB) {
 		headers := []string{"ID", "Name", "Description"}
 
 		index := getStringIndex(headers, []string{"ID"})
@@ -80,7 +80,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	// Test getBoolValue function
-	testutils.Run(t, testutils.Level1, "GetBoolValue", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetBoolValue", nil, func(t *testing.T, tx *gorm.DB) {
 		row := []string{"true", "false", "1", "0", "yes", "no", "y", "n", "t", "f", "invalid"}
 
 		// Test various true values

@@ -46,7 +46,7 @@ func (m *mockCWERPCInvoker) InvokeRPC(ctx context.Context, target, method string
 
 // TestCWEController_StartStop ensures basic CWE job lifecycle.
 func TestCWEController_StartStop(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEController_StartStop", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEController_StartStop", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testCWEWriter{t}, "test", common.ErrorLevel)
 		invoker := &mockCWERPCInvoker{}
 		ctrl := NewController(invoker, logger)
@@ -82,7 +82,7 @@ func TestCWEController_StartStop(t *testing.T) {
 
 // TestCWEController_ConcurrentStarts ensures only one Start succeeds.
 func TestCWEController_ConcurrentStarts(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCWEController_ConcurrentStarts", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestCWEController_ConcurrentStarts", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(testCWEWriter{t}, "test", common.ErrorLevel)
 		invoker := &mockCWERPCInvoker{}
 		ctrl := NewController(invoker, logger)

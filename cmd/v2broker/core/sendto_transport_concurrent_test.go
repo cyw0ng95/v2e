@@ -26,7 +26,7 @@ func (r *recordingTransport) Connect() error                  { return nil }
 func (r *recordingTransport) Close() error                    { return nil }
 
 func TestBroker_SendToProcess_Concurrent(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_SendToProcess_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_SendToProcess_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
 		b := NewBroker()
 		tm := transport.NewTransportManager()
 		rt := &recordingTransport{}

@@ -10,7 +10,7 @@ import (
 )
 
 func TestLocalCWEStore_ImportAndQuery(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestLocalCWEStore_ImportAndQuery", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestLocalCWEStore_ImportAndQuery", nil, func(t *testing.T, tx *gorm.DB) {
 		tmp := t.TempDir()
 		dbPath := filepath.Join(tmp, "cwe_test.db")
 

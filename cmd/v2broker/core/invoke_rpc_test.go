@@ -7,7 +7,7 @@ import (
 )
 
 func TestInvokeRPC_SuccessRoundTrip(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestInvokeRPC_SuccessRoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestInvokeRPC_SuccessRoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
 		t.Skip("Skipping test - UDS-only transport does not use stdin/stdout pipes for RPC communication")
 
 		// This test was designed for stdin/stdout pipe-based communication.

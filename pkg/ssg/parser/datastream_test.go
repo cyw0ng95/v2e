@@ -11,7 +11,7 @@ import (
 
 // TestParseDataStreamFile tests parsing a small synthetic data stream XML.
 func TestParseDataStreamFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseDataStreamFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseDataStreamFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a minimal but valid SCAP data stream XML
 		xmlData := `<?xml version="1.0" encoding="utf-8"?>
 	<ds:data-stream-collection xmlns:ds="http://scap.nist.gov/schema/scap/source/1.2" xmlns:xccdf-1.2="http://checklists.nist.gov/xccdf/1.2" xmlns:html="http://www.w3.org/1999/xhtml" id="scap_test_collection" schematron-version="1.3">
@@ -261,7 +261,7 @@ func TestParseDataStreamFile(t *testing.T) {
 // TestParseDataStreamFile_RealFile tests parsing a real SSG data stream file from submodule.
 // This test validates parsing against actual production data.
 func TestParseDataStreamFile_RealFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseDataStreamFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseDataStreamFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Path to real SSG data stream file in submodule
 		dsPath := filepath.Join("..", "..", "..", "assets", "ssg-static", "ssg-al2023-ds.xml")
 
@@ -434,7 +434,7 @@ func TestParseDataStreamFile_RealFile(t *testing.T) {
 
 // TestParseDataStreamFile_InvalidFile tests error handling for invalid input.
 func TestParseDataStreamFile_InvalidFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseDataStreamFile_InvalidFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseDataStreamFile_InvalidFile", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name    string
 			data    string
@@ -472,7 +472,7 @@ func TestParseDataStreamFile_InvalidFile(t *testing.T) {
 
 // TestExtractProduct tests product extraction from filenames.
 func TestExtractProduct(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestExtractProduct", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestExtractProduct", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			filename string
 			want     string

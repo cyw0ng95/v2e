@@ -14,7 +14,7 @@ import (
 )
 
 func TestBroker_GetMessageCount(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_GetMessageCount", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_GetMessageCount", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -55,7 +55,7 @@ func TestBroker_GetMessageCount(t *testing.T) {
 }
 
 func TestBroker_GetMessageStats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_GetMessageStats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_GetMessageStats", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -150,7 +150,7 @@ func TestBroker_GetMessageStats(t *testing.T) {
 }
 
 func TestBroker_MessageStats_Timestamps(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_MessageStats_Timestamps", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_MessageStats_Timestamps", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -190,7 +190,7 @@ func TestBroker_MessageStats_Timestamps(t *testing.T) {
 }
 
 func TestBroker_MessageStats_ConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_MessageStats_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_MessageStats_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -228,7 +228,7 @@ func TestBroker_MessageStats_ConcurrentAccess(t *testing.T) {
 }
 
 func TestBroker_ProcessExitEvent_UpdatesStats(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestBroker_ProcessExitEvent_UpdatesStats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestBroker_ProcessExitEvent_UpdatesStats", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 

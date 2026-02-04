@@ -21,7 +21,7 @@ import (
 
 // TestConcurrentJobControl tests multiple concurrent job control commands
 func TestConcurrentJobControl(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentJobControl", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentJobControl", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_concurrent.db")
 
@@ -101,7 +101,7 @@ func TestConcurrentJobControl(t *testing.T) {
 
 // TestConcurrentStartAttempts tests multiple concurrent start attempts
 func TestConcurrentStartAttempts(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentStartAttempts", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentStartAttempts", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_concurrent_start.db")
 
@@ -175,7 +175,7 @@ func TestConcurrentStartAttempts(t *testing.T) {
 
 // TestJobDataIntegrity verifies data integrity during job execution
 func TestJobDataIntegrity(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobDataIntegrity", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobDataIntegrity", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_data_integrity.db")
 
@@ -298,7 +298,7 @@ func (m *mockRPCInvokerWithTracking) InvokeRPC(ctx context.Context, target, meth
 
 // TestJobErrorHandling tests error scenarios during job execution
 func TestJobErrorHandling(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobErrorHandling", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_error_handling.db")
 
@@ -338,7 +338,7 @@ func TestJobErrorHandling(t *testing.T) {
 
 // TestJobStateTransitions tests all valid state transitions
 func TestJobStateTransitions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobStateTransitions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobStateTransitions", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_state_transitions.db")
 
@@ -414,7 +414,7 @@ func TestJobStateTransitions(t *testing.T) {
 
 // TestJobPauseResumeMultipleTimes tests multiple pause/resume cycles
 func TestJobPauseResumeMultipleTimes(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobPauseResumeMultipleTimes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobPauseResumeMultipleTimes", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_pause_resume_multiple.db")
 
@@ -479,7 +479,7 @@ func TestJobPauseResumeMultipleTimes(t *testing.T) {
 
 // TestJobProgressTracking tests accurate progress tracking
 func TestJobProgressTracking(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobProgressTracking", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobProgressTracking", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(os.Stderr, "test", common.InfoLevel)
 		dbPath := filepath.Join(t.TempDir(), "test_progress_tracking.db")
 

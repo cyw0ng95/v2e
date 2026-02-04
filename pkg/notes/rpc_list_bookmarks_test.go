@@ -9,7 +9,7 @@ import (
 )
 
 func TestRPCListBookmarksHandlerDefaults(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRPCListBookmarksHandlerDefaults", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRPCListBookmarksHandlerDefaults", nil, func(t *testing.T, tx *gorm.DB) {
 		// This test verifies that the RPCListBookmarks handler properly handles
 		// missing offset and limit parameters by providing sensible defaults
 

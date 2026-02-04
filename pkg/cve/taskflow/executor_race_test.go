@@ -39,7 +39,7 @@ func newTestLogger() *common.Logger {
 
 // TestJobExecutor_ConcurrentStartPrevention verifies that only one job can start at a time
 func TestJobExecutor_ConcurrentStartPrevention(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobExecutor_ConcurrentStartPrevention", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobExecutor_ConcurrentStartPrevention", nil, func(t *testing.T, tx *gorm.DB) {
 		invoker := newMockRPCInvoker()
 		logger := newTestLogger()
 		store, err := NewRunStore("test_concurrent_start.db", logger)
@@ -89,7 +89,7 @@ func TestJobExecutor_ConcurrentStartPrevention(t *testing.T) {
 
 // TestJobExecutor_PauseResumeStateTransitions verifies pause/resume works
 func TestJobExecutor_PauseResumeStateTransitions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobExecutor_PauseResumeStateTransitions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobExecutor_PauseResumeStateTransitions", nil, func(t *testing.T, tx *gorm.DB) {
 		invoker := newMockRPCInvoker()
 		logger := newTestLogger()
 		store, err := NewRunStore("test_pause_resume.db", logger)
@@ -152,7 +152,7 @@ func TestJobExecutor_PauseResumeStateTransitions(t *testing.T) {
 
 // TestJobExecutor_StopFromPaused verifies stopping from paused state works
 func TestJobExecutor_StopFromPaused(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobExecutor_StopFromPaused", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobExecutor_StopFromPaused", nil, func(t *testing.T, tx *gorm.DB) {
 		invoker := newMockRPCInvoker()
 		logger := newTestLogger()
 		store, err := NewRunStore("test_stop_paused.db", logger)
@@ -201,7 +201,7 @@ func TestJobExecutor_StopFromPaused(t *testing.T) {
 
 // TestJobExecutor_RecoveryAfterCrash verifies running jobs are recovered
 func TestJobExecutor_RecoveryAfterCrash(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobExecutor_RecoveryAfterCrash", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobExecutor_RecoveryAfterCrash", nil, func(t *testing.T, tx *gorm.DB) {
 		invoker := newMockRPCInvoker()
 		logger := newTestLogger()
 		store, err := NewRunStore("test_recovery.db", logger)
@@ -262,7 +262,7 @@ func TestJobExecutor_RecoveryAfterCrash(t *testing.T) {
 
 // TestJobExecutor_PausedRunStaysPaused verifies paused runs are not auto-resumed
 func TestJobExecutor_PausedRunStaysPaused(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestJobExecutor_PausedRunStaysPaused", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestJobExecutor_PausedRunStaysPaused", nil, func(t *testing.T, tx *gorm.DB) {
 		invoker := newMockRPCInvoker()
 		logger := newTestLogger()
 		store, err := NewRunStore("test_paused_stays_paused.db", logger)

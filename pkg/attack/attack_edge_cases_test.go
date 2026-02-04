@@ -13,7 +13,7 @@ import (
 
 // TestAttackPatternValidation tests attack pattern validation functionality
 func TestAttackPatternValidation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAttackPatternValidation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestAttackPatternValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_validation_test.db")
 
@@ -124,7 +124,7 @@ func TestAttackPatternValidation(t *testing.T) {
 
 // TestDataTransformation tests data transformation functionality
 func TestDataTransformation(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestDataTransformation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestDataTransformation", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_transform_test.db")
 
@@ -239,7 +239,7 @@ func TestDataTransformation(t *testing.T) {
 
 // TestErrorConditions tests various error conditions
 func TestErrorConditions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestErrorConditions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestErrorConditions", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_error_test.db")
 
@@ -298,7 +298,7 @@ func TestErrorConditions(t *testing.T) {
 
 // TestPerformanceBenchmark tests performance with large datasets
 func TestPerformanceBenchmark(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestPerformanceBenchmark", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestPerformanceBenchmark", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_performance_test.db")
 
@@ -393,7 +393,7 @@ func TestPerformanceBenchmark(t *testing.T) {
 
 // TestConcurrentAccess tests concurrent access to the store
 func TestConcurrentAccess(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_concurrent_test.db")
 
@@ -459,7 +459,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 // TestRelationshipFunctionality tests relationship functionality
 func TestRelationshipFunctionality(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRelationshipFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestRelationshipFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_relationship_test.db")
 
@@ -547,7 +547,7 @@ func TestRelationshipFunctionality(t *testing.T) {
 
 // TestSoftwareAndGroupFunctionality tests software and group functionality
 func TestSoftwareAndGroupFunctionality(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSoftwareAndGroupFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSoftwareAndGroupFunctionality", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_software_group_test.db")
 
@@ -649,7 +649,7 @@ func TestSoftwareAndGroupFunctionality(t *testing.T) {
 
 // TestImportMetadata tests import metadata functionality
 func TestImportMetadata(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestImportMetadata", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestImportMetadata", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
 		dbPath := filepath.Join(tempDir, "attack_metadata_test.db")
 

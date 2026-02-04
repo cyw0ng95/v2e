@@ -13,7 +13,7 @@ import (
 
 // TestSessionState_String ensures all state constants stringify correctly.
 func TestSessionState_String(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSessionState_String", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSessionState_String", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			state SessionState
 			want  string
@@ -35,7 +35,7 @@ func TestSessionState_String(t *testing.T) {
 
 // TestManager_CreateSession_MultipleAttempts ensures only one session can exist.
 func TestManager_CreateSession_MultipleAttempts(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_CreateSession_MultipleAttempts", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_CreateSession_MultipleAttempts", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -64,7 +64,7 @@ func TestManager_CreateSession_MultipleAttempts(t *testing.T) {
 
 // TestManager_GetSession_NoSession ensures proper error when no session exists.
 func TestManager_GetSession_NoSession(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_GetSession_NoSession", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_GetSession_NoSession", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -84,7 +84,7 @@ func TestManager_GetSession_NoSession(t *testing.T) {
 
 // TestManager_UpdateState_Transitions covers all valid state transitions.
 func TestManager_UpdateState_Transitions(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_UpdateState_Transitions", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_UpdateState_Transitions", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -115,7 +115,7 @@ func TestManager_UpdateState_Transitions(t *testing.T) {
 
 // TestManager_IncrementCounters covers counter increments across multiple sessions.
 func TestManager_IncrementCounters(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_IncrementCounters", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_IncrementCounters", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -165,7 +165,7 @@ func TestManager_IncrementCounters(t *testing.T) {
 
 // TestManager_DeleteSession_NoSessionError ensures delete fails when no session exists.
 func TestManager_DeleteSession_NoSessionError(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_DeleteSession_NoSessionError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_DeleteSession_NoSessionError", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -185,7 +185,7 @@ func TestManager_DeleteSession_NoSessionError(t *testing.T) {
 
 // TestManager_SessionPersistence ensures session survives manager restart.
 func TestManager_SessionPersistence(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_SessionPersistence", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_SessionPersistence", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -223,7 +223,7 @@ func TestManager_SessionPersistence(t *testing.T) {
 
 // TestManager_ConcurrentUpdates ensures concurrent counter increments are safe.
 func TestManager_ConcurrentUpdates(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_ConcurrentUpdates", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_ConcurrentUpdates", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -257,7 +257,7 @@ func TestManager_ConcurrentUpdates(t *testing.T) {
 
 // TestManager_UpdateStartIndex verifies start index updates.
 func TestManager_UpdateStartIndex(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestManager_UpdateStartIndex", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestManager_UpdateStartIndex", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
@@ -283,7 +283,7 @@ func TestManager_UpdateStartIndex(t *testing.T) {
 
 // TestSession_Timestamps ensures CreatedAt and UpdatedAt are set properly.
 func TestSession_Timestamps(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestSession_Timestamps", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestSession_Timestamps", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		dbPath := filepath.Join(tmpDir, "session.db")
 		logger := common.NewLogger(os.Stdout, "test", common.ErrorLevel)
