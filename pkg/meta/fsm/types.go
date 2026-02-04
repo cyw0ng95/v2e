@@ -159,6 +159,7 @@ type ProviderStateTransition struct {
 // Macro FSM valid transitions
 var validMacroTransitions = map[StateTransition]bool{
 	{MacroBootstrapping, MacroOrchestrating}: true,
+	{MacroBootstrapping, MacroDraining}:      true, // Emergency drain during bootstrap
 	{MacroOrchestrating, MacroStabilizing}:   true,
 	{MacroOrchestrating, MacroDraining}:      true, // Emergency drain
 	{MacroStabilizing, MacroDraining}:        true,

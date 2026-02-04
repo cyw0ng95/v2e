@@ -93,16 +93,16 @@ func TestValidateMacroTransition(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "Valid: BOOTSTRAPPING to DRAINING (emergency)",
+			from:    MacroBootstrapping,
+			to:      MacroDraining,
+			wantErr: false,
+		},
+		{
 			name:    "Same state transition",
 			from:    MacroOrchestrating,
 			to:      MacroOrchestrating,
 			wantErr: false,
-		},
-		{
-			name:    "Invalid: BOOTSTRAPPING to DRAINING",
-			from:    MacroBootstrapping,
-			to:      MacroDraining,
-			wantErr: true,
 		},
 		{
 			name:    "Invalid: DRAINING to BOOTSTRAPPING",
