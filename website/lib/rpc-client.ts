@@ -1527,50 +1527,54 @@ export class RPCClient {
     if (this.useMock) {
       // Mock data for development
       return {
-        tree: {
-          macro: {
-            id: 'main-orchestrator',
-            state: 'ORCHESTRATING',
-            providers: [
-              {
-                id: 'cve-provider',
-                providerType: 'cve',
-                state: 'RUNNING',
-                processedCount: 245,
-                errorCount: 3,
-                permitsHeld: 5,
-                lastCheckpoint: 'v2e::nvd::cve::CVE-2024-00245',
-                createdAt: new Date(Date.now() - 3600000).toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-              {
-                id: 'cwe-provider',
-                providerType: 'cwe',
-                state: 'PAUSED',
-                processedCount: 128,
-                errorCount: 0,
-                permitsHeld: 0,
-                lastCheckpoint: 'v2e::mitre::cwe::CWE-128',
-                createdAt: new Date(Date.now() - 7200000).toISOString(),
-                updatedAt: new Date(Date.now() - 1800000).toISOString(),
-              },
-              {
-                id: 'capec-provider',
-                providerType: 'capec',
-                state: 'WAITING_QUOTA',
-                processedCount: 89,
-                errorCount: 1,
-                permitsHeld: 2,
-                lastCheckpoint: 'v2e::mitre::capec::CAPEC-89',
-                createdAt: new Date(Date.now() - 5400000).toISOString(),
-                updatedAt: new Date(Date.now() - 300000).toISOString(),
-              },
-            ],
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            updatedAt: new Date().toISOString(),
+        retcode: 0,
+        message: 'Success',
+        payload: {
+          tree: {
+            macro: {
+              id: 'main-orchestrator',
+              state: 'ORCHESTRATING',
+              providers: [
+                {
+                  id: 'cve-provider',
+                  providerType: 'cve',
+                  state: 'RUNNING',
+                  processedCount: 245,
+                  errorCount: 3,
+                  permitsHeld: 5,
+                  lastCheckpoint: 'v2e::nvd::cve::CVE-2024-00245',
+                  createdAt: new Date(Date.now() - 3600000).toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  id: 'cwe-provider',
+                  providerType: 'cwe',
+                  state: 'PAUSED',
+                  processedCount: 128,
+                  errorCount: 0,
+                  permitsHeld: 0,
+                  lastCheckpoint: 'v2e::mitre::cwe::CWE-128',
+                  createdAt: new Date(Date.now() - 7200000).toISOString(),
+                  updatedAt: new Date(Date.now() - 1800000).toISOString(),
+                },
+                {
+                  id: 'capec-provider',
+                  providerType: 'capec',
+                  state: 'WAITING_QUOTA',
+                  processedCount: 89,
+                  errorCount: 1,
+                  permitsHeld: 2,
+                  lastCheckpoint: 'v2e::mitre::capec::CAPEC-89',
+                  createdAt: new Date(Date.now() - 5400000).toISOString(),
+                  updatedAt: new Date(Date.now() - 300000).toISOString(),
+                },
+              ],
+              createdAt: new Date(Date.now() - 86400000).toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            totalProviders: 3,
+            activeProviders: 1,
           },
-          totalProviders: 3,
-          activeProviders: 1,
         },
       };
     }
@@ -1585,12 +1589,16 @@ export class RPCClient {
       // Mock data for development
       const now = new Date().toISOString();
       return {
-        metrics: {
-          p99Latency: 18.5 + Math.random() * 10, // 18.5-28.5ms
-          bufferSaturation: 45 + Math.random() * 20, // 45-65%
-          messageRate: 120 + Math.random() * 30, // 120-150 msgs/sec
-          errorRate: Math.random() * 2, // 0-2 errors/sec
-          timestamp: now,
+        retcode: 0,
+        message: 'Success',
+        payload: {
+          metrics: {
+            p99Latency: 18.5 + Math.random() * 10, // 18.5-28.5ms
+            bufferSaturation: 45 + Math.random() * 20, // 45-65%
+            messageRate: 120 + Math.random() * 30, // 120-150 msgs/sec
+            errorRate: Math.random() * 2, // 0-2 errors/sec
+            timestamp: now,
+          },
         },
       };
     }
@@ -1615,8 +1623,12 @@ export class RPCClient {
         processedAt: new Date(Date.now() - i * 60000).toISOString(),
       }));
       return {
-        checkpoints: mockCheckpoints,
-        count: 500,
+        retcode: 0,
+        message: 'Success',
+        payload: {
+          checkpoints: mockCheckpoints,
+          count: 500,
+        },
       };
     }
     return this.call<
