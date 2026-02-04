@@ -31,7 +31,7 @@ func TestBookmarkService(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := context.Background()
 
-	testutils.RunWithDB(t, testutils.Level2, "CreateBookmark", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "CreateBookmark", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		
 		bookmark, _, err := bookmarkService.CreateBookmark(ctx, "global-item-123", "CVE", "CVE-2021-1234", "Test CVE", "A test CVE for bookmarking")
@@ -52,7 +52,7 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "GetBookmarkByID", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetBookmarkByID", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		
 		// First create a bookmark
@@ -76,7 +76,7 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "GetBookmarksByGlobalItemID", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetBookmarksByGlobalItemID", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		globalItemID := "global-item-789"
 
@@ -102,7 +102,7 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "UpdateBookmark", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "UpdateBookmark", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		
 		// Create a bookmark first
@@ -134,7 +134,7 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "UpdateLearningState", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "UpdateLearningState", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		
 		// Create a bookmark first
@@ -160,7 +160,7 @@ func TestBookmarkService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "GetBookmarksByLearningState", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetBookmarksByLearningState", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		
 		// Create a bookmark with a specific learning state
@@ -196,7 +196,7 @@ func TestNoteService(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := context.Background()
 
-	testutils.RunWithDB(t, testutils.Level2, "AddNote", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "AddNote", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		noteService := NewNoteService(tx)
 		
@@ -220,7 +220,7 @@ func TestNoteService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "GetNotesByBookmarkID", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetNotesByBookmarkID", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		noteService := NewNoteService(tx)
 		
@@ -252,7 +252,7 @@ func TestNoteService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "UpdateNote", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "UpdateNote", db, func(t *testing.T, tx *gorm.DB) {
 		bookmarkService := NewBookmarkService(tx)
 		noteService := NewNoteService(tx)
 		
@@ -300,7 +300,7 @@ func TestCrossReferenceService(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := context.Background()
 
-	testutils.RunWithDB(t, testutils.Level2, "CreateCrossReference", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "CreateCrossReference", db, func(t *testing.T, tx *gorm.DB) {
 		crossRefService := NewCrossReferenceService(tx)
 		
 		description := "Test relationship"
@@ -330,7 +330,7 @@ func TestCrossReferenceService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "GetCrossReferencesBySource", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetCrossReferencesBySource", db, func(t *testing.T, tx *gorm.DB) {
 		crossRefService := NewCrossReferenceService(tx)
 		sourceID := "global-source-get-test"
 
@@ -356,7 +356,7 @@ func TestCrossReferenceService(t *testing.T) {
 		}
 	})
 
-	testutils.RunWithDB(t, testutils.Level2, "GetCrossReferencesByType", db, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "GetCrossReferencesByType", db, func(t *testing.T, tx *gorm.DB) {
 		crossRefService := NewCrossReferenceService(tx)
 		
 		// Create a cross-reference with a specific type

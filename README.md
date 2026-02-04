@@ -639,36 +639,41 @@ For macOS users or when isolation is required, the project includes a containeri
 
 The v2e project uses a hierarchical testing system that organizes tests by complexity and resource requirements. This allows developers to run fast unit tests during development while ensuring comprehensive testing in CI.
 
-#### Test Levels
+#### Test Levels (Cumulative)
 
-Tests are organized into three levels controlled by the `V2E_TEST_LEVEL` environment variable:
+Tests are organized into three levels controlled by the `V2E_TEST_LEVEL` environment variable with **cumulative behavior**:
 
-- **Level 1 (Fundamental)**: Pure logic, mock-based, no external dependencies, minimal database operations
+- **V2E_TEST_LEVEL=1**: Runs only Level 1 tests
+  - Pure logic, mock-based, no external dependencies, minimal database operations
   - Fast execution (milliseconds)
   - Safe for parallel execution
   - Default level if `V2E_TEST_LEVEL` is not set
   
-- **Level 2 (Integration)**: Database (GORM) operations with transaction isolation
+- **V2E_TEST_LEVEL=2**: Runs Level 1 AND Level 2 tests
+  - Includes Level 1 tests
+  - Plus: Database (GORM) operations with transaction isolation
   - Uses automatic transaction rollback for test isolation
   - Tests run in parallel within transactions
   - No persistent side effects
   
-- **Level 3 (Comprehensive)**: External APIs, E2E, and heavy integration tests
+- **V2E_TEST_LEVEL=3**: Runs Level 1, Level 2, AND Level 3 tests (all tests)
+  - Includes Level 1 and Level 2 tests
+  - Plus: External APIs, E2E, and heavy integration tests
   - May require external services
   - Longer execution time
-  - Run in CI for comprehensive validation
+  - Used in CI for comprehensive validation
 
 #### Writing Tests with testutils.Run()
 
-All tests should use the `testutils.Run()` wrapper for automatic parallelization and level filtering:
+All tests use the unified `testutils.Run()` wrapper for automatic parallelization, level filtering, and optional transaction isolation:
 
 ```go
 import "github.com/cyw0ng95/v2e/pkg/testutils"
 
-// Level 1: Pure logic test
+// Level 1: Pure logic test (no database)
 func TestBusinessLogic(t *testing.T) {
-    testutils.Run(t, testutils.Level1, "BasicCalculation", func(t *testing.T) {
-        // Test implementation
+    testutils.Run(t, testutils.Level1, "BasicCalculation", nil, func(t *testing.T, tx *gorm.DB) {
+        // Test implementation (tx will be nil)
         result := Calculate(10, 20)
         if result != 30 {
             t.Errorf("Expected 30, got %d", result)
@@ -678,9 +683,9 @@ func TestBusinessLogic(t *testing.T) {
 
 // Level 2: Database test with automatic transaction isolation
 func TestDatabaseOperation(t *testing.T) {
-    db, _ := setupTestDB()
+    db := setupTestDB(t)
     
-    testutils.RunWithDB(t, testutils.Level2, "InsertRecord", db, func(t *testing.T, tx *gorm.DB) {
+    testutils.Run(t, testutils.Level2, "InsertRecord", db, func(t *testing.T, tx *gorm.DB) {
         // All database operations use tx (transaction)
         // Automatic rollback ensures no side effects
         record := &MyRecord{Name: "test"}
@@ -697,17 +702,17 @@ func TestDatabaseOperation(t *testing.T) {
 # Run Level 1 tests only (default, fastest)
 ./build.sh -t
 
-# Run Level 1 and Level 2 tests
+# Run Level 1 and Level 2 tests (cumulative)
 V2E_TEST_LEVEL=2 ./build.sh -t
 
-# Run all tests (Level 1, 2, and 3)
+# Run all tests - Level 1, 2, and 3 (cumulative)
 V2E_TEST_LEVEL=3 ./build.sh -t
 
 # Run specific test at a specific level
 V2E_TEST_LEVEL=2 go test -v ./pkg/notes/...
 ```
 
-In CI, all three levels are tested in parallel to ensure comprehensive coverage while maintaining fast feedback.
+In CI, V2E_TEST_LEVEL=3 runs all tests in a single job for comprehensive coverage.
 
 - **Unit Tests**: Standard Go unit tests with coverage reporting
   ```bash

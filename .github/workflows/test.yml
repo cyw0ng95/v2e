@@ -13,9 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    strategy:
-      matrix:
-        test_level: [1, 2, 3]
     
     steps:
       - name: Checkout code
@@ -40,21 +37,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-build-level${{ matrix.test_level }}-${{ hashFiles('**/*.go', 'go.mod', 'go.sum') }}
+          key: ${{ runner.os }}-build-${{ hashFiles('**/*.go', 'go.mod', 'go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-build-level${{ matrix.test_level }}-
             ${{ runner.os }}-build-
       
-      - name: Run unit tests at Level ${{ matrix.test_level }}
+      - name: Run all unit tests (Level 3 - includes all test levels)
         env:
-          V2E_TEST_LEVEL: ${{ matrix.test_level }}
+          V2E_TEST_LEVEL: 3
         run: ./build.sh -t -v
       
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-coverage-level${{ matrix.test_level }}
+          name: unit-test-coverage
           path: .build/coverage.html
           if-no-files-found: ignore
 
