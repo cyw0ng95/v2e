@@ -1468,6 +1468,39 @@ export class RPCClient {
   async getSSGProfileRules(profileId: string, limit?: number, offset?: number): Promise<RPCResponse<{ rules: any[]; count: number }>> {
     return this.call<{ profileId: string; limit?: number; offset?: number }, { rules: any[]; count: number }>('RPCSSGGetProfileRules', { profileId, limit, offset }, 'local');
   }
+
+  // SSG Data Stream Methods
+  async listSSGDataStreams(product?: string, limit?: number, offset?: number): Promise<RPCResponse<{ dataStreams: any[]; count: number }>> {
+    return this.call<{ product?: string; limit?: number; offset?: number }, { dataStreams: any[]; count: number }>('RPCSSGListDataStreams', { product, limit, offset }, 'local');
+  }
+
+  async getSSGDataStream(dataStreamId: string): Promise<RPCResponse<{ dataStream: any; benchmark?: any }>> {
+    return this.call<{ dataStreamId: string }, { dataStream: any; benchmark?: any }>('RPCSSGGetDataStream', { dataStreamId }, 'local');
+  }
+
+  async listDSProfiles(dataStreamId: string, limit?: number, offset?: number): Promise<RPCResponse<{ profiles: any[]; count: number }>> {
+    return this.call<{ dataStreamId: string; limit?: number; offset?: number }, { profiles: any[]; count: number }>('RPCSSGListDSProfiles', { dataStreamId, limit, offset }, 'local');
+  }
+
+  async getDSProfile(profileId: string): Promise<RPCResponse<{ profile: any }>> {
+    return this.call<{ profileId: string }, { profile: any }>('RPCSSGGetDSProfile', { profileId }, 'local');
+  }
+
+  async getDSProfileRules(profileId: string, limit?: number, offset?: number): Promise<RPCResponse<{ rules: any[]; count: number }>> {
+    return this.call<{ profileId: string; limit?: number; offset?: number }, { rules: any[]; count: number }>('RPCSSGGetDSProfileRules', { profileId, limit, offset }, 'local');
+  }
+
+  async listDSGroups(dataStreamId: string, parentXccdfGroupId?: string, limit?: number, offset?: number): Promise<RPCResponse<{ groups: any[]; count: number }>> {
+    return this.call<{ dataStreamId: string; parentXccdfGroupId?: string; limit?: number; offset?: number }, { groups: any[]; count: number }>('RPCSSGListDSGroups', { dataStreamId, parentXccdfGroupId, limit, offset }, 'local');
+  }
+
+  async listDSRules(dataStreamId: string, groupXccdfId?: string, severity?: string, limit?: number, offset?: number): Promise<RPCResponse<{ rules: any[]; total: number }>> {
+    return this.call<{ dataStreamId: string; groupXccdfId?: string; severity?: string; limit?: number; offset?: number }, { rules: any[]; total: number }>('RPCSSGListDSRules', { dataStreamId, groupXccdfId, severity, limit, offset }, 'local');
+  }
+
+  async getDSRule(ruleId: string): Promise<RPCResponse<{ rule: any; references: any[]; identifiers: any[] }>> {
+    return this.call<{ ruleId: string }, { rule: any; references: any[]; identifiers: any[] }>('RPCSSGGetDSRule', { ruleId }, 'local');
+  }
 }
 
 // ============================================================================

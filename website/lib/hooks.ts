@@ -1766,3 +1766,306 @@ export function useSSGProfileRules(profileId: string, limit?: number, offset?: n
 
   return { data, isLoading, error };
 }
+
+// ============================================================================
+// SSG Data Stream Hooks
+// ============================================================================
+
+export function useSSGDataStreams(product?: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listSSGDataStreams(product, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG data streams');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG data streams', err, { product, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [product, limit, offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useSSGDataStream(dataStreamId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!dataStreamId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getSSGDataStream(dataStreamId);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch SSG data stream');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching SSG data stream', err, { dataStreamId });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [dataStreamId]);
+
+  return { data, isLoading, error };
+}
+
+export function useDSProfiles(dataStreamId: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!dataStreamId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listDSProfiles(dataStreamId, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch data stream profiles');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching data stream profiles', err, { dataStreamId, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [dataStreamId, limit, offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useDSProfile(profileId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!profileId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getDSProfile(profileId);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch data stream profile');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching data stream profile', err, { profileId });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [profileId]);
+
+  return { data, isLoading, error };
+}
+
+export function useDSProfileRules(profileId: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!profileId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getDSProfileRules(profileId, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch data stream profile rules');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching data stream profile rules', err, { profileId, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [profileId, limit, offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useDSGroups(dataStreamId: string, parentXccdfGroupId?: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!dataStreamId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listDSGroups(dataStreamId, parentXccdfGroupId, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch data stream groups');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching data stream groups', err, { dataStreamId, parentXccdfGroupId, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [dataStreamId, parentXccdfGroupId, limit, offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useDSRules(dataStreamId: string, groupXccdfId?: string, severity?: string, limit?: number, offset?: number) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!dataStreamId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.listDSRules(dataStreamId, groupXccdfId, severity, limit, offset);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch data stream rules');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching data stream rules', err, { dataStreamId, groupXccdfId, severity, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [dataStreamId, groupXccdfId, severity, limit, offset]);
+
+  return { data, isLoading, error };
+}
+
+export function useDSRule(ruleId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!ruleId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getDSRule(ruleId);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch data stream rule');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching data stream rule', err, { ruleId });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [ruleId]);
+
+  return { data, isLoading, error };
+}

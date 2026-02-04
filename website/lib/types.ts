@@ -1370,6 +1370,199 @@ export interface SSGGetProfileRulesResponse {
   count: number;
 }
 
+// SSG Data Stream Types
+
+export interface SSGDataStream {
+  id: string;
+  product: string;
+  scapVersion: string;
+  generated: string;
+  xccdfBenchmarkId: string;
+  ovalChecksId: string;
+  ocilQuestionnairesId: string;
+  cpeDictId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGBenchmark {
+  id: string;
+  dataStreamId: string;
+  xccdfId: string;
+  title: string;
+  version: string;
+  description: string;
+  totalProfiles: number;
+  totalGroups: number;
+  totalRules: number;
+  maxGroupLevel: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSProfile {
+  id: string;
+  dataStreamId: string;
+  xccdfProfileId: string;
+  title: string;
+  description: string;
+  totalRules: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSProfileRule {
+  id: number;
+  profileId: string;
+  ruleShortId: string;
+  selected: boolean;
+  createdAt: string;
+}
+
+export interface SSGDSGroup {
+  id: string;
+  dataStreamId: string;
+  xccdfGroupId: string;
+  parentXccdfGroupId: string;
+  title: string;
+  description: string;
+  level: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSRule {
+  id: string;
+  dataStreamId: string;
+  xccdfRuleId: string;
+  groupXccdfId: string;
+  shortId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  severity: string;
+  warning: string;
+  createdAt: string;
+  updatedAt: string;
+  references?: SSGDSRuleReference[];
+  identifiers?: SSGDSRuleIdentifier[];
+}
+
+export interface SSGDSRuleReference {
+  id: number;
+  ruleId: string;
+  href: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface SSGDSRuleIdentifier {
+  id: number;
+  ruleId: string;
+  system: string;
+  identifier: string;
+  createdAt: string;
+}
+
+// SSG Data Stream RPC Types
+
+export interface SSGListDataStreamsRequest {
+  product?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDataStreamsResponse {
+  dataStreams: SSGDataStream[];
+  count: number;
+}
+
+export interface SSGGetDataStreamRequest {
+  dataStreamId: string;
+}
+
+export interface SSGGetDataStreamResponse {
+  dataStream: SSGDataStream;
+  benchmark?: SSGBenchmark;
+}
+
+export interface SSGListDSProfilesRequest {
+  dataStreamId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSProfilesResponse {
+  profiles: SSGDSProfile[];
+  count: number;
+}
+
+export interface SSGGetDSProfileRequest {
+  profileId: string;
+}
+
+export interface SSGGetDSProfileResponse {
+  profile: SSGDSProfile;
+}
+
+export interface SSGGetDSProfileRulesRequest {
+  profileId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGGetDSProfileRulesResponse {
+  rules: SSGDSProfileRule[];
+  count: number;
+}
+
+export interface SSGListDSGroupsRequest {
+  dataStreamId: string;
+  parentXccdfGroupId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSGroupsResponse {
+  groups: SSGDSGroup[];
+  count: number;
+}
+
+export interface SSGListDSRulesRequest {
+  dataStreamId: string;
+  groupXccdfId?: string;
+  severity?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSRulesResponse {
+  rules: SSGDSRule[];
+  total: number;
+}
+
+export interface SSGGetDSRuleRequest {
+  ruleId: string;
+}
+
+export interface SSGGetDSRuleResponse {
+  rule: SSGDSRule;
+  references: SSGDSRuleReference[];
+  identifiers: SSGDSRuleIdentifier[];
+}
+
+export interface SSGImportDataStreamRequest {
+  path: string;
+}
+
+export interface SSGImportDataStreamResponse {
+  success: boolean;
+  dataStreamId: string;
+  profileCount: number;
+  groupCount: number;
+  ruleCount: number;
+}
+
 // SSG Import Job RPC Types
 
 export interface SSGStartImportJobRequest {
@@ -1414,6 +1607,9 @@ export interface SSGGetImportStatusResponse {
     totalManifests: number;
     processedManifests: number;
     failedManifests: number;
+    totalDataStreams: number;
+    processedDataStreams: number;
+    failedDataStreams: number;
     currentFile: string;
     currentPhase?: string;
   };
