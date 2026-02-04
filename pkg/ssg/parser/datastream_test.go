@@ -509,3 +509,57 @@ func truncate(s string, maxLen int) string {
 	}
 	return s[:maxLen] + "..."
 }
+
+// ============================================================================
+// Benchmark Tests
+// ============================================================================
+
+// BenchmarkParseDataStreamFile_RealFile benchmarks parsing a real SSG data stream file.
+// This measures the performance of the full XML parsing pipeline including DOM parsing,
+// profile extraction, group hierarchy traversal, and rule parsing.
+func BenchmarkParseDataStreamFile_RealFile(b *testing.B) {
+	// Path to real SSG data stream file in submodule
+	dsPath := filepath.Join("..", "..", "..", "assets", "ssg-static", "ssg-al2023-ds.xml")
+
+	// Check if file exists (skip benchmark if submodule not initialized)
+	if _, err := os.Stat(dsPath); os.IsNotExist(err) {
+		b.Skip("Skipping benchmark: SSG submodule not initialized. Run: git submodule update --init --recursive")
+	}
+
+	// Read file once to avoid I/O overhead in benchmark
+	fileData, err := os.ReadFile(dsPath)
+	if err != nil {
+		b.Fatalf("Failed to read data stream file: %v", err)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		reader := strings.NewReader(string(fileData))
+		_, _, _, _, _, err := ParseDataStreamFile(reader, "ssg-al2023-ds.xml")
+		if err != nil {
+			b.Fatalf("ParseDataStreamFile failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkXMLString_String benchmarks the XMLString.String() method.
+// This method uses regex to strip HTML tags and is called frequently during parsing.
+// Optimizing this function (e.g., via regex pooling) can significantly improve performance.
+func BenchmarkXMLString_String(b *testing.B) {
+	// Create a sample XMLString with mixed HTML content (realistic scenario)
+	testXML := XMLString{
+		Content: `This is a test description with <html:br/> line breaks and <html:code>inline code</html:code>.
+		It also contains <html:a href="http://example.com">links</html:a> and other <html:strong>formatting</html:strong>.
+		Multiple paragraphs are separated by <html:br /> tags.
+		This simulates realistic SCAP data stream content.`,
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_ = testXML.String()
+	}
+}
