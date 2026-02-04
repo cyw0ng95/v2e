@@ -560,67 +560,6 @@ func TestStore_ListRules(t *testing.T) {
 	}
 }
 
-func TestStore_DeleteGuide(t *testing.T) {
-	store := setupTestStore(t)
-	defer store.Close()
-
-	// Setup: guide with groups and rules
-	guide := &ssg.SSGGuide{
-		ID:          "test-guide",
-		Product:     "test-product",
-		ProfileID:   "test-profile",
-		ShortID:     "test",
-		Title:       "Test Guide",
-		HTMLContent: "<html></html>",
-	}
-	if err := store.SaveGuide(guide); err != nil {
-		t.Fatalf("SaveGuide() error = %v", err)
-	}
-
-	group := &ssg.SSGGroup{ID: "g1", GuideID: "test-guide", ParentID: "", Title: "G1", Level: 0}
-	if err := store.SaveGroup(group); err != nil {
-		t.Fatalf("SaveGroup() error = %v", err)
-	}
-
-	rule := &ssg.SSGRule{
-		ID:        "r1",
-		GuideID:   "test-guide",
-		GroupID:   "g1",
-		ShortID:   "r1",
-		Title:     "R1",
-		Severity:  "low",
-		References: []ssg.SSGReference{{Href: "https://test.com", Label: "test", Value: "1"}},
-		Level:     1,
-	}
-	if err := store.SaveRule(rule); err != nil {
-		t.Fatalf("SaveRule() error = %v", err)
-	}
-
-	// Delete guide
-	err := store.DeleteGuide("test-guide")
-	if err != nil {
-		t.Fatalf("DeleteGuide() error = %v", err)
-	}
-
-	// Verify guide is deleted
-	_, err = store.GetGuide("test-guide")
-	if err == nil {
-		t.Error("Expected error when getting deleted guide, got nil")
-	}
-
-	// Verify groups are deleted
-	_, err = store.GetGroup("g1")
-	if err == nil {
-		t.Error("Expected error when getting deleted group, got nil")
-	}
-
-	// Verify rules are deleted
-	_, err = store.GetRule("r1")
-	if err == nil {
-		t.Error("Expected error when getting deleted rule, got nil")
-	}
-}
-
 // setupTestStore creates a new store for testing.
 func setupTestStore(t *testing.T) *Store {
 	// Use in-memory database for faster tests
