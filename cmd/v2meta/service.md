@@ -425,3 +425,136 @@ Provides observability into the Unified ETL Engine's hierarchical FSM structure 
 - Checkpoints are stored every 100 items for resilience
 - Provider states persist across service restarts
 - Macro FSM coordinates all provider FSMs
+
+---
+
+## UEE Implementation Notes (Phase 3-5 - 2026-02)
+
+### Hierarchical Finite State Machine (HFSM)
+The meta service implements a two-level FSM hierarchy:
+
+**Macro FSM (Orchestrator)**:
+- States: `BOOTSTRAPPING` → `ORCHESTRATING` → `STABILIZING` → `DRAINING`
+- Manages high-level coordination
+- Aggregates events from all providers
+- Persists state to BoltDB
+
+**Provider FSM (Worker)**:
+- States: `IDLE` → `ACQUIRING` → `RUNNING` → `PAUSED`/`WAITING_QUOTA`/`WAITING_BACKOFF` → `TERMINATED`
+- One instance per data source (CVE, CWE, CAPEC, ATT&CK)
+- Implements permit-aware execution
+- Saves URN checkpoints every 100 items
+
+**State Transitions**:
+```
+Provider FSM Lifecycle:
+  IDLE
+    ↓ Start()
+  ACQUIRING
+    ↓ OnQuotaGranted(n)
+  RUNNING
+    ├─ OnQuotaRevoked(n) → WAITING_QUOTA → ACQUIRING
+    ├─ OnRateLimited()   → WAITING_BACKOFF → ACQUIRING
+    ├─ Pause()           → PAUSED → ACQUIRING
+    └─ Stop()            → TERMINATED
+
+Event Bubbling:
+  Provider emits event → MacroFSM processes → State transition
+```
+
+### URN-Based Checkpointing
+All providers use atomic URN identifiers for checkpoints:
+- **CVE**: `v2e::nvd::cve::CVE-2024-12233`
+- **CWE**: `v2e::mitre::cwe::CWE-79`
+- **CAPEC**: `v2e::mitre::capec::CAPEC-66`
+- **ATT&CK**: `v2e::mitre::attack::T1078`
+
+**Usage Example**:
+```go
+// CVE provider processing
+for _, cveID := range batch {
+    urn := urn.MustParse(fmt.Sprintf("v2e::nvd::cve::%s", cveID))
+    
+    // Process CVE...
+    
+    // Save checkpoint
+    checkpoint := &Checkpoint{
+        URN: urn.Key(),
+        ProviderID: "cve-provider",
+        ProcessedAt: time.Now(),
+        Success: true,
+    }
+    storage.SaveCheckpoint(checkpoint)
+}
+```
+
+### Auto-Recovery on Restart
+The RecoveryManager restores FSM states on service restart:
+
+**Recovery Strategy**:
+- `RUNNING` → Resume via PermitExecutor (request permits)
+- `PAUSED` → Keep paused (manual resume needed)
+- `WAITING_QUOTA` → Transition to ACQUIRING (retry)
+- `WAITING_BACKOFF` → Maintain state (auto-retry timer)
+- `TERMINATED` → Skip (don't recover)
+- `IDLE` → Keep idle
+
+**Usage Example**:
+```go
+// On meta service startup
+recoveryMgr := recovery.NewManager(storage, executor, logger)
+err := recoveryMgr.RecoverState()
+// Loads macro + provider states from BoltDB
+// Resumes running providers automatically
+```
+
+### Provider Implementation Pattern
+All providers extend `BaseProviderFSM`:
+
+```go
+type CVEProvider struct {
+    *fsm.BaseProviderFSM
+    rpcClient *rpc.Client
+    batchSize int
+}
+
+func (p *CVEProvider) execute(ctx context.Context) error {
+    // Fetch CVE list
+    cveList := p.fetchCVEList()
+    
+    // Process in batches
+    for i, batch := range batches(cveList, p.batchSize) {
+        // Check if paused/stopped
+        if ctx.Err() != nil {
+            return ctx.Err()
+        }
+        
+        // Process each CVE in batch
+        for _, cveID := range batch {
+            urn := urn.MustParse("v2e::nvd::cve::" + cveID)
+            p.SaveCheckpoint(urn.Key(), time.Now())
+        }
+        
+        // Report progress
+        p.EmitEvent(fsm.Event{
+            Type: fsm.PROVIDER_PROGRESS,
+            Data: map[string]interface{}{
+                "batch": i + 1,
+                "total": len(batches),
+            },
+        })
+    }
+    return nil
+}
+```
+
+### Frontend Integration
+The ETL tree and kernel metrics are exposed via:
+- `RPCGetEtlTree` - Real-time FSM hierarchy (polled every 5s)
+- `RPCGetKernelMetrics` - Performance metrics (polled every 2s)
+- `RPCGetProviderCheckpoints` - Checkpoint history
+
+Mock data available in development mode (`NEXT_PUBLIC_USE_MOCK_DATA=true`).
+
+## Benchmarks
+_FSM state transition benchmarks available in pkg/meta/fsm/*_test.go_
