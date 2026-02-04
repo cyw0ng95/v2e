@@ -4,6 +4,9 @@ import {
   useSSGTables,
   useSSGManifests,
   useSSGProfiles,
+  useSSGDataStreams,
+  useSSGDataStream,
+  useDSProfiles,
   useSSGImportStatus,
   useStartSSGImportJob,
   useStopSSGImportJob,
@@ -196,11 +199,12 @@ function DetailPanel({ selectedNode, onClose }: { selectedNode: TreeNode | null;
 }
 
 export function SSGViews() {
-  const [activeTab, setActiveTab] = useState<'guides' | 'tables' | 'manifests'>('guides');
+  const [activeTab, setActiveTab] = useState<'guides' | 'tables' | 'manifests' | 'datastreams'>('guides');
   const [selectedGuide, setSelectedGuide] = useState<any | null>(null);
   const [selectedTable, setSelectedTable] = useState<any | null>(null);
   const [selectedManifest, setSelectedManifest] = useState<any | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [selectedDataStream, setSelectedDataStream] = useState<any | null>(null);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 
   // Guide hooks
@@ -212,6 +216,11 @@ export function SSGViews() {
   // Manifest hooks
   const { data: manifestsData, isLoading: manifestsLoading, error: manifestsError } = useSSGManifests();
   const { data: profilesData, isLoading: profilesLoading } = useSSGProfiles();
+
+  // Data stream hooks
+  const { data: dataStreamsData, isLoading: dataStreamsLoading, error: dataStreamsError, refetch: refetchDataStreams } = useSSGDataStreams();
+  const { data: dsDetailData, isLoading: dsDetailLoading } = useSSGDataStream(selectedDataStream?.id || '');
+  const { data: dsProfilesData, isLoading: dsProfilesLoading } = useDSProfiles(selectedDataStream?.id || '');
 
   // Job control hooks
   const { data: jobStatus, isLoading: jobLoading, refetch: refetchJobStatus } = useSSGImportStatus();
@@ -227,14 +236,16 @@ export function SSGViews() {
         refetchJobStatus();
         refetchGuides();
         refetchTables();
+        refetchDataStreams();
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [jobStatus?.state, refetchJobStatus, refetchGuides, refetchTables]);
+  }, [jobStatus?.state, refetchJobStatus, refetchGuides, refetchTables, refetchDataStreams]);
 
-  // Extract guides and tables from response
+  // Extract guides, tables, and data streams from response
   const guides: any[] = (guidesData && Array.isArray(guidesData.guides)) ? guidesData.guides : [];
   const tables: any[] = (tablesData && Array.isArray(tablesData.tables)) ? tablesData.tables : [];
+  const dataStreams: any[] = (dataStreamsData && Array.isArray(dataStreamsData.dataStreams)) ? dataStreamsData.dataStreams : [];
 
   const jobProgress = jobStatus?.progress;
 
@@ -296,6 +307,7 @@ export function SSGViews() {
                 onClick={() => {
                   refetchGuides();
                   refetchTables();
+                  refetchDataStreams();
                   refetchJobStatus();
                 }}
               >
@@ -348,14 +360,20 @@ export function SSGViews() {
                         {jobProgress.processedManifests} / {jobProgress.totalManifests}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Data Streams:</span>
+                      <span>
+                        {jobProgress.processedDataStreams} / {jobProgress.totalDataStreams}
+                      </span>
+                    </div>
                     {jobProgress.currentFile && (
                       <div className="text-muted-foreground truncate" title={jobProgress.currentFile}>
                         {jobProgress.currentFile}
                       </div>
                     )}
-                    {(jobProgress.failedTables > 0 || jobProgress.failedGuides > 0 || jobProgress.failedManifests > 0) && (
+                    {(jobProgress.failedTables > 0 || jobProgress.failedGuides > 0 || jobProgress.failedManifests > 0 || jobProgress.failedDataStreams > 0) && (
                       <div className="text-destructive">
-                        {jobProgress.failedTables + jobProgress.failedGuides + jobProgress.failedManifests} failed
+                        {jobProgress.failedTables + jobProgress.failedGuides + jobProgress.failedManifests + jobProgress.failedDataStreams} failed
                       </div>
                     )}
                   </>
@@ -364,12 +382,13 @@ export function SSGViews() {
             )}
           </div>
 
-          {/* Tabs for Guides, Tables, and Manifests */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'guides' | 'tables' | 'manifests')} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid w-full grid-cols-3">
+          {/* Tabs for Guides, Tables, Manifests, and Data Streams */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'guides' | 'tables' | 'manifests' | 'datastreams')} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="guides">Guides</TabsTrigger>
               <TabsTrigger value="tables">Tables</TabsTrigger>
               <TabsTrigger value="manifests">Manifests</TabsTrigger>
+              <TabsTrigger value="datastreams">Data Streams</TabsTrigger>
             </TabsList>
             
             <TabsContent value="guides" className="flex-1 overflow-auto mt-4">
@@ -497,11 +516,52 @@ export function SSGViews() {
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="datastreams" className="flex-1 overflow-auto mt-4">
+              {dataStreamsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : dataStreamsError ? (
+                <div className="text-sm text-destructive">Error loading data streams: {dataStreamsError.message}</div>
+              ) : !dataStreamsData || dataStreams.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No data streams available.<br />
+                  Start import job to fetch data streams.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {dataStreams.map((ds: any) => (
+                    <div
+                      key={ds.id}
+                      onClick={() => setSelectedDataStream(ds)}
+                      className={`p-3 rounded-md cursor-pointer transition-colors ${
+                        selectedDataStream?.id === ds.id
+                          ? 'bg-accent text-accent-foreground'
+                          : 'hover:bg-accent/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-cyan-500" />
+                        <span className="text-sm font-medium">
+                          {ds.product}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground ml-6 mt-1">
+                        <span>SCAP {ds.scapVersion}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
-      {/* Right Panel: Tree View or Table View or Manifest View or Detail */}
+      {/* Right Panel: Tree View or Table View or Manifest View or Data Stream View or Detail */}
       <Card className="flex-1 flex flex-col">
         {selectedNode ? (
           <>
@@ -524,6 +584,13 @@ export function SSGViews() {
             manifest={selectedManifest}
             onBack={() => setSelectedManifest(null)}
           />
+        ) : selectedDataStream ? (
+          <SelectedDataStreamView
+            dataStream={selectedDataStream}
+            dsDetailData={dsDetailData}
+            dsProfilesData={dsProfilesData}
+            onBack={() => setSelectedDataStream(null)}
+          />
         ) : selectedGuide ? (
           <SelectedGuideTree
             guideId={selectedGuide.id}
@@ -532,7 +599,7 @@ export function SSGViews() {
           />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            Select a guide, table, or manifest to view details
+            Select a guide, table, manifest, or data stream to view details
           </div>
         )}
       </Card>
@@ -693,6 +760,106 @@ function SelectedManifestView({
             </div>
           </div>
         )}
+      </CardContent>
+    </>
+  );
+}
+
+// Component for displaying selected data stream view
+function SelectedDataStreamView({
+  dataStream,
+  dsDetailData,
+  dsProfilesData,
+  onBack,
+}: {
+  dataStream: any;
+  dsDetailData: any;
+  dsProfilesData: any;
+  onBack: () => void;
+}) {
+  const benchmark = dsDetailData?.benchmark;
+  const profiles: any[] = (dsProfilesData && Array.isArray(dsProfilesData.profiles)) ? dsProfilesData.profiles : [];
+
+  return (
+    <>
+      <CardHeader className="pb-2">
+        <Button variant="ghost" size="sm" className="w-fit" onClick={onBack}>
+          ← Back to list
+        </Button>
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="h-5 w-5 text-cyan-500" />
+          Data Stream: {dataStream.product}
+        </CardTitle>
+        <CardDescription>
+          SCAP {dataStream.scapVersion}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col overflow-auto">
+        <div className="space-y-4">
+          {/* Benchmark Info */}
+          {benchmark && (
+            <div className="border rounded-md p-3 space-y-2">
+              <div className="text-sm font-medium">XCCDF Benchmark</div>
+              <div className="text-sm">{benchmark.title}</div>
+              <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+                <div>
+                  <span className="font-medium">Version:</span> {benchmark.version}
+                </div>
+                <div>
+                  <span className="font-medium">Profiles:</span> {benchmark.totalProfiles}
+                </div>
+                <div>
+                  <span className="font-medium">Groups:</span> {benchmark.totalGroups}
+                </div>
+                <div>
+                  <span className="font-medium">Rules:</span> {benchmark.totalRules}
+                </div>
+                <div>
+                  <span className="font-medium">Max Level:</span> {benchmark.maxGroupLevel}
+                </div>
+              </div>
+              {benchmark.description && (
+                <div className="text-xs text-muted-foreground mt-2">
+                  {benchmark.description}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Profiles */}
+          {profiles.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Profiles ({profiles.length})</div>
+              <div className="space-y-2">
+                {profiles.map((profile: any) => (
+                  <div
+                    key={profile.id}
+                    className="p-3 border rounded-md space-y-2 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {profile.xccdfProfileId}
+                        </Badge>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {profile.totalRules} rules
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-medium">
+                      {profile.title}
+                    </div>
+                    {profile.description && (
+                      <div className="text-xs text-muted-foreground">
+                        {profile.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
     </>
   );
