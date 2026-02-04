@@ -1105,6 +1105,50 @@ export interface SSGRule {
   updatedAt: string;
 }
 
+export interface SSGTable {
+  id: string;
+  product: string;
+  tableType: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGTableEntry {
+  id: number;
+  tableId: string;
+  mapping: string;
+  ruleTitle: string;
+  description: string;
+  rationale: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGManifest {
+  id: string;
+  product: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGProfile {
+  id: string;
+  manifestId: string;
+  profileId: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGProfileRule {
+  id: number;
+  profileId: string;
+  ruleShortId: string;
+  createdAt: string;
+}
+
 export interface SSGTree {
   guide: SSGGuide;
   groups: SSGGroup[];
@@ -1224,6 +1268,301 @@ export interface SSGDeleteGuideResponse {
   id: string;
 }
 
+// SSG Table RPC Types
+
+export interface SSGListTablesRequest {
+  product?: string;
+  tableType?: string;
+}
+
+export interface SSGListTablesResponse {
+  tables: SSGTable[];
+  count: number;
+}
+
+export interface SSGGetTableRequest {
+  id: string;
+}
+
+export interface SSGGetTableResponse {
+  table: SSGTable;
+}
+
+export interface SSGGetTableEntriesRequest {
+  tableId: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface SSGGetTableEntriesResponse {
+  entries: SSGTableEntry[];
+  total: number;
+}
+
+export interface SSGImportTableRequest {
+  path: string;
+}
+
+export interface SSGImportTableResponse {
+  success: boolean;
+  tableId: string;
+  entryCount: number;
+}
+
+export interface SSGDeleteTableRequest {
+  id: string;
+}
+
+export interface SSGDeleteTableResponse {
+  success: boolean;
+  id: string;
+}
+
+// SSG Manifest RPC Types
+
+export interface SSGListManifestsRequest {
+  product?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListManifestsResponse {
+  manifests: SSGManifest[];
+  count: number;
+}
+
+export interface SSGGetManifestRequest {
+  manifestId: string;
+}
+
+export interface SSGGetManifestResponse {
+  manifest: SSGManifest;
+}
+
+export interface SSGListProfilesRequest {
+  product?: string;
+  profileId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListProfilesResponse {
+  profiles: SSGProfile[];
+  count: number;
+}
+
+export interface SSGGetProfileRequest {
+  profileId: string;
+}
+
+export interface SSGGetProfileResponse {
+  profile: SSGProfile;
+}
+
+export interface SSGGetProfileRulesRequest {
+  profileId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGGetProfileRulesResponse {
+  rules: SSGProfileRule[];
+  count: number;
+}
+
+// SSG Data Stream Types
+
+export interface SSGDataStream {
+  id: string;
+  product: string;
+  scapVersion: string;
+  generated: string;
+  xccdfBenchmarkId: string;
+  ovalChecksId: string;
+  ocilQuestionnairesId: string;
+  cpeDictId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGBenchmark {
+  id: string;
+  dataStreamId: string;
+  xccdfId: string;
+  title: string;
+  version: string;
+  description: string;
+  totalProfiles: number;
+  totalGroups: number;
+  totalRules: number;
+  maxGroupLevel: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSProfile {
+  id: string;
+  dataStreamId: string;
+  xccdfProfileId: string;
+  title: string;
+  description: string;
+  totalRules: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSProfileRule {
+  id: number;
+  profileId: string;
+  ruleShortId: string;
+  selected: boolean;
+  createdAt: string;
+}
+
+export interface SSGDSGroup {
+  id: string;
+  dataStreamId: string;
+  xccdfGroupId: string;
+  parentXccdfGroupId: string;
+  title: string;
+  description: string;
+  level: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSRule {
+  id: string;
+  dataStreamId: string;
+  xccdfRuleId: string;
+  groupXccdfId: string;
+  shortId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  severity: string;
+  warning: string;
+  createdAt: string;
+  updatedAt: string;
+  references?: SSGDSRuleReference[];
+  identifiers?: SSGDSRuleIdentifier[];
+}
+
+export interface SSGDSRuleReference {
+  id: number;
+  ruleId: string;
+  href: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface SSGDSRuleIdentifier {
+  id: number;
+  ruleId: string;
+  system: string;
+  identifier: string;
+  createdAt: string;
+}
+
+// SSG Data Stream RPC Types
+
+export interface SSGListDataStreamsRequest {
+  product?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDataStreamsResponse {
+  dataStreams: SSGDataStream[];
+  count: number;
+}
+
+export interface SSGGetDataStreamRequest {
+  dataStreamId: string;
+}
+
+export interface SSGGetDataStreamResponse {
+  dataStream: SSGDataStream;
+  benchmark?: SSGBenchmark;
+}
+
+export interface SSGListDSProfilesRequest {
+  dataStreamId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSProfilesResponse {
+  profiles: SSGDSProfile[];
+  count: number;
+}
+
+export interface SSGGetDSProfileRequest {
+  profileId: string;
+}
+
+export interface SSGGetDSProfileResponse {
+  profile: SSGDSProfile;
+}
+
+export interface SSGGetDSProfileRulesRequest {
+  profileId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGGetDSProfileRulesResponse {
+  rules: SSGDSProfileRule[];
+  count: number;
+}
+
+export interface SSGListDSGroupsRequest {
+  dataStreamId: string;
+  parentXccdfGroupId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSGroupsResponse {
+  groups: SSGDSGroup[];
+  count: number;
+}
+
+export interface SSGListDSRulesRequest {
+  dataStreamId: string;
+  groupXccdfId?: string;
+  severity?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSRulesResponse {
+  rules: SSGDSRule[];
+  total: number;
+}
+
+export interface SSGGetDSRuleRequest {
+  ruleId: string;
+}
+
+export interface SSGGetDSRuleResponse {
+  rule: SSGDSRule;
+  references: SSGDSRuleReference[];
+  identifiers: SSGDSRuleIdentifier[];
+}
+
+export interface SSGImportDataStreamRequest {
+  path: string;
+}
+
+export interface SSGImportDataStreamResponse {
+  success: boolean;
+  dataStreamId: string;
+  profileCount: number;
+  groupCount: number;
+  ruleCount: number;
+}
+
 // SSG Import Job RPC Types
 
 export interface SSGStartImportJobRequest {
@@ -1262,7 +1601,17 @@ export interface SSGGetImportStatusResponse {
     totalGuides: number;
     processedGuides: number;
     failedGuides: number;
+    totalTables: number;
+    processedTables: number;
+    failedTables: number;
+    totalManifests: number;
+    processedManifests: number;
+    failedManifests: number;
+    totalDataStreams: number;
+    processedDataStreams: number;
+    failedDataStreams: number;
     currentFile: string;
+    currentPhase?: string;
   };
   metadata?: Record<string, string>;
 }

@@ -142,9 +142,70 @@ func (c *GitClient) ListGuideFiles() ([]string, error) {
 	return guideFiles, nil
 }
 
+// ListTableFiles returns a list of all table HTML files in the repository.
+func (c *GitClient) ListTableFiles() ([]string, error) {
+	tablesDir := filepath.Join(c.repoPath, "tables")
+
+	entries, err := os.ReadDir(tablesDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tables directory: %w", err)
+	}
+
+	var tableFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Match table-*.html pattern
+		if matchTableFilePattern(name) {
+			tableFiles = append(tableFiles, name)
+		}
+	}
+
+	return tableFiles, nil
+}
+
+// ListManifestFiles returns a list of all manifest JSON files in the repository.
+func (c *GitClient) ListManifestFiles() ([]string, error) {
+	manifestsDir := filepath.Join(c.repoPath, "manifests")
+
+	entries, err := os.ReadDir(manifestsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifests directory: %w", err)
+	}
+
+	var manifestFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Match manifest-*.json pattern
+		if matchManifestFilePattern(name) {
+			manifestFiles = append(manifestFiles, name)
+		}
+	}
+
+	return manifestFiles, nil
+}
+
 // GetFilePath returns the absolute path to a file in the repository.
 // Guide files are located in the "guides" subdirectory.
+// Table files are located in the "tables" subdirectory.
+// Manifest files are located in the "manifests" subdirectory.
+// Data stream files are located in the root directory.
 func (c *GitClient) GetFilePath(filename string) string {
+	// Determine subdirectory based on filename pattern
+	if matchTableFilePattern(filename) {
+		return filepath.Join(c.repoPath, "tables", filename)
+	}
+	if matchManifestFilePattern(filename) {
+		return filepath.Join(c.repoPath, "manifests", filename)
+	}
+	if matchDataStreamFilePattern(filename) {
+		return filepath.Join(c.repoPath, filename)
+	}
 	return filepath.Join(c.repoPath, "guides", filename)
 }
 
@@ -161,6 +222,69 @@ func matchGuideFilePattern(filename string) bool {
 	// Check for "-guide-" in the name
 	base := filename[:len(filename)-5] // Remove .html
 	return contains(base, "-guide-")
+}
+
+// matchTableFilePattern checks if filename matches table-*.html pattern.
+func matchTableFilePattern(filename string) bool {
+	// Check for .html extension
+	if len(filename) < 5 {
+		return false
+	}
+	if filepath.Ext(filename) != ".html" {
+		return false
+	}
+
+	// Check for "table-" prefix
+	return len(filename) > 6 && filename[:6] == "table-"
+}
+
+// matchManifestFilePattern checks if filename matches manifest-*.json pattern.
+func matchManifestFilePattern(filename string) bool {
+	// Check for .json extension
+	if filepath.Ext(filename) != ".json" {
+		return false
+	}
+
+	// Check for "manifest-" prefix
+	return len(filename) > 9 && filename[:9] == "manifest-"
+}
+
+// matchDataStreamFilePattern checks if filename matches ssg-*-ds.xml pattern.
+func matchDataStreamFilePattern(filename string) bool {
+	// Check for .xml extension
+	if filepath.Ext(filename) != ".xml" {
+		return false
+	}
+
+	// Check for "ssg-" prefix and "-ds" suffix before extension
+	if len(filename) < 12 || filename[:4] != "ssg-" {
+		return false
+	}
+
+	// Check if it ends with "-ds.xml"
+	return len(filename) >= 7 && filename[len(filename)-7:] == "-ds.xml"
+}
+
+// ListDataStreamFiles returns a list of all SCAP data stream XML files in the repository.
+func (c *GitClient) ListDataStreamFiles() ([]string, error) {
+	entries, err := os.ReadDir(c.repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read repository directory: %w", err)
+	}
+
+	var dsFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Match ssg-*-ds.xml pattern
+		if matchDataStreamFilePattern(name) {
+			dsFiles = append(dsFiles, name)
+		}
+	}
+
+	return dsFiles, nil
 }
 
 // contains checks if a string contains a substring.

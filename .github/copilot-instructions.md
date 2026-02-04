@@ -11,6 +11,16 @@ to be productive in this repo. Keep edits small, preserve broker-first rules.
     [pkg/proc/subprocess](../pkg/proc/subprocess), `config.json`, and the per-service
    `service.md` files under `cmd/*`.
 
+- **SSG (SCAP Security Guide) development:** When working on SSG-related code (`pkg/ssg/*`, `cmd/*/ssg_*`):
+   - **ALWAYS** initialize the git submodule first: `git submodule update --init --recursive`
+   - The submodule at `assets/ssg-static` contains reference data:
+     - `guides/` - HTML guide files for testing parsers
+     - `tables/` - HTML table files for validation
+     - `manifests/` - JSON manifest files
+     - `ssg-*-ds.xml` - SCAP data stream XML files
+   - Use real files from the submodule for testing and validation
+   - Do NOT create mock/fake SSG data when real data is available
+
 - **Subprocess rules (must follow):** use `pkg/proc/subprocess`, call
    `subprocess.SetupLogging(PROCESS_ID)` and `subprocess.RunWithDefaults(sp, logger)`,
    expose functionality via RPC handlers (e.g., `sp.RegisterHandler("RPC...", ...)`),
