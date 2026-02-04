@@ -2180,3 +2180,148 @@ export function useSSGRelatedObjects(params: {
 
   return { data, isLoading, error };
 }
+
+// ============================================================================
+// UEE (Unified ETL Engine) Hooks
+// ============================================================================
+
+/**
+ * Hook to fetch the ETL tree with automatic polling
+ * @param pollingInterval - How often to poll in milliseconds (default: 5000)
+ */
+export function useEtlTree(pollingInterval = 5000) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const fetchData = async () => {
+      try {
+        const response = await rpcClient.getEtlTree();
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch ETL tree');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching ETL tree', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchData();
+
+    // Set up polling
+    if (pollingInterval > 0) {
+      interval = setInterval(fetchData, pollingInterval);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [pollingInterval]);
+
+  return { data, isLoading, error };
+}
+
+/**
+ * Hook to fetch kernel metrics with automatic polling
+ * @param pollingInterval - How often to poll in milliseconds (default: 2000)
+ */
+export function useKernelMetrics(pollingInterval = 2000) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const fetchData = async () => {
+      try {
+        const response = await rpcClient.getKernelMetrics();
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch kernel metrics');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching kernel metrics', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchData();
+
+    // Set up polling
+    if (pollingInterval > 0) {
+      interval = setInterval(fetchData, pollingInterval);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [pollingInterval]);
+
+  return { data, isLoading, error };
+}
+
+/**
+ * Hook to fetch checkpoints for a specific provider
+ */
+export function useProviderCheckpoints(
+  providerID: string,
+  limit = 50,
+  offset = 0
+) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!providerID) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getProviderCheckpoints(providerID, limit, offset);
+        
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch checkpoints');
+        }
+        
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching checkpoints', err, { providerID, limit, offset });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [providerID, limit, offset]);
+
+  return { data, isLoading, error };
+}

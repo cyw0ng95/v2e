@@ -61,6 +61,88 @@ graph TB
 
 The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permissions for secure inter-process communication. The broker incorporates an advanced adaptive optimizer that dynamically adjusts performance parameters based on system load and message throughput.
 
+### Unified ETL Engine (UEE) Architecture
+
+The v2e system implements a **Master-Slave hierarchical FSM (Finite State Machine) model** for resource-aware ETL orchestration, replacing hardcoded sync loops with an observable, resumable workflow engine.
+
+#### Master-Slave Roles
+
+- **Master (Broker)**: The technical resource authority
+  - Manages a global pool of "Worker Permits" for concurrency control
+  - Monitors kernel metrics: P99 latency (< 20ms target), buffer saturation, message rates
+  - Revokes permits when thresholds breach (P99 > 30ms OR buffer > 80%)
+  - Broadcasts `RPCOnQuotaUpdate` events to providers
+  - **Pure technical layer**: No business logic, only resource management
+
+- **Slave (Meta Service)**: The ETL orchestrator
+  - Manages domain logic (what to fetch, how to parse, where to store)
+  - Requests permits before starting providers
+  - Handles quota revocations gracefully (transitions providers to `WAITING_QUOTA`)
+  - Coordinates hierarchical state machines (Macro FSM + Provider FSMs)
+
+#### Hierarchical State Machines
+
+**Macro FSM (High-Level Orchestration)**:
+```
+BOOTSTRAPPING → ORCHESTRATING → STABILIZING → DRAINING
+                      ↓
+                (emergency drain)
+```
+
+**Provider FSM (Worker-Level Execution)**:
+```
+IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → TERMINATED
+                      ↓
+              (permit granted)
+```
+
+#### URN Atomic Identifiers
+
+All ETL items use hierarchical URN keys:
+```
+v2e::<provider>::<type>::<atomic_id>
+Examples:
+  v2e::nvd::cve::CVE-2024-12233
+  v2e::mitre::cwe::CWE-79
+  v2e::mitre::capec::CAPEC-66
+```
+
+URNs enable:
+- Immutable identity across checkpoints and lookups
+- Resumable workflows (checkpointed every 100 items)
+- URN-validated persistence in BoltDB
+
+#### Auto-Recovery
+
+On service restart:
+- **RUNNING providers**: Resume execution with permit re-acquisition
+- **PAUSED providers**: Remain paused (manual resume required)
+- **WAITING_QUOTA providers**: Retry permit requests
+- **WAITING_BACKOFF providers**: Maintain state (auto-retry timer continues)
+- **TERMINATED providers**: Skipped (not recovered)
+
+#### Architecture Flow
+
+```
+Meta Service (Slave)              Broker (Master)
+    │                                 │
+    │ StartProvider("cve", 5)         │
+    ├─ RPCRequestPermits(5) ─────────→│
+    │                                 │ Allocate 5 permits
+    │←────────────────────────────────┤ Response: granted=5
+    │                                 │
+    │ provider.OnQuotaGranted(5)      │
+    │  → RUNNING state                │
+    │                                 │
+    │ [Execute: fetch/parse/store]    │ [Monitor: P99 latency]
+    │                                 │
+    │                                 │ P99 > 30ms detected!
+    │←─ RPCOnQuotaUpdate(revoked=2) ──┤
+    │                                 │
+    │ provider.OnQuotaRevoked(2)      │
+    │  → WAITING_QUOTA state          │
+```
+
 ## Component Breakdown
 
 ### Core Services
