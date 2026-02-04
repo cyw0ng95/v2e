@@ -28,7 +28,6 @@ This roadmap details the complete implementation plan for migrating v2e from har
 ## Implementation Status
 
 ### ✅ Phase 1: Foundation & URN System (COMPLETE)
-
 **Status**: 100% Complete (4 commits, 20+ tests passing)
 
 #### 1.1 URN Package (`pkg/urn`)
