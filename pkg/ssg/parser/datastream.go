@@ -22,6 +22,11 @@ const (
 // productPattern extracts product name from filenames like "ssg-al2023-ds.xml"
 var productPattern = regexp.MustCompile(`^ssg-([^-]+)-ds\.xml$`)
 
+// htmlTagRegex is used to strip HTML tags from XMLString content.
+// This is compiled once at package initialization to avoid repeated compilations
+// during parsing, which significantly improves performance.
+var htmlTagRegex = regexp.MustCompile(`<[^>]+>`)
+
 // ============================================================================
 // XML Structure Definitions
 // ============================================================================
@@ -139,9 +144,8 @@ func (x XMLString) String() string {
 	// Replace <html:br/> with newline
 	content = strings.ReplaceAll(content, "<html:br/>", "\n")
 	content = strings.ReplaceAll(content, "<html:br />", "\n")
-	// Strip all remaining HTML tags
-	re := regexp.MustCompile(`<[^>]+>`)
-	content = re.ReplaceAllString(content, "")
+	// Strip all remaining HTML tags using pre-compiled regex
+	content = htmlTagRegex.ReplaceAllString(content, "")
 	// Clean up excessive whitespace
 	content = strings.TrimSpace(content)
 	lines := strings.Split(content, "\n")
@@ -157,6 +161,8 @@ func (x XMLString) String() string {
 
 // ParseDataStreamFile parses a SCAP data stream XML file and extracts SSG models.
 // Returns data stream metadata, benchmark, profiles, groups, and rules.
+// Uses a streaming approach to parse only the necessary Benchmark component,
+// reducing memory overhead for large XML files.
 func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg.SSGBenchmark, []ssg.SSGDSProfile, []ssg.SSGDSGroup, []ssg.SSGDSRule, error) {
 	// Extract product from filename
 	product, err := extractProduct(filename)
@@ -164,40 +170,68 @@ func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg
 		return nil, nil, nil, nil, nil, err
 	}
 
-	// Parse XML
-	var collection DataStreamCollection
 	decoder := xml.NewDecoder(r)
-	if err := decoder.Decode(&collection); err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("failed to decode XML: %w", err)
+	
+	// Variables to hold parsed data
+	var dataStreamID, scapVersion, timestamp string
+	var benchmark *Benchmark
+	
+	// Stream through the XML using token-based parsing
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, nil, nil, nil, nil, fmt.Errorf("failed to read XML token: %w", err)
+		}
+		
+		// Look for start elements
+		if se, ok := token.(xml.StartElement); ok {
+			switch se.Name.Local {
+			case "data-stream":
+				// Extract data stream attributes
+				if dataStreamID == "" {
+					for _, attr := range se.Attr {
+						switch attr.Name.Local {
+						case "id":
+							dataStreamID = attr.Value
+						case "scap-version":
+							scapVersion = attr.Value
+						case "timestamp":
+							timestamp = attr.Value
+						}
+					}
+				}
+			case "Benchmark":
+				// Found the Benchmark element - decode it directly
+				var b Benchmark
+				if err := decoder.DecodeElement(&b, &se); err != nil {
+					return nil, nil, nil, nil, nil, fmt.Errorf("failed to decode Benchmark: %w", err)
+				}
+				benchmark = &b
+				// We have what we need, can break early
+				goto done
+			}
+		}
 	}
-
-	// Validate that we have at least one data stream
-	if len(collection.DataStream) == 0 {
-		return nil, nil, nil, nil, nil, fmt.Errorf("no data streams found in collection")
+	
+done:
+	// Validate that we have required data
+	if dataStreamID == "" {
+		return nil, nil, nil, nil, nil, fmt.Errorf("no data stream found in collection")
 	}
-
-	// Use the first data stream
-	ds := collection.DataStream[0]
+	
+	if benchmark == nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("no XCCDF benchmark found in data stream")
+	}
 
 	// Create SSGDataStream model
 	dataStream := &ssg.SSGDataStream{
-		ID:          ds.ID,
+		ID:          dataStreamID,
 		Product:     product,
-		ScapVersion: ds.ScapVersion,
-		Timestamp:   ds.Timestamp,
-	}
-
-	// Find the XCCDF benchmark component
-	var benchmark *Benchmark
-	for _, comp := range collection.Components {
-		if comp.Benchmark != nil {
-			benchmark = comp.Benchmark
-			break
-		}
-	}
-
-	if benchmark == nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("no XCCDF benchmark found in data stream")
+		ScapVersion: scapVersion,
+		Timestamp:   timestamp,
 	}
 
 	// Create SSGBenchmark model
