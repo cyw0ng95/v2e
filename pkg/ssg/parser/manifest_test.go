@@ -29,7 +29,7 @@ func TestParseManifestFile(t *testing.T) {
 	      ]
 	    }
 	  }
-	}``
+	}`
 
 	// Write to temp file
 	tmpFile, err := os.CreateTemp("", "manifest-test-*.json")
