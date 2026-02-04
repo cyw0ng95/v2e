@@ -1,6 +1,8 @@
 package attack
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"os"
 	"testing"
@@ -28,7 +30,7 @@ func TestNewLocalAttackStore(t *testing.T) {
 
 func TestHelperFunctions(t *testing.T) {
 	// Test getStringValue function
-	t.Run("GetStringValue", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "GetStringValue", nil, func(t *testing.T, tx *gorm.DB) {
 		headers := []string{"ID", "Name", "Description"}
 		row := []string{"T1001", "Test Technique", "A test technique"}
 
@@ -55,7 +57,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	// Test getStringIndex function
-	t.Run("GetStringIndex", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "GetStringIndex", nil, func(t *testing.T, tx *gorm.DB) {
 		headers := []string{"ID", "Name", "Description"}
 
 		index := getStringIndex(headers, []string{"ID"})
@@ -78,7 +80,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	// Test getBoolValue function
-	t.Run("GetBoolValue", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "GetBoolValue", nil, func(t *testing.T, tx *gorm.DB) {
 		row := []string{"true", "false", "1", "0", "yes", "no", "y", "n", "t", "f", "invalid"}
 
 		// Test various true values

@@ -1,6 +1,8 @@
 package proc
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -9,355 +11,403 @@ import (
 )
 
 func TestMessageType_Constants(t *testing.T) {
-	tests := []struct {
-		msgType  MessageType
-		expected string
-	}{
-		{MessageTypeRequest, "request"},
-		{MessageTypeResponse, "response"},
-		{MessageTypeEvent, "event"},
-		{MessageTypeError, "error"},
-	}
+	testutils.Run(t, testutils.Level1, "TestMessageType_Constants", nil, func(t *testing.T, tx *gorm.DB) {
+		tests := []struct {
+			msgType  MessageType
+			expected string
+		}{
+			{MessageTypeRequest, "request"},
+			{MessageTypeResponse, "response"},
+			{MessageTypeEvent, "event"},
+			{MessageTypeError, "error"},
+		}
 
-	for _, tt := range tests {
-		t.Run(string(tt.msgType), func(t *testing.T) {
-			if string(tt.msgType) != tt.expected {
-				t.Errorf("Expected %s, got %s", tt.expected, string(tt.msgType))
-			}
-		})
-	}
+		for _, tt := range tests {
+			t.Run(string(tt.msgType), func(t *testing.T) {
+				if string(tt.msgType) != tt.expected {
+					t.Errorf("Expected %s, got %s", tt.expected, string(tt.msgType))
+				}
+			})
+		}
+	})
+
 }
 
 func TestNewMessage(t *testing.T) {
-	msg := NewMessage(MessageTypeRequest, "test-id")
+	testutils.Run(t, testutils.Level1, "TestNewMessage", nil, func(t *testing.T, tx *gorm.DB) {
+		msg := NewMessage(MessageTypeRequest, "test-id")
 
-	if msg == nil {
-		t.Fatal("NewMessage returned nil")
-	}
-	if msg.Type != MessageTypeRequest {
-		t.Errorf("Expected Type to be MessageTypeRequest, got %s", msg.Type)
-	}
-	if msg.ID != "test-id" {
-		t.Errorf("Expected ID to be 'test-id', got %s", msg.ID)
-	}
+		if msg == nil {
+			t.Fatal("NewMessage returned nil")
+		}
+		if msg.Type != MessageTypeRequest {
+			t.Errorf("Expected Type to be MessageTypeRequest, got %s", msg.Type)
+		}
+		if msg.ID != "test-id" {
+			t.Errorf("Expected ID to be 'test-id', got %s", msg.ID)
+		}
+	})
+
 }
 
 func TestNewRequestMessage(t *testing.T) {
-	type TestPayload struct {
-		Command string   `json:"command"`
-		Args    []string `json:"args"`
-	}
+	testutils.Run(t, testutils.Level1, "TestNewRequestMessage", nil, func(t *testing.T, tx *gorm.DB) {
+		type TestPayload struct {
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+		}
 
-	payload := TestPayload{
-		Command: "echo",
-		Args:    []string{"hello", "world"},
-	}
+		payload := TestPayload{
+			Command: "echo",
+			Args:    []string{"hello", "world"},
+		}
 
-	msg, err := NewRequestMessage("req-1", payload)
-	if err != nil {
-		t.Fatalf("NewRequestMessage failed: %v", err)
-	}
+		msg, err := NewRequestMessage("req-1", payload)
+		if err != nil {
+			t.Fatalf("NewRequestMessage failed: %v", err)
+		}
 
-	if msg.Type != MessageTypeRequest {
-		t.Errorf("Expected Type to be MessageTypeRequest, got %s", msg.Type)
-	}
-	if msg.ID != "req-1" {
-		t.Errorf("Expected ID to be 'req-1', got %s", msg.ID)
-	}
+		if msg.Type != MessageTypeRequest {
+			t.Errorf("Expected Type to be MessageTypeRequest, got %s", msg.Type)
+		}
+		if msg.ID != "req-1" {
+			t.Errorf("Expected ID to be 'req-1', got %s", msg.ID)
+		}
 
-	var result TestPayload
-	if err := msg.UnmarshalPayload(&result); err != nil {
-		t.Fatalf("Failed to unmarshal payload: %v", err)
-	}
+		var result TestPayload
+		if err := msg.UnmarshalPayload(&result); err != nil {
+			t.Fatalf("Failed to unmarshal payload: %v", err)
+		}
 
-	if result.Command != payload.Command {
-		t.Errorf("Expected Command to be %s, got %s", payload.Command, result.Command)
-	}
+		if result.Command != payload.Command {
+			t.Errorf("Expected Command to be %s, got %s", payload.Command, result.Command)
+		}
+	})
+
 }
 
 func TestNewRequestMessage_NilPayload(t *testing.T) {
-	msg, err := NewRequestMessage("req-1", nil)
-	if err != nil {
-		t.Fatalf("NewRequestMessage with nil payload failed: %v", err)
-	}
+	testutils.Run(t, testutils.Level1, "TestNewRequestMessage_NilPayload", nil, func(t *testing.T, tx *gorm.DB) {
+		msg, err := NewRequestMessage("req-1", nil)
+		if err != nil {
+			t.Fatalf("NewRequestMessage with nil payload failed: %v", err)
+		}
 
-	if msg.Payload != nil {
-		t.Error("Expected Payload to be nil")
-	}
+		if msg.Payload != nil {
+			t.Error("Expected Payload to be nil")
+		}
+	})
+
 }
 
 func TestNewResponseMessage(t *testing.T) {
-	type TestResponse struct {
-		Status string `json:"status"`
-		Result int    `json:"result"`
-	}
+	testutils.Run(t, testutils.Level1, "TestNewResponseMessage", nil, func(t *testing.T, tx *gorm.DB) {
+		type TestResponse struct {
+			Status string `json:"status"`
+			Result int    `json:"result"`
+		}
 
-	response := TestResponse{
-		Status: "success",
-		Result: 42,
-	}
+		response := TestResponse{
+			Status: "success",
+			Result: 42,
+		}
 
-	msg, err := NewResponseMessage("resp-1", response)
-	if err != nil {
-		t.Fatalf("NewResponseMessage failed: %v", err)
-	}
+		msg, err := NewResponseMessage("resp-1", response)
+		if err != nil {
+			t.Fatalf("NewResponseMessage failed: %v", err)
+		}
 
-	if msg.Type != MessageTypeResponse {
-		t.Errorf("Expected Type to be MessageTypeResponse, got %s", msg.Type)
-	}
+		if msg.Type != MessageTypeResponse {
+			t.Errorf("Expected Type to be MessageTypeResponse, got %s", msg.Type)
+		}
 
-	var result TestResponse
-	if err := msg.UnmarshalPayload(&result); err != nil {
-		t.Fatalf("Failed to unmarshal payload: %v", err)
-	}
+		var result TestResponse
+		if err := msg.UnmarshalPayload(&result); err != nil {
+			t.Fatalf("Failed to unmarshal payload: %v", err)
+		}
 
-	if result.Status != response.Status {
-		t.Errorf("Expected Status to be %s, got %s", response.Status, result.Status)
-	}
-	if result.Result != response.Result {
-		t.Errorf("Expected Result to be %d, got %d", response.Result, result.Result)
-	}
+		if result.Status != response.Status {
+			t.Errorf("Expected Status to be %s, got %s", response.Status, result.Status)
+		}
+		if result.Result != response.Result {
+			t.Errorf("Expected Result to be %d, got %d", response.Result, result.Result)
+		}
+	})
+
 }
 
 func TestNewEventMessage(t *testing.T) {
-	type TestEvent struct {
-		EventType string `json:"event_type"`
-		Data      string `json:"data"`
-	}
+	testutils.Run(t, testutils.Level1, "TestNewEventMessage", nil, func(t *testing.T, tx *gorm.DB) {
+		type TestEvent struct {
+			EventType string `json:"event_type"`
+			Data      string `json:"data"`
+		}
 
-	event := TestEvent{
-		EventType: "process_started",
-		Data:      "pid:12345",
-	}
+		event := TestEvent{
+			EventType: "process_started",
+			Data:      "pid:12345",
+		}
 
-	msg, err := NewEventMessage("evt-1", event)
-	if err != nil {
-		t.Fatalf("NewEventMessage failed: %v", err)
-	}
+		msg, err := NewEventMessage("evt-1", event)
+		if err != nil {
+			t.Fatalf("NewEventMessage failed: %v", err)
+		}
 
-	if msg.Type != MessageTypeEvent {
-		t.Errorf("Expected Type to be MessageTypeEvent, got %s", msg.Type)
-	}
+		if msg.Type != MessageTypeEvent {
+			t.Errorf("Expected Type to be MessageTypeEvent, got %s", msg.Type)
+		}
 
-	var result TestEvent
-	if err := msg.UnmarshalPayload(&result); err != nil {
-		t.Fatalf("Failed to unmarshal payload: %v", err)
-	}
+		var result TestEvent
+		if err := msg.UnmarshalPayload(&result); err != nil {
+			t.Fatalf("Failed to unmarshal payload: %v", err)
+		}
 
-	if result.EventType != event.EventType {
-		t.Errorf("Expected EventType to be %s, got %s", event.EventType, result.EventType)
-	}
+		if result.EventType != event.EventType {
+			t.Errorf("Expected EventType to be %s, got %s", event.EventType, result.EventType)
+		}
+	})
+
 }
 
 func TestNewErrorMessage(t *testing.T) {
-	testErr := errors.New("test error occurred")
-	msg := NewErrorMessage("err-1", testErr)
+	testutils.Run(t, testutils.Level1, "TestNewErrorMessage", nil, func(t *testing.T, tx *gorm.DB) {
+		testErr := errors.New("test error occurred")
+		msg := NewErrorMessage("err-1", testErr)
 
-	if msg.Type != MessageTypeError {
-		t.Errorf("Expected Type to be MessageTypeError, got %s", msg.Type)
-	}
-	if msg.ID != "err-1" {
-		t.Errorf("Expected ID to be 'err-1', got %s", msg.ID)
-	}
-	if msg.Error != testErr.Error() {
-		t.Errorf("Expected Error to be '%s', got '%s'", testErr.Error(), msg.Error)
-	}
+		if msg.Type != MessageTypeError {
+			t.Errorf("Expected Type to be MessageTypeError, got %s", msg.Type)
+		}
+		if msg.ID != "err-1" {
+			t.Errorf("Expected ID to be 'err-1', got %s", msg.ID)
+		}
+		if msg.Error != testErr.Error() {
+			t.Errorf("Expected Error to be '%s', got '%s'", testErr.Error(), msg.Error)
+		}
+	})
+
 }
 
 func TestNewErrorMessage_NilError(t *testing.T) {
-	msg := NewErrorMessage("err-1", nil)
+	testutils.Run(t, testutils.Level1, "TestNewErrorMessage_NilError", nil, func(t *testing.T, tx *gorm.DB) {
+		msg := NewErrorMessage("err-1", nil)
 
-	if msg.Type != MessageTypeError {
-		t.Errorf("Expected Type to be MessageTypeError, got %s", msg.Type)
-	}
-	if msg.Error != "" {
-		t.Errorf("Expected Error to be empty, got '%s'", msg.Error)
-	}
+		if msg.Type != MessageTypeError {
+			t.Errorf("Expected Type to be MessageTypeError, got %s", msg.Type)
+		}
+		if msg.Error != "" {
+			t.Errorf("Expected Error to be empty, got '%s'", msg.Error)
+		}
+	})
+
 }
 
 func TestMessage_UnmarshalPayload_NoPayload(t *testing.T) {
-	msg := NewMessage(MessageTypeRequest, "test-id")
+	testutils.Run(t, testutils.Level1, "TestMessage_UnmarshalPayload_NoPayload", nil, func(t *testing.T, tx *gorm.DB) {
+		msg := NewMessage(MessageTypeRequest, "test-id")
 
-	var result map[string]interface{}
-	err := msg.UnmarshalPayload(&result)
+		var result map[string]interface{}
+		err := msg.UnmarshalPayload(&result)
 
-	if err == nil {
-		t.Error("Expected error when unmarshaling nil payload")
-	}
+		if err == nil {
+			t.Error("Expected error when unmarshaling nil payload")
+		}
+	})
+
 }
 
 func TestMessage_Marshal(t *testing.T) {
-	msg := NewMessage(MessageTypeRequest, "test-id")
-	msg.Payload = json.RawMessage(`{"test":"value"}`)
+	testutils.Run(t, testutils.Level1, "TestMessage_Marshal", nil, func(t *testing.T, tx *gorm.DB) {
+		msg := NewMessage(MessageTypeRequest, "test-id")
+		msg.Payload = json.RawMessage(`{"test":"value"}`)
 
-	data, err := msg.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+		data, err := msg.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal failed: %v", err)
+		}
 
-	if len(data) == 0 {
-		t.Error("Expected marshaled data to be non-empty")
-	}
+		if len(data) == 0 {
+			t.Error("Expected marshaled data to be non-empty")
+		}
 
-	// Verify it contains the expected fields
-	var result map[string]interface{}
-	if err := sonic.Unmarshal(data, &result); err != nil {
-		t.Fatalf("Failed to unmarshal result: %v", err)
-	}
+		// Verify it contains the expected fields
+		var result map[string]interface{}
+		if err := sonic.Unmarshal(data, &result); err != nil {
+			t.Fatalf("Failed to unmarshal result: %v", err)
+		}
 
-	if result["type"] != string(MessageTypeRequest) {
-		t.Errorf("Expected type to be %s, got %v", MessageTypeRequest, result["type"])
-	}
-	if result["id"] != "test-id" {
-		t.Errorf("Expected id to be 'test-id', got %v", result["id"])
-	}
+		if result["type"] != string(MessageTypeRequest) {
+			t.Errorf("Expected type to be %s, got %v", MessageTypeRequest, result["type"])
+		}
+		if result["id"] != "test-id" {
+			t.Errorf("Expected id to be 'test-id', got %v", result["id"])
+		}
+	})
+
 }
 
 func TestUnmarshal(t *testing.T) {
-	data := []byte(`{"type":"request","id":"test-id","payload":{"key":"value"}}`)
+	testutils.Run(t, testutils.Level1, "TestUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+		data := []byte(`{"type":"request","id":"test-id","payload":{"key":"value"}}`)
 
-	msg, err := Unmarshal(data)
-	if err != nil {
-		t.Fatalf("Unmarshal failed: %v", err)
-	}
+		msg, err := Unmarshal(data)
+		if err != nil {
+			t.Fatalf("Unmarshal failed: %v", err)
+		}
 
-	if msg.Type != MessageTypeRequest {
-		t.Errorf("Expected Type to be MessageTypeRequest, got %s", msg.Type)
-	}
-	if msg.ID != "test-id" {
-		t.Errorf("Expected ID to be 'test-id', got %s", msg.ID)
-	}
+		if msg.Type != MessageTypeRequest {
+			t.Errorf("Expected Type to be MessageTypeRequest, got %s", msg.Type)
+		}
+		if msg.ID != "test-id" {
+			t.Errorf("Expected ID to be 'test-id', got %s", msg.ID)
+		}
 
-	var payload map[string]string
-	if err := msg.UnmarshalPayload(&payload); err != nil {
-		t.Fatalf("Failed to unmarshal payload: %v", err)
-	}
+		var payload map[string]string
+		if err := msg.UnmarshalPayload(&payload); err != nil {
+			t.Fatalf("Failed to unmarshal payload: %v", err)
+		}
 
-	if payload["key"] != "value" {
-		t.Errorf("Expected payload key to be 'value', got %s", payload["key"])
-	}
+		if payload["key"] != "value" {
+			t.Errorf("Expected payload key to be 'value', got %s", payload["key"])
+		}
+	})
+
 }
 
 func TestUnmarshal_InvalidJSON(t *testing.T) {
-	data := []byte(`{invalid json}`)
+	testutils.Run(t, testutils.Level1, "TestUnmarshal_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+		data := []byte(`{invalid json}`)
 
-	_, err := Unmarshal(data)
-	if err == nil {
-		t.Error("Expected error when unmarshaling invalid JSON")
-	}
+		_, err := Unmarshal(data)
+		if err == nil {
+			t.Error("Expected error when unmarshaling invalid JSON")
+		}
+	})
+
 }
 
 func TestMessage_MarshalUnmarshal_RoundTrip(t *testing.T) {
-	type TestData struct {
-		Name  string `json:"name"`
-		Value int    `json:"value"`
-	}
+	testutils.Run(t, testutils.Level1, "TestMessage_MarshalUnmarshal_RoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
+		type TestData struct {
+			Name  string `json:"name"`
+			Value int    `json:"value"`
+		}
 
-	original := TestData{
-		Name:  "test",
-		Value: 123,
-	}
+		original := TestData{
+			Name:  "test",
+			Value: 123,
+		}
 
-	msg, err := NewRequestMessage("req-1", original)
-	if err != nil {
-		t.Fatalf("NewRequestMessage failed: %v", err)
-	}
+		msg, err := NewRequestMessage("req-1", original)
+		if err != nil {
+			t.Fatalf("NewRequestMessage failed: %v", err)
+		}
 
-	// Marshal the message
-	data, err := msg.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+		// Marshal the message
+		data, err := msg.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal failed: %v", err)
+		}
 
-	// Unmarshal it back
-	decoded, err := Unmarshal(data)
-	if err != nil {
-		t.Fatalf("Unmarshal failed: %v", err)
-	}
+		// Unmarshal it back
+		decoded, err := Unmarshal(data)
+		if err != nil {
+			t.Fatalf("Unmarshal failed: %v", err)
+		}
 
-	// Verify the payload
-	var result TestData
-	if err := decoded.UnmarshalPayload(&result); err != nil {
-		t.Fatalf("UnmarshalPayload failed: %v", err)
-	}
+		// Verify the payload
+		var result TestData
+		if err := decoded.UnmarshalPayload(&result); err != nil {
+			t.Fatalf("UnmarshalPayload failed: %v", err)
+		}
 
-	if result.Name != original.Name {
-		t.Errorf("Expected Name to be %s, got %s", original.Name, result.Name)
-	}
-	if result.Value != original.Value {
-		t.Errorf("Expected Value to be %d, got %d", original.Value, result.Value)
-	}
+		if result.Name != original.Name {
+			t.Errorf("Expected Name to be %s, got %s", original.Name, result.Name)
+		}
+		if result.Value != original.Value {
+			t.Errorf("Expected Value to be %d, got %d", original.Value, result.Value)
+		}
+	})
+
 }
 
 func TestMarshalFast(t *testing.T) {
-	msg := &Message{
-		Type: MessageTypeRequest,
-		ID:   "test-id",
-	}
+	testutils.Run(t, testutils.Level1, "TestMarshalFast", nil, func(t *testing.T, tx *gorm.DB) {
+		msg := &Message{
+			Type: MessageTypeRequest,
+			ID:   "test-id",
+		}
 
-	data, err := msg.Marshal()
-	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
-	}
+		data, err := msg.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal failed: %v", err)
+		}
 
-	if len(data) == 0 {
-		t.Error("Marshal returned empty data")
-	}
+		if len(data) == 0 {
+			t.Error("Marshal returned empty data")
+		}
 
-	// Verify it's valid JSON
-	var parsed Message
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("Failed to unmarshal marshaled data: %v", err)
-	}
+		// Verify it's valid JSON
+		var parsed Message
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			t.Fatalf("Failed to unmarshal marshaled data: %v", err)
+		}
 
-	if parsed.Type != msg.Type {
-		t.Errorf("Expected type %s, got %s", msg.Type, parsed.Type)
-	}
+		if parsed.Type != msg.Type {
+			t.Errorf("Expected type %s, got %s", msg.Type, parsed.Type)
+		}
+	})
+
 }
 
 func TestUnmarshalFast(t *testing.T) {
-	original := &Message{
-		Type: MessageTypeResponse,
-		ID:   "resp-1",
-	}
+	testutils.Run(t, testutils.Level1, "TestUnmarshalFast", nil, func(t *testing.T, tx *gorm.DB) {
+		original := &Message{
+			Type: MessageTypeResponse,
+			ID:   "resp-1",
+		}
 
-	data, err := sonic.Marshal(original)
-	if err != nil {
-		t.Fatalf("Failed to marshal: %v", err)
-	}
+		data, err := sonic.Marshal(original)
+		if err != nil {
+			t.Fatalf("Failed to marshal: %v", err)
+		}
 
-	msg, err := UnmarshalFast(data)
-	if err != nil {
-		t.Fatalf("UnmarshalFast failed: %v", err)
-	}
+		msg, err := UnmarshalFast(data)
+		if err != nil {
+			t.Fatalf("UnmarshalFast failed: %v", err)
+		}
 
-	if msg.Type != original.Type {
-		t.Errorf("Expected type %s, got %s", original.Type, msg.Type)
-	}
-	if msg.ID != original.ID {
-		t.Errorf("Expected ID %s, got %s", original.ID, msg.ID)
-	}
+		if msg.Type != original.Type {
+			t.Errorf("Expected type %s, got %s", original.Type, msg.Type)
+		}
+		if msg.ID != original.ID {
+			t.Errorf("Expected ID %s, got %s", original.ID, msg.ID)
+		}
 
-	// Message should be returned to pool
-	PutMessage(msg)
+		// Message should be returned to pool
+		PutMessage(msg)
+	})
+
 }
 
 func TestPutMessage(t *testing.T) {
-	msg := GetMessage()
-	msg.Type = MessageTypeEvent
-	msg.ID = "event-1"
+	testutils.Run(t, testutils.Level1, "TestPutMessage", nil, func(t *testing.T, tx *gorm.DB) {
+		msg := GetMessage()
+		msg.Type = MessageTypeEvent
+		msg.ID = "event-1"
 
-	// PutMessage should reset fields
-	PutMessage(msg)
+		// PutMessage should reset fields
+		PutMessage(msg)
 
-	// Get another message from pool
-	msg2 := GetMessage()
+		// Get another message from pool
+		msg2 := GetMessage()
 
-	// Fields should be reset
-	if msg2.Type != "" {
-		t.Errorf("Expected Type to be empty after PutMessage, got %s", msg2.Type)
-	}
-	if msg2.ID != "" {
-		t.Errorf("Expected ID to be empty after PutMessage, got %s", msg2.ID)
-	}
+		// Fields should be reset
+		if msg2.Type != "" {
+			t.Errorf("Expected Type to be empty after PutMessage, got %s", msg2.Type)
+		}
+		if msg2.ID != "" {
+			t.Errorf("Expected ID to be empty after PutMessage, got %s", msg2.ID)
+		}
+	})
+
 }

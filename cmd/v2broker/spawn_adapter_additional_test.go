@@ -1,6 +1,8 @@
 package main
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"errors"
 	"testing"
 )
@@ -25,18 +27,21 @@ func (stubSpawnBroker) SpawnRPCWithRestart(id, command string, maxRestarts int, 
 }
 
 func TestSpawnAdapter_ErrorPropagation(t *testing.T) {
-	adapter := NewSpawnAdapter(stubSpawnBroker{})
+	testutils.Run(t, testutils.Level1, "TestSpawnAdapter_ErrorPropagation", nil, func(t *testing.T, tx *gorm.DB) {
+		adapter := NewSpawnAdapter(stubSpawnBroker{})
 
-	if res, err := adapter.Spawn("id", "cmd"); err == nil || res != nil {
-		t.Fatalf("expected spawn error, got res=%v err=%v", res, err)
-	}
-	if res, err := adapter.SpawnRPC("id", "cmd"); err == nil || res != nil {
-		t.Fatalf("expected spawn rpc error, got res=%v err=%v", res, err)
-	}
-	if res, err := adapter.SpawnWithRestart("id", "cmd", 1); err == nil || res != nil {
-		t.Fatalf("expected spawn restart error, got res=%v err=%v", res, err)
-	}
-	if res, err := adapter.SpawnRPCWithRestart("id", "cmd", 1); err == nil || res != nil {
-		t.Fatalf("expected spawn rpc restart error, got res=%v err=%v", res, err)
-	}
+		if res, err := adapter.Spawn("id", "cmd"); err == nil || res != nil {
+			t.Fatalf("expected spawn error, got res=%v err=%v", res, err)
+		}
+		if res, err := adapter.SpawnRPC("id", "cmd"); err == nil || res != nil {
+			t.Fatalf("expected spawn rpc error, got res=%v err=%v", res, err)
+		}
+		if res, err := adapter.SpawnWithRestart("id", "cmd", 1); err == nil || res != nil {
+			t.Fatalf("expected spawn restart error, got res=%v err=%v", res, err)
+		}
+		if res, err := adapter.SpawnRPCWithRestart("id", "cmd", 1); err == nil || res != nil {
+			t.Fatalf("expected spawn rpc restart error, got res=%v err=%v", res, err)
+		}
+	})
+
 }

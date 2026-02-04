@@ -1,6 +1,8 @@
 package perf
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"os"
 	"testing"
 	"time"
@@ -11,53 +13,56 @@ import (
 
 // TestAdaptiveOptimization validates the adaptive optimization features
 func TestAdaptiveOptimization(t *testing.T) {
-	// Create a test router for message routing
-	router := &testRouter{}
+	testutils.Run(t, testutils.Level1, "TestAdaptiveOptimization", nil, func(t *testing.T, tx *gorm.DB) {
+		// Create a test router for message routing
+		router := &testRouter{}
 
-	// Create an optimizer with adaptive features enabled
-	opt := New(router)
+		// Create an optimizer with adaptive features enabled
+		opt := New(router)
 
-	// Set up logging for debugging
-	logger := common.NewLogger(os.Stdout, "[TEST] ", common.InfoLevel)
-	opt.SetLogger(logger)
+		// Set up logging for debugging
+		logger := common.NewLogger(os.Stdout, "[TEST] ", common.InfoLevel)
+		opt.SetLogger(logger)
 
-	// Enable adaptive optimization
-	opt.EnableAdaptiveOptimization()
+		// Enable adaptive optimization
+		opt.EnableAdaptiveOptimization()
 
-	// Create some test messages to simulate load
-	msg, err := proc.NewRequestMessage("test-msg-1", "test data")
-	if err != nil {
-		t.Fatalf("Failed to create message: %v", err)
-	}
-	msg.Source = "test-source"
-	msg.Target = "test-target"
-
-	// Simulate message load by sending messages to the optimizer
-	for i := 0; i < 100; i++ {
-		accepted := opt.Offer(msg)
-		if !accepted {
-			t.Logf("Message %d was dropped", i)
+		// Create some test messages to simulate load
+		msg, err := proc.NewRequestMessage("test-msg-1", "test data")
+		if err != nil {
+			t.Fatalf("Failed to create message: %v", err)
 		}
-	}
+		msg.Source = "test-source"
+		msg.Target = "test-target"
 
-	// Poll for metrics collection with a reasonable timeout
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
+		// Simulate message load by sending messages to the optimizer
+		for i := 0; i < 100; i++ {
+			accepted := opt.Offer(msg)
+			if !accepted {
+				t.Logf("Message %d was dropped", i)
+			}
+		}
+
+		// Poll for metrics collection with a reasonable timeout
+		deadline := time.Now().Add(2 * time.Second)
+		for time.Now().Before(deadline) {
+			metrics := opt.Metrics()
+			// Check if metrics show any activity (messages processed)
+			if total, ok := metrics["total_messages_processed"].(int64); ok && total > 0 {
+				t.Logf("Metrics collected: %+v", metrics)
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		// Get final metrics to verify adaptive behavior occurred
 		metrics := opt.Metrics()
-		// Check if metrics show any activity (messages processed)
-		if total, ok := metrics["total_messages_processed"].(int64); ok && total > 0 {
-			t.Logf("Metrics collected: %+v", metrics)
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+		t.Logf("Final metrics: %+v", metrics)
 
-	// Get final metrics to verify adaptive behavior occurred
-	metrics := opt.Metrics()
-	t.Logf("Final metrics: %+v", metrics)
+		// Stop the optimizer
+		opt.Stop()
+	})
 
-	// Stop the optimizer
-	opt.Stop()
 }
 
 // testRouter is a mock router for testing purposes

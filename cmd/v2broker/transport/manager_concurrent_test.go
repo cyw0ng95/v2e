@@ -1,6 +1,8 @@
 package transport
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"fmt"
 	"sync"
 	"testing"
@@ -11,47 +13,50 @@ import (
 // TestTransportManager_ConcurrentRegisterAndSend ensures concurrent RegisterTransport
 // and SendToProcess work without races and all messages are delivered.
 func TestTransportManager_ConcurrentRegisterAndSend(t *testing.T) {
-	tm := NewTransportManager()
+	testutils.Run(t, testutils.Level1, "TestTransportManager_ConcurrentRegisterAndSend", nil, func(t *testing.T, tx *gorm.DB) {
+		tm := NewTransportManager()
 
-	const workers = 20
-	const msgsPerWorker = 10
+		const workers = 20
+		const msgsPerWorker = 10
 
-	var wg sync.WaitGroup
-	errCh := make(chan error, workers)
+		var wg sync.WaitGroup
+		errCh := make(chan error, workers)
 
-	// Start concurrent registrars and senders
-	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func(w int) {
-			defer wg.Done()
-			id := fmt.Sprintf("p-%02d", w)
-			ft := &concurrentFakeTransport{}
-			tm.RegisterTransport(id, ft)
+		// Start concurrent registrars and senders
+		for w := 0; w < workers; w++ {
+			wg.Add(1)
+			go func(w int) {
+				defer wg.Done()
+				id := fmt.Sprintf("p-%02d", w)
+				ft := &concurrentFakeTransport{}
+				tm.RegisterTransport(id, ft)
 
-			for i := 0; i < msgsPerWorker; i++ {
-				msg, err := proc.NewRequestMessage("m", map[string]string{"i": "v"})
-				if err != nil {
-					errCh <- fmt.Errorf("failed to create message: %v", err)
-					return
+				for i := 0; i < msgsPerWorker; i++ {
+					msg, err := proc.NewRequestMessage("m", map[string]string{"i": "v"})
+					if err != nil {
+						errCh <- fmt.Errorf("failed to create message: %v", err)
+						return
+					}
+					if err := tm.SendToProcess(id, msg); err != nil {
+						errCh <- fmt.Errorf("SendToProcess returned error: %v", err)
+						return
+					}
 				}
-				if err := tm.SendToProcess(id, msg); err != nil {
-					errCh <- fmt.Errorf("SendToProcess returned error: %v", err)
-					return
-				}
-			}
-		}(w)
-	}
-
-	wg.Wait()
-	close(errCh)
-	for err := range errCh {
-		if err != nil {
-			t.Fatal(err)
+			}(w)
 		}
-	}
 
-	// Verify at least one transport received messages (basic sanity)
-	// We can't easily access all transports here, but ensure no panics/races occurred.
+		wg.Wait()
+		close(errCh)
+		for err := range errCh {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		// Verify at least one transport received messages (basic sanity)
+		// We can't easily access all transports here, but ensure no panics/races occurred.
+	})
+
 }
 
 type concurrentFakeTransport struct {

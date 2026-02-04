@@ -1,6 +1,8 @@
 package rpc
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
 	"time"
 
@@ -51,7 +53,7 @@ func TestGetDefaultTimeout(t *testing.T) {
 
 func TestGetDefaultTimeoutConsistency(t *testing.T) {
 	// Test that GetDefaultTimeout consistently returns the same value
-	t.Run("consistent return values", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "consistent return values", nil, func(t *testing.T, tx *gorm.DB) {
 		first := GetDefaultTimeout()
 		second := GetDefaultTimeout()
 		third := GetDefaultTimeout()
@@ -64,7 +66,7 @@ func TestGetDefaultTimeoutConsistency(t *testing.T) {
 
 func TestGetDefaultTimeoutMatchesConstant(t *testing.T) {
 	// Test that GetDefaultTimeout returns the same value as DefaultRPCTimeout constant
-	t.Run("matches constant", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "matches constant", nil, func(t *testing.T, tx *gorm.DB) {
 		if GetDefaultTimeout() != DefaultRPCTimeout {
 			t.Errorf("GetDefaultTimeout() = %v, DefaultRPCTimeout = %v (should be equal)", GetDefaultTimeout(), DefaultRPCTimeout)
 		}
@@ -73,7 +75,7 @@ func TestGetDefaultTimeoutMatchesConstant(t *testing.T) {
 
 func TestNewClientWithDefaultTimeout(t *testing.T) {
 	// Test that NewClient can be initialized with the default timeout
-	t.Run("client creation with default timeout", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "client creation with default timeout", nil, func(t *testing.T, tx *gorm.DB) {
 		logger := common.NewLogger(nil, "", common.InfoLevel)
 		sp := subprocess.New("test-service")
 		client := NewClient(sp, logger, GetDefaultTimeout())

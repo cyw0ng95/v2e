@@ -1,6 +1,8 @@
 package rpc
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -252,7 +254,7 @@ func TestListParams_PaginationScenarios(t *testing.T) {
 
 // TestRPCParams_JSONRoundTrip tests JSON marshaling/unmarshaling integrity
 func TestRPCParams_JSONRoundTrip(t *testing.T) {
-	t.Run("FetchCVEsParams", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "FetchCVEsParams", nil, func(t *testing.T, tx *gorm.DB) {
 		for i := 0; i < 50; i++ {
 			original := FetchCVEsParams{StartIndex: i * 10, ResultsPerPage: (i + 1) * 5}
 			data, _ := json.Marshal(original)
@@ -265,7 +267,7 @@ func TestRPCParams_JSONRoundTrip(t *testing.T) {
 		}
 	})
 	
-	t.Run("ListParams", func(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "ListParams", nil, func(t *testing.T, tx *gorm.DB) {
 		for i := 0; i < 50; i++ {
 			original := ListParams{Offset: i * 100, Limit: i + 1}
 			data, _ := json.Marshal(original)
