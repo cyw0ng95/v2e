@@ -1515,6 +1515,115 @@ export class RPCClient {
   }): Promise<RPCResponse<{ relatedObjects: any[]; count: number }>> {
     return this.call<typeof params, { relatedObjects: any[]; count: number }>('RPCSSGFindRelatedObjects', params, 'local');
   }
+
+  // ============================================================================
+  // UEE (Unified ETL Engine) Methods
+  // ============================================================================
+
+  /**
+   * Get the ETL tree showing macro FSM and all providers
+   */
+  async getEtlTree(): Promise<RPCResponse<{ tree: any }>> {
+    if (this.useMock) {
+      // Mock data for development
+      return {
+        tree: {
+          macro: {
+            id: 'main-orchestrator',
+            state: 'ORCHESTRATING',
+            providers: [
+              {
+                id: 'cve-provider',
+                providerType: 'cve',
+                state: 'RUNNING',
+                processedCount: 245,
+                errorCount: 3,
+                permitsHeld: 5,
+                lastCheckpoint: 'v2e::nvd::cve::CVE-2024-00245',
+                createdAt: new Date(Date.now() - 3600000).toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+              {
+                id: 'cwe-provider',
+                providerType: 'cwe',
+                state: 'PAUSED',
+                processedCount: 128,
+                errorCount: 0,
+                permitsHeld: 0,
+                lastCheckpoint: 'v2e::mitre::cwe::CWE-128',
+                createdAt: new Date(Date.now() - 7200000).toISOString(),
+                updatedAt: new Date(Date.now() - 1800000).toISOString(),
+              },
+              {
+                id: 'capec-provider',
+                providerType: 'capec',
+                state: 'WAITING_QUOTA',
+                processedCount: 89,
+                errorCount: 1,
+                permitsHeld: 2,
+                lastCheckpoint: 'v2e::mitre::capec::CAPEC-89',
+                createdAt: new Date(Date.now() - 5400000).toISOString(),
+                updatedAt: new Date(Date.now() - 300000).toISOString(),
+              },
+            ],
+            createdAt: new Date(Date.now() - 86400000).toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          totalProviders: 3,
+          activeProviders: 1,
+        },
+      };
+    }
+    return this.call<{}, { tree: any }>('RPCGetEtlTree', {}, 'meta');
+  }
+
+  /**
+   * Get kernel performance metrics from the broker
+   */
+  async getKernelMetrics(): Promise<RPCResponse<{ metrics: any }>> {
+    if (this.useMock) {
+      // Mock data for development
+      const now = new Date().toISOString();
+      return {
+        metrics: {
+          p99Latency: 18.5 + Math.random() * 10, // 18.5-28.5ms
+          bufferSaturation: 45 + Math.random() * 20, // 45-65%
+          messageRate: 120 + Math.random() * 30, // 120-150 msgs/sec
+          errorRate: Math.random() * 2, // 0-2 errors/sec
+          timestamp: now,
+        },
+      };
+    }
+    return this.call<{}, { metrics: any }>('RPCGetKernelMetrics', {}, 'broker');
+  }
+
+  /**
+   * Get checkpoints for a specific provider
+   */
+  async getProviderCheckpoints(
+    providerID: string,
+    limit?: number,
+    offset?: number
+  ): Promise<RPCResponse<{ checkpoints: any[]; count: number }>> {
+    if (this.useMock) {
+      // Mock data for development
+      const mockCheckpoints = Array.from({ length: limit || 10 }, (_, i) => ({
+        urn: `v2e::nvd::cve::CVE-2024-${String((offset || 0) + i + 1).padStart(5, '0')}`,
+        providerID,
+        success: Math.random() > 0.1,
+        errorMessage: Math.random() > 0.9 ? 'Network timeout' : undefined,
+        processedAt: new Date(Date.now() - i * 60000).toISOString(),
+      }));
+      return {
+        checkpoints: mockCheckpoints,
+        count: 500,
+      };
+    }
+    return this.call<
+      { providerID: string; limit?: number; offset?: number },
+      { checkpoints: any[]; count: number }
+    >('RPCGetProviderCheckpoints', { providerID, limit, offset }, 'meta');
+  }
 }
 
 // ============================================================================

@@ -1667,3 +1667,92 @@ export interface SSGFindRelatedObjectsResponse {
   relatedObjects: SSGCrossReference[];
   count: number;
 }
+
+// ============================================================================
+// UEE (Unified ETL Engine) Types
+// ============================================================================
+
+export type MacroFSMState = 
+  | "BOOTSTRAPPING"
+  | "ORCHESTRATING"
+  | "STABILIZING"
+  | "DRAINING";
+
+export type ProviderFSMState = 
+  | "IDLE"
+  | "ACQUIRING"
+  | "RUNNING"
+  | "WAITING_QUOTA"
+  | "WAITING_BACKOFF"
+  | "PAUSED"
+  | "TERMINATED";
+
+export interface ProviderNode {
+  id: string;
+  providerType: string;
+  state: ProviderFSMState;
+  processedCount: number;
+  errorCount: number;
+  permitsHeld: number;
+  lastCheckpoint?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MacroNode {
+  id: string;
+  state: MacroFSMState;
+  providers: ProviderNode[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ETLTree {
+  macro: MacroNode;
+  totalProviders: number;
+  activeProviders: number;
+}
+
+export interface KernelMetrics {
+  p99Latency: number;           // P99 latency in milliseconds
+  bufferSaturation: number;     // Buffer saturation percentage (0-100)
+  messageRate: number;          // Messages per second
+  errorRate: number;            // Errors per second
+  timestamp: string;            // ISO timestamp
+}
+
+export interface Checkpoint {
+  urn: string;                  // URN key (v2e::provider::type::id)
+  providerID: string;
+  success: boolean;
+  errorMessage?: string;
+  processedAt: string;          // ISO timestamp
+}
+
+export interface PermitAllocation {
+  providerID: string;
+  permitsHeld: number;
+  permitsRequested: number;
+  timestamp: string;
+}
+
+// RPC Request/Response types
+
+export interface GetEtlTreeResponse {
+  tree: ETLTree;
+}
+
+export interface GetKernelMetricsResponse {
+  metrics: KernelMetrics;
+}
+
+export interface GetProviderCheckpointsRequest {
+  providerID: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetProviderCheckpointsResponse {
+  checkpoints: Checkpoint[];
+  count: number;
+}
