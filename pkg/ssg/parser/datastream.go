@@ -7,10 +7,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
-	"unsafe"
 
 	"github.com/cyw0ng95/v2e/pkg/ssg"
-	"golang.org/x/sys/unix"
 )
 
 // XML namespace constants for SCAP data streams
@@ -23,6 +21,11 @@ const (
 
 // productPattern extracts product name from filenames like "ssg-al2023-ds.xml"
 var productPattern = regexp.MustCompile(`^ssg-([^-]+)-ds\.xml$`)
+
+// htmlTagRegex is used to strip HTML tags from XMLString content.
+// This is compiled once at package initialization to avoid repeated compilations
+// during parsing, which significantly improves performance.
+var htmlTagRegex = regexp.MustCompile(`<[^>]+>`)
 
 // ============================================================================
 // XML Structure Definitions
@@ -141,9 +144,8 @@ func (x XMLString) String() string {
 	// Replace <html:br/> with newline
 	content = strings.ReplaceAll(content, "<html:br/>", "\n")
 	content = strings.ReplaceAll(content, "<html:br />", "\n")
-	// Strip all remaining HTML tags
-	re := regexp.MustCompile(`<[^>]+>`)
-	content = re.ReplaceAllString(content, "")
+	// Strip all remaining HTML tags using pre-compiled regex
+	content = htmlTagRegex.ReplaceAllString(content, "")
 	// Clean up excessive whitespace
 	content = strings.TrimSpace(content)
 	lines := strings.Split(content, "\n")
@@ -154,48 +156,13 @@ func (x XMLString) String() string {
 }
 
 // ============================================================================
-// Linux-Native Memory Optimization Helpers
-// ============================================================================
-
-// applySequentialHint applies madvise hints for sequential read-ahead on large buffers.
-// This signals the kernel to prefetch pages, reducing page faults during XML parsing.
-func applySequentialHint(data []byte) {
-	if len(data) == 0 {
-		return
-	}
-
-	// Get the pointer and length
-	ptr := unsafe.Pointer(&data[0])
-	length := len(data)
-
-	// Apply MADV_SEQUENTIAL to tell kernel we'll read sequentially
-	// This enables aggressive read-ahead
-	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_SEQUENTIAL)
-
-	// Apply MADV_WILLNEED to prefetch pages into memory
-	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_WILLNEED)
-}
-
-// reclaimMemory signals the kernel to reclaim physical memory immediately.
-// Call this after parsing is complete to free up memory for other processes.
-func reclaimMemory(data []byte) {
-	if len(data) == 0 {
-		return
-	}
-
-	ptr := unsafe.Pointer(&data[0])
-	length := len(data)
-
-	// Apply MADV_DONTNEED to tell kernel these pages can be reclaimed immediately
-	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_DONTNEED)
-}
-
-// ============================================================================
 // Parser Functions
 // ============================================================================
 
 // ParseDataStreamFile parses a SCAP data stream XML file and extracts SSG models.
 // Returns data stream metadata, benchmark, profiles, groups, and rules.
+// Uses a streaming approach to parse only the necessary Benchmark component,
+// reducing memory overhead for large XML files.
 func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg.SSGBenchmark, []ssg.SSGDSProfile, []ssg.SSGDSGroup, []ssg.SSGDSRule, error) {
 	// Extract product from filename
 	product, err := extractProduct(filename)
@@ -203,53 +170,68 @@ func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg
 		return nil, nil, nil, nil, nil, err
 	}
 
-	// Read all data into buffer for memory optimization
-	xmlData, err := io.ReadAll(r)
-	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("failed to read XML data: %w", err)
+	decoder := xml.NewDecoder(r)
+	
+	// Variables to hold parsed data
+	var dataStreamID, scapVersion, timestamp string
+	var benchmark *Benchmark
+	
+	// Stream through the XML using token-based parsing
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, nil, nil, nil, nil, fmt.Errorf("failed to read XML token: %w", err)
+		}
+		
+		// Look for start elements
+		if se, ok := token.(xml.StartElement); ok {
+			switch se.Name.Local {
+			case "data-stream":
+				// Extract data stream attributes
+				if dataStreamID == "" {
+					for _, attr := range se.Attr {
+						switch attr.Name.Local {
+						case "id":
+							dataStreamID = attr.Value
+						case "scap-version":
+							scapVersion = attr.Value
+						case "timestamp":
+							timestamp = attr.Value
+						}
+					}
+				}
+			case "Benchmark":
+				// Found the Benchmark element - decode it directly
+				var b Benchmark
+				if err := decoder.DecodeElement(&b, &se); err != nil {
+					return nil, nil, nil, nil, nil, fmt.Errorf("failed to decode Benchmark: %w", err)
+				}
+				benchmark = &b
+				// We have what we need, can break early
+				goto done
+			}
+		}
 	}
-
-	// Apply Linux kernel memory hints for large XML buffers
-	// This enables sequential read-ahead and reduces page faults
-	if len(xmlData) > 64*1024 { // Only for buffers > 64KB
-		applySequentialHint(xmlData)
-		defer reclaimMemory(xmlData) // Reclaim memory after parsing
+	
+done:
+	// Validate that we have required data
+	if dataStreamID == "" {
+		return nil, nil, nil, nil, nil, fmt.Errorf("no data stream found in collection")
 	}
-
-	// Parse XML
-	var collection DataStreamCollection
-	decoder := xml.NewDecoder(strings.NewReader(string(xmlData)))
-	if err := decoder.Decode(&collection); err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("failed to decode XML: %w", err)
+	
+	if benchmark == nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("no XCCDF benchmark found in data stream")
 	}
-
-	// Validate that we have at least one data stream
-	if len(collection.DataStream) == 0 {
-		return nil, nil, nil, nil, nil, fmt.Errorf("no data streams found in collection")
-	}
-
-	// Use the first data stream
-	ds := collection.DataStream[0]
 
 	// Create SSGDataStream model
 	dataStream := &ssg.SSGDataStream{
-		ID:          ds.ID,
+		ID:          dataStreamID,
 		Product:     product,
-		ScapVersion: ds.ScapVersion,
-		Timestamp:   ds.Timestamp,
-	}
-
-	// Find the XCCDF benchmark component
-	var benchmark *Benchmark
-	for _, comp := range collection.Components {
-		if comp.Benchmark != nil {
-			benchmark = comp.Benchmark
-			break
-		}
-	}
-
-	if benchmark == nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("no XCCDF benchmark found in data stream")
+		ScapVersion: scapVersion,
+		Timestamp:   timestamp,
 	}
 
 	// Create SSGBenchmark model
