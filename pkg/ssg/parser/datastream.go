@@ -7,8 +7,10 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"unsafe"
 
 	"github.com/cyw0ng95/v2e/pkg/ssg"
+	"golang.org/x/sys/unix"
 )
 
 // XML namespace constants for SCAP data streams
@@ -152,6 +154,43 @@ func (x XMLString) String() string {
 }
 
 // ============================================================================
+// Linux-Native Memory Optimization Helpers
+// ============================================================================
+
+// applySequentialHint applies madvise hints for sequential read-ahead on large buffers.
+// This signals the kernel to prefetch pages, reducing page faults during XML parsing.
+func applySequentialHint(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+
+	// Get the pointer and length
+	ptr := unsafe.Pointer(&data[0])
+	length := len(data)
+
+	// Apply MADV_SEQUENTIAL to tell kernel we'll read sequentially
+	// This enables aggressive read-ahead
+	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_SEQUENTIAL)
+
+	// Apply MADV_WILLNEED to prefetch pages into memory
+	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_WILLNEED)
+}
+
+// reclaimMemory signals the kernel to reclaim physical memory immediately.
+// Call this after parsing is complete to free up memory for other processes.
+func reclaimMemory(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+
+	ptr := unsafe.Pointer(&data[0])
+	length := len(data)
+
+	// Apply MADV_DONTNEED to tell kernel these pages can be reclaimed immediately
+	_ = unix.Madvise((*(*[1 << 30]byte)(ptr))[:length:length], unix.MADV_DONTNEED)
+}
+
+// ============================================================================
 // Parser Functions
 // ============================================================================
 
@@ -164,9 +203,22 @@ func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg
 		return nil, nil, nil, nil, nil, err
 	}
 
+	// Read all data into buffer for memory optimization
+	xmlData, err := io.ReadAll(r)
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("failed to read XML data: %w", err)
+	}
+
+	// Apply Linux kernel memory hints for large XML buffers
+	// This enables sequential read-ahead and reduces page faults
+	if len(xmlData) > 64*1024 { // Only for buffers > 64KB
+		applySequentialHint(xmlData)
+		defer reclaimMemory(xmlData) // Reclaim memory after parsing
+	}
+
 	// Parse XML
 	var collection DataStreamCollection
-	decoder := xml.NewDecoder(r)
+	decoder := xml.NewDecoder(strings.NewReader(string(xmlData)))
 	if err := decoder.Decode(&collection); err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("failed to decode XML: %w", err)
 	}
