@@ -16,8 +16,8 @@ const MetricsEncodingUnknown = metrics.EncodingUnknown
 func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 	// Use transport for message delivery
 	if b.transportManager != nil {
-		// Marshal message to get wire size
-		data, err := msg.Marshal()
+		// Marshal message with GOB encoding for better performance
+		data, err := proc.MarshalBinaryWithEncoding(msg, proc.EncodingGOB)
 		if err != nil {
 			return fmt.Errorf("failed to marshal message: %w", err)
 		}
@@ -27,10 +27,9 @@ func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 		err = b.transportManager.SendToProcess(processID, msg)
 		if err == nil {
 			b.bus.Record(msg, true)
-			// Record in metrics registry with wire size
-			// For JSON messages, encoding is JSON; binary messages would be detected elsewhere
-			b.metricsRegistry.RecordMessage(msg, true, wireSize, MetricsEncodingUnknown)
-			b.logger.Debug("Sent message to process %s via transport: type=%s id=%s size=%d", processID, msg.Type, msg.ID, wireSize)
+			// Record in metrics registry with wire size and GOB encoding
+			b.metricsRegistry.RecordMessage(msg, true, wireSize, metrics.EncodingGOB)
+			b.logger.Debug("Sent message to process %s via transport: type=%s id=%s size=%d encoding=GOB", processID, msg.Type, msg.ID, wireSize)
 			return nil
 		}
 		return fmt.Errorf("failed to send message to process %s via transport: %w", processID, err)
@@ -102,12 +101,11 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 			continue
 		}
 
-		// Record received message in metrics (approximate size for now)
-		// In the future, this could be enhanced to use actual wire size from transport
-		data, _ := msg.Marshal()
+		// Record received message in metrics with GOB encoding
+		data, _ := proc.MarshalBinaryWithEncoding(msg, proc.EncodingGOB)
 		wireSize := len(data)
 		if wireSize > 0 {
-			b.metricsRegistry.RecordMessage(msg, false, wireSize, MetricsEncodingUnknown)
+			b.metricsRegistry.RecordMessage(msg, false, wireSize, metrics.EncodingGOB)
 		}
 
 		// Handle subprocess_ready event - close the ready channel to signal

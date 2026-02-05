@@ -7,7 +7,7 @@ import (
 // BenchmarkBinaryHeader_Encode benchmarks encoding a binary header
 func BenchmarkBinaryHeader_Encode(b *testing.B) {
 	header := NewBinaryHeader()
-	header.Encoding = EncodingJSON
+	header.Encoding = EncodingGOB
 	header.MsgType = BinaryMessageTypeRequest
 	header.PayloadLen = 100
 	header.SetMessageID("test-msg-id")
@@ -27,7 +27,7 @@ func BenchmarkBinaryHeader_Encode(b *testing.B) {
 // BenchmarkBinaryHeader_Decode benchmarks decoding a binary header
 func BenchmarkBinaryHeader_Decode(b *testing.B) {
 	header := NewBinaryHeader()
-	header.Encoding = EncodingJSON
+	header.Encoding = EncodingGOB
 	header.MsgType = BinaryMessageTypeRequest
 	header.PayloadLen = 100
 	header.SetMessageID("test-msg-id")
@@ -42,30 +42,6 @@ func BenchmarkBinaryHeader_Decode(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = DecodeHeader(buf)
-	}
-}
-
-// BenchmarkBinaryMessage_MarshalJSON benchmarks binary marshaling with JSON encoding
-func BenchmarkBinaryMessage_MarshalJSON(b *testing.B) {
-	type TestPayload struct {
-		Command string   `json:"command"`
-		Args    []string `json:"args"`
-	}
-
-	payload := TestPayload{
-		Command: "echo",
-		Args:    []string{"hello", "world"},
-	}
-
-	msg, _ := NewRequestMessage("req-1", payload)
-	msg.Source = "source"
-	msg.Target = "target"
-	msg.CorrelationID = "corr-123"
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = msg.MarshalBinary()
 	}
 }
 
@@ -93,8 +69,8 @@ func BenchmarkBinaryMessage_MarshalGOB(b *testing.B) {
 	}
 }
 
-// BenchmarkBinaryMessage_UnmarshalJSON benchmarks binary unmarshaling with JSON encoding
-func BenchmarkBinaryMessage_UnmarshalJSON(b *testing.B) {
+// BenchmarkBinaryMessage_MarshalJSON benchmarks binary marshaling with JSON encoding
+func BenchmarkBinaryMessage_MarshalJSON(b *testing.B) {
 	type TestPayload struct {
 		Command string   `json:"command"`
 		Args    []string `json:"args"`
@@ -110,12 +86,10 @@ func BenchmarkBinaryMessage_UnmarshalJSON(b *testing.B) {
 	msg.Target = "target"
 	msg.CorrelationID = "corr-123"
 
-	data, _ := msg.MarshalBinary()
-
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = UnmarshalBinary(data)
+		_, _ = MarshalBinaryWithEncoding(msg, EncodingJSON)
 	}
 }
 
@@ -145,8 +119,34 @@ func BenchmarkBinaryMessage_UnmarshalGOB(b *testing.B) {
 	}
 }
 
-// BenchmarkBinaryVsJSON_Marshal compares binary vs JSON marshaling
-func BenchmarkBinaryVsJSON_Marshal(b *testing.B) {
+// BenchmarkBinaryMessage_UnmarshalJSON benchmarks binary unmarshaling with JSON encoding
+func BenchmarkBinaryMessage_UnmarshalJSON(b *testing.B) {
+	type TestPayload struct {
+		Command string   `json:"command"`
+		Args    []string `json:"args"`
+	}
+
+	payload := TestPayload{
+		Command: "echo",
+		Args:    []string{"hello", "world"},
+	}
+
+	msg, _ := NewRequestMessage("req-1", payload)
+	msg.Source = "source"
+	msg.Target = "target"
+	msg.CorrelationID = "corr-123"
+
+	data, _ := MarshalBinaryWithEncoding(msg, EncodingJSON)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = UnmarshalBinary(data)
+	}
+}
+
+// BenchmarkGOBvsJSON_Marshal compares GOB vs JSON marshaling
+func BenchmarkGOBvsJSON_Marshal(b *testing.B) {
 	type TestPayload struct {
 		Command string   `json:"command"`
 		Args    []string `json:"args"`
@@ -162,14 +162,21 @@ func BenchmarkBinaryVsJSON_Marshal(b *testing.B) {
 	msg.Target = "target-process"
 	msg.CorrelationID = "corr-123"
 
-	b.Run("Binary", func(b *testing.B) {
+	b.Run("GOB", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			_, _ = msg.MarshalBinary()
+			_, _ = MarshalBinaryWithEncoding(msg, EncodingGOB)
 		}
 	})
 
 	b.Run("JSON", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_, _ = MarshalBinaryWithEncoding(msg, EncodingJSON)
+		}
+	})
+
+	b.Run("PlainJSON", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			_, _ = msg.Marshal()
@@ -177,8 +184,8 @@ func BenchmarkBinaryVsJSON_Marshal(b *testing.B) {
 	})
 }
 
-// BenchmarkBinaryVsJSON_Unmarshal compares binary vs JSON unmarshaling
-func BenchmarkBinaryVsJSON_Unmarshal(b *testing.B) {
+// BenchmarkGOBvsJSON_Unmarshal compares GOB vs JSON unmarshaling
+func BenchmarkGOBvsJSON_Unmarshal(b *testing.B) {
 	type TestPayload struct {
 		Command string   `json:"command"`
 		Args    []string `json:"args"`
@@ -194,26 +201,34 @@ func BenchmarkBinaryVsJSON_Unmarshal(b *testing.B) {
 	msg.Target = "target-process"
 	msg.CorrelationID = "corr-123"
 
-	binaryData, _ := msg.MarshalBinary()
-	jsonData, _ := msg.Marshal()
+	gobData, _ := MarshalBinaryWithEncoding(msg, EncodingGOB)
+	jsonData, _ := MarshalBinaryWithEncoding(msg, EncodingJSON)
+	plainJsonData, _ := msg.Marshal()
 
-	b.Run("Binary", func(b *testing.B) {
+	b.Run("GOB", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			_, _ = UnmarshalBinary(binaryData)
+			_, _ = UnmarshalBinary(gobData)
 		}
 	})
 
 	b.Run("JSON", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			_, _ = Unmarshal(jsonData)
+			_, _ = UnmarshalBinary(jsonData)
+		}
+	})
+
+	b.Run("PlainJSON", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_, _ = Unmarshal(plainJsonData)
 		}
 	})
 }
 
-// BenchmarkBinaryVsJSON_RoundTrip compares full round-trip performance
-func BenchmarkBinaryVsJSON_RoundTrip(b *testing.B) {
+// BenchmarkGOBvsJSON_RoundTrip compares full round-trip performance
+func BenchmarkGOBvsJSON_RoundTrip(b *testing.B) {
 	type TestPayload struct {
 		Command string   `json:"command"`
 		Args    []string `json:"args"`
@@ -224,7 +239,7 @@ func BenchmarkBinaryVsJSON_RoundTrip(b *testing.B) {
 		Args:    []string{"hello", "world"},
 	}
 
-	b.Run("Binary", func(b *testing.B) {
+	b.Run("GOB", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			msg, _ := NewRequestMessage("req-1", payload)
@@ -232,7 +247,7 @@ func BenchmarkBinaryVsJSON_RoundTrip(b *testing.B) {
 			msg.Target = "target"
 			msg.CorrelationID = "corr-123"
 
-			data, _ := msg.MarshalBinary()
+			data, _ := MarshalBinaryWithEncoding(msg, EncodingGOB)
 			decoded, _ := UnmarshalBinary(data)
 			
 			var result TestPayload
@@ -251,6 +266,25 @@ func BenchmarkBinaryVsJSON_RoundTrip(b *testing.B) {
 			msg.Target = "target"
 			msg.CorrelationID = "corr-123"
 
+			data, _ := MarshalBinaryWithEncoding(msg, EncodingJSON)
+			decoded, _ := UnmarshalBinary(data)
+			
+			var result TestPayload
+			_ = decoded.UnmarshalPayload(&result)
+			
+			PutMessage(msg)
+			PutMessage(decoded)
+		}
+	})
+
+	b.Run("PlainJSON", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			msg, _ := NewRequestMessage("req-1", payload)
+			msg.Source = "source"
+			msg.Target = "target"
+			msg.CorrelationID = "corr-123"
+
 			data, _ := msg.Marshal()
 			decoded, _ := Unmarshal(data)
 			
@@ -262,8 +296,8 @@ func BenchmarkBinaryVsJSON_RoundTrip(b *testing.B) {
 	})
 }
 
-// BenchmarkBinaryMessage_LargePayload benchmarks binary protocol with large payloads
-func BenchmarkBinaryMessage_LargePayload(b *testing.B) {
+// BenchmarkGOBvsJSON_LargePayload benchmarks with large payloads
+func BenchmarkGOBvsJSON_LargePayload(b *testing.B) {
 	// Create a large payload similar to a CVE response
 	largePayload := make(map[string]interface{})
 	for i := 0; i < 100; i++ {
@@ -281,17 +315,69 @@ func BenchmarkBinaryMessage_LargePayload(b *testing.B) {
 	msg.Source = "source"
 	msg.Target = "target"
 
-	b.Run("BinaryMarshal", func(b *testing.B) {
+	b.Run("GOB_Marshal", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			_, _ = msg.MarshalBinary()
+			_, _ = MarshalBinaryWithEncoding(msg, EncodingGOB)
 		}
 	})
 
-	b.Run("JSONMarshal", func(b *testing.B) {
+	b.Run("JSON_Marshal", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_, _ = MarshalBinaryWithEncoding(msg, EncodingJSON)
+		}
+	})
+
+	b.Run("PlainJSON_Marshal", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			_, _ = msg.Marshal()
 		}
 	})
 }
+
+// BenchmarkMessagePooling benchmarks message pooling efficiency
+func BenchmarkMessagePooling(b *testing.B) {
+	b.Run("WithPooling", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			msg := GetMessage()
+			msg.Type = MessageTypeRequest
+			msg.ID = "test"
+			PutMessage(msg)
+		}
+	})
+
+	b.Run("WithoutPooling", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			msg := &Message{
+				Type: MessageTypeRequest,
+				ID:   "test",
+			}
+			_ = msg
+		}
+	})
+}
+
+// BenchmarkLinuxOptimizations benchmarks Linux-specific optimizations
+func BenchmarkLinuxOptimizations(b *testing.B) {
+	data := make([]byte, 1024)
+	dest := make([]byte, 1024)
+
+	b.Run("Memcpy", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			Memcpy(dest, data)
+		}
+	})
+
+	b.Run("StandardCopy", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			copy(dest, data)
+		}
+	})
+}
+

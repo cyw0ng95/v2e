@@ -15,6 +15,7 @@ type BinaryMessage struct {
 }
 
 // MarshalBinary marshals a Message to binary format with fixed header
+// Defaults to JSON encoding for best performance on small messages
 func (m *Message) MarshalBinary() ([]byte, error) {
 	return MarshalBinaryWithEncoding(m, EncodingJSON)
 }

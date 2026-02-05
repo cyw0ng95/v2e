@@ -18,6 +18,113 @@ Key architectural principles:
 - **Enhanced Configuration**: Advanced configuration management via vconfig tool with TUI interface
 - **Cross-Platform Support**: Containerized development environment for macOS with Linux support
 - **Linux-Native Performance**: CPU affinity binding, thread pinning, and kernel memory hints for deterministic low-latency operation
+- **Binary Message Protocol**: High-performance 128-byte fixed header with multiple encoding options (JSON/GOB/PLAIN)
+- **Comprehensive Telemetry**: Wire-size tracking, encoding distribution, and per-process metrics
+
+## Binary Message Protocol
+
+The v2e broker implements an optimized binary message protocol with a 128-byte fixed header, providing significant performance improvements over pure JSON encoding.
+
+### Header Layout
+
+The binary header consists of exactly 128 bytes with the following structure:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0-1 | 2 bytes | Magic | Protocol identifier (0x56 0x32 = 'V2') |
+| 2 | 1 byte | Version | Protocol version (0x01) |
+| 3 | 1 byte | Encoding | Payload encoding (0=JSON, 1=GOB, 2=PLAIN) |
+| 4 | 1 byte | MsgType | Message type (0=Request, 1=Response, 2=Event, 3=Error) |
+| 5-7 | 3 bytes | Reserved | Reserved for future use |
+| 8-11 | 4 bytes | PayloadLen | Payload length (uint32, big-endian) |
+| 12-43 | 32 bytes | MessageID | Message ID (null-terminated string) |
+| 44-75 | 32 bytes | SourceID | Source process ID (null-terminated string) |
+| 76-107 | 32 bytes | TargetID | Target process ID (null-terminated string) |
+| 108-127 | 20 bytes | CorrelationID | Correlation ID for request-response matching |
+
+### Encoding Options
+
+Three encoding types are supported for payload serialization:
+
+1. **JSON (Type 0)** - Default encoding, fastest for small messages
+   - Best for messages < 1KB
+   - Unmarshal: 236 ns/op, 304 B/op
+   - Marshal: 418 ns/op, 424 B/op
+
+2. **GOB (Type 1)** - Go-native binary encoding
+   - Better for large structured payloads
+   - Unmarshal: 1592 ns/op, 1432 B/op
+   - Marshal: 1286 ns/op, 1360 B/op
+
+3. **PLAIN (Type 2)** - Raw bytes without encoding
+   - Most efficient for binary data
+   - No serialization overhead
+
+### Benchmark Results
+
+Performance comparison (Intel Xeon 8370C @ 2.80GHz):
+
+| Operation | JSON | GOB | PlainJSON | Winner |
+|-----------|------|-----|-----------|--------|
+| Small Message Marshal | 418 ns/op | 1286 ns/op | 669 ns/op | **JSON** (3.1x faster than GOB) |
+| Small Message Unmarshal | 236 ns/op | 1592 ns/op | 2060 ns/op | **JSON** (6.7x faster than GOB) |
+| Round-trip | 2139 ns/op | 4595 ns/op | 4508 ns/op | **JSON** (2.1x faster than GOB) |
+| Large Payload Marshal | 5430 ns/op | 17359 ns/op | 106225 ns/op | **JSON** (3.2x faster than GOB) |
+
+**Recommendation**: Use JSON encoding (default) for optimal performance on typical message sizes.
+
+### Linux-Specific Optimizations
+
+On Linux platforms, the following optimizations are automatically enabled:
+
+- **Zero-copy operations**: `splice()` and `sendfile()` syscalls for efficient data transfer
+- **Socket tuning**: TCP_NODELAY, TCP_QUICKACK, optimized buffer sizes
+- **Memory hints**: `madvise()` for sequential access patterns
+- **CPU affinity**: Thread pinning for deterministic latency
+- **Optimized memcpy**: Direct memory operations bypassing bounds checking
+
+### Usage Example
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/proc"
+
+// Create and marshal a message (default JSON encoding)
+msg, _ := proc.NewRequestMessage("RPCGetStatus", map[string]string{
+    "component": "broker",
+})
+msg.Source = "client"
+msg.Target = "broker"
+
+data, _ := msg.MarshalBinary() // Uses JSON encoding by default
+
+// Check message type
+if proc.IsBinaryMessage(data) {
+    decoded, _ := proc.UnmarshalBinary(data)
+    // Process decoded message
+}
+
+// Use GOB encoding for large structured data
+largeData, _ := proc.MarshalBinaryWithEncoding(msg, proc.EncodingGOB)
+```
+
+### Metrics & Telemetry
+
+The broker tracks comprehensive message statistics:
+
+- **Global metrics**: Total messages/bytes sent/received, encoding distribution
+- **Per-process metrics**: Message counts and byte totals per process
+- **Encoding distribution**: Breakdown of JSON/GOB/PLAIN usage
+- **Wire-size tracking**: Accurate byte-level bandwidth monitoring
+
+Access metrics via RPC:
+```go
+// Get detailed statistics
+stats, _ := broker.HandleRPCGetMessageStats(reqMsg)
+// Returns: total_bytes_sent, total_bytes_received, encoding_distribution, per_process stats
+
+// Get message count
+count, _ := broker.HandleRPCGetMessageCount(reqMsg)
+```
 
 ## System Architecture
 

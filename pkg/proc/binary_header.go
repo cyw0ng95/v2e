@@ -83,6 +83,9 @@ func (h *BinaryHeader) EncodeHeader(buf []byte) error {
 		return fmt.Errorf("buffer too small: need %d bytes, got %d", HeaderSize, len(buf))
 	}
 
+	// Hint to kernel that we'll access this buffer sequentially
+	_ = MadviseSequential(buf)
+
 	// Magic (2 bytes)
 	buf[0] = h.Magic[0]
 	buf[1] = h.Magic[1]
@@ -104,17 +107,25 @@ func (h *BinaryHeader) EncodeHeader(buf []byte) error {
 	// PayloadLen (4 bytes, big-endian)
 	binary.BigEndian.PutUint32(buf[8:12], h.PayloadLen)
 
-	// MessageID (32 bytes)
-	copy(buf[12:44], h.MessageID[:])
+	// MessageID (32 bytes) - use optimized copy
+	srcMsgID := h.MessageID[:]
+	dstMsgID := buf[12:44]
+	Memcpy(dstMsgID, srcMsgID)
 
-	// SourceID (32 bytes)
-	copy(buf[44:76], h.SourceID[:])
+	// SourceID (32 bytes) - use optimized copy
+	srcSourceID := h.SourceID[:]
+	dstSourceID := buf[44:76]
+	Memcpy(dstSourceID, srcSourceID)
 
-	// TargetID (32 bytes)
-	copy(buf[76:108], h.TargetID[:])
+	// TargetID (32 bytes) - use optimized copy
+	srcTargetID := h.TargetID[:]
+	dstTargetID := buf[76:108]
+	Memcpy(dstTargetID, srcTargetID)
 
-	// CorrelationID (20 bytes)
-	copy(buf[108:128], h.CorrelationID[:])
+	// CorrelationID (20 bytes) - use optimized copy
+	srcCorrID := h.CorrelationID[:]
+	dstCorrID := buf[108:128]
+	Memcpy(dstCorrID, srcCorrID)
 
 	return nil
 }
