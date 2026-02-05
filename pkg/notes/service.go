@@ -148,10 +148,14 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 	now := time.Now().UTC()
 	nowStr := now.Format(time.RFC3339)
 
+	// Generate URN for the bookmark
+	urnStr := GenerateURN(itemType, itemID, "")
+
 	bookmark := &BookmarkModel{
 		GlobalItemID:  globalItemID,
 		ItemType:      itemType,
 		ItemID:        itemID,
+		URN:           urnStr,
 		Title:         title,
 		Description:   description,
 		LearningState: string(LearningStateToReview),
@@ -187,6 +191,7 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 		// Auto-create a memory card for this bookmark using title/description
 		card := &MemoryCardModel{
 			BookmarkID: bookmark.ID,
+			URN:        urnStr,
 			Front:      title,
 			Back:       description,
 			EaseFactor: 2.5,

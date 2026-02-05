@@ -2,9 +2,9 @@
 
 import { useEtlTree, useKernelMetrics } from '@/lib/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Activity, Cpu, Database, Gauge, Layers, PlayCircle, Pause, StopCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Activity, Cpu, Database, Gauge } from 'lucide-react';
+import { ETLTopologyViewer } from '@/components/etl-topology-viewer';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ETLEnginePage() {
   const { data: etlData, isLoading: etlLoading } = useEtlTree(5000);
@@ -13,22 +13,14 @@ export default function ETLEnginePage() {
   const tree = etlData?.tree;
   const metrics = metricsData?.metrics;
 
-  // Helper to get state badge variant
-  const getStateVariant = (state: string) => {
-    switch (state) {
-      case 'RUNNING':
-      case 'ORCHESTRATING':
-        return 'default';
-      case 'PAUSED':
-      case 'WAITING_QUOTA':
-      case 'WAITING_BACKOFF':
-        return 'secondary';
-      case 'TERMINATED':
-      case 'DRAINING':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
+  const handleProviderAction = (providerId: string, action: 'start' | 'pause' | 'stop') => {
+    console.log('Provider action:', providerId, action);
+    // TODO: Implement RPC calls to control provider FSM
+  };
+
+  const handlePolicyUpdate = (providerId: string, policy: any) => {
+    console.log('Policy update:', providerId, policy);
+    // TODO: Implement RPC call to update performance policy
   };
 
   return (
@@ -40,7 +32,7 @@ export default function ETLEnginePage() {
           <h1 className="text-3xl font-bold tracking-tight">ETL Engine</h1>
         </div>
         <p className="text-muted-foreground">
-          Unified ETL Engine monitoring - Master-Slave FSM orchestration
+          Unified ETL Engine monitoring - Master-Slave hierarchical FSM orchestration
         </p>
       </div>
 
@@ -103,106 +95,48 @@ export default function ETLEnginePage() {
         </Card>
       </div>
 
-      {/* Macro FSM State */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Macro FSM Orchestrator</CardTitle>
-              <CardDescription>High-level ETL coordination state machine</CardDescription>
-            </div>
-            <Badge variant={getStateVariant(tree?.macro?.state)}>
-              {etlLoading ? 'Loading...' : tree?.macro?.state || 'UNKNOWN'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total Providers:</span>
-              <span className="font-medium">{tree?.totalProviders || 0}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Active Providers:</span>
-              <span className="font-medium">{tree?.activeProviders || 0}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs for Different Views */}
+      <Tabs defaultValue="topology" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="topology">Topology View</TabsTrigger>
+          <TabsTrigger value="list">List View</TabsTrigger>
+        </TabsList>
 
-      {/* Provider FSMs */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5" />
-          <h2 className="text-2xl font-bold">Provider State Machines</h2>
-        </div>
+        <TabsContent value="topology" className="space-y-4">
+          <ETLTopologyViewer 
+            data={tree}
+            isLoading={etlLoading}
+            onProviderAction={handleProviderAction}
+            onPolicyUpdate={handlePolicyUpdate}
+          />
+        </TabsContent>
 
-        {etlLoading ? (
+        <TabsContent value="list" className="space-y-4">
+          {/* Legacy list view (kept for backward compatibility) */}
           <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-muted-foreground">Loading providers...</p>
+            <CardHeader>
+              <CardTitle>Provider List</CardTitle>
+              <CardDescription>Table view of all ETL providers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {tree?.macro?.providers?.map((provider: any) => (
+                  <div key={provider.id} className="flex items-center justify-between border rounded p-3">
+                    <div className="flex-1">
+                      <div className="font-medium">{provider.providerType.toUpperCase()}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{provider.id}</div>
+                    </div>
+                    <div className="text-sm">
+                      Processed: <span className="font-medium">{provider.processedCount}</span> | 
+                      Errors: <span className="font-medium text-red-600">{provider.errorCount}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {tree?.macro?.providers?.map((provider: any) => (
-              <Card key={provider.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{provider.providerType.toUpperCase()}</CardTitle>
-                    <Badge variant={getStateVariant(provider.state)}>
-                      {provider.state}
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-xs font-mono">
-                    {provider.id}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Processed:</span>
-                      <span className="font-medium">{provider.processedCount}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Errors:</span>
-                      <span className="font-medium">{provider.errorCount}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Permits:</span>
-                      <span className="font-medium">{provider.permitsHeld}</span>
-                    </div>
-                  </div>
-
-                  {provider.lastCheckpoint && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground">Last Checkpoint:</p>
-                      <p className="text-xs font-mono truncate" title={provider.lastCheckpoint}>
-                        {provider.lastCheckpoint}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" variant="outline" className="flex-1" disabled>
-                      <PlayCircle className="h-3 w-3 mr-1" />
-                      Start
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" disabled>
-                      <Pause className="h-3 w-3 mr-1" />
-                      Pause
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" disabled>
-                      <StopCircle className="h-3 w-3 mr-1" />
-                      Stop
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Info Card */}
       <Card className="bg-muted/50">
