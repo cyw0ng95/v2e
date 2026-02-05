@@ -4,18 +4,32 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cyw0ng95/v2e/cmd/v2broker/metrics"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
+
+// MetricsEncodingUnknown is used for JSON messages in the metrics registry
+const MetricsEncodingUnknown = metrics.EncodingUnknown
 
 // SendToProcess sends a message to a specific process via UDS transport.
 func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 	// Use transport for message delivery
 	if b.transportManager != nil {
-		err := b.transportManager.SendToProcess(processID, msg)
+		// Marshal message with GOB encoding for better performance
+		data, err := proc.MarshalBinaryWithEncoding(msg, proc.EncodingGOB)
+		if err != nil {
+			return fmt.Errorf("failed to marshal message: %w", err)
+		}
+		
+		wireSize := len(data)
+		
+		err = b.transportManager.SendToProcess(processID, msg)
 		if err == nil {
 			b.bus.Record(msg, true)
-			b.logger.Debug("Sent message to process %s via transport: type=%s id=%s", processID, msg.Type, msg.ID)
+			// Record in metrics registry with wire size and GOB encoding
+			b.metricsRegistry.RecordMessage(msg, true, wireSize, metrics.EncodingGOB)
+			b.logger.Debug("Sent message to process %s via transport: type=%s id=%s size=%d encoding=GOB", processID, msg.Type, msg.ID, wireSize)
 			return nil
 		}
 		return fmt.Errorf("failed to send message to process %s via transport: %w", processID, err)
@@ -85,6 +99,13 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 		// Empty message - might be a heartbeat or keepalive
 		if msg == nil {
 			continue
+		}
+
+		// Record received message in metrics with GOB encoding
+		data, _ := proc.MarshalBinaryWithEncoding(msg, proc.EncodingGOB)
+		wireSize := len(data)
+		if wireSize > 0 {
+			b.metricsRegistry.RecordMessage(msg, false, wireSize, metrics.EncodingGOB)
 		}
 
 		// Handle subprocess_ready event - close the ready channel to signal

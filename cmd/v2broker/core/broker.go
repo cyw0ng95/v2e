@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/cyw0ng95/v2e/cmd/v2broker/metrics"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/mq"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/perf"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/permits"
@@ -26,6 +27,7 @@ type Broker struct {
 	logger    *common.Logger
 
 	bus             *mq.Bus
+	metricsRegistry *metrics.Registry // New metrics tracking system
 	rpcEndpoints    map[string][]string
 	endpointsMu     sync.RWMutex
 	pendingRequests map[string]*PendingRequest
@@ -51,6 +53,7 @@ func NewBroker() *Broker {
 		cancel:           cancel,
 		logger:           common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
 		bus:              bus,
+		metricsRegistry:  metrics.NewRegistry(),
 		rpcEndpoints:     make(map[string][]string),
 		pendingRequests:  make(map[string]*PendingRequest),
 		correlationSeq:   0,
