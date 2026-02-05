@@ -256,7 +256,10 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
       </div>
 
       <div className="mb-6">
-        <div className="text-sm text-gray-500 mb-1">Learning State: {currentCard.learning_state}</div>
+        <div className="text-sm text-gray-500 mb-1">
+          {currentCard.urn && <div className="font-mono text-xs mb-1" title={currentCard.urn}>URN: {currentCard.urn}</div>}
+          Learning State: {currentCard.learning_state}
+        </div>
         <div className="text-lg font-medium bg-gray-50 p-4 rounded mb-2 min-h-25 flex items-center">
           {currentCard.front_content}
         </div>

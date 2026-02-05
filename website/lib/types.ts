@@ -656,6 +656,7 @@ export interface Bookmark {
   global_item_id: string;
   item_type: string;
   item_id: string;
+  urn: string; // URN reference (e.g., v2e::nvd::cve::CVE-2021-1234)
   title: string;
   description: string;
   author?: string;
@@ -799,6 +800,7 @@ export interface DeleteNoteResponse {
 export interface MemoryCard {
   id: number;
   bookmark_id: number;
+  urn: string; // URN reference from associated bookmark
   front_content: string;
   back_content: string;
   major_class: string;
