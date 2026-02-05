@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
-	"github.com/cyw0ng95/v2e/pkg/meta/storage"
-	"github.com/cyw0ng95/v2e/pkg/rpc"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 	"gorm.io/gorm"
@@ -24,20 +22,20 @@ func testLogger() *common.Logger {
 
 // MockRPCClient implements a mock RPC client for testing
 type MockRPCClient struct {
-	responses map[string]map[string]interface{}
+	responses map[string]*subprocess.Message
 	errors    map[string]error
 	callCount map[string]int
 }
 
 func NewMockRPCClient() *MockRPCClient {
 	return &MockRPCClient{
-		responses: make(map[string]map[string]interface{}),
+		responses: make(map[string]*subprocess.Message),
 		errors:    make(map[string]error),
 		callCount: make(map[string]int),
 	}
 }
 
-func (m *MockRPCClient) InvokeRPC(ctx context.Context, target string, method string, params interface{}) (map[string]interface{}, error) {
+func (m *MockRPCClient) InvokeRPC(ctx context.Context, target string, method string, params interface{}) (*subprocess.Message, error) {
 	key := target + "::" + method
 	m.callCount[key]++
 
@@ -49,12 +47,37 @@ func (m *MockRPCClient) InvokeRPC(ctx context.Context, target string, method str
 		return resp, nil
 	}
 
-	return nil, fmt.Errorf("no mock response for %s", key)
+	// Return empty success message if no mock set
+	msg := &subprocess.Message{
+		Type:    subprocess.MessageTypeResponse,
+		Payload: json.RawMessage(`{}`),
+	}
+	return msg, nil
 }
 
 func (m *MockRPCClient) SetResponse(target, method string, response map[string]interface{}) {
 	key := target + "::" + method
-	m.responses[key] = response
+	
+	payloadBytes, _ := json.Marshal(response)
+	msg := &subprocess.Message{
+		Type:    subprocess.MessageTypeResponse,
+		Payload: json.RawMessage(payloadBytes),
+	}
+	m.responses[key] = msg
+}
+
+func (m *MockRPCClient) SetErrorResponse(target, method string, errMsg string) {
+	key := target + "::" + method
+	
+	response := map[string]interface{}{
+		"error": errMsg,
+	}
+	payloadBytes, _ := json.Marshal(response)
+	msg := &subprocess.Message{
+		Type:    subprocess.MessageTypeError,
+		Payload: json.RawMessage(payloadBytes),
+	}
+	m.responses[key] = msg
 }
 
 func (m *MockRPCClient) SetError(target, method string, err error) {
@@ -67,12 +90,13 @@ func (m *MockRPCClient) GetCallCount(target, method string) int {
 	return m.callCount[key]
 }
 
+
 // Test 1: Provider Factory Creation
 func TestProviderFactory_CreateProvider_CVE(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "CreateCVEProvider", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
-			RPCClient: &rpc.Client{},
+			Storage:   nil, // Nil storage is ok for these tests
+			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
 
@@ -102,8 +126,8 @@ func TestProviderFactory_CreateProvider_CVE(t *testing.T) {
 func TestProviderFactory_CreateProvider_CWE(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "CreateCWEProvider", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
-			RPCClient: &rpc.Client{},
+			Storage:   nil,
+			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
 
@@ -125,8 +149,8 @@ func TestProviderFactory_CreateProvider_CWE(t *testing.T) {
 func TestProviderFactory_CreateProvider_CAPEC(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "CreateCAPECProvider", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
-			RPCClient: &rpc.Client{},
+			Storage:   nil,
+			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
 
@@ -146,8 +170,8 @@ func TestProviderFactory_CreateProvider_CAPEC(t *testing.T) {
 func TestProviderFactory_CreateProvider_ATTACK(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "CreateATTACKProvider", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
-			RPCClient: &rpc.Client{},
+			Storage:   nil,
+			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
 
@@ -167,8 +191,8 @@ func TestProviderFactory_CreateProvider_ATTACK(t *testing.T) {
 func TestProviderFactory_CreateProvider_UnsupportedType(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "UnsupportedType", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
-			RPCClient: &rpc.Client{},
+			Storage:   nil,
+			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
 
@@ -222,6 +246,9 @@ func TestCVEProvider_ExecuteBatch_Success(t *testing.T) {
 			},
 		})
 
+		// Mock GetCVE to return not found (so it will call SaveCVE)
+		mockRPC.SetError("local", "RPCGetCVE", fmt.Errorf("not found"))
+
 		// Mock successful CVE save
 		mockRPC.SetResponse("local", "RPCSaveCVE", map[string]interface{}{
 			"success": true,
@@ -229,7 +256,7 @@ func TestCVEProvider_ExecuteBatch_Success(t *testing.T) {
 
 		provider, err := NewCVEProvider(CVEProviderConfig{
 			ID:        "test-cve",
-			Storage:   &storage.Store{},
+			Storage:   nil,
 			RPCClient: mockRPC,
 			Logger:    testLogger(),
 			BatchSize: 1,
@@ -347,6 +374,10 @@ func TestCVEProvider_CheckErrorThreshold_AboveThreshold(t *testing.T) {
 			ID:           "test-cve",
 			ProviderType: "cve",
 		})
+
+		// Transition to RUNNING state first (required to transition to PAUSED)
+		baseFSM.Transition(fsm.ProviderAcquiring)
+		baseFSM.Transition(fsm.ProviderRunning)
 
 		provider := &CVEProvider{
 			BaseProviderFSM:  baseFSM,
@@ -678,7 +709,7 @@ func TestCVEProvider_CustomConfiguration(t *testing.T) {
 func TestCWEProvider_CreationWithFilePath(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "CWECreationWithFilePath", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
+			Storage:   nil,
 			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
@@ -704,7 +735,7 @@ func TestCWEProvider_CreationWithFilePath(t *testing.T) {
 func TestCAPECProvider_DefaultOptions(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "CAPECDefaultOptions", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
+			Storage:   nil,
 			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
@@ -725,7 +756,7 @@ func TestCAPECProvider_DefaultOptions(t *testing.T) {
 func TestATTACKProvider_CustomBatchSize(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "ATTACKCustomBatchSize", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
+			Storage:   nil,
 			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})
@@ -748,7 +779,7 @@ func TestATTACKProvider_CustomBatchSize(t *testing.T) {
 func TestProviderFactory_OptionsTypeAssertions(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "OptionsTypeAssertions", nil, func(t *testing.T, tx *gorm.DB) {
 		factory := NewProviderFactory(FactoryConfig{
-			Storage:   &storage.Store{},
+			Storage:   nil,
 			RPCClient: NewMockRPCClient(),
 			Logger:    testLogger(),
 		})

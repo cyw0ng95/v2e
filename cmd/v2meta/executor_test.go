@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/cyw0ng95/v2e/pkg/urn"
@@ -16,7 +18,7 @@ import (
 )
 
 // testLogger creates a logger for tests
-func testLogger() *common.Logger {
+func testExecutorLogger() *common.Logger {
 	return common.NewLogger(os.Stderr, "test", common.InfoLevel)
 }
 
@@ -82,7 +84,7 @@ func NewMockExecutorRPCClient() *MockExecutorRPCClient {
 	}
 }
 
-func (m *MockExecutorRPCClient) InvokeRPC(ctx context.Context, target string, method string, params interface{}) (map[string]interface{}, error) {
+func (m *MockExecutorRPCClient) InvokeRPC(ctx context.Context, target string, method string, params interface{}) (*subprocess.Message, error) {
 	switch method {
 	case "RPCRequestPermits":
 		if paramsMap, ok := params.(map[string]interface{}); ok {
@@ -93,7 +95,13 @@ func (m *MockExecutorRPCClient) InvokeRPC(ctx context.Context, target string, me
 		if m.requestPermitsError != nil {
 			return nil, m.requestPermitsError
 		}
-		return m.requestPermitsResponse, nil
+		
+		// Convert to subprocess.Message
+		payloadBytes, _ := json.Marshal(m.requestPermitsResponse)
+		return &subprocess.Message{
+			Type:    subprocess.MessageTypeResponse,
+			Payload: json.RawMessage(payloadBytes),
+		}, nil
 		
 	case "RPCReleasePermits":
 		if paramsMap, ok := params.(map[string]interface{}); ok {
@@ -104,7 +112,14 @@ func (m *MockExecutorRPCClient) InvokeRPC(ctx context.Context, target string, me
 		if m.releasePermitsError != nil {
 			return nil, m.releasePermitsError
 		}
-		return map[string]interface{}{"success": true}, nil
+		
+		// Convert to subprocess.Message
+		response := map[string]interface{}{"success": true}
+		payloadBytes, _ := json.Marshal(response)
+		return &subprocess.Message{
+			Type:    subprocess.MessageTypeResponse,
+			Payload: json.RawMessage(payloadBytes),
+		}, nil
 		
 	default:
 		return nil, fmt.Errorf("unknown method: %s", method)
@@ -114,7 +129,7 @@ func (m *MockExecutorRPCClient) InvokeRPC(ctx context.Context, target string, me
 // Test 1: PermitExecutor - Create Executor
 func TestPermitExecutor_NewPermitExecutor(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "NewPermitExecutor", nil, func(t *testing.T, tx *gorm.DB) {
-		executor := NewPermitExecutor(&rpc.Client{}, testLogger())
+		executor := NewPermitExecutor(&rpc.Client{}, testExecutorLogger())
 
 		if executor == nil {
 			t.Fatal("Executor is nil")
@@ -134,7 +149,7 @@ func TestPermitExecutor_StartProvider_Success(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-1")
 
 		err := executor.StartProvider(provider, 5)
@@ -170,7 +185,7 @@ func TestPermitExecutor_StartProvider_NoPermits(t *testing.T) {
 			"granted": float64(0), // No permits granted
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-2")
 
 		err := executor.StartProvider(provider, 5)
@@ -193,7 +208,7 @@ func TestPermitExecutor_StartProvider_AlreadyRunning(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-3")
 
 		// Start first time
@@ -218,7 +233,7 @@ func TestPermitExecutor_StartProvider_RPCError(t *testing.T) {
 		mockRPC := NewMockExecutorRPCClient()
 		mockRPC.requestPermitsError = fmt.Errorf("broker unavailable")
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-4")
 
 		err := executor.StartProvider(provider, 5)
@@ -241,7 +256,7 @@ func TestPermitExecutor_StartProvider_InvalidResponse(t *testing.T) {
 			"granted": "invalid", // String instead of number
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-5")
 
 		err := executor.StartProvider(provider, 5)
@@ -264,7 +279,7 @@ func TestPermitExecutor_PauseProvider(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-6")
 
 		// Start provider
@@ -292,7 +307,7 @@ func TestPermitExecutor_PauseProvider(t *testing.T) {
 // Test 8: PermitExecutor - Pause Non-Existent Provider
 func TestPermitExecutor_PauseProvider_NotFound(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "PauseProviderNotFound", nil, func(t *testing.T, tx *gorm.DB) {
-		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testLogger())
+		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testExecutorLogger())
 
 		err := executor.PauseProvider("non-existent")
 		if err == nil {
@@ -309,7 +324,7 @@ func TestPermitExecutor_PauseProvider_NotRunning(t *testing.T) {
 			"granted": float64(0), // No permits, will be WAITING_QUOTA
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-7")
 
 		executor.StartProvider(provider, 5)
@@ -330,7 +345,7 @@ func TestPermitExecutor_ResumeProvider(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-8")
 
 		// Start, pause, then resume
@@ -361,7 +376,7 @@ func TestPermitExecutor_ResumeProvider_NotPaused(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-9")
 
 		executor.StartProvider(provider, 5)
@@ -383,7 +398,7 @@ func TestPermitExecutor_StopProvider(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-10")
 
 		executor.StartProvider(provider, 5)
@@ -410,7 +425,7 @@ func TestPermitExecutor_StopProvider(t *testing.T) {
 // Test 13: PermitExecutor - Stop Non-Existent Provider
 func TestPermitExecutor_StopProvider_NotFound(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "StopProviderNotFound", nil, func(t *testing.T, tx *gorm.DB) {
-		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testLogger())
+		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testExecutorLogger())
 
 		err := executor.StopProvider("non-existent")
 		if err == nil {
@@ -427,7 +442,7 @@ func TestPermitExecutor_HandleQuotaRevoked(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-11")
 
 		executor.StartProvider(provider, 5)
@@ -454,7 +469,7 @@ func TestPermitExecutor_HandleQuotaRevoked_AllPermits(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("test-provider-12")
 
 		executor.StartProvider(provider, 5)
@@ -482,7 +497,7 @@ func TestPermitExecutor_GetActiveProviders(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 
 		// Start multiple providers
 		provider1 := NewMockProvider("provider-1")
@@ -505,7 +520,7 @@ func TestPermitExecutor_GetActiveProviders(t *testing.T) {
 // Test 17: PermitExecutor - Register Shutdown Hook
 func TestPermitExecutor_RegisterShutdownHook(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "RegisterShutdownHook", nil, func(t *testing.T, tx *gorm.DB) {
-		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testLogger())
+		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testExecutorLogger())
 
 		hookCalled := false
 		executor.RegisterShutdownHook(func() error {
@@ -534,7 +549,7 @@ func TestPermitExecutor_GracefulShutdown(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 
 		// Start providers
 		provider1 := NewMockProvider("provider-1")
@@ -575,7 +590,7 @@ func TestPermitExecutor_GracefulShutdown_WithCheckpoints(t *testing.T) {
 			"granted": float64(5),
 		}
 
-		executor := NewPermitExecutor(mockRPC, testLogger())
+		executor := NewPermitExecutor(mockRPC, testExecutorLogger())
 		provider := NewMockProvider("provider-1")
 
 		// Set a checkpoint
@@ -600,7 +615,7 @@ func TestPermitExecutor_GracefulShutdown_WithCheckpoints(t *testing.T) {
 // Test 20: PermitExecutor - Multiple Shutdown Hooks
 func TestPermitExecutor_MultipleShutdownHooks(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "MultipleShutdownHooks", nil, func(t *testing.T, tx *gorm.DB) {
-		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testLogger())
+		executor := NewPermitExecutor(NewMockExecutorRPCClient(), testExecutorLogger())
 
 		hook1Called := false
 		hook2Called := false

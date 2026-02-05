@@ -9,14 +9,13 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	"github.com/cyw0ng95/v2e/pkg/rpc"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
 
 // CVEProvider implements Provider for CVE data fetching
 type CVEProvider struct {
 	*fsm.BaseProviderFSM
-	rpcClient          *rpc.Client
+	rpcClient          RPCInterface
 	logger             *common.Logger
 	batchSize          int
 	checkpointInterval int
@@ -30,7 +29,7 @@ type CVEProvider struct {
 type CVEProviderConfig struct {
 	ID                 string
 	Storage            *storage.Store
-	RPCClient          *rpc.Client
+	RPCClient          RPCInterface
 	Logger             *common.Logger
 	BatchSize          int
 	CheckpointInterval int
