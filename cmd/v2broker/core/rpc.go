@@ -74,79 +74,15 @@ func (b *Broker) InvokeRPC(sourceProcess, targetProcess, rpcMethod string, paylo
 }
 
 // HandleRPCGetMessageStats handles the RPCGetMessageStats RPC request.
+// Delegates to the metrics registry for enhanced telemetry.
 func (b *Broker) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message, error) {
-	stats := b.GetMessageStats()
-	per := b.GetPerProcessStats()
-
-	statMap := map[string]interface{}{
-		"total_sent":         stats.TotalSent,
-		"total_received":     stats.TotalReceived,
-		"request_count":      stats.RequestCount,
-		"response_count":     stats.ResponseCount,
-		"event_count":        stats.EventCount,
-		"error_count":        stats.ErrorCount,
-		"first_message_time": stats.FirstMessageTime.Format(time.RFC3339Nano),
-		"last_message_time":  stats.LastMessageTime.Format(time.RFC3339Nano),
-	}
-
-	perMap := make(map[string]map[string]interface{})
-	for pid, ps := range per {
-		perMap[pid] = map[string]interface{}{
-			"total_sent":     ps.TotalSent,
-			"total_received": ps.TotalReceived,
-			"request_count":  ps.RequestCount,
-			"response_count": ps.ResponseCount,
-			"event_count":    ps.EventCount,
-			"error_count":    ps.ErrorCount,
-			"first_message_time": func(t time.Time) interface{} {
-				if t.IsZero() {
-					return nil
-				}
-				return t.Format(time.RFC3339Nano)
-			}(ps.FirstMessageTime),
-			"last_message_time": func(t time.Time) interface{} {
-				if t.IsZero() {
-					return nil
-				}
-				return t.Format(time.RFC3339Nano)
-			}(ps.LastMessageTime),
-		}
-	}
-
-	payload := map[string]interface{}{"total": statMap, "per_process": perMap}
-
-	respMsg, err := proc.NewResponseMessage(reqMsg.ID, payload)
-	if err != nil {
-		return nil, err
-	}
-
-	if reqMsg.CorrelationID != "" {
-		respMsg.CorrelationID = reqMsg.CorrelationID
-	}
-
-	respMsg.Source = "broker"
-	respMsg.Target = reqMsg.Source
-
-	return respMsg, nil
+	return b.metricsRegistry.HandleRPCGetMessageStats(reqMsg)
 }
 
 // HandleRPCGetMessageCount handles the RPCGetMessageCount RPC request.
+// Delegates to the metrics registry.
 func (b *Broker) HandleRPCGetMessageCount(reqMsg *proc.Message) (*proc.Message, error) {
-	payload := map[string]interface{}{"count": b.GetMessageCount()}
-
-	respMsg, err := proc.NewResponseMessage(reqMsg.ID, payload)
-	if err != nil {
-		return nil, err
-	}
-
-	if reqMsg.CorrelationID != "" {
-		respMsg.CorrelationID = reqMsg.CorrelationID
-	}
-
-	respMsg.Source = "broker"
-	respMsg.Target = reqMsg.Source
-
-	return respMsg, nil
+	return b.metricsRegistry.HandleRPCGetMessageCount(reqMsg)
 }
 
 // RegisterEndpoint registers an RPC endpoint for a process.
