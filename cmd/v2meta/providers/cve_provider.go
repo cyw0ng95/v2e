@@ -203,19 +203,30 @@ func (p *CVEProvider) saveCVE(ctx context.Context, cveData map[string]interface{
 				}
 				updateParams["cve_id"] = cveID
 
-				_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateCVE", updateParams)
+				updateResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateCVE", updateParams)
 				if err != nil {
 					return fmt.Errorf("failed to update CVE: %w", err)
 				}
+				
+				// Check for error response
+				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
+					return fmt.Errorf("update CVE failed: %s", errMsg)
+				}
+				
 				return nil
 			}
 		}
 	}
 
 	// CVE doesn't exist or error occurred, create new
-	_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVE", cveData)
+	saveResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveCVE", cveData)
 	if err != nil {
 		return fmt.Errorf("failed to save CVE: %w", err)
+	}
+
+	// Check for error response
+	if isErr, errMsg := subprocess.IsErrorResponse(saveResp); isErr {
+		return fmt.Errorf("save CVE failed: %s", errMsg)
 	}
 
 	return nil

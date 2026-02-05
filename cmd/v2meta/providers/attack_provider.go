@@ -147,11 +147,6 @@ func (p *ATTACKProvider) executeBatch() error {
 		return nil // No more data, provider will transition to TERMINATED
 	}
 
-	if len(techniques) == 0 {
-		p.logger.Info("No more ATT&CK techniques to import, provider completed")
-		return nil // No more data, provider will transition to TERMINATED
-	}
-
 	// Process and save each technique
 	for i, techniqueMap := range techniques {
 		techniqueID, ok := techniqueMap["technique_id"].(string)
@@ -220,19 +215,30 @@ func (p *ATTACKProvider) saveATTACKTechnique(ctx context.Context, techniqueData 
 				}
 				updateParams["technique_id"] = techniqueID
 
-				_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateATTACKTechnique", updateParams)
+				updateResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateATTACKTechnique", updateParams)
 				if err != nil {
 					return fmt.Errorf("failed to update ATT&CK technique: %w", err)
 				}
+				
+				// Check for error response
+				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
+					return fmt.Errorf("update ATT&CK technique failed: %s", errMsg)
+				}
+				
 				return nil
 			}
 		}
 	}
 
 	// Technique doesn't exist or error occurred, create new
-	_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveATTACKTechnique", techniqueData)
+	saveResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveATTACKTechnique", techniqueData)
 	if err != nil {
 		return fmt.Errorf("failed to save ATT&CK technique: %w", err)
+	}
+
+	// Check for error response
+	if isErr, errMsg := subprocess.IsErrorResponse(saveResp); isErr {
+		return fmt.Errorf("save ATT&CK technique failed: %s", errMsg)
 	}
 
 	return nil

@@ -147,11 +147,6 @@ func (p *CAPECProvider) executeBatch() error {
 		return nil // No more data, provider will transition to TERMINATED
 	}
 
-	if len(capecs) == 0 {
-		p.logger.Info("No more CAPECs to import, provider completed")
-		return nil // No more data, provider will transition to TERMINATED
-	}
-
 	// Process and save each CAPEC
 	for i, capecMap := range capecs {
 		capecID, ok := capecMap["capec_id"].(string)
@@ -220,19 +215,30 @@ func (p *CAPECProvider) saveCAPEC(ctx context.Context, capecData map[string]inte
 				}
 				updateParams["capec_id"] = capecID
 
-				_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateCAPEC", updateParams)
+				updateResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateCAPEC", updateParams)
 				if err != nil {
 					return fmt.Errorf("failed to update CAPEC: %w", err)
 				}
+				
+				// Check for error response
+				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
+					return fmt.Errorf("update CAPEC failed: %s", errMsg)
+				}
+				
 				return nil
 			}
 		}
 	}
 
 	// CAPEC doesn't exist or error occurred, create new
-	_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveCAPEC", capecData)
+	saveResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveCAPEC", capecData)
 	if err != nil {
 		return fmt.Errorf("failed to save CAPEC: %w", err)
+	}
+
+	// Check for error response
+	if isErr, errMsg := subprocess.IsErrorResponse(saveResp); isErr {
+		return fmt.Errorf("save CAPEC failed: %s", errMsg)
 	}
 
 	return nil

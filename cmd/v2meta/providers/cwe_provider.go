@@ -147,11 +147,6 @@ func (p *CWEProvider) executeBatch() error {
 		return nil // No more data, provider will transition to TERMINATED
 	}
 
-	if len(cwes) == 0 {
-		p.logger.Info("No more CWEs to import, provider completed")
-		return nil // No more data, provider will transition to TERMINATED
-	}
-
 	// Process and save each CWE
 	for i, cweMap := range cwes {
 		cweID, ok := cweMap["cwe_id"].(string)
@@ -220,19 +215,30 @@ func (p *CWEProvider) saveCWE(ctx context.Context, cweData map[string]interface{
 				}
 				updateParams["cwe_id"] = cweID
 
-				_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateCWE", updateParams)
+				updateResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCUpdateCWE", updateParams)
 				if err != nil {
 					return fmt.Errorf("failed to update CWE: %w", err)
 				}
+				
+				// Check for error response
+				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
+					return fmt.Errorf("update CWE failed: %s", errMsg)
+				}
+				
 				return nil
 			}
 		}
 	}
 
 	// CWE doesn't exist or error occurred, create new
-	_, err = p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveCWE", cweData)
+	saveResp, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCSaveCWE", cweData)
 	if err != nil {
 		return fmt.Errorf("failed to save CWE: %w", err)
+	}
+
+	// Check for error response
+	if isErr, errMsg := subprocess.IsErrorResponse(saveResp); isErr {
+		return fmt.Errorf("save CWE failed: %s", errMsg)
 	}
 
 	return nil
