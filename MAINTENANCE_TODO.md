@@ -5,7 +5,7 @@
   | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
   |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
 
-| 235 | pkg/notes        | Code    | Fix syntax error at service.go:1035 (unmatched closing parenthesis)                | 5        | 1        |         |
+
 | 221 | pkg/notes/fsm    | Test    | Add comprehensive unit tests for learning_fsm.go (444 lines)                       | 400      | 1        |         |
 | 222 | pkg/notes/fsm    | Test    | Add unit tests for memory_fsm.go (146 lines)                                       | 150      | 1        |         |
 | 223 | pkg/notes/fsm    | Test    | Add unit tests for storage.go (228 lines)                                          | 200      | 1        |         |
