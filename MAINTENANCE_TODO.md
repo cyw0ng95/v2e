@@ -2,12 +2,10 @@
 
 ## TODO
 
-| ID  | Package           | Type    | Description                                                                        | Est LoC | Priority |
-|-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|
-| 142 | website           | Critical| Fix missing node_modules - all dependencies show as MISSING                           | 10       | 1        |
-| 143 | website           | Critical| Fix TypeScript compiler accessibility - tsc not found                                  | 10       | 1        |
-| 020 | cmd/v2broker     | Code    | Implement segmented locks (sharded locks) for large maps                           | 600      | 1        |
-| 022 | cmd/v2broker     | Code    | Introduce Optimistic Concurrency Control (OCC) for read-heavy scenarios                | 600      | 1        |
+ | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority |
+ |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|
+ | 020 | cmd/v2broker     | Code    | Implement segmented locks (sharded locks) for large maps                           | 600      | 1        |
+ | 022 | cmd/v2broker     | Code    | Introduce Optimistic Concurrency Control (OCC) for read-heavy scenarios                | 600      | 1        |
 | 038 | cmd/v2broker     | Code    | Research and select lock-free hash map implementation (Cuckoo Filter or SwissMap)      | 600      | 1        |
 | 039 | cmd/v2broker     | Code    | Implement lock-free routing table with type-based fast indexing                          | 600      | 1        |
 | 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                         | 600      | 1        |
@@ -157,14 +155,16 @@
 | 101 | cmd/v2broker/scaling | Code    | Create self-healing capabilities for automatic fault recovery         | 2026-02-06 |
 | 102 | cmd/v2broker/scaling | Code    | Add prediction accuracy metrics and model retraining logic           | 2026-02-06 |
 | 103 | cmd/v2broker/scaling | Test    | Test prediction model with historical data                       | 2026-02-06 |
-| 104 | cmd/v2broker/scaling | Docs    | Document model training process and feature selection              | 2026-02-06 |
-| 105 | cmd/v2broker/scaling | Perf    | Benchmark prediction accuracy and scaling effectiveness            | 2026-02-06 |
+ | 104 | cmd/v2broker/scaling | Docs    | Document model training process and feature selection              | 2026-02-06 |
+ | 105 | cmd/v2broker/scaling | Perf    | Benchmark prediction accuracy and scaling effectiveness            | 2026-02-06 |
  | 141 | General          | Ops     | Optimize website build bundle size, achieve better loading speed      | 2026-02-06 |
  | 072 | pkg/cve/remote   | Code    | Upgrade HTTP clients from HTTP/1.1 to HTTP/2                          | 2026-02-06 |
-|  | 076 | pkg/cve/remote   | Code    | Implement persistent HTTP/2 connection pools                          | 2026-02-06 |
-|  | 066 | cmd/v2access     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
-|  | 067 | cmd/v2local      | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
-|  | 068 | cmd/v2remote     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
-|  | 069 | cmd/v2broker     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
-|  | 070 | cmd/v2sysmon     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
-|  | 071 | cmd/v2meta       | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+ | 076 | pkg/cve/remote   | Code    | Implement persistent HTTP/2 connection pools                          | 2026-02-06 |
+ | 066 | cmd/v2access     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+ | 067 | cmd/v2local      | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+ | 068 | cmd/v2remote     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+ | 069 | cmd/v2broker     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+ | 070 | cmd/v2sysmon     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+ | 071 | cmd/v2meta       | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+ | 142 | website           | Critical| Fix missing node_modules - all dependencies show as MISSING           | 2026-02-06 |
+ | 143 | website           | Critical| Fix TypeScript compiler accessibility - tsc not found                  | 2026-02-06 |

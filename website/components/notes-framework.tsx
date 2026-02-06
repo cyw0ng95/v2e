@@ -213,13 +213,6 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
 
     if (response.retcode === 0 && response.payload?.memory_card) {
       setMemoryCards([...memoryCards, response.payload.memory_card]);
-      // Add to history
-      await rpcClient.addHistory({
-        item_id: `${itemType}-${itemId}`,
-        item_type: itemType,
-        action: 'memory_card_created',
-        new_values: { card_id: response.payload.memory_card.id, front: front.trim() }
-      });
       const newHistoryEntry: HistoryEntry = {
         id: histories.length + 1,
         item_id: `${itemType}-${itemId}`,

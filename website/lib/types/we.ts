@@ -39,3 +39,73 @@ export interface WeaknessOrdinality {
 	ordinality: string;
 	description?: string;
 }
+
+export interface RelatedWeakness {
+	nature: string;
+	cweId: string;
+	viewId?: string;
+	ordinal?: string;
+	description?: string;
+}
+
+export interface ApplicablePlatform {
+	language?: string;
+	technology?: string;
+	class?: string;
+	operatingSystem?: string;
+	cweId?: string;
+}
+
+export interface DetectionMethod {
+	method?: string;
+	description?: string;
+}
+
+export interface Mitigation {
+	phase?: string;
+	strategy?: string;
+	description?: string;
+}
+
+export interface DemonstrativeExample {
+	heading?: string;
+	content?: string;
+	references?: string[];
+}
+
+export interface ObservedExample {
+	reference?: string;
+	description?: string;
+	link?: string;
+}
+
+export interface TaxonomyMapping {
+	taxonomyName: string;
+	entryId?: string;
+	entryName?: string;
+	mappingType?: string;
+}
+
+export interface Reference {
+	source?: string;
+	url?: string;
+}
+
+export interface MappingNotes {
+	usage?: string;
+	type?: string;
+	other?: string;
+}
+
+export interface Note {
+	type?: string;
+	title?: string;
+	content?: string;
+}
+
+export interface ContentHistory {
+	type: string;
+	date: string;
+	contributor?: string;
+	comment?: string;
+}

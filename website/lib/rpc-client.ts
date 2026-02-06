@@ -750,6 +750,7 @@ export class RPCClient {
       case 'RPCCreateBookmark': {
         const req = params as CreateBookmarkRequest | undefined;
         const mockBookmark: Bookmark = {
+          urn: `v2e::${req?.item_type?.toLowerCase() || 'cve'}::${req?.item_id || 'CVE-2021-44228'}`,
           id: Math.floor(Math.random() * 1000),
           global_item_id: req?.global_item_id || 'CVE-2021-44228',
           item_type: req?.item_type || 'CVE',
@@ -763,6 +764,7 @@ export class RPCClient {
           metadata: req?.metadata || {},
         };
         const mockMemoryCard: MemoryCard = {
+          urn: mockBookmark.urn,
           id: Math.floor(Math.random() * 10000),
           bookmark_id: mockBookmark.id,
           front_content: mockBookmark.title,
@@ -792,6 +794,7 @@ export class RPCClient {
       case 'RPCGetBookmark': {
         const req = params as GetBookmarkRequest | undefined;
         const mockBookmark: Bookmark = {
+          urn: 'v2e::cve::CVE-2021-44228',
           id: req?.id || 1,
           global_item_id: 'CVE-2021-44228',
           item_type: 'CVE',
@@ -815,6 +818,7 @@ export class RPCClient {
         const req = params as ListBookmarksRequest | undefined;
         const mockBookmarks: Bookmark[] = [
           {
+            urn: 'v2e::cve::CVE-2021-44228',
             id: 1,
             global_item_id: 'CVE-2021-44228',
             item_type: 'CVE',
@@ -831,6 +835,7 @@ export class RPCClient {
             id: 2,
             global_item_id: 'CVE-2020-1472',
             item_type: 'CVE',
+            urn: 'v2e::cve::CVE-2020-1472',
             item_id: 'CVE-2020-1472',
             title: 'Zerologon Vulnerability',
             description: 'Privilege escalation in Windows Netlogon',
@@ -875,8 +880,8 @@ export class RPCClient {
       case 'RPCGetNote': {
         const req = params as GetNoteRequest | undefined;
         const mockNote: Note = {
-          id: req?.id || 1,
           bookmark_id: 1,
+          id: req?.id || 1,
           content: 'Mock note content',
           author: 'test-user',
           is_private: false,
@@ -930,6 +935,7 @@ export class RPCClient {
       case 'RPCCreateMemoryCard': {
         const req = params as CreateMemoryCardRequest | undefined;
         const mockCard: MemoryCard = {
+          urn: `v2e::card::${req?.bookmark_id || 1}::${Math.floor(Math.random() * 1000)}`,
           id: Math.floor(Math.random() * 1000),
           bookmark_id: req?.bookmark_id || 1,
           front_content: req?.front || 'What is Log4Shell?',
@@ -961,6 +967,7 @@ export class RPCClient {
         const req = params as ListMemoryCardsRequest | undefined;
         const mockCards: MemoryCard[] = [
           {
+            urn: 'v2e::card::1::1',
             id: 1,
             bookmark_id: 1,
             front_content: 'What is Log4Shell?',
@@ -984,6 +991,7 @@ export class RPCClient {
           {
             id: 2,
             bookmark_id: 1,
+            urn: 'v2e::card::1::2',
             front_content: 'How to mitigate Log4Shell?',
             back_content: 'Upgrade to Log4j 2.15.0 or apply JVM parameters',
             major_class: '',

@@ -34,7 +34,7 @@ export function useFetch<TParams, TData>(
 
     try {
       setIsLoading(true);
-      const response = await fetchFn(params);
+      const response = await fetchFn(params!);
 
       if (response.retcode !== 0) {
         throw new Error(response.message || 'Request failed');
