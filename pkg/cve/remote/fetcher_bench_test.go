@@ -15,7 +15,7 @@ import (
 func BenchmarkNewFetcher(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_ = NewFetcher("")
+		_, _ = NewFetcher("")
 	}
 }
 
@@ -56,7 +56,10 @@ func BenchmarkFetchCVEByID(b *testing.B) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher("")
+	fetcher, err := NewFetcher("")
+	if err != nil {
+		b.Fatal(err)
+	}
 	fetcher.baseURL = server.URL
 
 	b.ReportAllocs()
@@ -108,7 +111,10 @@ func BenchmarkFetchCVEs(b *testing.B) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher("")
+	fetcher, err := NewFetcher("")
+	if err != nil {
+		b.Fatal(err)
+	}
 	fetcher.baseURL = server.URL
 
 	b.ReportAllocs()
@@ -171,7 +177,10 @@ func BenchmarkFetchCVEWithCVSS(b *testing.B) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher("")
+	fetcher, err := NewFetcher("")
+	if err != nil {
+		b.Fatal(err)
+	}
 	fetcher.baseURL = server.URL
 
 	b.ReportAllocs()
@@ -262,7 +271,10 @@ func BenchmarkFetchCVEsLargeResponse(b *testing.B) {
 	}))
 	defer server.Close()
 
-	fetcher := NewFetcher("")
+	fetcher, err := NewFetcher("")
+	if err != nil {
+		b.Fatal(err)
+	}
 	fetcher.baseURL = server.URL
 
 	b.ReportAllocs()

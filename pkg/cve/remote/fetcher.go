@@ -27,7 +27,7 @@ type Fetcher struct {
 }
 
 // NewFetcher creates a new CVE fetcher
-func NewFetcher(apiKey string) *Fetcher {
+func NewFetcher(apiKey string) (*Fetcher, error) {
 	client := resty.New()
 	client.SetTimeout(30 * time.Second)
 
@@ -47,7 +47,7 @@ func NewFetcher(apiKey string) *Fetcher {
 
 	// Configure HTTP/2 specific settings
 	if err := http2.ConfigureTransport(transport); err != nil {
-		panic(fmt.Sprintf("failed to configure HTTP/2: %v", err))
+		return nil, fmt.Errorf("failed to configure HTTP/2: %w", err)
 	}
 
 	client.SetTransport(transport)
@@ -58,11 +58,11 @@ func NewFetcher(apiKey string) *Fetcher {
 		apiKey:  apiKey,
 		bufferPool: &sync.Pool{
 			New: func() interface{} {
-				b := make([]byte, 0, 32*1024) // 32KB initial capacity
+				b := make([]byte, 0, 32*1024)
 				return &b
 			},
 		},
-	}
+	}, nil
 }
 
 // FetchCVEByID fetches a specific CVE by its ID

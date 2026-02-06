@@ -20,7 +20,10 @@ func TestFetcher_HTTP2ConnectionReuse(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
 		for i := 0; i < 5; i++ {
@@ -47,7 +50,10 @@ func TestFetcher_HTTP2WithTLS(t *testing.T) {
 		server.StartTLS()
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 		resp, err := f.FetchCVEByID("CVE-TEST-1")
 		if err != nil {
@@ -67,7 +73,10 @@ func TestFetcher_HTTP2ConcurrentRequests(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
 		numRequests := 10
@@ -101,7 +110,10 @@ func TestFetcher_HTTP2Multiplexing(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
 		ids := []string{"CVE-A", "CVE-B", "CVE-C", "CVE-D", "CVE-E"}
@@ -126,7 +138,10 @@ func TestFetcher_HTTP2ConnectionPool(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
 		for i := 0; i < 20; i++ {
@@ -148,7 +163,10 @@ func TestFetcher_HTTP2BufferPooling(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
 		if f.bufferPool == nil {
@@ -178,10 +196,13 @@ func TestFetcher_HTTP2WithAPIKey(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("test-api-key")
+		f, err := NewFetcher("test-api-key")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
-		_, err := f.FetchCVEByID("CVE-TEST-1")
+		_, err = f.FetchCVEByID("CVE-TEST-1")
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
@@ -203,7 +224,10 @@ func TestFetcher_HTTP2RaceCondition(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
 		for i := 0; i < 50; i++ {
@@ -243,7 +267,10 @@ func TestFetcher_HTTP2BackwardsCompatibility(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 
 		resp, err := f.FetchCVEByID("CVE-TEST-1")

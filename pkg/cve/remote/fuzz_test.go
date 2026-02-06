@@ -49,7 +49,10 @@ func FuzzFetchCVEsParams(f *testing.F) {
 	// Fuzz test
 	f.Fuzz(func(t *testing.T, startIndex, resultsPerPage int) {
 		// Create fetcher with empty API key
-		fetcher := NewFetcher("")
+		fetcher, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 
 		// Validate parameters - should not panic
 		if startIndex < 0 || resultsPerPage < 0 || resultsPerPage > 2000 {

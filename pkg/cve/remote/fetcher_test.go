@@ -22,7 +22,10 @@ func TestFetchCVEByID_Success(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 		resp, err := f.FetchCVEByID("CVE-TEST-1")
 		if err != nil {
@@ -42,9 +45,12 @@ func TestFetchCVEByID_RateLimited(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
-		_, err := f.FetchCVEByID("CVE-TEST-2")
+		_, err = f.FetchCVEByID("CVE-TEST-2")
 		if err == nil || err != ErrRateLimited {
 			t.Fatalf("expected ErrRateLimited, got %v", err)
 		}
@@ -54,7 +60,10 @@ func TestFetchCVEByID_RateLimited(t *testing.T) {
 
 func TestFetchCVEs_ParamValidation(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestFetchCVEs_ParamValidation", nil, func(t *testing.T, tx *gorm.DB) {
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		if _, err := f.FetchCVEs(-1, 10); err == nil {
 			t.Fatalf("expected error for negative startIndex")
 		}
@@ -78,7 +87,10 @@ func TestFetchCVEsConcurrent_Workers(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 		ids := []string{"CVE-A", "CVE-B", "CVE-C"}
 		resps, errs := f.FetchCVEsConcurrent(ids, 3)
@@ -90,9 +102,11 @@ func TestFetchCVEsConcurrent_Workers(t *testing.T) {
 
 func TestFetchCVEByID_EmptyID(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestFetchCVEByID_EmptyID", nil, func(t *testing.T, tx *gorm.DB) {
-		f := NewFetcher("")
-		_, err := f.FetchCVEByID("")
-		if err == nil {
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
+		if _, err := f.FetchCVEByID(""); err == nil {
 			t.Fatal("expected error for empty CVE ID")
 		}
 	})
@@ -100,10 +114,12 @@ func TestFetchCVEByID_EmptyID(t *testing.T) {
 
 func TestFetchCVEByID_NetworkError(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestFetchCVEByID_NetworkError", nil, func(t *testing.T, tx *gorm.DB) {
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = "http://localhost:99999"
-		_, err := f.FetchCVEByID("CVE-TEST-1")
-		if err == nil {
+		if _, err := f.FetchCVEByID("CVE-TEST-1"); err == nil {
 			t.Fatal("expected error for network failure")
 		}
 	})
@@ -117,10 +133,12 @@ func TestFetchCVEByID_InvalidJSON(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
-		_, err := f.FetchCVEByID("CVE-TEST-1")
-		if err == nil {
+		if _, err := f.FetchCVEByID("CVE-TEST-1"); err == nil {
 			t.Fatal("expected error for invalid JSON")
 		}
 	})
@@ -134,7 +152,10 @@ func TestFetchCVEs_Success(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 		resp, err := f.FetchCVEs(0, 10)
 		if err != nil {
@@ -153,10 +174,12 @@ func TestFetchCVEs_StatusCodeError(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
-		_, err := f.FetchCVEs(0, 10)
-		if err == nil {
+		if _, err := f.FetchCVEs(0, 10); err == nil {
 			t.Fatal("expected error for 500 status")
 		}
 	})
@@ -164,7 +187,10 @@ func TestFetchCVEs_StatusCodeError(t *testing.T) {
 
 func TestFetchCVEsConcurrent_EmptyIDs(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestFetchCVEsConcurrent_EmptyIDs", nil, func(t *testing.T, tx *gorm.DB) {
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		resps, errs := f.FetchCVEsConcurrent([]string{}, 3)
 		if len(resps) != 0 || len(errs) != 0 {
 			t.Fatalf("expected empty results, got %d responses and %d errors", len(resps), len(errs))
@@ -181,7 +207,10 @@ func TestFetchCVEsConcurrent_ZeroWorkers(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 		ids := []string{"CVE-A"}
 		resps, errs := f.FetchCVEsConcurrent(ids, 0)
@@ -203,7 +232,10 @@ func TestFetcher_WithAPIKey(t *testing.T) {
 		}))
 		defer server.Close()
 
-		f := NewFetcher("test-key")
+		f, err := NewFetcher("test-key")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = server.URL
 		f.FetchCVEByID("CVE-TEST-1")
 
@@ -215,10 +247,12 @@ func TestFetcher_WithAPIKey(t *testing.T) {
 
 func TestFetcher_NetworkError(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestFetcher_NetworkError", nil, func(t *testing.T, tx *gorm.DB) {
-		f := NewFetcher("")
+		f, err := NewFetcher("")
+		if err != nil {
+			t.Fatalf("failed to create fetcher: %v", err)
+		}
 		f.baseURL = "http://invalid-host-that-does-not-exist-12345.com"
-		_, err := f.FetchCVEs(0, 10)
-		if err == nil {
+		if _, err := f.FetchCVEs(0, 10); err == nil {
 			t.Fatal("expected network error")
 		}
 	})
