@@ -23,8 +23,7 @@
 | 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                      | 600      | 2        |         |
 | 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
-| 233 | pkg/notes/service | Code    | Complete TODO at service.go:26 (CardType, Author, IsPrivate, Metadata missing)     | 100      | 2        |         |
-| 234 | pkg/notes/service | Code    | Complete TODO at service.go:118 (author, is_private filters not implemented)       | 100      | 2        |         |
+
 | 236 | pkg/notes/strategy | Code    | Implement proper cross-reference graph construction in manager.go:26-31            | 200      | 2        |         |
 | 237 | pkg/notes/fsm    | Code    | Add storage cleanup and proper error handling in BoltDBStorage                     | 150      | 2        |         |
 | 238 | pkg/notes        | Docs    | Document FSM state machine transitions with state diagrams                         | 200      | 2        |         |

@@ -24,7 +24,10 @@ func (s *MemoryCardService) CreateMemoryCardFull(ctx context.Context, bookmarkID
 		Interval:   1,
 		Repetition: 0,
 		FSMState:   "new",
-		// TODO: CardType, Author, IsPrivate, Metadata (if you add to model)
+		CardType:   cardType,
+		Author:     author,
+		IsPrivate:  isPrivate,
+		Metadata:   metadata,
 	}
 	if err := s.db.WithContext(ctx).Create(card).Error; err != nil {
 		return nil, fmt.Errorf("failed to create memory card: %w", err)
@@ -116,7 +119,12 @@ func (s *MemoryCardService) ListMemoryCardsFull(ctx context.Context, bookmarkID 
 	if status != nil && *status != "" {
 		query = query.Where("status = ?", *status)
 	}
-	// TODO: author, is_private if added to model
+	if author != nil && *author != "" {
+		query = query.Where("author = ?", *author)
+	}
+	if isPrivate != nil {
+		query = query.Where("is_private = ?", *isPrivate)
+	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err

@@ -57,17 +57,17 @@ type NoteModel struct {
 	IsPrivate  bool    `gorm:"default:false"` // Whether the note is private to the user
 
 	// MemoryFSM state fields (embedded for GORM)
-	FSMState       string `gorm:"column:fsm_state;default:'draft'"`
+	FSMState        string `gorm:"column:fsm_state;default:'draft'"`
 	FSMStateHistory string `gorm:"column:fsm_state_history;type:json"`
-	FSMCreatedAt   int64  `gorm:"column:fsm_created_at;autoCreateTime:millisecond"`
-	FSMUpdatedAt   int64  `gorm:"column:fsm_updated_at;autoUpdateTime:millisecond"`
+	FSMCreatedAt    int64  `gorm:"column:fsm_created_at;autoCreateTime:millisecond"`
+	FSMUpdatedAt    int64  `gorm:"column:fsm_updated_at;autoUpdateTime:millisecond"`
 }
 
 // MemoryCardModel stores card-specific learning data
 type MemoryCardModel struct {
 	ID         uint       `gorm:"primaryKey" json:"id"`
 	BookmarkID uint       `gorm:"index;not null" json:"bookmark_id"`
-	URN        string     `gorm:"uniqueIndex;index" json:"urn"`      // Unique URN: v2e::card::<id>
+	URN        string     `gorm:"uniqueIndex;index" json:"urn"`                   // Unique URN: v2e::card::<id>
 	Front      string     `gorm:"type:text;not null" json:"front_content"`        // Question/content on front of card
 	Back       string     `gorm:"type:text;not null" json:"back_content"`         // Answer/explanation on back of card
 	MajorClass string     `gorm:"type:varchar(64);default:''" json:"major_class"` // Major class/category
@@ -82,11 +82,17 @@ type MemoryCardModel struct {
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 
+	// Additional fields for card metadata
+	CardType  string         `gorm:"type:varchar(32);default:'basic'" json:"card_type"` // Card type: basic, cloze, reverse
+	Author    string         `gorm:"type:varchar(128);default:''" json:"author"`        // Card creator/author
+	IsPrivate bool           `gorm:"default:false" json:"is_private"`                   // Whether card is private
+	Metadata  map[string]any `gorm:"type:json" json:"metadata,omitempty"`               // Additional metadata
+
 	// MemoryFSM state fields (embedded for GORM)
-	FSMState         string `gorm:"column:fsm_state;default:'new'"`
-	FSMStateHistory  string `gorm:"column:fsm_state_history;type:json"`
-	FSMCreatedAt     int64  `gorm:"column:fsm_created_at;autoCreateTime:millisecond"`
-	FSMUpdatedAt     int64  `gorm:"column:fsm_updated_at;autoUpdateTime:millisecond"`
+	FSMState        string `gorm:"column:fsm_state;default:'new'"`
+	FSMStateHistory string `gorm:"column:fsm_state_history;type:json"`
+	FSMCreatedAt    int64  `gorm:"column:fsm_created_at;autoCreateTime:millisecond"`
+	FSMUpdatedAt    int64  `gorm:"column:fsm_updated_at;autoUpdateTime:millisecond"`
 }
 
 // LearningSessionModel tracks learning sessions and progress
