@@ -91,9 +91,6 @@ func (s *GraphStore) SaveGraph(g *graph.Graph) error {
 	startTime := time.Now()
 
 	err := s.db.Update(func(tx *bolt.Tx) error {
-		nodesBucket := tx.Bucket(BucketNodes)
-		edgesBucket := tx.Bucket(BucketEdges)
-
 		// Clear existing data
 		if err := s.clearBucket(tx, BucketNodes); err != nil {
 			return err
@@ -101,6 +98,10 @@ func (s *GraphStore) SaveGraph(g *graph.Graph) error {
 		if err := s.clearBucket(tx, BucketEdges); err != nil {
 			return err
 		}
+
+		// Get buckets after clearing
+		nodesBucket := tx.Bucket(BucketNodes)
+		edgesBucket := tx.Bucket(BucketEdges)
 
 		// Save all nodes
 		nodeCount := 0
@@ -317,9 +318,11 @@ func (s *GraphStore) ClearGraph() error {
 
 // clearBucket removes all keys from a bucket
 func (s *GraphStore) clearBucket(tx *bolt.Tx, bucketName []byte) error {
+	// Delete the bucket
 	if err := tx.DeleteBucket(bucketName); err != nil && err != bolt.ErrBucketNotFound {
 		return err
 	}
+	// Recreate it empty
 	_, err := tx.CreateBucket(bucketName)
 	return err
 }
