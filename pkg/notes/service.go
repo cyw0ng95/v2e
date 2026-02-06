@@ -480,6 +480,19 @@ func (s *NoteService) GetNoteByID(ctx context.Context, id uint) (*NoteModel, err
 	return &note, nil
 }
 
+// GetByURN retrieves a note by its URN
+func (s *NoteService) GetByURN(ctx context.Context, urn string) (*NoteModel, error) {
+	var note NoteModel
+	err := s.db.WithContext(ctx).Where("urn = ?", urn).First(&note).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("note with URN %s not found", urn)
+		}
+		return nil, fmt.Errorf("failed to get note by URN: %w", err)
+	}
+	return &note, nil
+}
+
 // DeleteNote deletes a note
 func (s *NoteService) DeleteNote(ctx context.Context, id uint) error {
 	note := &NoteModel{ID: id}
@@ -694,6 +707,19 @@ func (s *MemoryCardService) GetMemoryCardByID(ctx context.Context, id uint) (*Me
 			return nil, fmt.Errorf("memory card with ID %d not found", id)
 		}
 		return nil, fmt.Errorf("failed to get memory card: %w", err)
+	}
+	return &card, nil
+}
+
+// GetMemoryCardByURN retrieves a memory card by its URN
+func (s *MemoryCardService) GetMemoryCardByURN(ctx context.Context, urn string) (*MemoryCardModel, error) {
+	var card MemoryCardModel
+	err := s.db.WithContext(ctx).Where("urn = ?", urn).First(&card).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("memory card with URN %s not found", urn)
+		}
+		return nil, fmt.Errorf("failed to get memory card by URN: %w", err)
 	}
 	return &card, nil
 }

@@ -49,18 +49,25 @@ type BookmarkHistoryModel struct {
 type NoteModel struct {
 	ID         uint   `gorm:"primaryKey"`
 	BookmarkID uint   `gorm:"index;not null"`
+	URN        string `gorm:"uniqueIndex;index"` // Unique URN: v2e::note::<id>
 	Content    string `gorm:"type:text;not null"`
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	Author     *string // Optional author field
 	IsPrivate  bool    `gorm:"default:false"` // Whether the note is private to the user
+
+	// MemoryFSM state fields (embedded for GORM)
+	FSMState       string `gorm:"column:fsm_state;default:'draft'"`
+	FSMStateHistory string `gorm:"column:fsm_state_history;type:json"`
+	FSMCreatedAt   int64  `gorm:"column:fsm_created_at;autoCreateTime:millisecond"`
+	FSMUpdatedAt   int64  `gorm:"column:fsm_updated_at;autoUpdateTime:millisecond"`
 }
 
 // MemoryCardModel stores card-specific learning data
 type MemoryCardModel struct {
 	ID         uint       `gorm:"primaryKey" json:"id"`
 	BookmarkID uint       `gorm:"index;not null" json:"bookmark_id"`
-	URN        string     `gorm:"index" json:"urn"`                               // URN reference from associated bookmark
+	URN        string     `gorm:"uniqueIndex;index" json:"urn"`      // Unique URN: v2e::card::<id>
 	Front      string     `gorm:"type:text;not null" json:"front_content"`        // Question/content on front of card
 	Back       string     `gorm:"type:text;not null" json:"back_content"`         // Answer/explanation on back of card
 	MajorClass string     `gorm:"type:varchar(64);default:''" json:"major_class"` // Major class/category
@@ -74,6 +81,12 @@ type MemoryCardModel struct {
 	NextReview *time.Time `json:"next_review_at"`                    // When to review this card next
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
+
+	// MemoryFSM state fields (embedded for GORM)
+	FSMState         string `gorm:"column:fsm_state;default:'new'"`
+	FSMStateHistory  string `gorm:"column:fsm_state_history;type:json"`
+	FSMCreatedAt     int64  `gorm:"column:fsm_created_at;autoCreateTime:millisecond"`
+	FSMUpdatedAt     int64  `gorm:"column:fsm_updated_at;autoUpdateTime:millisecond"`
 }
 
 // LearningSessionModel tracks learning sessions and progress
@@ -169,4 +182,58 @@ func GenerateURN(itemType, itemID, source string) string {
 	}
 
 	return fmt.Sprintf("v2e::%s::%s::%s", provider, resourceType, itemID)
+}
+
+// GetNoteURN generates or returns the URN for a note
+func GetNoteURN(id uint) string {
+	return fmt.Sprintf("v2e::note::%d", id)
+}
+
+// GetCardURN generates or returns the URN for a memory card
+func GetCardURN(id uint) string {
+	return fmt.Sprintf("v2e::card::%d", id)
+}
+
+// GetURN returns the URN for the note
+func (m *NoteModel) GetURN() string {
+	if m.URN != "" {
+		return m.URN
+	}
+	if m.ID > 0 {
+		return GetNoteURN(m.ID)
+	}
+	return ""
+}
+
+// GetMemoryFSMState returns the current FSM state for the note
+func (m *NoteModel) GetMemoryFSMState() string {
+	return m.FSMState
+}
+
+// SetMemoryFSMState sets the FSM state for the note
+func (m *NoteModel) SetMemoryFSMState(state string) error {
+	m.FSMState = state
+	return nil
+}
+
+// GetURN returns the URN for the memory card
+func (m *MemoryCardModel) GetURN() string {
+	if m.URN != "" {
+		return m.URN
+	}
+	if m.ID > 0 {
+		return GetCardURN(m.ID)
+	}
+	return ""
+}
+
+// GetMemoryFSMState returns the current FSM state for the card
+func (m *MemoryCardModel) GetMemoryFSMState() string {
+	return m.FSMState
+}
+
+// SetMemoryFSMState sets the FSM state for the card
+func (m *MemoryCardModel) SetMemoryFSMState(state string) error {
+	m.FSMState = state
+	return nil
 }

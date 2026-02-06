@@ -41,7 +41,7 @@ type PoolMetrics struct {
 
 // PreparedStatementCache caches prepared statements
 type PreparedStatementCache struct {
-	cache   map[string]*gorm.Stmt
+	cache   map[string]interface{}
 	maxSize int
 	mu      sync.RWMutex
 	metrics *PoolMetrics
@@ -214,5 +214,5 @@ func (psc *PreparedStatementCache) Clear() {
 	psc.mu.Lock()
 	defer psc.mu.Unlock()
 
-	psc.cache = make(map[string]*gorm.Stmt)
+	psc.cache = make(map[string]interface{})
 }

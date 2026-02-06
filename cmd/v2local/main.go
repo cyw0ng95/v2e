@@ -20,7 +20,6 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/asvs"
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/capec"
-	"github.com/cyw0ng95/v2e/pkg/cce"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
@@ -181,15 +180,6 @@ func main() {
 	}
 	logger.Info("ASVS DB opened: %s", asvsDBPath)
 
-	// Initialize CCE store (using CCE_DB_PATH env var)
-	cceDBPath := os.Getenv("CCE_DB_PATH")
-	if cceDBPath == "" {
-		cceDBPath = "cce.db"
-	}
-	logger.Info("CCE DB path configured: %s", cceDBPath)
-	cceStore := NewCCEStore(cceDBPath, logger)
-	logger.Info("CCE store initialized")
-
 	// Import CWEs from JSON file at startup (if file exists)
 	// Removed duplicate importCWEsAtStartup definition; now only in cwe_handlers.go
 
@@ -343,21 +333,6 @@ func main() {
 	// Register SSG handlers
 	RegisterSSGHandlers(sp, ssgStore, logger)
 	logger.Info("SSG handlers registered")
-
-	// Register CCE handlers
-	sp.RegisterHandler("RPCGetCCE", createCCEGetHandler(cceStore, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCCE")
-	sp.RegisterHandler("RPCSaveCCE", createCCESaveHandler(cceStore, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCSaveCCE")
-	sp.RegisterHandler("RPCListCCEs", createCCEListHandler(cceStore, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCListCCEs")
-	sp.RegisterHandler("RPCCountCCEs", createCCECountHandler(cceStore, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCCountCCEs")
-	sp.RegisterHandler("RPCDeleteCCE", createCCEDeleteHandler(cceStore, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCDeleteCCE")
-	sp.RegisterHandler("RPCImportCCEs", createCCEImportHandler(cceStore, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCImportCCEs")
-	logger.Info("CCE handlers registered")
 
 	logger.Info(LogMsgServiceStarting, sp.ID)
 	logger.Info(LogMsgServiceStarted)

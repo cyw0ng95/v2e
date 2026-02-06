@@ -27,7 +27,8 @@ type MetricData struct {
 	Labels    map[string]string
 }
 
-type PredictionModel interface {
+// LoadPredictionModel defines the interface for load prediction models
+type LoadPredictionModel interface {
 	Train(data []MetricData) error
 	Predict(metricType MetricType, horizon time.Duration) ([]float64, error)
 	Accuracy() float64
@@ -35,7 +36,7 @@ type PredictionModel interface {
 }
 
 type LoadPredictor struct {
-	models            map[MetricType]PredictionModel
+	models            map[MetricType]LoadPredictionModel
 	historicalData    map[MetricType][]MetricData
 	maxHistory        int
 	trainingWindow    time.Duration
@@ -75,7 +76,7 @@ type SeasonalDecompositionModel struct {
 
 func NewLoadPredictor(maxHistory int, trainingWindow, predictionHorizon time.Duration) *LoadPredictor {
 	return &LoadPredictor{
-		models:            make(map[MetricType]PredictionModel),
+		models:            make(map[MetricType]LoadPredictionModel),
 		historicalData:    make(map[MetricType][]MetricData),
 		maxHistory:        maxHistory,
 		trainingWindow:    trainingWindow,
@@ -83,7 +84,7 @@ func NewLoadPredictor(maxHistory int, trainingWindow, predictionHorizon time.Dur
 	}
 }
 
-func (lp *LoadPredictor) SetModel(metricType MetricType, model PredictionModel) {
+func (lp *LoadPredictor) SetModel(metricType MetricType, model LoadPredictionModel) {
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
 	lp.models[metricType] = model
@@ -538,7 +539,7 @@ func calculateSeasonalComponent(values, trend []float64, period int) []float64 {
 	return seasonal
 }
 
-func calculateAccuracy(data []MetricData, model PredictionModel) float64 {
+func calculateAccuracy(data []MetricData, model LoadPredictionModel) float64 {
 	if len(data) < 2 {
 		return 0
 	}
@@ -578,7 +579,7 @@ func calculateAccuracy(data []MetricData, model PredictionModel) float64 {
 	return accuracy
 }
 
-func isModelTrained(model PredictionModel) bool {
+func isModelTrained(model LoadPredictionModel) bool {
 	lrm, ok := model.(*LinearRegressionModel)
 	if ok {
 		return lrm.trained

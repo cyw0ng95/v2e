@@ -4,10 +4,11 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/ssg"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
+	"gorm.io/gorm"
 )
 
 func TestStore_SaveTable(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestStore_SaveTable", nil, func(t *testing.T, _ interface{}) {
+	testutils.Run(t, testutils.Level2, "TestStore_SaveTable", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -36,7 +37,7 @@ func TestStore_SaveTable(t *testing.T) {
 }
 
 func TestStore_ListTables(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestStore_ListTables", nil, func(t *testing.T, _ interface{}) {
+	testutils.Run(t, testutils.Level2, "TestStore_ListTables", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
@@ -73,7 +74,7 @@ func TestStore_ListTables(t *testing.T) {
 }
 
 func TestStore_SaveTableEntry(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestStore_SaveTableEntry", nil, func(t *testing.T, _ interface{}) {
+	testutils.Run(t, testutils.Level2, "TestStore_SaveTableEntry", nil, func(t *testing.T, tx *gorm.DB) {
 		store := setupTestStore(t)
 		defer store.Close()
 
