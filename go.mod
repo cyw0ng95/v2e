@@ -8,12 +8,15 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-resty/resty/v2 v2.17.1
+	github.com/klauspost/compress v1.18.3
 	github.com/lestrrat-go/libxml2 v0.0.0-20240905100032-c934e3fcb9d3
 	github.com/noneback/go-taskflow v1.1.4
+	github.com/pierrec/lz4/v4 v4.1.25
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.11.1
 	github.com/xuri/excelize/v2 v2.10.0
 	go.etcd.io/bbolt v1.4.3
+	golang.org/x/sys v0.40.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.1
 )
@@ -61,12 +64,8 @@ require (
 	go.uber.org/mock v0.6.0 // indirect
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

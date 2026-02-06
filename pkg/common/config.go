@@ -171,6 +171,9 @@ type ProcessConfig struct {
 	Restart bool `json:"restart,omitempty"`
 	// MaxRestarts is the maximum number of restart attempts (-1 for unlimited)
 	MaxRestarts int `json:"max_restarts,omitempty"`
+	// CPUAffinityMask is a hexadecimal string representing CPU core affinity (e.g., "0x03" for cores 0-1)
+	// Empty string means no affinity (use all available cores)
+	CPUAffinityMask string `json:"cpu_affinity_mask,omitempty"`
 }
 
 // AuthenticationConfig holds authentication settings for RPC endpoints
