@@ -10,6 +10,7 @@ const (
 	DataTypeCWE    DataType = "cwe"
 	DataTypeCAPEC  DataType = "capec"
 	DataTypeATTACK DataType = "attack"
+	DataTypeCCE    DataType = "cce"
 )
 
 // DataProgress tracks progress for each data type

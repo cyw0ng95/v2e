@@ -21,13 +21,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/cyw0ng95/v2e/cmd/v2meta/providers"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
-	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
+	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 )
 
 // Default constants are now in pkg/common/defaults.go
@@ -40,6 +41,7 @@ const (
 	DataTypeCWE    = taskflow.DataTypeCWE
 	DataTypeCAPEC  = taskflow.DataTypeCAPEC
 	DataTypeATTACK = taskflow.DataTypeATTACK
+	DataTypeCCE    = taskflow.DataTypeCCE
 )
 
 // Alias the DataType from the taskflow package so local code can use it directly
@@ -70,6 +72,8 @@ func (c *DataPopulationController) StartDataPopulation(ctx context.Context, data
 		return c.startCAPECImport(ctx, sessionID, params)
 	case DataTypeATTACK:
 		return c.startATTACKImport(ctx, sessionID, params)
+	case DataTypeCCE:
+		return c.startCCEImport(ctx, sessionID, params)
 	default:
 		return "", fmt.Errorf("unsupported data type: %s", dataType)
 	}
@@ -163,6 +167,35 @@ func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessio
 	}
 
 	c.logger.Info("ATT&CK import started successfully: session_id=%s", sessionID)
+	return sessionID, nil
+}
+
+// startCCEImport starts a CCE import job
+func (c *DataPopulationController) startCCEImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
+	path, ok := params["path"].(string)
+	if !ok {
+		path = providers.GetCCEAssetPath() // default path
+	}
+
+	c.logger.Info("Starting CCE import: session_id=%s, path=%s", sessionID, path)
+
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+
+	paramsObj := &rpc.ImportParams{Path: path}
+	c.logger.Debug("About to invoke RPCImportCCEs on local service")
+	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCCEs", paramsObj)
+	if err != nil {
+		c.logger.Error("Failed to start CCE import: %v", err)
+		return "", fmt.Errorf("failed to start CCE import: %w", err)
+	}
+
+	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
+		c.logger.Error("CCE import returned error: %s", errMsg)
+		return "", fmt.Errorf("CCE import failed: %s", errMsg)
+	}
+
+	c.logger.Info("CCE import started successfully: session_id=%s", sessionID)
 	return sessionID, nil
 }
 
@@ -317,6 +350,9 @@ func main() {
 	sp.RegisterHandler("RPCStartATTACKImport", createStartATTACKImportHandler(dataPopController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartATTACKImport")
 	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartATTACKImport")
+	sp.RegisterHandler("RPCStartCCEImport", createStartCCEImportHandler(dataPopController, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCCEImport")
+	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartCCEImport")
 
 	// Register SSG import job RPC handlers
 	RegisterSSGJobHandlers(sp, ssgImporter, logger)
@@ -377,6 +413,24 @@ func main() {
 		} else {
 			logger.Info("CAPEC import triggered on local")
 			logger.Debug("CAPEC import process started successfully with path: %s", params.Path)
+		}
+	}()
+
+	// --- CCE Import Control ---
+	go func() {
+		logger.Info("Starting CCE import control routine...")
+		time.Sleep(2 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+		params := &rpc.ImportParams{Path: providers.GetCCEAssetPath()}
+		logger.Info("CCE import triggered: path=%s", params.Path)
+		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCCEs", params)
+		if err != nil {
+			logger.Warn("Failed to import CCE on local: %v", err)
+		} else if resp.Type == subprocess.MessageTypeError {
+			logger.Warn("CCE import error: %s", resp.Error)
+		} else {
+			logger.Info("CCE import triggered on local")
 		}
 	}()
 
@@ -493,6 +547,42 @@ func createStartATTACKImportHandler(controller *DataPopulationController, logger
 		}
 
 		logger.Info(LogMsgSuccessStartATTACKImport, sessionID)
+		return respMsg, nil
+	}
+}
+
+// createStartCCEImportHandler creates a handler for starting CCE import
+func createStartCCEImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Info("RPCStartCCEImport")
+
+		var req map[string]interface{}
+		if msg.Payload != nil {
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				logger.Warn(LogMsgFailedToParseRequest, err)
+				return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to parse request"), nil
+			}
+		}
+
+		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCCE, req)
+		if err != nil {
+			logger.Error("Failed to start CCE import: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start CCE import: %v", err)), nil
+		}
+
+		result := map[string]interface{}{
+			"success":    true,
+			"session_id": sessionID,
+			"data_type":  string(DataTypeCCE),
+		}
+
+		respMsg, err := subprocess.NewSuccessResponse(msg, result)
+		if err != nil {
+			logger.Error(LogMsgFailedToMarshalResponse, err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to marshal response"), nil
+		}
+
+		logger.Info("Successfully started CCE import: session_id=%s", sessionID)
 		return respMsg, nil
 	}
 }
