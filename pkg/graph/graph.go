@@ -265,3 +265,27 @@ func (g *Graph) FindPath(from, to *urn.URN) ([]*urn.URN, bool) {
 
 	return nil, false
 }
+
+// GetAllNodes returns all nodes in the graph
+func (g *Graph) GetAllNodes() []*Node {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	result := make([]*Node, 0, len(g.nodes))
+	for _, node := range g.nodes {
+		result = append(result, node)
+	}
+	return result
+}
+
+// GetAllEdges returns all edges in the graph
+func (g *Graph) GetAllEdges() []*Edge {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	result := make([]*Edge, 0)
+	for _, edges := range g.edges {
+		result = append(result, edges...)
+	}
+	return result
+}

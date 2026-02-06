@@ -190,6 +190,66 @@ The service provides readonly access to data from other services for analysis pu
   - **Request**: `{}`
   - **Response**: `{"status": "cleared"}`
 
+### 11. RPCGetFSMState
+- **Description**: Returns the current state of the analysis FSM and graph FSM
+- **Request Parameters**: None
+- **Response**:
+  - `analyze_state` (string): Current state of the analysis service (BOOTSTRAPPING, IDLE, PROCESSING, PAUSED, DRAINING, TERMINATED)
+  - `graph_state` (string): Current state of the graph (IDLE, BUILDING, ANALYZING, PERSISTING, READY, ERROR)
+- **Errors**: None
+- **Example**:
+  - **Request**: `{}`
+  - **Response**: `{"analyze_state": "IDLE", "graph_state": "READY"}`
+
+### 12. RPCPauseAnalysis
+- **Description**: Pauses the analysis service (stops accepting new analysis requests)
+- **Request Parameters**: None
+- **Response**:
+  - `status` (string): "paused"
+- **Errors**:
+  - Invalid state transition: Cannot pause from current state
+- **Example**:
+  - **Request**: `{}`
+  - **Response**: `{"status": "paused"}`
+
+### 13. RPCResumeAnalysis
+- **Description**: Resumes the analysis service after being paused
+- **Request Parameters**: None
+- **Response**:
+  - `status` (string): "resumed"
+- **Errors**:
+  - Invalid state transition: Service is not paused
+- **Example**:
+  - **Request**: `{}`
+  - **Response**: `{"status": "resumed"}`
+
+### 14. RPCSaveGraph
+- **Description**: Saves the current graph to disk (BoltDB)
+- **Request Parameters**: None
+- **Response**:
+  - `status` (string): "saved"
+  - `node_count` (int): Number of nodes saved
+  - `edge_count` (int): Number of edges saved
+  - `last_saved` (string): Timestamp of save operation
+- **Errors**:
+  - Failed to save: Disk write error or permission issue
+- **Example**:
+  - **Request**: `{}`
+  - **Response**: `{"status": "saved", "node_count": 250, "edge_count": 180, "last_saved": "2026-02-06T03:45:00Z"}`
+
+### 15. RPCLoadGraph
+- **Description**: Loads the graph from disk, replacing the current in-memory graph
+- **Request Parameters**: None
+- **Response**:
+  - `status` (string): "loaded"
+  - `node_count` (int): Number of nodes loaded
+  - `edge_count` (int): Number of edges loaded
+- **Errors**:
+  - Failed to load: No saved graph found or corrupted data
+- **Example**:
+  - **Request**: `{}`
+  - **Response**: `{"status": "loaded", "node_count": 250, "edge_count": 180"}`
+
 ---
 
 ## URN Format
@@ -320,19 +380,36 @@ curl -X POST http://localhost:8080/restful/rpc \
 2. Build graph after UEE completes data population
 3. Perform analysis on fresh data
 
+### Persisting and Loading Graphs
+1. Save graph to disk: `RPCSaveGraph`
+2. Load graph from disk: `RPCLoadGraph`
+3. Graph is automatically loaded on service startup if available
+4. Graph is automatically saved on service shutdown
+
+### FSM State Management
+1. Check FSM state: `RPCGetFSMState`
+2. Pause analysis: `RPCPauseAnalysis`
+3. Resume analysis: `RPCResumeAnalysis`
+4. FSM ensures proper lifecycle management and resource allocation
+
 ## Notes
-- All graph operations are in-memory; graph is not persisted
+- Graph operations are in-memory with BoltDB persistence
+- Graph is automatically loaded on startup and saved on shutdown
 - Service is readonly for external data sources (local, meta services)
 - Graph modifications are only through explicit RPC calls
 - Thread-safe for concurrent read/write operations
 - Service runs as a subprocess managed by the broker
 - All communication is broker-mediated via RPC
+- FSM-based lifecycle management for reliable operation
+- Broker/perf optimizer provides conflict resolution with frontend and ETL services
 
 ## Dependencies
 - **Subprocess Framework**: `pkg/proc/subprocess` for lifecycle management
 - **Graph Database**: `pkg/graph` for in-memory graph operations
 - **URN Package**: `pkg/urn` for URN validation and parsing
 - **RPC Client**: `pkg/rpc` for communicating with other services
+- **FSM Package**: `pkg/analysis/fsm` for state machine management
+- **Storage Package**: `pkg/analysis/storage` for BoltDB persistence
 
 ## Performance Characteristics
 
@@ -359,6 +436,7 @@ See implementation progress and planned features below.
   - Thread-safe operations with RWMutex
   - BFS path finding algorithm
   - Node filtering by type and provider
+  - GetAllNodes and GetAllEdges for persistence
 - [x] Analysis service (`cmd/v2analysis`)
   - RPC handlers for graph operations
   - Integration with UEE via meta service
@@ -371,8 +449,48 @@ See implementation progress and planned features below.
 - [x] Documentation (this file)
 - [x] Broker integration (added to boot configuration)
 
-### Phase 2: Planned Enhancements
-- [ ] Graph persistence to disk (SQLite or BoltDB)
+### Phase 2: FSM and Persistence ✅ COMPLETE
+- [x] GraphFSM state machine (`pkg/analysis/fsm`)
+  - State definitions (IDLE, BUILDING, ANALYZING, PERSISTING, READY, ERROR)
+  - State transition validation
+  - Event system for state changes
+- [x] AnalyzeFSM integration (`pkg/analysis/fsm`)
+  - Service-level state machine (BOOTSTRAPPING, IDLE, PROCESSING, PAUSED, DRAINING, TERMINATED)
+  - Lifecycle management (Start, Pause, Resume, Stop)
+  - Event handling from GraphFSM
+- [x] BoltDB persistence (`pkg/analysis/storage`)
+  - Graph storage and retrieval
+  - Metadata tracking (node count, edge count, timestamps)
+  - Checkpoint support
+  - Automatic load on startup, save on shutdown
+- [x] RPC methods for FSM control
+  - RPCGetFSMState - query current state
+  - RPCPauseAnalysis - pause analysis service
+  - RPCResumeAnalysis - resume analysis service
+  - RPCSaveGraph - save graph to disk
+  - RPCLoadGraph - load graph from disk
+- [x] Service integration
+  - FSM integrated into analysis service
+  - Storage integrated with graph operations
+  - Environment variable configuration (GRAPH_DB_PATH)
+
+### Phase 3: Broker/Perf Optimization ✅ COMPLETE
+- [x] Analysis optimizer (`cmd/v2broker/perf`)
+  - Service priority scheduling
+  - Conflict detection (analysis vs frontend vs ETL)
+  - Three conflict resolution policies (frontend_first, fair_share, weighted)
+  - Service metrics tracking
+  - Dynamic throttling based on load
+- [x] Broker integration
+  - SetAnalysisOptimizer method
+  - StartConflictMonitor for automatic conflict resolution
+  - Service registration by type and priority
+- [x] Resource allocation policies
+  - Analysis: Low priority (2 concurrent operations)
+  - Frontend: High priority (10 concurrent operations)
+  - ETL: Medium priority (5 concurrent operations)
+
+### Phase 4: Planned Enhancements
 - [ ] More sophisticated graph algorithms:
   - Centrality measures (PageRank, betweenness)
   - Community detection / clustering
@@ -392,7 +510,7 @@ See implementation progress and planned features below.
   - Graph statistics and metrics
   - Anomaly detection in relationships
 
-### Phase 3: Integration & Production Readiness
+### Phase 5: Integration & Production Readiness
 - [ ] Frontend integration
   - Graph visualization component
   - Interactive graph exploration
@@ -406,11 +524,3 @@ See implementation progress and planned features below.
   - API examples
   - Usage patterns
   - Best practices guide
-
-Potential improvements:
-- Graph persistence to disk
-- More sophisticated graph algorithms (centrality, clustering)
-- Real-time graph updates from UEE events
-- Graph query language (Cypher-like)
-- Graph visualization export formats
-- Temporal graph analysis (time-based relationships)

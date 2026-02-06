@@ -17,28 +17,103 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/graph"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 	"github.com/cyw0ng95/v2e/pkg/urn"
+	
+	analysisfsm "github.com/cyw0ng95/v2e/pkg/analysis/fsm"
+	analysisstorage "github.com/cyw0ng95/v2e/pkg/analysis/storage"
 )
 
 // AnalysisService manages the graph database and provides analysis capabilities
 type AnalysisService struct {
-	graph     *graph.Graph
-	rpcClient *rpc.Client
-	logger    *common.Logger
+	graph       *graph.Graph
+	rpcClient   *rpc.Client
+	logger      *common.Logger
+	analyzeFSM  analysisfsm.AnalyzeFSM
+	graphStore  *analysisstorage.GraphStore
+	graphDBPath string
 }
 
 // NewAnalysisService creates a new analysis service
-func NewAnalysisService(rpcClient *rpc.Client, logger *common.Logger) *AnalysisService {
-	return &AnalysisService{
-		graph:     graph.New(),
-		rpcClient: rpcClient,
-		logger:    logger,
+func NewAnalysisService(rpcClient *rpc.Client, logger *common.Logger, graphDBPath string) (*AnalysisService, error) {
+	// Create FSM
+	analyzeFSM := analysisfsm.NewAnalyzeFSM(logger)
+	
+	// Create graph storage
+	graphStore, err := analysisstorage.NewGraphStore(graphDBPath, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create graph store: %w", err)
 	}
+	
+	service := &AnalysisService{
+		graph:       graph.New(),
+		rpcClient:   rpcClient,
+		logger:      logger,
+		analyzeFSM:  analyzeFSM,
+		graphStore:  graphStore,
+		graphDBPath: graphDBPath,
+	}
+	
+	// Try to load existing graph from storage
+	if err := service.loadGraphFromStorage(); err != nil {
+		logger.Warn("Failed to load graph from storage: %v", err)
+		// Not a fatal error - continue with empty graph
+	}
+	
+	// Start the FSM
+	if err := analyzeFSM.Start(); err != nil {
+		graphStore.Close()
+		return nil, fmt.Errorf("failed to start FSM: %w", err)
+	}
+	
+	return service, nil
+}
+
+// loadGraphFromStorage attempts to load the graph from storage
+func (s *AnalysisService) loadGraphFromStorage() error {
+	// Check if metadata exists
+	metadata, err := s.graphStore.GetMetadata()
+	if err != nil {
+		// No existing graph
+		return nil
+	}
+	
+	s.logger.Info("Loading existing graph from storage (nodes: %d, edges: %d, last saved: %v)",
+		metadata.NodeCount, metadata.EdgeCount, metadata.LastSaved)
+	
+	// Load the graph
+	loadedGraph, err := s.graphStore.LoadGraph()
+	if err != nil {
+		return err
+	}
+	
+	s.graph = loadedGraph
+	return nil
+}
+
+// Close closes the analysis service and saves the graph
+func (s *AnalysisService) Close() error {
+	// Save graph before closing
+	if s.graph.NodeCount() > 0 {
+		s.logger.Info("Saving graph before shutdown...")
+		if err := s.graphStore.SaveGraph(s.graph); err != nil {
+			s.logger.Error("Failed to save graph: %v", err)
+		}
+	}
+	
+	// Stop FSM
+	if err := s.analyzeFSM.Stop(); err != nil {
+		s.logger.Warn("Error stopping FSM: %v", err)
+	}
+	
+	// Close storage
+	return s.graphStore.Close()
 }
 
 func main() {
@@ -49,9 +124,22 @@ func main() {
 	}
 	sp, logger := subprocess.StandardStartup(configStruct)
 
+	// Get graph database path from environment or use default
+	graphDBPath := os.Getenv("GRAPH_DB_PATH")
+	if graphDBPath == "" {
+		graphDBPath = "analysis_graph.db"
+	}
+
 	// Create RPC client for communicating with other services
 	rpcClient := rpc.NewClient(sp, logger, rpc.DefaultRPCTimeout)
-	service := NewAnalysisService(rpcClient, logger)
+	
+	// Create analysis service with FSM and storage
+	service, err := NewAnalysisService(rpcClient, logger, graphDBPath)
+	if err != nil {
+		logger.Error("Failed to create analysis service: %v", err)
+		os.Exit(1)
+	}
+	defer service.Close()
 
 	// Register RPC handlers
 	sp.RegisterHandler("RPCGetGraphStats", createGetGraphStatsHandler(service))
@@ -64,8 +152,16 @@ func main() {
 	sp.RegisterHandler("RPCGetUEEStatus", createGetUEEStatusHandler(service))
 	sp.RegisterHandler("RPCBuildCVEGraph", createBuildCVEGraphHandler(service))
 	sp.RegisterHandler("RPCClearGraph", createClearGraphHandler(service))
+	
+	// Register new FSM control handlers
+	sp.RegisterHandler("RPCGetFSMState", createGetFSMStateHandler(service))
+	sp.RegisterHandler("RPCPauseAnalysis", createPauseAnalysisHandler(service))
+	sp.RegisterHandler("RPCResumeAnalysis", createResumeAnalysisHandler(service))
+	sp.RegisterHandler("RPCSaveGraph", createSaveGraphHandler(service))
+	sp.RegisterHandler("RPCLoadGraph", createLoadGraphHandler(service))
 
-	logger.Info("UDA Analysis service started")
+	logger.Info("UDA Analysis service started with FSM and persistence")
+	logger.Info("Graph database: %s", graphDBPath)
 	logger.Info("Graph database initialized")
 
 	subprocess.RunWithDefaults(sp, logger)
@@ -388,4 +484,100 @@ func createClearGraphHandler(service *AnalysisService) subprocess.Handler {
 			"status": "cleared",
 		})
 	}
+}
+
+// createGetFSMStateHandler returns the current FSM state
+func createGetFSMStateHandler(service *AnalysisService) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+analyzeState := service.analyzeFSM.GetState()
+graphFSM := service.analyzeFSM.GetGraphFSM()
+graphState := graphFSM.GetState()
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"analyze_state": string(analyzeState),
+"graph_state":   string(graphState),
+})
+}
+}
+
+// createPauseAnalysisHandler pauses the analysis service
+func createPauseAnalysisHandler(service *AnalysisService) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+if err := service.analyzeFSM.Pause(); err != nil {
+return subprocess.NewErrorResponse(msg, "failed to pause analysis: "+err.Error()), nil
+}
+
+service.logger.Info("Analysis service paused")
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"status": "paused",
+})
+}
+}
+
+// createResumeAnalysisHandler resumes the analysis service
+func createResumeAnalysisHandler(service *AnalysisService) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+if err := service.analyzeFSM.Resume(); err != nil {
+return subprocess.NewErrorResponse(msg, "failed to resume analysis: "+err.Error()), nil
+}
+
+service.logger.Info("Analysis service resumed")
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"status": "resumed",
+})
+}
+}
+
+// createSaveGraphHandler saves the graph to disk
+func createSaveGraphHandler(service *AnalysisService) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+graphFSM := service.analyzeFSM.GetGraphFSM()
+
+// Start persistence
+if err := graphFSM.StartPersist(); err != nil {
+return subprocess.NewErrorResponse(msg, "failed to start persistence: "+err.Error()), nil
+}
+
+// Save graph
+if err := service.graphStore.SaveGraph(service.graph); err != nil {
+graphFSM.FailPersist(err)
+return subprocess.NewErrorResponse(msg, "failed to save graph: "+err.Error()), nil
+}
+
+// Complete persistence
+if err := graphFSM.CompletePersist(); err != nil {
+return subprocess.NewErrorResponse(msg, "failed to complete persistence: "+err.Error()), nil
+}
+
+metadata, _ := service.graphStore.GetMetadata()
+service.logger.Info("Graph saved to disk")
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"status":      "saved",
+"node_count":  metadata.NodeCount,
+"edge_count":  metadata.EdgeCount,
+"last_saved":  metadata.LastSaved,
+})
+}
+}
+
+// createLoadGraphHandler loads the graph from disk
+func createLoadGraphHandler(service *AnalysisService) subprocess.Handler {
+return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+// Load graph
+loadedGraph, err := service.graphStore.LoadGraph()
+if err != nil {
+return subprocess.NewErrorResponse(msg, "failed to load graph: "+err.Error()), nil
+}
+
+// Replace current graph
+service.graph = loadedGraph
+service.logger.Info("Graph loaded from disk")
+
+return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+"status":      "loaded",
+"node_count":  service.graph.NodeCount(),
+"edge_count":  service.graph.EdgeCount(),
+})
+}
 }
