@@ -9,6 +9,118 @@ import (
 	"gorm.io/gorm"
 )
 
+// CreateMemoryCardFull creates a new memory card with all fields
+func (s *MemoryCardService) CreateMemoryCardFull(ctx context.Context, bookmarkID uint, front, back, majorClass, minorClass, status, content, cardType, author string, isPrivate bool, metadata map[string]any) (*MemoryCardModel, error) {
+	card := &MemoryCardModel{
+		BookmarkID: bookmarkID,
+		Front:      front,
+		Back:       back,
+		MajorClass: majorClass,
+		MinorClass: minorClass,
+		Status:     status,
+		Content:    content,
+		EaseFactor: 2.5,
+		Interval:   1,
+		Repetition: 0,
+		// TODO: CardType, Author, IsPrivate, Metadata (if you add to model)
+	}
+	if err := s.db.WithContext(ctx).Create(card).Error; err != nil {
+		return nil, fmt.Errorf("failed to create memory card: %w", err)
+	}
+	return card, nil
+}
+
+// UpdateMemoryCardFields updates a memory card by ID and arbitrary fields
+func (s *MemoryCardService) UpdateMemoryCardFields(ctx context.Context, fields map[string]any) (*MemoryCardModel, error) {
+	idAny, ok := fields["id"]
+	if !ok {
+		return nil, fmt.Errorf("missing id field")
+	}
+	id, ok := idAny.(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid id type")
+	}
+	// Perform updates transactionally and validate status transitions
+	var updated MemoryCardModel
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var card MemoryCardModel
+		if err := tx.First(&card, uint(id)).Error; err != nil {
+			return err
+		}
+
+		// Handle status transition specially
+		if rawStatus, ok := fields["status"]; ok {
+			if statusStr, ok := rawStatus.(string); ok {
+				parsed, perr := ParseCardStatus(statusStr)
+				if perr != nil {
+					return perr
+				}
+				// Use centralized transition logic within this transaction
+				if err := s.transitionCardStatusTx(tx, card.ID, parsed); err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("status must be a string")
+			}
+			delete(fields, "status")
+		}
+
+		// Delete id from fields map and apply other updates
+		delete(fields, "id")
+		if len(fields) > 0 {
+			if err := tx.Model(&card).Updates(fields).Error; err != nil {
+				return err
+			}
+		}
+
+		// Reload the updated card to return
+		if err := tx.First(&updated, card.ID).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &updated, nil
+}
+
+// DeleteMemoryCard deletes a memory card by ID
+func (s *MemoryCardService) DeleteMemoryCard(ctx context.Context, id uint) error {
+	return s.db.WithContext(ctx).Delete(&MemoryCardModel{}, id).Error
+}
+
+// ListMemoryCardsFull lists memory cards with new filters
+func (s *MemoryCardService) ListMemoryCardsFull(ctx context.Context, bookmarkID *uint, majorClass, minorClass, status, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error) {
+	var cards []*MemoryCardModel
+	query := s.db.WithContext(ctx).Model(&MemoryCardModel{})
+	if bookmarkID != nil {
+		query = query.Where("bookmark_id = ?", *bookmarkID)
+	}
+	if majorClass != nil && *majorClass != "" {
+		query = query.Where("major_class = ?", *majorClass)
+	}
+	if minorClass != nil && *minorClass != "" {
+		query = query.Where("minor_class = ?", *minorClass)
+	}
+	if status != nil && *status != "" {
+		query = query.Where("status = ?", *status)
+	}
+	// TODO: author, is_private if added to model
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if limit > 0 {
+		query = query.Offset(offset).Limit(limit)
+	}
+	if err := query.Find(&cards).Error; err != nil {
+		return nil, 0, err
+	}
+	return cards, total, nil
+}
+
 // BookmarkService handles all bookmark-related operations
 type BookmarkService struct {
 	db *gorm.DB
@@ -19,34 +131,137 @@ func NewBookmarkService(db *gorm.DB) *BookmarkService {
 	return &BookmarkService{db: db}
 }
 
-// CreateBookmark creates a new bookmark
-func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, error) {
+// CreateBookmark creates a new bookmark, enforcing single bookmark per item
+func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, *MemoryCardModel, error) {
+	// Check if bookmark already exists for this item
+	var existingBookmark BookmarkModel
+	err := s.db.WithContext(ctx).Where("global_item_id = ? AND item_type = ? AND item_id = ?", globalItemID, itemType, itemID).First(&existingBookmark).Error
+	if err == nil {
+		// Bookmark already exists, return the existing one
+		return &existingBookmark, nil, nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// Some other database error occurred
+		return nil, nil, fmt.Errorf("failed to check for existing bookmark: %w", err)
+	}
+
+	// No existing bookmark found, create new one
+	now := time.Now().UTC()
+	nowStr := now.Format(time.RFC3339)
+
+	// Generate URN for the bookmark
+	urnStr := GenerateURN(itemType, itemID, "")
+
 	bookmark := &BookmarkModel{
 		GlobalItemID:  globalItemID,
 		ItemType:      itemType,
 		ItemID:        itemID,
+		URN:           urnStr,
 		Title:         title,
 		Description:   description,
 		LearningState: string(LearningStateToReview),
 		MasteryLevel:  0.0,
+		// Initialize stats in metadata
+		Metadata: map[string]interface{}{
+			"view_count":       0,
+			"study_sessions":   0,
+			"last_viewed":      nowStr,
+			"first_bookmarked": nowStr,
+		},
 	}
 
-	if err := s.db.WithContext(ctx).Create(bookmark).Error; err != nil {
-		return nil, fmt.Errorf("failed to create bookmark: %w", err)
+	var createdCard *MemoryCardModel
+
+	// Use a transaction so bookmark, history and auto-created memory card are atomic
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(bookmark).Error; err != nil {
+			return fmt.Errorf("failed to create bookmark: %w", err)
+		}
+
+		// Create history entry for creation
+		history := &BookmarkHistoryModel{
+			BookmarkID: bookmark.ID,
+			Action:     string(BookmarkActionCreated),
+			NewValue:   string(LearningStateToReview),
+			Timestamp:  time.Now(),
+		}
+		if err := tx.Create(history).Error; err != nil {
+			return fmt.Errorf("failed to create bookmark history: %w", err)
+		}
+
+		// Auto-create a memory card for this bookmark using title/description
+		card := &MemoryCardModel{
+			BookmarkID: bookmark.ID,
+			URN:        urnStr,
+			Front:      title,
+			Back:       description,
+			EaseFactor: 2.5,
+			Interval:   1,
+			Repetition: 0,
+		}
+		if err := tx.Create(card).Error; err != nil {
+			return fmt.Errorf("failed to create memory card: %w", err)
+		}
+		createdCard = card
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// Create history entry
-	history := &BookmarkHistoryModel{
-		BookmarkID: bookmark.ID,
-		Action:     string(BookmarkActionCreated),
-		NewValue:   string(LearningStateToReview),
-		Timestamp:  time.Now(),
-	}
-	if err := s.db.WithContext(ctx).Create(history).Error; err != nil {
-		return nil, fmt.Errorf("failed to create bookmark history: %w", err)
+	return bookmark, createdCard, nil
+}
+
+// UpdateBookmarkStats updates the statistics for a bookmark
+func (s *BookmarkService) UpdateBookmarkStats(ctx context.Context, bookmarkID uint, viewIncrement int, studyIncrement int) error {
+	var bookmark BookmarkModel
+	if err := s.db.WithContext(ctx).First(&bookmark, bookmarkID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("bookmark with ID %d not found", bookmarkID)
+		}
+		return fmt.Errorf("failed to find bookmark: %w", err)
 	}
 
-	return bookmark, nil
+	// Initialize metadata if nil
+	if bookmark.Metadata == nil {
+		bookmark.Metadata = make(map[string]interface{})
+	}
+
+	// Update view count
+	viewCount, _ := bookmark.Metadata["view_count"].(float64)
+	bookmark.Metadata["view_count"] = int(viewCount) + viewIncrement
+
+	// Update study sessions
+	studySessions, _ := bookmark.Metadata["study_sessions"].(float64)
+	bookmark.Metadata["study_sessions"] = int(studySessions) + studyIncrement
+
+	// Update last viewed timestamp
+	bookmark.Metadata["last_viewed"] = time.Now().UTC().Format(time.RFC3339)
+
+	// Update the bookmark
+	if err := s.db.WithContext(ctx).Save(&bookmark).Error; err != nil {
+		return fmt.Errorf("failed to update bookmark stats: %w", err)
+	}
+
+	return nil
+}
+
+// GetBookmarkStats retrieves the statistics for a bookmark
+func (s *BookmarkService) GetBookmarkStats(ctx context.Context, bookmarkID uint) (map[string]interface{}, error) {
+	var bookmark BookmarkModel
+	if err := s.db.WithContext(ctx).Select("metadata").First(&bookmark, bookmarkID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("bookmark with ID %d not found", bookmarkID)
+		}
+		return nil, fmt.Errorf("failed to get bookmark stats: %w", err)
+	}
+
+	if bookmark.Metadata == nil {
+		return make(map[string]interface{}), nil
+	}
+
+	return bookmark.Metadata, nil
 }
 
 // GetBookmarkByID retrieves a bookmark by its ID
@@ -456,6 +671,8 @@ func (s *MemoryCardService) CreateMemoryCard(ctx context.Context, bookmarkID uin
 		BookmarkID: bookmarkID,
 		Front:      front,
 		Back:       back,
+		Status:     string(StatusNew),
+		Content:    "{}",
 		EaseFactor: 2.5,
 		Interval:   1,
 		Repetition: 0,
@@ -563,15 +780,128 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 	nextReview := time.Now().AddDate(0, 0, card.Interval)
 	card.NextReview = &nextReview
 
-	// Update card in database
-	if err := s.db.WithContext(ctx).Save(card).Error; err != nil {
-		return fmt.Errorf("failed to update memory card: %w", err)
+	// Determine logical next status from current state and repetition
+	var nextStatus CardStatus
+	currentStatus := CardStatus(card.Status)
+
+	// For new cards, move to learning state
+	if currentStatus == StatusNew {
+		nextStatus = StatusLearning
+	} else if currentStatus == StatusLearning {
+		// Cards in learning transition to reviewed or mastered if enough repetitions
+		if card.Repetition >= 5 {
+			nextStatus = StatusMastered
+		} else {
+			nextStatus = StatusReviewed
+		}
+	} else if currentStatus == StatusReviewed {
+		// Reviewed cards can go back to learning (more practice) or mastered (if enough repetitions)
+		if card.Repetition >= 5 {
+			nextStatus = StatusMastered
+		} else {
+			nextStatus = StatusLearning
+		}
+	} else {
+		// Default fallback for other states
+		if card.Repetition >= 5 {
+			nextStatus = StatusMastered
+		} else {
+			nextStatus = StatusReviewed
+		}
 	}
 
-	// Update bookmark's mastery level based on review
-	updateBookmarkMastery(ctx, s.db, &bookmark, rating)
+	// Persist changes transactionally using optimistic version bump
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Refresh within transaction
+		var cur MemoryCardModel
+		if err := tx.First(&cur, card.ID).Error; err != nil {
+			return err
+		}
+
+		// Validate transition
+		if !CanTransition(CardStatus(cur.Status), nextStatus) {
+			return ErrInvalidTransition
+		}
+
+		// Attempt update with version check
+		res := tx.Model(&MemoryCardModel{}).
+			Where("id = ? AND version = ?", cur.ID, cur.Version).
+			Updates(map[string]any{
+				"ease_factor": card.EaseFactor,
+				"interval":    card.Interval,
+				"repetition":  card.Repetition,
+				"next_review": card.NextReview,
+				"status":      string(nextStatus),
+				"version":     cur.Version + 1,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("concurrent update detected")
+		}
+
+		// Update bookmark mastery (no error return value)
+		updateBookmarkMastery(ctx, tx, &bookmark, rating)
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
 	return nil
+}
+
+// transitionCardStatusTx performs a versioned status transition within an existing transaction.
+func (s *MemoryCardService) transitionCardStatusTx(tx *gorm.DB, cardID uint, next CardStatus) error {
+	var cur MemoryCardModel
+	if err := tx.First(&cur, cardID).Error; err != nil {
+		return err
+	}
+	if !CanTransition(CardStatus(cur.Status), next) {
+		return ErrInvalidTransition
+	}
+	res := tx.Model(&MemoryCardModel{}).
+		Where("id = ? AND version = ?", cur.ID, cur.Version).
+		Updates(map[string]any{"status": string(next), "version": cur.Version + 1})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrConcurrentUpdate
+	}
+	return nil
+}
+
+// TransitionCardStatus transitions a card to the given status using optimistic concurrency.
+// If expectedVersion is non-nil, the transition will only succeed if the current
+// version matches expectedVersion; otherwise it uses the current version observed
+// in the database for the versioned update.
+func (s *MemoryCardService) TransitionCardStatus(ctx context.Context, cardID uint, expectedVersion *int, next CardStatus) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var cur MemoryCardModel
+		if err := tx.First(&cur, cardID).Error; err != nil {
+			return err
+		}
+		if expectedVersion != nil && cur.Version != *expectedVersion {
+			return ErrConcurrentUpdate
+		}
+		if !CanTransition(CardStatus(cur.Status), next) {
+			return ErrInvalidTransition
+		}
+		// versioned update
+		res := tx.Model(&MemoryCardModel{}).
+			Where("id = ? AND version = ?", cur.ID, cur.Version).
+			Updates(map[string]any{"status": string(next), "version": cur.Version + 1})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrConcurrentUpdate
+		}
+		return nil
+	})
 }
 
 // GetCardsByLearningState retrieves memory cards for bookmarks in a specific learning state
@@ -585,6 +915,46 @@ func (s *MemoryCardService) GetCardsByLearningState(ctx context.Context, state L
 		return nil, fmt.Errorf("failed to get cards by learning state: %w", err)
 	}
 	return cards, nil
+}
+
+// ListMemoryCards retrieves memory cards with optional filters and pagination
+func (s *MemoryCardService) ListMemoryCards(ctx context.Context, bookmarkID *uint, learningState *string, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error) {
+	var cards []*MemoryCardModel
+
+	query := s.db.WithContext(ctx).Table("memory_card_models")
+
+	// Apply filters if provided
+	if bookmarkID != nil {
+		query = query.Where("bookmark_id = ?", *bookmarkID)
+	}
+	if learningState != nil && *learningState != "" {
+		query = query.Joins("JOIN bookmark_models ON memory_card_models.bookmark_id = bookmark_models.id").
+			Where("bookmark_models.learning_state = ?", *learningState)
+	}
+	if author != nil && *author != "" {
+		// Assuming author is stored in a field, adjust as needed
+		query = query.Where("author = ?", *author)
+	}
+	if isPrivate != nil {
+		query = query.Where("is_private = ?", *isPrivate)
+	}
+
+	// Get total count
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count memory cards: %w", err)
+	}
+
+	// Apply pagination
+	if limit > 0 {
+		query = query.Offset(offset).Limit(limit)
+	}
+
+	if err := query.Find(&cards).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list memory cards: %w", err)
+	}
+
+	return cards, total, nil
 }
 
 // Helper function to update bookmark mastery level based on card review

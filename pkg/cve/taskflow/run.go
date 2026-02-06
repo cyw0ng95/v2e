@@ -94,7 +94,8 @@ func (s *RunStore) GetRun(runID string) (*JobRun, error) {
 	return run, nil
 }
 
-// GetActiveRun retrieves the currently active run (running or paused)
+// GetActiveRun retrieves the currently active run (only running)
+// Paused runs are NOT considered active - they must be manually resumed
 // Returns nil if no active run exists
 func (s *RunStore) GetActiveRun() (*JobRun, error) {
 	var activeRun *JobRun
@@ -112,8 +113,9 @@ func (s *RunStore) GetActiveRun() (*JobRun, error) {
 				continue
 			}
 
-			// Only running or paused runs are considered active
-			if run.State == StateRunning || run.State == StatePaused {
+			// Only running jobs are considered active
+			// Paused jobs must be manually resumed and are NOT active
+			if run.State == StateRunning {
 				activeRun = &run
 				return nil
 			}

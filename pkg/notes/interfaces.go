@@ -8,7 +8,7 @@ import (
 
 // BookmarkServiceInterface defines the interface for the bookmark service
 type BookmarkServiceInterface interface {
-	CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, error)
+	CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, *MemoryCardModel, error)
 	GetBookmarkByID(ctx context.Context, id uint) (*BookmarkModel, error)
 	GetBookmarksByGlobalItemID(ctx context.Context, globalItemID string) ([]*BookmarkModel, error)
 	UpdateBookmark(ctx context.Context, bookmark *BookmarkModel) error
@@ -16,6 +16,8 @@ type BookmarkServiceInterface interface {
 	GetBookmarksByLearningState(ctx context.Context, state LearningState) ([]*BookmarkModel, error)
 	ListBookmarks(ctx context.Context, state string, offset, limit int) ([]*BookmarkModel, int64, error)
 	DeleteBookmark(ctx context.Context, id uint) error
+	UpdateBookmarkStats(ctx context.Context, bookmarkID uint, viewIncrement int, studyIncrement int) error
+	GetBookmarkStats(ctx context.Context, bookmarkID uint) (map[string]interface{}, error)
 }
 
 // NoteServiceInterface defines the interface for the note service
@@ -30,10 +32,15 @@ type NoteServiceInterface interface {
 // MemoryCardServiceInterface defines the interface for the memory card service
 type MemoryCardServiceInterface interface {
 	CreateMemoryCard(ctx context.Context, bookmarkID uint, front, back string) (*MemoryCardModel, error)
+	GetMemoryCardByID(ctx context.Context, id uint) (*MemoryCardModel, error)
 	GetMemoryCardsByBookmarkID(ctx context.Context, bookmarkID uint) ([]*MemoryCardModel, error)
 	GetCardsForReview(ctx context.Context) ([]*MemoryCardModel, error)
 	GetCardsByLearningState(ctx context.Context, state LearningState) ([]*MemoryCardModel, error)
 	UpdateCardAfterReview(ctx context.Context, cardID uint, rating CardRating) error
+	UpdateMemoryCardFields(ctx context.Context, fields map[string]any) (*MemoryCardModel, error)
+	DeleteMemoryCard(ctx context.Context, id uint) error
+	TransitionCardStatus(ctx context.Context, cardID uint, expectedVersion *int, next CardStatus) error
+	ListMemoryCards(ctx context.Context, bookmarkID *uint, learningState *string, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error)
 }
 
 // CrossReferenceServiceInterface defines the interface for the cross-reference service
@@ -53,11 +60,11 @@ type HistoryServiceInterface interface {
 
 // ServiceContainer holds all the service implementations
 type ServiceContainer struct {
-	BookmarkService      BookmarkServiceInterface
-	NoteService          NoteServiceInterface
-	MemoryCardService    MemoryCardServiceInterface
+	BookmarkService       BookmarkServiceInterface
+	NoteService           NoteServiceInterface
+	MemoryCardService     MemoryCardServiceInterface
 	CrossReferenceService CrossReferenceServiceInterface
-	HistoryService       HistoryServiceInterface
+	HistoryService        HistoryServiceInterface
 }
 
 // NewServiceContainer creates a new service container with local implementations
@@ -69,11 +76,11 @@ func NewServiceContainer(db *gorm.DB) *ServiceContainer {
 	historyService := NewHistoryService(db)
 
 	return &ServiceContainer{
-		BookmarkService:      bookmarkService,
-		NoteService:          noteService,
-		MemoryCardService:    memoryCardService,
+		BookmarkService:       bookmarkService,
+		NoteService:           noteService,
+		MemoryCardService:     memoryCardService,
 		CrossReferenceService: crossRefService,
-		HistoryService:       historyService,
+		HistoryService:        historyService,
 	}
 }
 
@@ -82,10 +89,10 @@ func NewRPCServiceContainer(client *RPCClient) *ServiceContainer {
 	bookmarkService, noteService, memoryCardService, crossRefService, historyService := client.GetRPCClients()
 
 	return &ServiceContainer{
-		BookmarkService:      bookmarkService,
-		NoteService:          noteService,
-		MemoryCardService:    memoryCardService,
+		BookmarkService:       bookmarkService,
+		NoteService:           noteService,
+		MemoryCardService:     memoryCardService,
 		CrossReferenceService: crossRefService,
-		HistoryService:       historyService,
+		HistoryService:        historyService,
 	}
 }

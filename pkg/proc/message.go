@@ -5,31 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/bytedance/sonic/decoder"
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
-
-// fastDecoder is a configured sonic decoder for zero-copy parsing
-var fastDecoder = decoder.NewDecoder("")
-
-func init() {
-	// Use fastest configuration for zero-copy parsing
-	fastDecoder.UseInt64()
-	fastDecoder.UseNumber()
-
-	// Load config and allow overriding MaxMessageSize if configured
-	cfg, err := common.LoadConfig("")
-	if err != nil {
-		// If config cannot be loaded, keep default
-		return
-	}
-	if cfg != nil {
-		if cfg.Proc.MaxMessageSizeBytes > 0 {
-			MaxMessageSize = cfg.Proc.MaxMessageSizeBytes
-		}
-	}
-}
 
 // MessageType represents the type of message being sent
 type MessageType string
@@ -43,13 +20,11 @@ const (
 	MessageTypeEvent MessageType = "event"
 	// MessageTypeError represents an error message
 	MessageTypeError MessageType = "error"
-
-	// MaxMessageSize is the maximum size of a message that can be sent between processes
-	// Default to 10MB to accommodate large CVE data from NVD API; can be overridden by config
 )
 
-// MaxMessageSize is adjustable at runtime via configuration (default 10MB)
-var MaxMessageSize = 10 * 1024 * 1024 // 10MB
+// MaxMessageSize is adjustable at runtime via configuration (default 50MB)
+// Increased to handle large SSG guides with many rules and references
+var MaxMessageSize = 50 * 1024 * 1024 // 50MB
 
 // DefaultBufferSize is the default initial buffer size for scanners/readers
 const DefaultBufferSize = 4096
@@ -76,7 +51,7 @@ type Message struct {
 	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
-// messagePool is a sync.Pool for Message objects to reduce allocations
+// Simple message pool for reusing Message objects
 var messagePool = sync.Pool{
 	New: func() interface{} {
 		return &Message{}
@@ -121,7 +96,6 @@ func NewRequestMessage(id string, payload interface{}) (*Message, error) {
 	if payload != nil {
 		data, err := jsonutil.Marshal(payload)
 		if err != nil {
-			// Return to pool on error - fields will be reset on next Get
 			PutMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -138,7 +112,6 @@ func NewResponseMessage(id string, payload interface{}) (*Message, error) {
 	if payload != nil {
 		data, err := jsonutil.Marshal(payload)
 		if err != nil {
-			// Return to pool on error - fields will be reset on next Get
 			PutMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -155,7 +128,6 @@ func NewEventMessage(id string, payload interface{}) (*Message, error) {
 	if payload != nil {
 		data, err := jsonutil.Marshal(payload)
 		if err != nil {
-			// Return to pool on error - fields will be reset on next Get
 			PutMessage(msg)
 			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -188,12 +160,6 @@ func (m *Message) Marshal() ([]byte, error) {
 	return jsonutil.Marshal(m)
 }
 
-// MarshalFast serializes the message to JSON using fastest configuration
-// This is faster but may have different behavior for edge cases
-func (m *Message) MarshalFast() ([]byte, error) {
-	return jsonutil.Marshal(m)
-}
-
 // Unmarshal deserializes a message from JSON
 func Unmarshal(data []byte) (*Message, error) {
 	var msg Message
@@ -203,8 +169,7 @@ func Unmarshal(data []byte) (*Message, error) {
 	return &msg, nil
 }
 
-// UnmarshalFast deserializes a message from JSON using zero-copy optimization
-// This is faster but requires the input data to remain valid during message lifetime
+// UnmarshalFast deserializes a message from JSON using pooled message
 func UnmarshalFast(data []byte) (*Message, error) {
 	msg := GetMessage()
 	if err := jsonutil.Unmarshal(data, msg); err != nil {
@@ -212,4 +177,13 @@ func UnmarshalFast(data []byte) (*Message, error) {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 	return msg, nil
+}
+
+// UnmarshalBatch efficiently unmarshals multiple messages
+func UnmarshalBatch(data []byte) ([]*Message, error) {
+	var messages []*Message
+	if err := jsonutil.Unmarshal(data, &messages); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal batch: %w", err)
+	}
+	return messages, nil
 }

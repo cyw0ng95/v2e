@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -12,6 +13,7 @@ type BookmarkModel struct {
 	GlobalItemID string `gorm:"index;not null"` // Links to GlobalItemModel
 	ItemType     string `gorm:"index;not null"` // e.g., "CVE", "CWE", "CAPEC", "ATT&CK"
 	ItemID       string `gorm:"not null"`       // Original ID from source (e.g., CVE-2021-1234)
+	URN          string `gorm:"index"`          // URN reference (e.g., v2e::nvd::cve::CVE-2021-1234)
 	Title        string `gorm:"not null"`
 	Description  string
 	CreatedAt    time.Time
@@ -23,6 +25,9 @@ type BookmarkModel struct {
 	LastReviewed  *time.Time
 	NextReview    *time.Time
 	MasteryLevel  float32 `gorm:"default:0.0"` // 0.0 to 1.0
+
+	// Metadata for storing stats and additional information
+	Metadata map[string]interface{} `gorm:"serializer:json"`
 
 	// Relationships
 	Notes   []NoteModel            `gorm:"foreignKey:BookmarkID"`
@@ -53,16 +58,22 @@ type NoteModel struct {
 
 // MemoryCardModel stores card-specific learning data
 type MemoryCardModel struct {
-	ID         uint       `gorm:"primaryKey"`
-	BookmarkID uint       `gorm:"index;not null"`
-	Front      string     `gorm:"type:text;not null"` // Question/content on front of card
-	Back       string     `gorm:"type:text;not null"` // Answer/explanation on back of card
-	EaseFactor float32    `gorm:"default:2.5"`        // For spaced repetition algorithm
-	Interval   int        `gorm:"default:1"`          // Days until next review
-	Repetition int        `gorm:"default:0"`          // Number of successful reviews
-	NextReview *time.Time // When to review this card next
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID         uint       `gorm:"primaryKey" json:"id"`
+	BookmarkID uint       `gorm:"index;not null" json:"bookmark_id"`
+	URN        string     `gorm:"index" json:"urn"` // URN reference from associated bookmark
+	Front      string     `gorm:"type:text;not null" json:"front_content"` // Question/content on front of card
+	Back       string     `gorm:"type:text;not null" json:"back_content"`  // Answer/explanation on back of card
+	MajorClass string     `gorm:"type:varchar(64);default:''" json:"major_class"` // Major class/category
+	MinorClass string     `gorm:"type:varchar(64);default:''" json:"minor_class"` // Minor class/category
+	Status     string     `gorm:"type:varchar(32);default:''" json:"status"` // Status (e.g., active, archived)
+	Version    int        `gorm:"default:1" json:"version"`
+	Content    string     `gorm:"type:json;not null" json:"content"` // TipTap JSON content
+	EaseFactor float32    `gorm:"default:2.5" json:"ease_factor"`        // For spaced repetition algorithm
+	Interval   int        `gorm:"default:1" json:"interval"`          // Days until next review
+	Repetition int        `gorm:"default:0" json:"repetition"`          // Number of successful reviews
+	NextReview *time.Time `json:"next_review_at"` // When to review this card next
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 // LearningSessionModel tracks learning sessions and progress
@@ -96,6 +107,7 @@ type GlobalItemModel struct {
 	ID          string `gorm:"primaryKey"`     // Globally unique identifier
 	ItemType    string `gorm:"index;not null"` // e.g., "CVE", "CWE", "CAPEC", "ATT&CK"
 	SourceID    string `gorm:"not null"`       // Original ID from source (e.g., CVE-2021-1234)
+	URN         string `gorm:"index"`          // URN reference (e.g., v2e::nvd::cve::CVE-2021-1234)
 	Title       string `gorm:"not null"`
 	Source      string `gorm:"not null"` // e.g., "NVD", "MITRE", "CAPEC", "MITRE_ATT&CK"
 	CreatedAt   time.Time
@@ -103,4 +115,58 @@ type GlobalItemModel struct {
 	Description *string
 	// Relationships
 	Bookmarks []BookmarkModel `gorm:"foreignKey:GlobalItemID"`
+}
+
+// GetURN returns the URN string for this model, computing it if not already set
+func (m *BookmarkModel) GetURN() string {
+	if m.URN != "" {
+		return m.URN
+	}
+	// Generate URN from ItemType and ItemID
+	return GenerateURN(m.ItemType, m.ItemID, "")
+}
+
+// GetURN returns the URN string for this model, computing it if not already set
+func (m *GlobalItemModel) GetURN() string {
+	if m.URN != "" {
+		return m.URN
+	}
+	// Generate URN from ItemType and SourceID
+	return GenerateURN(m.ItemType, m.SourceID, m.Source)
+}
+
+// GenerateURN creates a URN string from item type, ID, and optional source
+// Format: v2e::<provider>::<type>::<atomic_id>
+// Examples:
+//   - CVE: v2e::nvd::cve::CVE-2024-12233
+//   - CWE: v2e::mitre::cwe::CWE-79
+//   - CAPEC: v2e::mitre::capec::CAPEC-66
+//   - ATT&CK: v2e::mitre::attack::T1566
+func GenerateURN(itemType, itemID, source string) string {
+	provider := "mitre" // default provider
+	if itemType == "CVE" {
+		provider = "nvd"
+	}
+	// Override provider if source is provided
+	if source != "" {
+		if source == "NVD" {
+			provider = "nvd"
+		} else if source == "SSG" || source == "ssg" {
+			provider = "ssg"
+		}
+	}
+
+	resourceType := "cve"
+	switch itemType {
+	case "CVE":
+		resourceType = "cve"
+	case "CWE":
+		resourceType = "cwe"
+	case "CAPEC":
+		resourceType = "capec"
+	case "ATT&CK":
+		resourceType = "attack"
+	}
+
+	return fmt.Sprintf("v2e::%s::%s::%s", provider, resourceType, itemID)
 }

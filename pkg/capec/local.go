@@ -1,4 +1,4 @@
-//go:build libxml2
+//go:build CONFIG_USE_LIBXML2
 
 package capec
 
@@ -154,11 +154,16 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 				}
 				// Related weaknesses
 				tx.Where("capec_id = ?", ap.ID).Delete(&CAPECRelatedWeaknessModel{})
+				// Deduplicate related weaknesses to avoid unique constraint violations
+				seenCWEs := make(map[string]bool)
 				for _, cwe := range ap.RelatedWeaknesses {
-					r := CAPECRelatedWeaknessModel{CAPECID: ap.ID, CWEID: cwe.CWEID}
-					if err := tx.Create(&r).Error; err != nil {
-						tx.Rollback()
-						return err
+					if cwe.CWEID != "" && !seenCWEs[cwe.CWEID] {
+						seenCWEs[cwe.CWEID] = true
+						r := CAPECRelatedWeaknessModel{CAPECID: ap.ID, CWEID: cwe.CWEID}
+						if err := tx.Create(&r).Error; err != nil {
+							tx.Rollback()
+							return err
+						}
 					}
 				}
 
@@ -184,11 +189,16 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 
 				// References
 				tx.Where("capec_id = ?", ap.ID).Delete(&CAPECReferenceModel{})
+				// Deduplicate references to avoid unique constraint violations
+				seenRefs := make(map[string]bool)
 				for _, rref := range ap.References {
 					ref := rref.ExternalRef
-					if err := tx.Create(&CAPECReferenceModel{CAPECID: ap.ID, ExternalReference: ref, URL: ""}).Error; err != nil {
-						tx.Rollback()
-						return err
+					if ref != "" && !seenRefs[ref] {
+						seenRefs[ref] = true
+						if err := tx.Create(&CAPECReferenceModel{CAPECID: ap.ID, ExternalReference: ref, URL: ""}).Error; err != nil {
+							tx.Rollback()
+							return err
+						}
 					}
 				}
 			}

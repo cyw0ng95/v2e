@@ -4,8 +4,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net"
+	"os"
+	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
+	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
 // The core types, constants and pools (Message, MessageType, Handler, Subprocess,
@@ -35,7 +40,7 @@ func (s *Subprocess) Run() error {
 	bufPtr := bufferPool.Get().(*[]byte)
 	defer bufferPool.Put(bufPtr)
 	buf := *bufPtr
-	scanner.Buffer(buf, MaxMessageSize)
+	scanner.Buffer(buf, proc.MaxMessageSize)
 
 	for scanner.Scan() {
 		select {
@@ -55,9 +60,10 @@ func (s *Subprocess) Run() error {
 			// Send error response
 			// Principle 15: Avoid fmt.Sprintf in hot paths - use direct string concat
 			errMsg := &Message{
-				Type:  MessageTypeError,
-				ID:    "parse-error",
-				Error: "failed to parse message: " + err.Error(),
+				Type:   MessageTypeError,
+				ID:     "parse-error",
+				Error:  "failed to parse message: " + err.Error(),
+				Source: s.ID,
 			}
 			_ = s.sendMessage(errMsg)
 			continue
@@ -68,7 +74,12 @@ func (s *Subprocess) Run() error {
 		go s.handleMessage(&msg)
 	}
 
+	// Cancel context to signal other goroutines to stop — EOF or scanner termination
+	s.cancel()
+
 	if err := scanner.Err(); err != nil {
+		// Ensure goroutines observe cancellation
+		s.wg.Wait()
 		return fmt.Errorf("error reading input: %w", err)
 	}
 
@@ -76,14 +87,13 @@ func (s *Subprocess) Run() error {
 	return nil
 }
 
-// handleMessage processes a single message
-func (s *Subprocess) handleMessage(msg *Message) {
-	defer s.wg.Done()
-
-	// Find the appropriate handler
-	// For response and error messages, prioritize type-based lookup
-	// to ensure they go to the correct response handler
+// lookupHandler finds the appropriate handler for a message.
+// For response and error messages, it prioritizes type-based lookup.
+// For other message types (requests, events), it prioritizes ID-based lookup.
+func (s *Subprocess) lookupHandler(msg *Message) (Handler, bool) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var handler Handler
 	var exists bool
 
@@ -102,16 +112,31 @@ func (s *Subprocess) handleMessage(msg *Message) {
 			handler, exists = s.handlers[string(msg.Type)]
 		}
 	}
-	s.mu.RUnlock()
 
+	return handler, exists
+}
+
+// newErrorResponse creates an error message response for a given request message.
+// It copies CorrelationID from the original message and sets Target to the original Source.
+func (s *Subprocess) newErrorResponse(originalMsg *Message, errMsg string) *Message {
+	return &Message{
+		Type:          MessageTypeError,
+		ID:            originalMsg.ID,
+		Error:         errMsg,
+		Source:        s.ID,
+		CorrelationID: originalMsg.CorrelationID,
+		Target:        originalMsg.Source,
+	}
+}
+
+// handleMessage processes a single message
+func (s *Subprocess) handleMessage(msg *Message) {
+	defer s.wg.Done()
+
+	handler, exists := s.lookupHandler(msg)
 	if !exists {
 		// No handler found, send error
-		// Principle 15: Avoid fmt.Sprintf in hot paths
-		errMsg := &Message{
-			Type:  MessageTypeError,
-			ID:    msg.ID,
-			Error: "no handler found for message: " + msg.ID,
-		}
+		errMsg := s.newErrorResponse(msg, "no handler found for message: "+msg.ID)
 		_ = s.sendMessage(errMsg)
 		return
 	}
@@ -120,43 +145,30 @@ func (s *Subprocess) handleMessage(msg *Message) {
 	response, err := handler(s.ctx, msg)
 	if err != nil {
 		// Send error response
-		errMsg := &Message{
-			Type:  MessageTypeError,
-			ID:    msg.ID,
-			Error: err.Error(),
-		}
+		errMsg := s.newErrorResponse(msg, err.Error())
 		_ = s.sendMessage(errMsg)
 		return
 	}
 
 	// Send the response if provided
 	if response != nil {
+		// Ensure response has proper metadata if not already set
+		if response.CorrelationID == "" {
+			response.CorrelationID = msg.CorrelationID
+		}
+		if response.Target == "" {
+			response.Target = msg.Source
+		}
+		if response.Source == "" {
+			response.Source = s.ID
+		}
 		_ = s.sendMessage(response)
 	}
 }
 
 // HandleMessage is a public wrapper for the unexported handleMessage method
 func (s *Subprocess) HandleMessage(ctx context.Context, msg *Message) (*Message, error) {
-	// Use the existing handleMessage lookup logic but only hold the
-	// read-lock while performing the lookup. Release the lock before
-	// invoking the handler to avoid holding locks during handler execution.
-	s.mu.RLock()
-	var handler Handler
-	var exists bool
-
-	if msg.Type == MessageTypeResponse || msg.Type == MessageTypeError {
-		handler, exists = s.handlers[string(msg.Type)]
-		if !exists {
-			handler, exists = s.handlers[msg.ID]
-		}
-	} else {
-		handler, exists = s.handlers[msg.ID]
-		if !exists {
-			handler, exists = s.handlers[string(msg.Type)]
-		}
-	}
-	s.mu.RUnlock()
-
+	handler, exists := s.lookupHandler(msg)
 	if !exists {
 		return nil, fmt.Errorf("no handler found for message: %s", msg.ID)
 	}
@@ -173,3 +185,110 @@ func (s *Subprocess) HandleMessage(ctx context.Context, msg *Message) (*Message,
 // SetupLogging moved to logging.go
 
 // RunWithDefaults moved to lifecycle.go
+
+// StandardStartupConfig holds configuration for standard subprocess startup
+type StandardStartupConfig struct {
+	DefaultProcessID string
+	LogPrefix        string
+}
+
+// StandardStartup performs the standard startup sequence for subprocesses
+func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger) {
+	// Use configured default process ID from build-time settings
+	processID := config.DefaultProcessID
+	common.Info("%sProcess ID configured: %s", config.LogPrefix, processID)
+
+	// Use a bootstrap logger for initial messages before the full logging system is ready
+	bootstrapLogger := common.NewLogger(os.Stderr, "", common.InfoLevel)
+	common.Info("%sBootstrap logger created", config.LogPrefix)
+
+	// Use subprocess package for logging to ensure build-time log level and directory from .config is used
+	logLevel := DefaultBuildLogLevel()
+	logDir := DefaultBuildLogDir()
+	logger, err := SetupLogging(processID, logDir, logLevel)
+	if err != nil {
+		bootstrapLogger.Error("%sFailed to setup logging: %v", config.LogPrefix, err)
+		os.Exit(1)
+	}
+	common.Info("%sLogging setup complete with level: %s", config.LogPrefix, logLevel)
+
+	// Construct deterministic socket path so broker and subprocess agree without env vars
+	socketPath := fmt.Sprintf("%s_%s.sock", DefaultProcUDSBasePath(), processID)
+	sp := NewWithUDS(processID, socketPath)
+
+	logger.Info("%sSubprocess created with ID: %s", config.LogPrefix, processID)
+
+	// Start auto-exit monitor if enabled. Implementation no longer relies on
+	// runtime environment variables (broker PID) — transport EOF will cause Run()
+	// to return and is the preferred mechanism for subprocess exit detection.
+	startAutoExitMonitor(sp)
+
+	return sp, logger
+}
+
+// NewWithUDS creates a new Subprocess instance using a Unix Domain Socket client.
+// Implements retry logic with exponential backoff for connection failures.
+func NewWithUDS(id string, socketPath string) *Subprocess {
+	ctx, cancel := context.WithCancel(context.Background())
+	sp := &Subprocess{
+		ID:       id,
+		handlers: make(map[string]Handler),
+		ctx:      ctx,
+		cancel:   cancel,
+		outChan:  make(chan []byte, defaultOutChanBufSize),
+	}
+
+	// Retry logic: 3 attempts with exponential backoff (100ms, 200ms, 400ms)
+	// This gives the broker time to create the UDS socket if there's any timing issue
+	const maxRetries = 3
+	retryDelays := []time.Duration{100 * time.Millisecond, 200 * time.Millisecond, 400 * time.Millisecond}
+
+	var conn net.Conn
+	var err error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		conn, err = net.Dial("unix", socketPath)
+		if err == nil {
+			// Connection successful
+			if attempt > 0 {
+				msg := fmt.Sprintf("[INFO] Subprocess: Connected to UDS socket %s on attempt %d\n", socketPath, attempt+1)
+				os.Stderr.WriteString(msg)
+			}
+			break
+		}
+
+		// Connection failed, log retry if not the last attempt
+		if attempt < maxRetries-1 {
+			msg := fmt.Sprintf("[WARN] Subprocess: Failed to connect to UDS socket %s (attempt %d/%d): %v, retrying in %v...\n",
+				socketPath, attempt+1, maxRetries, err, retryDelays[attempt])
+			os.Stderr.WriteString(msg)
+			time.Sleep(retryDelays[attempt])
+		}
+	}
+
+	// If all retries failed, exit with fatal error
+	if err != nil {
+		msg := fmt.Sprintf("[FATAL] Subprocess: Failed to connect to UDS socket %s after %d attempts: %v\n", socketPath, maxRetries, err)
+		os.Stderr.WriteString(msg)
+		os.Exit(253)
+	}
+
+	// Use the connection for both input and output
+	sp.input = conn
+	sp.output = conn
+
+	return sp
+}
+
+// startAutoExitMonitor is intentionally lightweight and does not rely on
+// runtime environment variables (like BROKER_PID). The preferred mechanism
+// for subprocess shutdown is transport EOF detection (the main Run loop
+// will return when the transport is closed). This function remains as a
+// noop placeholder to preserve the build-time toggle.
+func startAutoExitMonitor(s *Subprocess) {
+	// No-op: rely on transport EOF and Run() to terminate the process.
+	if !DefaultProcAutoExit() {
+		return
+	}
+	return
+}

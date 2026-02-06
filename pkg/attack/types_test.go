@@ -1,6 +1,8 @@
 package attack
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +10,7 @@ import (
 
 func TestAttackTypes_Structs(t *testing.T) {
 	// Test AttackTechnique struct
-	t.Run("AttackTechnique", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "AttackTechnique", nil, func(t *testing.T, tx *gorm.DB) {
 		tech := AttackTechnique{
 			ID:          "T1001",
 			Name:        "Test Technique",
@@ -33,7 +35,7 @@ func TestAttackTypes_Structs(t *testing.T) {
 	})
 
 	// Test AttackTactic struct
-	t.Run("AttackTactic", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "AttackTactic", nil, func(t *testing.T, tx *gorm.DB) {
 		tactic := AttackTactic{
 			ID:          "TA0001",
 			Name:        "Test Tactic",
@@ -52,7 +54,7 @@ func TestAttackTypes_Structs(t *testing.T) {
 	})
 
 	// Test AttackMitigation struct
-	t.Run("AttackMitigation", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "AttackMitigation", nil, func(t *testing.T, tx *gorm.DB) {
 		mitigation := AttackMitigation{
 			ID:          "M1001",
 			Name:        "Test Mitigation",
@@ -71,7 +73,7 @@ func TestAttackTypes_Structs(t *testing.T) {
 	})
 
 	// Test AttackSoftware struct
-	t.Run("AttackSoftware", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "AttackSoftware", nil, func(t *testing.T, tx *gorm.DB) {
 		software := AttackSoftware{
 			ID:          "S0001",
 			Name:        "Test Software",
@@ -92,7 +94,7 @@ func TestAttackTypes_Structs(t *testing.T) {
 	})
 
 	// Test AttackGroup struct
-	t.Run("AttackGroup", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "AttackGroup", nil, func(t *testing.T, tx *gorm.DB) {
 		group := AttackGroup{
 			ID:          "G0001",
 			Name:        "Test Group",
@@ -111,7 +113,7 @@ func TestAttackTypes_Structs(t *testing.T) {
 	})
 
 	// Test AttackRelationship struct
-	t.Run("AttackRelationship", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "AttackRelationship", nil, func(t *testing.T, tx *gorm.DB) {
 		relationship := AttackRelationship{
 			ID:               "rel-1",
 			SourceRef:        "T1001",
@@ -138,7 +140,7 @@ func TestAttackTypes_Structs(t *testing.T) {
 	})
 
 	// Test AttackMetadata struct
-	t.Run("AttackMetadata", func(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "AttackMetadata", nil, func(t *testing.T, tx *gorm.DB) {
 		metadata := AttackMetadata{
 			ID:            1,
 			ImportedAt:    1234567890,

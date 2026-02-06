@@ -1,22 +1,130 @@
 # v2e
 
-A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive CVE (Common Vulnerabilities and Exposures) management platform with integrated CWE (Common Weakness Enumeration), CAPEC (Common Attack Pattern Enumeration and Classification), and ATT&CK (Adversarial Tactics, Techniques, and Common Knowledge) framework data handling.
+A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive security data management platform with integrated CVE (Common Vulnerabilities and Exposures), CWE (Common Weakness Enumeration), CAPEC (Common Attack Pattern Enumeration and Classification), ATT&CK (Adversarial Tactics, Techniques, and Common Knowledge), and OWASP ASVS (Application Security Verification Standard) framework data handling.
 
 ## Executive Summary
 
-The v2e project implements a broker-first architecture where `cmd/broker` serves as the central process manager that spawns, monitors, and manages all subprocess services. This design enforces a strict communication pattern where all inter-service communication flows through the broker, preventing direct subprocess-to-subprocess interaction. The architecture ensures clean separation of concerns while maintaining robust message routing and process lifecycle management.
+The v2e project implements a broker-first architecture where `cmd/v2broker` serves as the central process manager that spawns, monitors, and manages all subprocess services. This design enforces a strict communication pattern where all inter-service communication flows through the broker, preventing direct subprocess-to-subprocess interaction. The architecture ensures clean separation of concerns while maintaining robust message routing and process lifecycle management.
 
 Key architectural principles:
 - **Centralized Process Management**: The broker is the sole orchestrator of all subprocess services
 - **Enforced Communication Pattern**: All inter-service communication occurs through broker routing
 - **RPC-Based Messaging**: Services communicate via structured JSON RPC messages over stdin/stdout
-- **Comprehensive Data Handling**: Integrated CVE, CWE, CAPEC, and ATT&CK data management
+- **Comprehensive Security Data**: Integrated CVE, CWE, CAPEC, ATT&CK, and OWASP ASVS data management
 - **Frontend Integration**: A Next.js-based web application provides user interface access
 - **Performance Monitoring**: Built-in metrics collection and system monitoring capabilities
 - **Message Optimization**: Asynchronous message routing with configurable buffering and batching
 - **Adaptive Optimization**: Dynamic performance tuning based on workload with adaptive algorithms
 - **Enhanced Configuration**: Advanced configuration management via vconfig tool with TUI interface
 - **Cross-Platform Support**: Containerized development environment for macOS with Linux support
+- **Linux-Native Performance**: CPU affinity binding, thread pinning, and kernel memory hints for deterministic low-latency operation
+- **Binary Message Protocol**: High-performance 128-byte fixed header with multiple encoding options (JSON/GOB/PLAIN)
+- **Comprehensive Telemetry**: Wire-size tracking, encoding distribution, and per-process metrics
+
+## Binary Message Protocol
+
+The v2e broker implements an optimized binary message protocol with a 128-byte fixed header, providing significant performance improvements over pure JSON encoding.
+
+### Header Layout
+
+The binary header consists of exactly 128 bytes with the following structure:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0-1 | 2 bytes | Magic | Protocol identifier (0x56 0x32 = 'V2') |
+| 2 | 1 byte | Version | Protocol version (0x01) |
+| 3 | 1 byte | Encoding | Payload encoding (0=JSON, 1=GOB, 2=PLAIN) |
+| 4 | 1 byte | MsgType | Message type (0=Request, 1=Response, 2=Event, 3=Error) |
+| 5-7 | 3 bytes | Reserved | Reserved for future use |
+| 8-11 | 4 bytes | PayloadLen | Payload length (uint32, big-endian) |
+| 12-43 | 32 bytes | MessageID | Message ID (null-terminated string) |
+| 44-75 | 32 bytes | SourceID | Source process ID (null-terminated string) |
+| 76-107 | 32 bytes | TargetID | Target process ID (null-terminated string) |
+| 108-127 | 20 bytes | CorrelationID | Correlation ID for request-response matching |
+
+### Encoding Options
+
+Three encoding types are supported for payload serialization:
+
+1. **JSON (Type 0)** - Default encoding, fastest for small messages
+   - Best for messages < 1KB
+   - Unmarshal: 236 ns/op, 304 B/op
+   - Marshal: 418 ns/op, 424 B/op
+
+2. **GOB (Type 1)** - Go-native binary encoding
+   - Better for large structured payloads
+   - Unmarshal: 1592 ns/op, 1432 B/op
+   - Marshal: 1286 ns/op, 1360 B/op
+
+3. **PLAIN (Type 2)** - Raw bytes without encoding
+   - Most efficient for binary data
+   - No serialization overhead
+
+### Benchmark Results
+
+Performance comparison (Intel Xeon 8370C @ 2.80GHz):
+
+| Operation | JSON | GOB | PlainJSON | Winner |
+|-----------|------|-----|-----------|--------|
+| Small Message Marshal | 418 ns/op | 1286 ns/op | 669 ns/op | **JSON** (3.1x faster than GOB) |
+| Small Message Unmarshal | 236 ns/op | 1592 ns/op | 2060 ns/op | **JSON** (6.7x faster than GOB) |
+| Round-trip | 2139 ns/op | 4595 ns/op | 4508 ns/op | **JSON** (2.1x faster than GOB) |
+| Large Payload Marshal | 5430 ns/op | 17359 ns/op | 106225 ns/op | **JSON** (3.2x faster than GOB) |
+
+**Recommendation**: Use JSON encoding (default) for optimal performance on typical message sizes.
+
+### Linux-Specific Optimizations
+
+On Linux platforms, the following optimizations are automatically enabled:
+
+- **Zero-copy operations**: `splice()` and `sendfile()` syscalls for efficient data transfer
+- **Socket tuning**: TCP_NODELAY, TCP_QUICKACK, optimized buffer sizes
+- **Memory hints**: `madvise()` for sequential access patterns
+- **CPU affinity**: Thread pinning for deterministic latency
+- **Optimized memcpy**: Direct memory operations bypassing bounds checking
+
+### Usage Example
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/proc"
+
+// Create and marshal a message (default JSON encoding)
+msg, _ := proc.NewRequestMessage("RPCGetStatus", map[string]string{
+    "component": "broker",
+})
+msg.Source = "client"
+msg.Target = "broker"
+
+data, _ := msg.MarshalBinary() // Uses JSON encoding by default
+
+// Check message type
+if proc.IsBinaryMessage(data) {
+    decoded, _ := proc.UnmarshalBinary(data)
+    // Process decoded message
+}
+
+// Use GOB encoding for large structured data
+largeData, _ := proc.MarshalBinaryWithEncoding(msg, proc.EncodingGOB)
+```
+
+### Metrics & Telemetry
+
+The broker tracks comprehensive message statistics:
+
+- **Global metrics**: Total messages/bytes sent/received, encoding distribution
+- **Per-process metrics**: Message counts and byte totals per process
+- **Encoding distribution**: Breakdown of JSON/GOB/PLAIN usage
+- **Wire-size tracking**: Accurate byte-level bandwidth monitoring
+
+Access metrics via RPC:
+```go
+// Get detailed statistics
+stats, _ := broker.HandleRPCGetMessageStats(reqMsg)
+// Returns: total_bytes_sent, total_bytes_received, encoding_distribution, per_process stats
+
+// Get message count
+count, _ := broker.HandleRPCGetMessageCount(reqMsg)
+```
 
 ## System Architecture
 
@@ -25,12 +133,12 @@ graph TB
     subgraph "Frontend Layer"
         A[Next.js Web App]
     end
-    
+
     subgraph "Broker Layer"
         B[Broker Service]
         Opt[Adaptive Optimizer]
     end
-    
+
     subgraph "Backend Services"
         C[Access Service]
         D[Meta Service]
@@ -38,12 +146,11 @@ graph TB
         F[Remote Service]
         G[SysMon Service]
     end
-    
+
     subgraph "Transport Layer"
         UDS[Unix Domain Sockets]
-        FDP[FD Pipes]
     end
-    
+
     A <--> C
     C <--> B
     B <--> D
@@ -52,65 +159,241 @@ graph TB
     B <--> G
     B <--> Opt
     B <--> UDS
-    B <--> FDP
     UDS <--> C
     UDS <--> D
     UDS <--> E
     UDS <--> F
     UDS <--> G
-    FDP <--> C
-    FDP <--> D
-    FDP <--> E
-    FDP <--> F
-    FDP <--> G
 ```
 
-The system utilizes a sophisticated dual-mode transport layer with both Unix Domain Sockets (UDS) as the default and File Descriptor Pipes (FD Pipes) as a fallback mechanism. The broker incorporates an advanced adaptive optimizer that dynamically adjusts performance parameters based on system load and message throughput.
+The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permissions for secure inter-process communication. The broker incorporates an advanced adaptive optimizer that dynamically adjusts performance parameters based on system load and message throughput.
+
+### Unified ETL Engine (UEE) Architecture
+
+The v2e system implements a **Master-Slave hierarchical FSM (Finite State Machine) model** for resource-aware ETL orchestration, replacing hardcoded sync loops with an observable, resumable workflow engine.
+
+#### Master-Slave Roles
+
+- **Master (Broker)**: The technical resource authority
+  - Manages a global pool of "Worker Permits" for concurrency control
+  - Monitors kernel metrics: P99 latency (< 20ms target), buffer saturation, message rates
+  - Revokes permits when thresholds breach (P99 > 30ms OR buffer > 80%)
+  - Broadcasts `RPCOnQuotaUpdate` events to providers
+  - **Pure technical layer**: No business logic, only resource management
+
+- **Slave (Meta Service)**: The ETL orchestrator
+  - Manages domain logic (what to fetch, how to parse, where to store)
+  - Requests permits before starting providers
+  - Handles quota revocations gracefully (transitions providers to `WAITING_QUOTA`)
+  - Coordinates hierarchical state machines (Macro FSM + Provider FSMs)
+
+#### Hierarchical State Machines
+
+**Macro FSM (High-Level Orchestration)**:
+```
+BOOTSTRAPPING → ORCHESTRATING → STABILIZING → DRAINING
+                      ↓
+                (emergency drain)
+```
+
+**Provider FSM (Worker-Level Execution)**:
+```
+IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → TERMINATED
+                      ↓
+              (permit granted)
+```
+
+#### URN Atomic Identifiers
+
+All ETL items use hierarchical URN keys:
+```
+v2e::<provider>::<type>::<atomic_id>
+Examples:
+  v2e::nvd::cve::CVE-2024-12233
+  v2e::mitre::cwe::CWE-79
+  v2e::mitre::capec::CAPEC-66
+```
+
+URNs enable:
+- Immutable identity across checkpoints and lookups
+- Resumable workflows (checkpointed every 100 items)
+- URN-validated persistence in BoltDB
+
+#### Auto-Recovery
+
+On service restart:
+- **RUNNING providers**: Resume execution with permit re-acquisition
+- **PAUSED providers**: Remain paused (manual resume required)
+- **WAITING_QUOTA providers**: Retry permit requests
+- **WAITING_BACKOFF providers**: Maintain state (auto-retry timer continues)
+- **TERMINATED providers**: Skipped (not recovered)
+
+### Extended Production Features
+
+Building on the UEE foundation, v2e implements 15 advanced production-ready features:
+
+#### 1. Data Provider System
+
+Four specialized providers orchestrated by MacroFSM:
+- **CVEProvider**: NVD API integration with incremental `lastModStartDate` updates
+- **CWEProvider**: MITRE CWE import from `assets/cwe-raw.json`
+- **CAPECProvider**: MITRE CAPEC import from XML
+- **ATTACKProvider**: MITRE ATT&CK techniques import
+
+**Field-level Diffing**: Providers compare incoming data with existing records and update only changed fields, reducing disk I/O by 50-80% on incremental updates.
+
+**Auto-pause on 10% Error Threshold**: If a provider's error rate exceeds 10%, it automatically pauses to prevent data corruption. Manual intervention required to resume.
+
+#### 2. Graceful Shutdown (SIGTERM Handling)
+
+PermitExecutor ensures clean shutdown:
+1. Save final URN checkpoints for all running providers
+2. Execute registered shutdown hooks
+3. Release permits back to broker
+4. Persist FSM state to BoltDB
+
+#### 3. Structured FSM Logging
+
+Every state transition is logged with full context:
+```
+[FSM_TRANSITION] provider_id=cve-1 old_state=ACQUIRING new_state=RUNNING 
+  trigger=permits_granted urn=v2e::nvd::cve::CVE-2024-1234 processed=5000 errors=15
+```
+
+#### 4. Dead Letter Queue (DLQ)
+
+Failed RPC messages are captured in BoltDB for inspection and replay:
+- Retry tracking with failure counts and timestamps
+- HTTP API: `GET /api/dlq`, `POST /api/dlq/{id}/replay`
+- Max size: 10,000 messages (configurable)
+
+#### 5. Circuit Breaker Pattern
+
+Per-subprocess circuit breakers with 3 states:
+- **CLOSED**: Normal operation (< 5 failures)
+- **OPEN**: Blocking requests (≥5 failures, 30s timeout)
+- **HALF_OPEN**: Testing recovery (1 failure → OPEN again)
+
+Prevents cascading failures when a subprocess becomes unresponsive.
+
+#### 6. Subprocess Heartbeats
+
+HeartbeatMonitor pings each subprocess every 10 seconds:
+- Timeout: 5 seconds
+- Auto-restart after 3 consecutive misses
+- Tracks average response time for performance monitoring
+
+#### 7. Standardized Error Registry
+
+User-friendly error codes replace cryptic Go errors:
+
+| Code | Description | Retryable |
+|------|-------------|-----------|
+| `SYS_1004` | Operation timed out | ✓ |
+| `RPC_2007` | Circuit breaker open | ✓ |
+| `PROV_3005` | Error threshold exceeded (10%) | ✗ |
+| `PERM_5002` | Permits revoked by broker | ✓ |
+| `API_7000` | External API rate limit | ✓ |
+
+#### 8. Parallel Provider Execution
+
+Independent providers (CWE, CAPEC) run concurrently:
+- Event-driven MacroFSM with async processing
+- Per-provider permit allocation
+- Automatic load balancing
+
+#### 9. Anti-Flapping in AdaptiveOptimizer
+
+Prevents permit thrashing:
+- Requires **2 consecutive** P99 > 30ms OR buffer > 80% breaches
+- Revokes 20% of allocated permits proportionally
+- Logs all permit adjustments
+
+#### 10. Recovery Manager
+
+Auto-recovery logic on meta service startup:
+- Resumes RUNNING providers with permit re-acquisition
+- Retries WAITING_QUOTA providers
+- Keeps PAUSED providers paused (manual resume)
+- Skips TERMINATED/IDLE providers
+
+#### Architecture Flow
+
+```
+Meta Service (Slave)              Broker (Master)
+    │                                 │
+    │ StartProvider("cve", 5)         │
+    ├─ RPCRequestPermits(5) ─────────→│
+    │                                 │ Allocate 5 permits
+    │←────────────────────────────────┤ Response: granted=5
+    │                                 │
+    │ provider.OnQuotaGranted(5)      │
+    │  → RUNNING state                │
+    │                                 │
+    │ [Execute: fetch/parse/store]    │ [Monitor: P99 latency]
+    │                                 │
+    │                                 │ P99 > 30ms detected!
+    │←─ RPCOnQuotaUpdate(revoked=2) ──┤
+    │                                 │
+    │ provider.OnQuotaRevoked(2)      │
+    │  → WAITING_QUOTA state          │
+```
 
 ## Component Breakdown
 
 ### Core Services
 
-- **Broker Service** ([cmd/broker](cmd/broker)): The central orchestrator responsible for:
+- **Broker Service** ([cmd/v2broker](cmd/v2broker)): The central orchestrator responsible for:
   - Spawning and managing all subprocess services with robust supervision and restart policies
-  - Routing RPC messages via a high-performance, dual-mode transport layer (Unix Domain Sockets & FD Pipes)
+  - Routing RPC messages via a high-performance Unix Domain Sockets (UDS) transport layer
   - Utilizing `bytedance/sonic` for zero-copy JSON serialization/deserialization
   - Implementing an adaptive traffic optimizer with configurable batching, buffering, and backpressure
   - Maintaining process lifecycle, health checks, and zombie process reaping
   - Tracking comprehensive real-time message statistics and performance metrics
   - Supporting advanced logging with dual output (console + file) and configurable log levels
   - Providing dynamic configuration of performance parameters via adaptive optimization algorithms
+  - **Linux-native performance optimizations**: CPU affinity binding, thread pinning, process/I/O priority tuning for deterministic low-latency message routing (see [docs/LINUX_PERFORMANCE.md](docs/LINUX_PERFORMANCE.md))
 
-- **Access Service** ([cmd/access](cmd/access)): The REST gateway that:
+- **Access Service** ([cmd/v2access](cmd/v2access)): The REST gateway that:
   - Serves as the primary interface for the Next.js frontend
   - Exposes `/restful/rpc` endpoint for RPC forwarding
   - Translates HTTP requests to RPC calls and responses back
   - Provides health checks and basic service discovery
 
-- **Meta Service** ([cmd/meta](cmd/meta)): The orchestration layer that:
+- **Meta Service** ([cmd/v2meta](cmd/v2meta)): The orchestration layer that:
   - Manages job scheduling and execution using go-taskflow
   - Coordinates complex multi-step operations
   - Handles session management and state persistence
   - Provides workflow control mechanisms
   - Orchestrates CVE/CWE data fetching jobs with persistent state management
   - Performs automatic CWE and CAPEC imports at startup
+  - Provides memory card management (delegates to local service):
+    - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
+    - RPCDeleteMemoryCard, RPCListMemoryCards
 
-- **Local Service** ([cmd/local](cmd/local)): The data persistence layer that:
-  - Manages local SQLite databases for CVE, CWE, CAPEC, and ATT&CK data
+- **Local Service** ([cmd/v2local](cmd/v2local)): The data persistence layer that:
+  - Manages local SQLite databases for CVE, CWE, CAPEC, ATT&CK, and OWASP ASVS data
   - Provides CRUD operations for vulnerability information
   - Handles data indexing and querying
   - Implements caching mechanisms for improved performance
   - Imports ATT&CK data from XLSX files and provides access to techniques, tactics, mitigations, software, and groups
   - Supports CAPEC XML schema validation and catalog metadata retrieval
   - Offers CWE view management with storage and retrieval capabilities
+  - Provides OWASP ASVS v5.0.0 security requirements management:
+    - RPCImportASVS (from official OWASP CSV), RPCListASVS (with filtering), RPCGetASVSByID
+    - Supports filtering by chapter (V1-V14) and security level (1-3)
+  - Provides memory card storage for bookmark/knowledge management:
+    - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
+    - RPCDeleteMemoryCard, RPCListMemoryCards
+    - Supports TipTap JSON content, classification fields, and metadata
 
-- **Remote Service** ([cmd/remote](cmd/remote)): The data acquisition layer that:
+- **Remote Service** ([cmd/v2remote](cmd/v2remote)): The data acquisition layer that:
   - Fetches vulnerability data from external APIs (NVD, etc.)
   - Implements rate limiting and retry mechanisms
   - Handles data transformation and normalization
   - Manages API credentials and authentication
 
-- **SysMon Service** ([cmd/sysmon](cmd/sysmon)): The system monitoring layer that:
+- **SysMon Service** ([cmd/v2sysmon](cmd/v2sysmon)): The system monitoring layer that:
   - Collects performance metrics and system statistics
   - Monitors resource utilization across services
   - Provides health indicators for operational awareness
@@ -118,45 +401,81 @@ The system utilizes a sophisticated dual-mode transport layer with both Unix Dom
 
 ## Configuration
 
-The broker is configured via `config.json`. Key configuration areas include:
+The system uses a hybrid configuration approach: build-time configuration via `vconfig` (ldflags) for compile-time settings, and runtime configuration via `.config` for process definitions.
 
-- **Transport**: Choose between `uds` (default) or `fd_pipe`.
-- **Optimizer**: Tune the performance characteristics of the message broker.
-  - `optimizer_buffer_cap`: Size of the message buffer.
-  - `optimizer_num_workers`: Number of parallel processing workers.
-  - `optimizer_offer_policy`: Strategy when buffer is full (`drop`, `block`, `timeout`, `drop_oldest`).
-  - `optimizer_enable_adaptive`: Enable dynamic self-tuning of batch sizes and worker counts.
-- **Processes**: Define the subprocesses to be managed by the broker.
+### vconfig TUI
 
-### Advanced Configuration Management
+Run `./build.sh -c` to access the interactive configuration manager.
 
-The project includes a dedicated configuration management tool (`vconfig`) with the following features:
+#### Logging Configuration
 
-- **TUI Interface**: Interactive text-based user interface for configuration management
-- **Build Flag Generation**: Automatic generation of build flags based on configuration
-- **Default Configuration**: Generation of configuration files with default values
-- **Validation**: Configuration validation and error checking
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_MIN_LOG_LEVEL` | string | `INFO` | Minimum log level (DEBUG, INFO, WARN, ERROR) |
+| `CONFIG_LOGGING_DIR` | string | `./logs` | Directory for log files |
+| `CONFIG_LOGGING_REFRESH` | bool | `true` | Remove log directory first for fresh logs |
+
+#### Access Service Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_ACCESS_SERVERADDR` | string | `0.0.0.0:8080` | Server address for access service |
+| `CONFIG_ACCESS_STATICDIR` | string | `website` | Static directory for access service |
+
+#### Transport Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_PROC_UDS_BASEPATH` | string | `/tmp/v2e_uds` | Base path for subprocess UDS sockets |
+| `CONFIG_BROKER_UDS_BASEPATH` | string | `/tmp/v2e_uds` | Base path for broker UDS sockets |
+
+#### Optimizer Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `CONFIG_OPTIMIZER_BUFFER` | int | `1000` | Message channel buffer capacity |
+| `CONFIG_OPTIMIZER_WORKERS` | int | `4` | Worker goroutines count |
+| `CONFIG_OPTIMIZER_BATCH` | int | `1` | Message batch size |
+| `CONFIG_OPTIMIZER_FLUSH` | int | `10` | Flush interval (milliseconds) |
+| `CONFIG_OPTIMIZER_POLICY` | string | `drop` | Offer policy (drop, wait, reject) |
 
 ## Transport & Communication
 
-The system uses a sophisticated, hybrid RPC communication mechanism designed for high throughput and low latency:
+The system uses a **UDS-only** (Unix Domain Sockets) RPC communication mechanism designed for high throughput and low latency. Legacy stdin/stdout FD pipe support has been removed - all subprocess communication now exclusively uses UDS.
 
-- **Dual-Mode Transport Layer**:
-  - **Unix Domain Sockets (UDS)**: The default, high-performance transport method. Provides secure (0600 permissions), efficient, and standard IPC.
-  - **FD Pipes (Legacy/Fallback)**: Uses custom file descriptors 3 and 4 to avoid conflicts with standard I/O streams.
-- **Adaptive Optimization**: The broker includes a traffic optimizer that dynamically adjusts batch sizes and worker counts based on load.
-- **Message Types**: Four distinct message types (Request, Response, Event, Error) with correlation IDs for request-response matching.
-- **Routing Logic**: Messages are intelligently routed based on target process ID, with special handling for responses using correlation IDs.
-- **Message Statistics**: Comprehensive tracking of message counts, types, and timing per process.
-- **Environment-based Configuration**: File descriptor numbers passed via RPC_INPUT_FD and RPC_OUTPUT_FD environment variables (for FD Pipe transport)
-- **Message Pooling**: Optimized message allocation using sync.Pool for reduced garbage collection
+### Transport Architecture
 
-The communication pattern follows this flow:
-1. External requests → Access REST API → Broker → Backend Services
-2. All inter-service communication happens exclusively through broker routing
-3. No direct subprocess-to-subprocess communication is allowed
-4. The broker maintains message correlation and response tracking
-5. Optional message optimization layer handles high-volume traffic with configurable parameters
+```
+Frontend → Access Service → Broker → Backend Services
+                      ↓           ↓
+                HTTP/REST      UDS (only)
+                                    ↓
+                            Subprocess Services
+```
+
+### Message Flow
+
+1. **External requests** → Access REST API (`/restful/rpc`) → Broker
+2. **Broker routing** → Backend Services via UDS (exclusively)
+3. **Response path** → Broker → Access Service → Frontend
+4. **No direct subprocess-to-subprocess communication** is allowed
+5. **UDS-only transport**: All broker-to-subprocess communication uses Unix Domain Sockets with 0600 permissions
+
+### Message Types
+
+| Type | Purpose |
+|------|---------|
+| Request | RPC call with correlation ID |
+| Response | RPC response matching correlation ID |
+| Event | Asynchronous notification |
+| Error | Error response with details |
+
+### Key Features
+
+- **Message Pooling**: `sync.Pool` for reduced GC pressure
+- **Zero-Copy JSON**: `bytedance/sonic` for serialization
+- **Correlation IDs**: Request-response matching
+- **Per-Process Statistics**: Message counts and timing
 
 ## Frontend Integration
 
@@ -164,7 +483,7 @@ The Next.js-based frontend ([website](website)) provides:
 
 - **REST Gateway Interface**: Access service exposes `/restful/rpc` endpoint for frontend-backend communication
 - **Sophisticated RPC Client**: Handles automatic case conversion (camelCase ↔ snake_case) and comprehensive error handling
-- **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, and system monitoring data
+- **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, ATT&CK, OWASP ASVS, and system monitoring data
 - **Real-time Updates**: Session control and live metrics display
 - **Responsive Design**: Adaptable interface for various screen sizes and devices
 - **Modern Tech Stack**: Uses Next.js 16+, React 19+, with TypeScript, Tailwind CSS, and Radix UI components
@@ -175,53 +494,35 @@ The frontend includes dedicated sections for:
 - CWE Database and view management
 - CAPEC data visualization
 - ATT&CK framework data (techniques, tactics, mitigations, software, groups)
+- OWASP ASVS v5.0.0 security requirements (browsable by chapter and level)
 - System monitoring and performance metrics
 - Session control for data fetching jobs
 
 ## Quickstart
 
-Prerequisites: Go 1.21+, Node.js 20+, npm 10+, and basic shell tools. For macOS users, Podman is required for the containerized development environment.
+Prerequisites: Go 1.21+, Node.js 20+, npm 10+, and basic shell tools. For macOS users, Podman is required for containerized development.
+
+**IMPORTANT:** Always use `./build.sh` for all builds and tests. Do not use direct `go build` or `go test` commands - the wrapper handles build tags, environment setup, and proper test configuration.
 
 ### Build Script Options
 
-The project includes an enhanced build script (`build.sh`) with multiple options:
+| Option | Description |
+|--------|-------------|
+| `-c` | Run vconfig TUI to configure build options |
+| `-t` | Run unit tests (excludes fuzz tests, uses `-run='^Test'`) |
+| `-f` | Run fuzz tests (5 seconds per target) |
+| `-m` | Run benchmarks with reporting |
+| `-p` | Build and package binaries + assets |
+| `-r` | Run full system: broker + all subprocesses + frontend dev server |
+| `-v` | Enable verbose output |
+| `-h` | Show help message |
 
-- `-c`: Run vconfig TUI to configure build options
-- `-t`: Run unit tests and return result for GitHub CI
-- `-f`: Run fuzz tests on key interfaces (5 seconds per test)
-- `-m`: Run performance benchmarks and generate report
-- `-p`: Build and package binaries with assets
-- `-r`: Run Node.js process and broker (for development)
-- `-v`: Enable verbose output
-- `-h`: Show help message
-
-Build all commands:
-
-```bash
-# Build backend binaries
-go build ./cmd/...
-```
-
-Build the frontend:
+### Common Workflows
 
 ```bash
-# Navigate to website directory and install dependencies
-cd website
-npm install
-# Build the frontend
-npm run build
-```
+# Configure build options (vconfig TUI)
+./build.sh -c
 
-Run with the broker (recommended):
-
-```bash
-# Start the broker which spawns configured subprocesses
-./broker config.json
-```
-
-Alternatively, use the build script for different workflows:
-
-```bash
 # Run unit tests
 ./build.sh -t
 
@@ -231,77 +532,23 @@ Alternatively, use the build script for different workflows:
 # Run performance benchmarks
 ./build.sh -m
 
-# Build and package binaries with assets
+# Build and package everything
 ./build.sh -p
 
-# Run development mode with auto-reload
+# Run full development environment (recommended for testing)
 ./build.sh -r
 ```
+
+### Development Mode (`./build.sh -r`)
+
+Starts the complete system for integration testing and development:
+- Broker with all subprocesses (access, local, meta, remote, sysmon)
+- Frontend dev server on http://localhost:3000
+- Logs written to `.build/package/logs/`
+
+Press Ctrl+C to stop all services cleanly.
 
 ## Development Workflow
-
-### Live Development
-
-To enable live development, use the `-r` option with the `build.sh` script. This option streamlines development by automatically restarting the broker and Node.js processes when changes are detected in Go source files or frontend assets.
-
-Run the following command from the project root:
-
-```bash
-./build.sh -r
-```
-
-Features:
-- **Automatic Restart**: The broker and Node.js processes restart automatically on file changes
-- **Debouncing**: Prevents rapid restarts with a delay between file change detection and process restarts
-- **Process Cleanup**: Ensures all subprocesses terminate properly before restarting
-- **Verbose Output**: Use `-v` flag with any option for detailed logging
-
-Notes:
-- This workflow is for development only, not for production environments
-- Ensure all dependencies are installed before using the `-r` option
-
-### Testing
-
-Run unit tests:
-
-```bash
-# Run Go unit tests
-./build.sh -t
-```
-
-Run fuzz tests:
-
-```bash
-# Run fuzz tests on key interfaces
-./build.sh -f
-```
-
-Run performance benchmarks:
-
-```bash
-# Execute performance benchmarks
-./build.sh -m
-```
-
-Build and package:
-
-```bash
-# Build and package binaries with assets
-./build.sh -p
-```
-
-### Build Script Options
-
-The build script supports the following options:
-
-- `-c`: Run vconfig TUI to configure build options
-- `-t`: Run unit tests and return result for CI
-- `-f`: Run fuzz tests on key interfaces (5 seconds per test)
-- `-m`: Run performance benchmarks and generate report
-- `-p`: Build and package binaries with assets
-- `-r`: Run Node.js process and broker (for development)
-- `-v`: Enable verbose output
-- `-h`: Show help message
 
 ### Containerized Development Environment
 
@@ -327,32 +574,69 @@ The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with 
 
 ### Job States
 
-The system supports six job states with strictly defined transitions:
+The system supports thirteen job states with strictly defined transitions, including intermediate states for granular progress tracking:
 
 ```mermaid
 stateDiagram-v2
     [*] --> Queued: Create Run
-    Queued --> Running: Start
+    Queued --> Initializing: Start
     Queued --> Stopped: Stop
+    Initializing --> Running: Ready
+    Initializing --> Failed: Setup Error
+    Initializing --> Stopped: Stop
     Running --> Paused: Pause
     Running --> Completed: Finish Successfully
     Running --> Failed: Error
     Running --> Stopped: Stop
-    Paused --> Running: Resume
+    Running --> Fetching: API Call
+    Running --> Processing: Transform
+    Running --> Saving: Persist
+    Running --> Validating: Verify
+    Fetching --> Processing: Data Received
+    Fetching --> Running: Batch Complete
+    Fetching --> Failed: API Error
+    Fetching --> Paused: Pause During Fetch
+    Processing --> Saving: Processed
+    Processing --> Running: Batch Complete
+    Processing --> Failed: Transform Error
+    Processing --> Paused: Pause During Process
+    Saving --> Running: Persisted
+    Saving --> Completed: All Saved
+    Saving --> Failed: Storage Error
+    Saving --> Paused: Pause During Save
+    Validating --> Running: Validation Passed
+    Validating --> Failed: Validation Failed
+    Validating --> Paused: Pause During Validate
+    Paused --> Recovering: Resume
     Paused --> Stopped: Stop
+    Recovering --> Running: Recovery Complete
+    Recovering --> Failed: Recovery Failed
+    Recovering --> Stopped: Stop During Recovery
     Completed --> [*]
     Failed --> [*]
     Stopped --> [*]
+    RollingBack --> Stopped: Rollback Complete
+    RollingBack --> Failed: Rollback Failed
 ```
 
-**State Descriptions:**
+**Primary State Descriptions:**
 
 - **Queued**: Job created but not yet started
-- **Running**: Job actively fetching and storing data
+- **Initializing**: Job is being set up, resources allocated
+- **Running**: Job is actively executing
 - **Paused**: Job temporarily paused by user (can be resumed)
 - **Completed**: Job finished successfully (all data fetched)
 - **Failed**: Job encountered fatal error
 - **Stopped**: Job manually stopped by user
+
+**Intermediate Progress States:**
+
+- **Fetching**: Actively fetching data from remote API (NVD, etc.)
+- **Processing**: Transforming and normalizing fetched data
+- **Saving**: Persisting processed data to database
+- **Validating**: Verifying data integrity and consistency
+- **Recovering**: Recovering from pause or failure state
+- **RollingBack**: Rolling back partial changes after error
 
 **Terminal States**: Completed, Failed, Stopped (cannot transition further)
 
@@ -450,42 +734,58 @@ The broker supports the following configuration parameters in `config.json`:
 - `broker.log_file`: Path to log file for dual output (stdout + file)
 - `broker.logs_dir`: Directory where logs are stored
 - `broker.authentication`: Authentication settings for RPC endpoints
-- `broker.rpc_input_fd` / `broker.rpc_output_fd`: Optional overrides for RPC file descriptor numbers
 - `broker.optimizer_*`: Various optimization parameters including buffer capacity, worker count, batching, and timeouts
 
 ## Performance Characteristics
 
-The broker-first architecture provides several performance benefits:
+The broker-first architecture provides several performance benefits through configurable optimization parameters.
 
-- **Efficient Message Routing**: Direct process-to-process communication through the broker minimizes overhead
-- **Scalable Process Management**: The broker can manage dozens of subprocess services with minimal resource impact
-- **Built-in Metrics Collection**: Comprehensive performance monitoring built into the architecture
-- **Optimized Communication**: Custom file descriptor usage avoids I/O conflicts and improves throughput
-- **Asynchronous Message Optimization**: Configurable buffering, batching, and worker pools for high-volume scenarios
-- **Message Pooling**: Reduced garbage collection through sync.Pool-based message allocation
-- **Concurrent Task Execution**: go-taskflow enables parallel execution of tasks with up to 100 concurrent goroutines
-- **Adaptive Optimization**: Dynamic adjustment of performance parameters based on system load and throughput
-- **Enhanced Benchmarking**: Comprehensive performance benchmarking with detailed reporting capabilities
+### Optimizer Configuration
 
-Performance monitoring capabilities include:
+Build-time configurable via vconfig (`CONFIG_OPTIMIZER_*` options):
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `BufferCap` | 1000 | Message channel buffer capacity |
+| `NumWorkers` | 4 | Number of parallel processing workers |
+| `BatchSize` | 1 | Message batch size for throughput |
+| `FlushInterval` | 10ms | Maximum time before flushing batches |
+| `OfferPolicy` | drop | Strategy when buffer is full (drop/wait/reject) |
+
+### Performance Benefits
+
+| Feature | Benefit |
+|---------|---------|
+| **Efficient Message Routing** | Direct process-to-process communication through broker minimizes overhead |
+| **Scalable Process Management** | Broker manages dozens of subprocess services with minimal resource impact |
+| **Zero-Copy JSON** | `bytedance/sonic` for JIT-optimized serialization |
+| **Message Pooling** | `sync.Pool` reduces garbage collection pressure |
+| **Concurrent Task Execution** | go-taskflow enables parallel execution with up to 100 concurrent goroutines |
+| **Configurable Buffering** | Tunable buffer capacity for high-volume scenarios |
+| **Worker Pools** | Adjustable worker count for CPU-bound processing |
+| **Message Batching** | Configurable batch size and flush interval for throughput optimization |
+| **Linux-Native Optimizations** | CPU affinity binding, thread pinning, RT I/O priority for deterministic performance (>40% jitter reduction) |
+| **Kernel Memory Hints** | madvise hints for HTML parsing reduce page faults by >30% on large files |
+
+### Performance Monitoring
+
+Available metrics include:
 - Message throughput statistics
 - Process response times
 - System resource utilization
 - Error rate tracking
 - Per-process message statistics
 - Optimizer metrics and performance counters
-- Adaptive algorithm effectiveness metrics
-- Detailed benchmark reports with statistical analysis
 
 ## Project Layout
 
 - **cmd/** - Service implementations
-  - broker/ - Process manager and RPC router with message optimization
-  - access/ - REST gateway (subprocess)
-  - local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK)
-  - remote/ - Remote data fetching service
-  - meta/ - Orchestration and job control (with Taskflow)
-  - sysmon/ - System monitoring service
+  - v2broker/ - Process manager and RPC router with message optimization
+  - v2access/ - REST gateway (subprocess)
+  - v2local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK/ASVS)
+  - v2remote/ - Remote data fetching service
+  - v2meta/ - Orchestration and job control (with Taskflow)
+  - v2sysmon/ - System monitoring service
 - **pkg/** - Shared packages
   - proc/subprocess - Subprocess framework (stdin/stdout RPC)
   - proc/message - Optimized message handling with pooling
@@ -509,14 +809,14 @@ Performance monitoring capabilities include:
 
 The broker (microkernel) is organized into three primary layers:
 
-### 1. Core Layer (`cmd/broker/core`)
+### 1. Core Layer (`cmd/v2broker/core`)
 Central management logic responsible for process supervision and message routing.
 - **Broker**: The main struct orchestrating the system.
 - **Process**: Represents a managed subprocess with its lifecycle state (`ProcessInfo`) and I/O pipes.
 - **ProcessInfo**: Serializable struct containing PID, status (`running`, `exited`, `failed`), command, and start/end times.
 - **Router Interface**: Defines how messages are routed between processes.
 
-### 2. Transport Layer (`cmd/broker/transport`)
+### 2. Transport Layer (`cmd/v2broker/transport`)
 Handles low-level communication mechanics.
 - **Transport Interface**: Defines the contract for IPC.
   - `Connect() error`: Establishes the connection.
@@ -524,9 +824,8 @@ Handles low-level communication mechanics.
   - `Send(msg *proc.Message) error`: Sends a structured message.
   - `Receive() (*proc.Message, error)`: Reads a structured message.
 - **UDSTransport**: High-performance implementation using Unix Domain Sockets.
-- **FDPipeTransport**: Legacy implementation using inherited file descriptors (3 & 4).
 
-### 3. Performance Layer (`cmd/broker/perf`)
+### 3. Performance Layer (`cmd/v2broker/perf`)
 Decoupled optimization module for high-throughput message handling.
 - **Optimizer**: Manages worker pools and message batching.
 - **AdaptiveOptimizer**: Monitors system load and dynamically adjusts:
@@ -543,38 +842,36 @@ graph TB
         P[Process Map]
         R[Router]
     end
-    
+
     subgraph "Transport Layer"
         TI{Transport Interface}
         UDS[UDSTransport]
-        FDP[FDPipeTransport]
     end
-    
+
     subgraph "Performance Layer"
         OPT[Optimizer]
         AO[Adaptive Optimizer]
         SM[System Monitor]
     end
-    
+
     subgraph "Subprocesses"
         S1[Service 1]
         S2[Service 2]
     end
-    
+
     B --> P
     B --> R
     B --> OPT
-    
+
     OPT --> AO
     AO --> SM
-    
+
     P --> TI
     TI -.-> UDS
-    TI -.-> FDP
-    
+
     UDS <==> S1
-    FDP <==> S2
-    
+    UDS <==> S2
+
     style B fill:#4e8cff,stroke:#333,stroke-width:2px,color:#fff
     style OPT fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
     style TI fill:#66cc99,stroke:#333,stroke-width:2px,color:#fff
@@ -592,19 +889,20 @@ The broker implements intelligent adaptive tuning that responds to system and ap
 ## Notes and Conventions
 
 - All subprocesses must be started and managed by the broker; never run backend subprocesses directly in production or integration tests
-- Subprocesses communicate exclusively via JSON RPC messages over stdin/stdout
+- Subprocesses communicate exclusively via **UDS (Unix Domain Sockets)** - stdin/stdout FD pipe support has been removed
 - Configuration (process list, logging) is controlled through `config.json`
-- The authoritative RPC API specification for each subprocess can be found in the top comment of its `cmd/*/main.go` file
+- The authoritative RPC API specification for each subprocess can be found in `cmd/*/service.md`
 - All inter-service communication flows through the broker to maintain architectural integrity
-- Job sessions persist across service restarts; only one active run is allowed at a time
+- Job sessions persist across service restarts; paused jobs remain paused, running jobs auto-resume
+- Only one active job run (running or paused) is allowed at a time
 
 ## Where to Look Next
 
-- [cmd/broker](cmd/broker) — Broker implementation and message routing
+- [cmd/v2broker](cmd/v2broker) — Broker implementation and message routing
 - [pkg/proc/subprocess](pkg/proc/subprocess) — Helper framework for subprocesses
 - [pkg/cve/taskflow](pkg/cve/taskflow) — Taskflow-based job executor
-- [cmd/access](cmd/access) — REST gateway and example of using the RPC client
-- [cmd/meta](cmd/meta) — Job orchestration and session management
+- [cmd/v2access](cmd/v2access) — REST gateway and example of using the RPC client
+- [cmd/v2meta](cmd/v2meta) — Job orchestration and session management
 - [website/](website/) — Next.js frontend implementation
 - [tests/](tests/) — Integration tests demonstrating usage patterns
 
@@ -623,33 +921,135 @@ For macOS users or when isolation is required, the project includes a containeri
 - **Go Module Cache**: Mounts the Go module cache inside the container for faster builds
 - **Cross-platform**: Works on both macOS and Linux (optional on Linux with USE_CONTAINER=true)
 
-### Configuration Management
+### Testing Methodologies
 
-The project includes a dedicated configuration management tool:
+The v2e project uses a hierarchical testing system that organizes tests by complexity and resource requirements. This allows developers to run fast unit tests during development while ensuring comprehensive testing in CI.
 
-- **Location**: `tool/vconfig/`
-- **Purpose**: Provides a TUI interface and command-line options for configuration management
-- **Features**: 
-  - Interactive TUI mode for easy configuration
-  - Default configuration generation
-  - Build flag generation based on configuration
-  - Validation of configuration parameters
+#### Test Levels (Cumulative)
 
-### Enhanced Testing
+Tests are organized into three levels controlled by the `V2E_TEST_LEVEL` environment variable with **cumulative behavior**:
 
-The project includes multiple testing methodologies:
+- **V2E_TEST_LEVEL=1**: Runs only Level 1 tests
+  - Pure logic, mock-based, no external dependencies, minimal database operations
+  - Fast execution (milliseconds)
+  - Safe for parallel execution
+  - Default level if `V2E_TEST_LEVEL` is not set
+  
+- **V2E_TEST_LEVEL=2**: Runs Level 1 AND Level 2 tests
+  - Includes Level 1 tests
+  - Plus: Database (GORM) operations with transaction isolation
+  - Uses automatic transaction rollback for test isolation
+  - Tests run in parallel within transactions
+  - No persistent side effects
+  
+- **V2E_TEST_LEVEL=3**: Runs Level 1, Level 2, AND Level 3 tests (all tests)
+  - Includes Level 1 and Level 2 tests
+  - Plus: External APIs, E2E, and heavy integration tests
+  - May require external services
+  - Longer execution time
+  - Used in CI for comprehensive validation
+
+#### Writing Tests with testutils.Run()
+
+All tests use the unified `testutils.Run()` wrapper for automatic parallelization, level filtering, and optional transaction isolation:
+
+```go
+import "github.com/cyw0ng95/v2e/pkg/testutils"
+
+// Level 1: Pure logic test (no database)
+func TestBusinessLogic(t *testing.T) {
+    testutils.Run(t, testutils.Level1, "BasicCalculation", nil, func(t *testing.T, tx *gorm.DB) {
+        // Test implementation (tx will be nil)
+        result := Calculate(10, 20)
+        if result != 30 {
+            t.Errorf("Expected 30, got %d", result)
+        }
+    })
+}
+
+// Level 2: Database test with automatic transaction isolation
+func TestDatabaseOperation(t *testing.T) {
+    db := setupTestDB(t)
+    
+    testutils.Run(t, testutils.Level2, "InsertRecord", db, func(t *testing.T, tx *gorm.DB) {
+        // All database operations use tx (transaction)
+        // Automatic rollback ensures no side effects
+        record := &MyRecord{Name: "test"}
+        if err := tx.Create(record).Error; err != nil {
+            t.Fatalf("Failed to create: %v", err)
+        }
+    })
+}
+```
+
+#### Running Tests at Different Levels
+
+```bash
+# Run Level 1 tests only (default, fastest)
+./build.sh -t
+
+# Run Level 1 and Level 2 tests (cumulative)
+V2E_TEST_LEVEL=2 ./build.sh -t
+
+# Run all tests - Level 1, 2, and 3 (cumulative)
+V2E_TEST_LEVEL=3 ./build.sh -t
+
+# Run specific test at a specific level
+V2E_TEST_LEVEL=2 go test -v ./pkg/notes/...
+```
+
+In CI, V2E_TEST_LEVEL=3 runs all tests in a single job for comprehensive coverage.
 
 - **Unit Tests**: Standard Go unit tests with coverage reporting
+  ```bash
+  # Run all unit tests (excludes fuzz tests)
+  ./build.sh -t
+  
+  # Run tests for specific packages
+  go test -run='^Test' ./pkg/cve/...
+  go test -run='^Test' ./cmd/v2broker/...
+  
+  # Run tests with coverage
+  go test -run='^Test' -coverprofile=coverage.out ./...
+  go tool cover -html=coverage.out
+  ```
+
 - **Fuzz Tests**: Fuzz testing for key interfaces to discover edge cases
+  ```bash
+  # Run all fuzz tests (5 seconds per target)
+  ./build.sh -f
+  
+  # Run specific fuzz test with custom duration
+  go test -fuzz=FuzzValidateCVEID -fuzztime=30s ./pkg/cve/remote
+  go test -fuzz=FuzzSaveCVE -fuzztime=1m ./pkg/cve/local
+  
+  # Note: Fuzz tests automatically discover edge cases and save failing inputs to testdata/fuzz/
+  ```
+
 - **Performance Benchmarks**: Comprehensive benchmarking with statistical analysis
+  ```bash
+  # Run all benchmarks with full reporting
+  ./build.sh -m
+  
+  # Run specific benchmarks
+  go test -bench=BenchmarkSendMessage -benchmem ./pkg/proc/subprocess
+  go test -bench=BenchmarkGetCVE -benchmem ./pkg/cve/local
+  
+  # Run benchmarks with memory allocation profiling
+  go test -bench=. -benchmem -memprofile=mem.out ./cmd/v2broker/perf
+  go tool pprof -http=:8080 mem.out
+  
+  # Compare benchmark results
+  go test -bench=. -count=5 ./pkg/cve/local > old.txt
+  # ... make changes ...
+  go test -bench=. -count=5 ./pkg/cve/local > new.txt
+  benchstat old.txt new.txt
+  ```
+
 - **Integration Tests**: Pytest-based integration tests in the `tests/` directory
-
-### Build Options
-
-The build script (`build.sh`) provides multiple options for different workflows:
-
-- **Development**: Incremental builds with dependency checking
-- **Packaging**: Complete packaging with all assets and binaries
-- **Testing**: Dedicated test execution with coverage reports
-- **Benchmarking**: Performance benchmarking with detailed reports
-- **Continuous Integration**: CI-ready test execution
+  ```bash
+  # Run integration tests (requires broker to be running)
+  ./build.sh -r  # Start full system first
+  # In another terminal:
+  pytest tests/
+  ```

@@ -31,7 +31,7 @@ type CWEItemModel struct {
 // RelatedWeaknessModel is the GORM model for related weaknesses.
 type RelatedWeaknessModel struct {
 	ID      uint   `gorm:"primaryKey"`
-	CWEID   string `gorm:"column:cwe_id;index"`   // Foreign key to parent CWE item
+	CWEID   string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	Nature  string `gorm:"column:nature"`
 	CweID   string `gorm:"column:related_cwe_id"` // ID of the related CWE
 	ViewID  string `gorm:"column:view_id"`
@@ -41,7 +41,7 @@ type RelatedWeaknessModel struct {
 // WeaknessOrdinalityModel is the GORM model for weakness ordinalities.
 type WeaknessOrdinalityModel struct {
 	ID          uint   `gorm:"primaryKey"`
-	CWEID       string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID       string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	Ordinality  string `gorm:"column:ordinality"`
 	Description string `gorm:"column:description"`
 }
@@ -49,7 +49,7 @@ type WeaknessOrdinalityModel struct {
 // DetectionMethodModel is the GORM model for detection methods.
 type DetectionMethodModel struct {
 	ID                 uint   `gorm:"primaryKey"`
-	CWEID              string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID              string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	DetectionMethodID  string `gorm:"column:detection_method_id"`
 	Method             string `gorm:"column:method"`
 	Description        string `gorm:"column:description"`
@@ -60,7 +60,7 @@ type DetectionMethodModel struct {
 // MitigationModel is the GORM model for potential mitigations.
 type MitigationModel struct {
 	ID                 uint   `gorm:"primaryKey"`
-	CWEID              string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID              string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	MitigationID       string `gorm:"column:mitigation_id"`
 	Phase              string `gorm:"column:phase"` // store as comma-separated string for []string
 	Strategy           string `gorm:"column:strategy"`
@@ -72,7 +72,7 @@ type MitigationModel struct {
 // DemonstrativeExampleModel is the GORM model for demonstrative examples.
 type DemonstrativeExampleModel struct {
 	ID          uint   `gorm:"primaryKey"`
-	CWEID       string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID       string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	EntryID     string `gorm:"column:entry_id"`
 	IntroText   string `gorm:"column:intro_text"`
 	BodyText    string `gorm:"column:body_text"`
@@ -85,7 +85,7 @@ type DemonstrativeExampleModel struct {
 // ObservedExampleModel is the GORM model for observed examples.
 type ObservedExampleModel struct {
 	ID          uint   `gorm:"primaryKey"`
-	CWEID       string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID       string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	Reference   string `gorm:"column:reference"`
 	Description string `gorm:"column:description"`
 	Link        string `gorm:"column:link"`
@@ -94,7 +94,7 @@ type ObservedExampleModel struct {
 // TaxonomyMappingModel is the GORM model for taxonomy mappings.
 type TaxonomyMappingModel struct {
 	ID           uint   `gorm:"primaryKey"`
-	CWEID        string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID        string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	TaxonomyName string `gorm:"column:taxonomy_name"`
 	EntryName    string `gorm:"column:entry_name"`
 	EntryID      string `gorm:"column:entry_id"`
@@ -104,7 +104,7 @@ type TaxonomyMappingModel struct {
 // NoteModel is the GORM model for notes.
 type NoteModel struct {
 	ID    uint   `gorm:"primaryKey"`
-	CWEID string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	Type  string `gorm:"column:type"`
 	Note  string `gorm:"column:note"`
 }
@@ -112,7 +112,7 @@ type NoteModel struct {
 // ContentHistoryModel is the GORM model for content history.
 type ContentHistoryModel struct {
 	ID                       uint   `gorm:"primaryKey"`
-	CWEID                    string `gorm:"column:cwe_id;index"`  // Foreign key to parent CWE item
+	CWEID                    string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
 	Type                     string `gorm:"column:type"`
 	SubmissionName           string `gorm:"column:submission_name"`
 	SubmissionOrganization   string `gorm:"column:submission_organization"`

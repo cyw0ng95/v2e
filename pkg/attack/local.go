@@ -477,7 +477,7 @@ func (s *LocalAttackStore) GetRelatedTechniquesByTactic(ctx context.Context, tac
 		if rel.RelationshipType == "has-subtechnique" {
 			techniqueID = rel.TargetRef
 		}
-		
+
 		if err := s.db.WithContext(ctx).Where("id = ?", techniqueID).First(&technique).Error; err != nil {
 			continue // Skip if technique not found
 		}

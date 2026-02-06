@@ -4,10 +4,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCWEList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import BookmarkStar from "@/components/bookmark-star";
 
 const PAGE_SIZE = 10;
 
-export function CWETable() {
+interface CWETableProps {
+  viewMode?: 'view' | 'learn';
+}
+
+export function CWETable({ viewMode = 'view' }: CWETableProps) {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   // Fixed page size: show 20 items per page
@@ -54,7 +59,7 @@ export function CWETable() {
           />
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 overflow-auto cwe-table-content">
+      <CardContent className="flex-1 min-h-0 overflow-auto">
         {isLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
@@ -133,7 +138,14 @@ export function CWETable() {
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground flex flex-col items-end gap-2">
-                        <div><b>Ordinalities:</b> {(detailCWE.weaknessOrdinalities || detailCWE.WeaknessOrdinalities)?.map((wo: any, i: number) => <span key={i} className="inline-block mr-2 bg-muted px-2 py-0.5 rounded text-xs">{wo.Ordinality}</span>)}</div>
+                        <div><b>Ordinalities:</b> {Array.isArray(detailCWE.weaknessOrdinalities || detailCWE.WeaknessOrdinalities) && (detailCWE.weaknessOrdinalities || detailCWE.WeaknessOrdinalities).map((wo: any, i: number) => <span key={i} className="inline-block mr-2 bg-muted px-2 py-0.5 rounded text-xs">{wo.ordinality || wo.Ordinality}</span>)}</div>
+                        <BookmarkStar 
+                          itemId={detailCWE.id || detailCWE.ID}
+                          itemType="CWE"
+                          itemTitle={`CWE-${detailCWE.id || detailCWE.ID}: ${detailCWE.name || detailCWE.Name}`}
+                          itemDescription={detailCWE.description || detailCWE.Description || ''}
+                          viewMode={viewMode}
+                        />
                       </div>
                     </div>
                     <section className="mb-4">
@@ -153,15 +165,15 @@ export function CWETable() {
                         <div className="mt-2">
                           {(detailCWE.demonstrativeExamples || detailCWE.DemonstrativeExamples).map((ex: any, i: number) => (
                             <div key={i} className="border rounded p-3 my-2 bg-muted/30">
-                              {Array.isArray(ex.Entries) && ex.Entries.map((entry: any, j: number) => (
+                              {Array.isArray(ex.entries || ex.Entries) && (ex.entries || ex.Entries).map((entry: any, j: number) => (
                                 <div key={j} className="mb-2">
-                                  {entry.IntroText && <div className="text-xs mb-1 font-semibold">{entry.IntroText}</div>}
-                                  {entry.BodyText && <div className="text-xs mb-1">{entry.BodyText}</div>}
-                                  {entry.ExampleCode && (
-                                    <pre className="bg-zinc-100 dark:bg-zinc-800 rounded p-2 text-xs overflow-x-auto mb-1 whitespace-pre-wrap"><code>{entry.ExampleCode}</code></pre>
+                                  {(entry.introText || entry.IntroText) && <div className="text-xs mb-1 font-semibold">{entry.introText || entry.IntroText}</div>}
+                                  {(entry.bodyText || entry.BodyText) && <div className="text-xs mb-1">{entry.bodyText || entry.BodyText}</div>}
+                                  {(entry.exampleCode || entry.ExampleCode) && (
+                                    <pre className="bg-zinc-100 dark:bg-zinc-800 rounded p-2 text-xs overflow-x-auto mb-1 whitespace-pre-wrap"><code>{entry.exampleCode || entry.ExampleCode}</code></pre>
                                   )}
-                                  {entry.Language && <span className="text-xs mr-2">Lang: {entry.Language}</span>}
-                                  {entry.Nature && <span className="text-xs">Type: {entry.Nature}</span>}
+                                  {(entry.language || entry.Language) && <span className="text-xs mr-2">Lang: {entry.language || entry.Language}</span>}
+                                  {(entry.nature || entry.Nature) && <span className="text-xs">Type: {entry.nature || entry.Nature}</span>}
                                 </div>
                               ))}
                             </div>
@@ -178,7 +190,7 @@ export function CWETable() {
                           <ul className="ml-4 list-disc text-sm">
                             {(detailCWE.observedExamples || detailCWE.ObservedExamples).map((ex: any, i: number) => (
                               <li key={i} className="mb-1">
-                                {ex.Description} {ex.Reference && (<a href={ex.Link} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">[{ex.Reference}]</a>)}
+                                {(ex.description || ex.Description)} {(ex.reference || ex.Reference) && (<a href={ex.link || ex.Link} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">[{ex.reference || ex.Reference}]</a>)}
                               </li>
                             ))}
                           </ul>
@@ -194,7 +206,7 @@ export function CWETable() {
                           <ul className="ml-4 list-disc text-sm">
                             {(detailCWE.detectionMethods || detailCWE.DetectionMethods).map((dm: any, i: number) => (
                               <li key={i} className="mb-1">
-                                <b>{dm.Method}</b>: {dm.Description} {dm.Effectiveness && (<span className="ml-2">(Effectiveness: {dm.Effectiveness})</span>)}
+                                <b>{dm.method || dm.Method}</b>: {dm.description || dm.Description} {(dm.effectiveness || dm.Effectiveness) && (<span className="ml-2">(Effectiveness: {dm.effectiveness || dm.Effectiveness})</span>)}
                               </li>
                             ))}
                           </ul>
@@ -210,8 +222,8 @@ export function CWETable() {
                           <ul className="ml-4 list-disc text-sm">
                             {(detailCWE.potentialMitigations || detailCWE.PotentialMitigations).map((mit: any, i: number) => (
                               <li key={i} className="mb-1">
-                                {mit.Description} {mit.Effectiveness && (<span className="ml-2">(Effectiveness: {mit.Effectiveness})</span>)}
-                                {mit.EffectivenessNotes && (<div className="text-xs text-muted-foreground">{mit.EffectivenessNotes}</div>)}
+                                {mit.description || mit.Description} {(mit.effectiveness || mit.Effectiveness) && (<span className="ml-2">(Effectiveness: {mit.effectiveness || mit.Effectiveness})</span>)}
+                                {(mit.effectivenessNotes || mit.EffectivenessNotes) && (<div className="text-xs text-muted-foreground">{mit.effectivenessNotes || mit.EffectivenessNotes}</div>)}
                               </li>
                             ))}
                           </ul>
@@ -231,11 +243,11 @@ export function CWETable() {
                               {contentHistory.map((h: any, i: number) => (
                                 <li key={i} className="mb-2">
                                   <div className="text-xs">
-                                    <b>{h.Type}</b> {h.SubmissionDate && `on ${h.SubmissionDate}`} {h.ModificationDate && `on ${h.ModificationDate}`}
+                                    <b>{h.type || h.Type}</b> {(h.submissionDate || h.SubmissionDate) && `on ${h.submissionDate || h.SubmissionDate}`} {(h.modificationDate || h.ModificationDate) && `on ${h.modificationDate || h.ModificationDate}`}
                                   </div>
-                                  {h.SubmissionName && <div className="text-xs">By: {h.SubmissionName} ({h.SubmissionOrganization})</div>}
-                                  {h.ModificationName && <div className="text-xs">By: {h.ModificationName} ({h.ModificationOrganization})</div>}
-                                  {h.ModificationComment && <div className="text-xs italic">{h.ModificationComment}</div>}
+                                  {(h.submissionName || h.SubmissionName) && <div className="text-xs">By: {h.submissionName || h.SubmissionName} ({h.submissionOrganization || h.SubmissionOrganization})</div>}
+                                  {(h.modificationName || h.ModificationName) && <div className="text-xs">By: {h.modificationName || h.ModificationName} ({h.modificationOrganization || h.ModificationOrganization})</div>}
+                                  {(h.modificationComment || h.ModificationComment) && <div className="text-xs italic">{h.modificationComment || h.ModificationComment}</div>}
                                 </li>
                               ))}
                             </ul>
@@ -252,7 +264,7 @@ export function CWETable() {
                           <ul className="ml-4 list-disc text-sm">
                             {(detailCWE.relatedWeaknesses || detailCWE.RelatedWeaknesses).map((rw: any, i: number) => (
                               <li key={i} className="mb-1">
-                                {rw.CweID || rw.cweId} ({rw.Nature}{rw.Ordinal ? `, ${rw.Ordinal}` : ''}{rw.ViewID ? `, View: ${rw.ViewID}` : ''})
+                                {rw.cweID || rw.CweID || rw.cweId} ({rw.nature || rw.Nature}{(rw.ordinal || rw.Ordinal) ? `, ${rw.ordinal || rw.Ordinal}` : ''}{(rw.viewID || rw.ViewID) ? `, View: ${rw.viewID || rw.ViewID}` : ''})
                               </li>
                             ))}
                           </ul>
@@ -268,7 +280,7 @@ export function CWETable() {
                           <ul className="ml-4 list-disc text-sm">
                             {(detailCWE.taxonomyMappings || detailCWE.TaxonomyMappings).map((tm: any, i: number) => (
                               <li key={i} className="mb-1">
-                                {tm.EntryName || tm.entryName} {tm.EntryID && <span className="text-xs">({tm.EntryID})</span>} {tm.TaxonomyName && <span className="text-xs">[{tm.TaxonomyName}]</span>}
+                                {tm.entryName || tm.EntryName} {(tm.entryID || tm.EntryID) && <span className="text-xs">({tm.entryID || tm.EntryID})</span>} {(tm.taxonomyName || tm.TaxonomyName) && <span className="text-xs">[{tm.taxonomyName || tm.TaxonomyName}]</span>}
                               </li>
                             ))}
                           </ul>
@@ -283,7 +295,7 @@ export function CWETable() {
                         <div className="mt-2">
                           <ul className="ml-4 list-disc text-sm">
                             {(detailCWE.notes || detailCWE.Notes).map((note: any, i: number) => (
-                              <li key={i} className="mb-1">{note.Note}</li>
+                              <li key={i} className="mb-1">{note.note || note.Note}</li>
                             ))}
                           </ul>
                         </div>

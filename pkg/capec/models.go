@@ -14,10 +14,10 @@ type CAPECItemModel struct {
 
 type CAPECRelatedWeaknessModel struct {
 	ID      uint   `gorm:"primaryKey"`
-	CAPECID int    `gorm:"index"`
+	CAPECID int    `gorm:"index;uniqueIndex:ux_capec_cwe,priority:1"`
 	CWEID   string `gorm:"index;uniqueIndex:ux_capec_cwe,priority:2"`
-	// Composite unique index to avoid duplicate (capec_id, cweid)
-	// CAPECID field participates in the composite index as priority 1
+	// Composite unique index to avoid duplicate (capec_id, cweid) pairs
+	// Together CAPECID and CWEID form a composite unique constraint
 }
 
 type CAPECExampleModel struct {

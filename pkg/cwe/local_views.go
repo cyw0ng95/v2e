@@ -42,14 +42,14 @@ type ViewReferenceModel struct {
 
 type ViewNoteModel struct {
 	ID     uint   `gorm:"column:id;primaryKey"`
-	ViewID string `gorm:"column:view_id;index"`  // Foreign key to parent view
+	ViewID string `gorm:"column:view_id;index"` // Foreign key to parent view
 	Type   string `gorm:"column:type"`
 	Note   string `gorm:"column:note"`
 }
 
 type ViewContentHistoryModel struct {
 	ID             uint   `gorm:"column:id;primaryKey"`
-	ViewID         string `gorm:"column:view_id;index"`  // Foreign key to parent view
+	ViewID         string `gorm:"column:view_id;index"` // Foreign key to parent view
 	Type           string `gorm:"column:type"`
 	SubmissionName string `gorm:"column:submission_name"`
 	Date           string `gorm:"column:date"`

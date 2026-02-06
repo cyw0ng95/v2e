@@ -17,6 +17,10 @@ func (s *Subprocess) SendMessage(msg *Message) error {
 // sendMessage is the internal method to send a message
 // Uses lock-free channel-based batching for better performance
 func (s *Subprocess) sendMessage(msg *Message) error {
+	// Ensure the source is set to the subprocess ID if not already set
+	if msg.Source == "" {
+		msg.Source = s.ID
+	}
 	// Use shared fast marshal helper for performance
 	data, err := jsonutil.Marshal(msg)
 	if err != nil {
@@ -87,6 +91,7 @@ func (s *Subprocess) SendResponse(id string, payload interface{}) error {
 		Type:    MessageTypeResponse,
 		ID:      id,
 		Payload: rawPayload,
+		Source:  s.ID,
 	}
 	return s.sendMessage(msg)
 }
@@ -107,6 +112,7 @@ func (s *Subprocess) SendEvent(id string, payload interface{}) error {
 		Type:    MessageTypeEvent,
 		ID:      id,
 		Payload: rawPayload,
+		Source:  s.ID,
 	}
 	return s.sendMessage(msg)
 }
@@ -114,9 +120,10 @@ func (s *Subprocess) SendEvent(id string, payload interface{}) error {
 // SendError sends an error message
 func (s *Subprocess) SendError(id string, err error) error {
 	msg := &Message{
-		Type:  MessageTypeError,
-		ID:    id,
-		Error: err.Error(),
+		Type:   MessageTypeError,
+		ID:     id,
+		Error:  err.Error(),
+		Source: s.ID,
 	}
 	return s.sendMessage(msg)
 }

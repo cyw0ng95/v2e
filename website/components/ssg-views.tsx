@@ -1,0 +1,911 @@
+import React, { useState } from "react";
+import {
+  useSSGGuides,
+  useSSGTables,
+  useSSGManifests,
+  useSSGProfiles,
+  useSSGDataStreams,
+  useSSGDataStream,
+  useDSProfiles,
+  useSSGImportStatus,
+  useStartSSGImportJob,
+  useStopSSGImportJob,
+  usePauseSSGImportJob,
+  useResumeSSGImportJob,
+  useSSGTree,
+  useSSGTableEntries,
+} from "@/lib/hooks";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Skeleton } from "./ui/skeleton";
+import { Badge } from "./ui/badge";
+import { ChevronRight, ChevronDown, Folder, FileText, Play, Pause, Square, RotateCcw, Table } from "lucide-react";
+import type { TreeNode } from "@/lib/types";
+
+// Tree Node Component for recursive rendering
+function TreeViewNode({ node, level = 0, onNodeClick }: { node: TreeNode; level?: number; onNodeClick: (node: TreeNode) => void }) {
+  const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first 2 levels
+
+  const hasChildren = node.children && node.children.length > 0;
+  const isGroup = node.type === 'group';
+
+  return (
+    <div className="select-none">
+      <div
+        className="flex items-center gap-1 py-1 px-2 hover:bg-muted rounded cursor-pointer"
+        style={{ paddingLeft: `${level * 16 + 8}px` }}
+        onClick={() => {
+          if (hasChildren) {
+            setIsExpanded(!isExpanded);
+          }
+          onNodeClick(node);
+        }}
+      >
+        {hasChildren ? (
+          isExpanded ? (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          )
+        ) : (
+          <span className="w-4 h-4" />
+        )}
+        {isGroup ? (
+          <Folder className="w-4 h-4 text-blue-500 shrink-0" />
+        ) : (
+          <FileText className="w-4 h-4 text-green-500 shrink-0" />
+        )}
+        <span className="text-sm truncate flex-1" title={node.group?.title || node.rule?.title}>
+          {node.group?.title || node.rule?.title || node.id}
+        </span>
+        {node.rule?.severity && (
+          <Badge
+            variant={
+              node.rule.severity === 'high'
+                ? 'destructive'
+                : node.rule.severity === 'medium'
+                  ? 'default'
+                  : 'secondary'
+            }
+            className="text-xs"
+          >
+            {node.rule.severity}
+          </Badge>
+        )}
+      </div>
+      {isExpanded && hasChildren && (
+        <div>
+          {node.children.map((child) => (
+            <TreeViewNode key={child.id} node={child} level={level + 1} onNodeClick={onNodeClick} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Detail Panel Component
+function DetailPanel({ selectedNode, onClose }: { selectedNode: TreeNode | null; onClose: () => void }) {
+  if (!selectedNode) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Select a group or rule to view details
+      </div>
+    );
+  }
+
+  if (selectedNode.type === 'group' && selectedNode.group) {
+    const group = selectedNode.group;
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Folder className="w-5 h-5 text-blue-500" />
+            {group.title}
+          </h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+        <div className="flex-1 overflow-auto space-y-4">
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-1">ID</h4>
+            <p className="text-sm font-mono">{group.id}</p>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
+            <p className="text-sm whitespace-pre-wrap">{group.description || 'No description'}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-1">Level</h4>
+              <p className="text-sm">{group.level}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-1">Contains</h4>
+              <p className="text-sm">{group.groupCount || 0} groups, {group.ruleCount || 0} rules</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedNode.type === 'rule' && selectedNode.rule) {
+    const rule = selectedNode.rule;
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="w-5 h-5 text-green-500" />
+            {rule.title}
+          </h3>
+          <Badge
+            variant={
+              rule.severity === 'high'
+                ? 'destructive'
+                : rule.severity === 'medium'
+                  ? 'default'
+                  : 'secondary'
+            }
+          >
+            {rule.severity}
+          </Badge>
+        </div>
+        <div className="flex-1 overflow-auto space-y-4">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-1">ID</h4>
+            <p className="text-sm font-mono">{rule.id}</p>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
+            <p className="text-sm whitespace-pre-wrap">{rule.description || 'No description'}</p>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-1">Rationale</h4>
+            <p className="text-sm whitespace-pre-wrap">{rule.rationale || 'No rationale provided'}</p>
+          </div>
+          {rule.references && rule.references.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">References</h4>
+              <ul className="space-y-2">
+                {rule.references.map((ref, idx) => (
+                  <li key={idx} className="text-sm">
+                    <a
+                      href={ref.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      {ref.label || ref.value}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+export function SSGViews() {
+  const [activeTab, setActiveTab] = useState<'guides' | 'tables' | 'manifests' | 'datastreams'>('guides');
+  const [selectedGuide, setSelectedGuide] = useState<any | null>(null);
+  const [selectedTable, setSelectedTable] = useState<any | null>(null);
+  const [selectedManifest, setSelectedManifest] = useState<any | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [selectedDataStream, setSelectedDataStream] = useState<any | null>(null);
+  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+
+  // Guide hooks
+  const { data: guidesData, isLoading: guidesLoading, error: guidesError, refetch: refetchGuides } = useSSGGuides();
+  
+  // Table hooks
+  const { data: tablesData, isLoading: tablesLoading, error: tablesError, refetch: refetchTables } = useSSGTables();
+
+  // Manifest hooks
+  const { data: manifestsData, isLoading: manifestsLoading, error: manifestsError } = useSSGManifests();
+  const { data: profilesData, isLoading: profilesLoading } = useSSGProfiles();
+
+  // Data stream hooks
+  const { data: dataStreamsData, isLoading: dataStreamsLoading, error: dataStreamsError, refetch: refetchDataStreams } = useSSGDataStreams();
+  const { data: dsDetailData, isLoading: dsDetailLoading } = useSSGDataStream(selectedDataStream?.id || '');
+  const { data: dsProfilesData, isLoading: dsProfilesLoading } = useDSProfiles(selectedDataStream?.id || '');
+
+  // Job control hooks
+  const { data: jobStatus, isLoading: jobLoading, refetch: refetchJobStatus } = useSSGImportStatus();
+  const startJob = useStartSSGImportJob();
+  const stopJob = useStopSSGImportJob();
+  const pauseJob = usePauseSSGImportJob();
+  const resumeJob = useResumeSSGImportJob();
+
+  // Poll job status and data when running
+  React.useEffect(() => {
+    if (jobStatus?.state === 'running' || jobStatus?.state === 'queued') {
+      const interval = setInterval(() => {
+        refetchJobStatus();
+        refetchGuides();
+        refetchTables();
+        refetchDataStreams();
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [jobStatus?.state, refetchJobStatus, refetchGuides, refetchTables, refetchDataStreams]);
+
+  // Extract guides, tables, and data streams from response
+  const guides: any[] = (guidesData && Array.isArray(guidesData.guides)) ? guidesData.guides : [];
+  const tables: any[] = (tablesData && Array.isArray(tablesData.tables)) ? tablesData.tables : [];
+  const dataStreams: any[] = (dataStreamsData && Array.isArray(dataStreamsData.dataStreams)) ? dataStreamsData.dataStreams : [];
+
+  const jobProgress = jobStatus?.progress;
+
+  return (
+    <div className="w-full h-full flex gap-4">
+      {/* Left Panel: Tabs for Guides/Tables and Job Control */}
+      <Card className="w-80 flex flex-col">
+        <CardHeader>
+          <CardTitle className="text-base">SSG Data</CardTitle>
+          <CardDescription>Security Guides & Tables</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col min-h-0">
+          {/* Job Control */}
+          <div className="space-y-2 mb-4 pb-4 border-b">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="default"
+                size="sm"
+                disabled={jobLoading || (jobStatus?.state === 'running' || jobStatus?.state === 'queued')}
+                onClick={() => startJob.mutate({}, { onSuccess: () => refetchJobStatus() })}
+              >
+                <Play className="w-3 h-3 mr-1" />
+                Start
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={jobLoading || !(jobStatus?.state === 'running' || jobStatus?.state === 'queued')}
+                onClick={() => stopJob.mutate(undefined, { onSuccess: () => refetchJobStatus() })}
+              >
+                <Square className="w-3 h-3 mr-1" />
+                Stop
+              </Button>
+              {(jobStatus?.state === 'running' || jobStatus?.state === 'queued') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={jobLoading}
+                  onClick={() => pauseJob.mutate(undefined, { onSuccess: () => refetchJobStatus() })}
+                >
+                  <Pause className="w-3 h-3 mr-1" />
+                  Pause
+                </Button>
+              )}
+              {jobStatus?.state === 'paused' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={jobLoading}
+                  onClick={() => resumeJob.mutate({ runId: jobStatus.id }, { onSuccess: () => refetchJobStatus() })}
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Resume
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  refetchGuides();
+                  refetchTables();
+                  refetchDataStreams();
+                  refetchJobStatus();
+                }}
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Refresh
+              </Button>
+            </div>
+            {/* Job Status */}
+            {jobStatus && (
+              <div className="text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge
+                    variant={
+                      jobStatus.state === 'running' || jobStatus.state === 'queued'
+                        ? 'default'
+                        : jobStatus.state === 'completed'
+                          ? 'default'
+                          : jobStatus.state === 'failed'
+                            ? 'destructive'
+                            : 'secondary'
+                    }
+                  >
+                    {jobStatus.state}
+                  </Badge>
+                </div>
+                {jobProgress && (
+                  <>
+                    {jobProgress.currentPhase && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Phase:</span>
+                        <span className="capitalize">{jobProgress.currentPhase}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Tables:</span>
+                      <span>
+                        {jobProgress.processedTables} / {jobProgress.totalTables}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Guides:</span>
+                      <span>
+                        {jobProgress.processedGuides} / {jobProgress.totalGuides}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Manifests:</span>
+                      <span>
+                        {jobProgress.processedManifests} / {jobProgress.totalManifests}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Data Streams:</span>
+                      <span>
+                        {jobProgress.processedDataStreams} / {jobProgress.totalDataStreams}
+                      </span>
+                    </div>
+                    {jobProgress.currentFile && (
+                      <div className="text-muted-foreground truncate" title={jobProgress.currentFile}>
+                        {jobProgress.currentFile}
+                      </div>
+                    )}
+                    {(jobProgress.failedTables > 0 || jobProgress.failedGuides > 0 || jobProgress.failedManifests > 0 || jobProgress.failedDataStreams > 0) && (
+                      <div className="text-destructive">
+                        {jobProgress.failedTables + jobProgress.failedGuides + jobProgress.failedManifests + jobProgress.failedDataStreams} failed
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Tabs for Guides, Tables, Manifests, and Data Streams */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'guides' | 'tables' | 'manifests' | 'datastreams')} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="guides">Guides</TabsTrigger>
+              <TabsTrigger value="tables">Tables</TabsTrigger>
+              <TabsTrigger value="manifests">Manifests</TabsTrigger>
+              <TabsTrigger value="datastreams">Data Streams</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="guides" className="flex-1 overflow-auto mt-4">
+              {guidesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : guidesError ? (
+                <div className="text-sm text-destructive">Error loading guides</div>
+              ) : guides.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No guides available.<br />
+                  Start import job to fetch guides.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {guides.map((guide) => (
+                    <div
+                      key={guide.id}
+                      className={`flex flex-col p-2 rounded cursor-pointer transition-colors ${
+                        selectedGuide?.id === guide.id ? 'bg-muted' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedGuide(guide);
+                        setSelectedTable(null);
+                        setSelectedNode(null);
+                      }}
+                    >
+                      <span className="text-sm font-medium truncate" title={guide.title}>
+                        {guide.title}
+                      </span>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{guide.product}</span>
+                        <span>•</span>
+                        {/* Use shortId as fallback when profileId is empty (for index guides) */}
+                        <span>{guide.profileId || guide.shortId}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="tables" className="flex-1 overflow-auto mt-4">
+              {tablesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : tablesError ? (
+                <div className="text-sm text-destructive">Error loading tables</div>
+              ) : tables.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No tables available.<br />
+                  Start import job to fetch tables.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {tables.map((table) => (
+                    <div
+                      key={table.id}
+                      className={`flex flex-col p-2 rounded cursor-pointer transition-colors ${
+                        selectedTable?.id === table.id ? 'bg-muted' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedTable(table);
+                        setSelectedGuide(null);
+                        setSelectedNode(null);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Table className="w-4 h-4 text-purple-500 shrink-0" />
+                        <span className="text-sm font-medium truncate flex-1" title={table.title}>
+                          {table.title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground ml-6">
+                        <span>{table.product}</span>
+                        <span>•</span>
+                        <span>{table.tableType}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="manifests" className="flex-1 overflow-auto mt-4">
+              {manifestsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : manifestsError ? (
+                <div className="text-sm text-destructive">Error loading manifests: {manifestsError.message}</div>
+              ) : !manifestsData || manifestsData.manifests.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No manifests found</div>
+              ) : (
+                <div className="space-y-1">
+                  {manifestsData.manifests.map((manifest: any) => (
+                    <div
+                      key={manifest.id}
+                      onClick={() => setSelectedManifest(manifest)}
+                      className={`p-3 rounded-md cursor-pointer transition-colors ${
+                        selectedManifest?.id === manifest.id
+                          ? 'bg-accent text-accent-foreground'
+                          : 'hover:bg-accent/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          Manifest: {manifest.product}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground ml-6 mt-1">
+                        <span>Product: {manifest.product}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="datastreams" className="flex-1 overflow-auto mt-4">
+              {dataStreamsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : dataStreamsError ? (
+                <div className="text-sm text-destructive">Error loading data streams: {dataStreamsError.message}</div>
+              ) : !dataStreamsData || dataStreams.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No data streams available.<br />
+                  Start import job to fetch data streams.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {dataStreams.map((ds: any) => (
+                    <div
+                      key={ds.id}
+                      onClick={() => setSelectedDataStream(ds)}
+                      className={`p-3 rounded-md cursor-pointer transition-colors ${
+                        selectedDataStream?.id === ds.id
+                          ? 'bg-accent text-accent-foreground'
+                          : 'hover:bg-accent/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-cyan-500" />
+                        <span className="text-sm font-medium">
+                          {ds.product}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground ml-6 mt-1">
+                        <span>SCAP {ds.scapVersion}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Right Panel: Tree View or Table View or Manifest View or Data Stream View or Detail */}
+      <Card className="flex-1 flex flex-col">
+        {selectedNode ? (
+          <>
+            <CardHeader className="pb-2">
+              <Button variant="ghost" size="sm" className="w-fit" onClick={() => setSelectedNode(null)}>
+                ← Back to tree
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 min-h-0">
+              <DetailPanel selectedNode={selectedNode} onClose={() => setSelectedNode(null)} />
+            </CardContent>
+          </>
+        ) : selectedTable ? (
+          <SelectedTableView
+            table={selectedTable}
+            onBack={() => setSelectedTable(null)}
+          />
+        ) : selectedManifest ? (
+          <SelectedManifestView
+            manifest={selectedManifest}
+            onBack={() => setSelectedManifest(null)}
+          />
+        ) : selectedDataStream ? (
+          <SelectedDataStreamView
+            dataStream={selectedDataStream}
+            dsDetailData={dsDetailData}
+            dsProfilesData={dsProfilesData}
+            onBack={() => setSelectedDataStream(null)}
+          />
+        ) : selectedGuide ? (
+          <SelectedGuideTree
+            guideId={selectedGuide.id}
+            guideTitle={selectedGuide.title}
+            onNodeSelect={setSelectedNode}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Select a guide, table, manifest, or data stream to view details
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// Component for displaying selected table view
+function SelectedTableView({
+  table,
+  onBack,
+}: {
+  table: any;
+  onBack: () => void;
+}) {
+  const [page, setPage] = useState(0);
+  const pageSize = 100;
+  const { data, isLoading, error } = useSSGTableEntries(table.id, page * pageSize, pageSize);
+
+  const entries: any[] = (data && Array.isArray(data.entries)) ? data.entries : [];
+  const total: number = data?.total || 0;
+  const totalPages = Math.ceil(total / pageSize);
+
+  return (
+    <>
+      <CardHeader className="pb-2">
+        <Button variant="ghost" size="sm" className="w-fit" onClick={onBack}>
+          ← Back to list
+        </Button>
+        <CardTitle className="text-base">{table.title}</CardTitle>
+        <CardDescription>
+          {table.product} • {table.tableType}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : error ? (
+          <div className="text-sm text-destructive">Error loading table entries</div>
+        ) : entries.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-8">
+            No entries available
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-auto border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className="p-2 text-left font-medium">Mapping</th>
+                    <th className="p-2 text-left font-medium">Rule Title</th>
+                    <th className="p-2 text-left font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => (
+                    <tr key={entry.id} className="border-t hover:bg-muted/50">
+                      <td className="p-2 font-mono text-xs align-top">{entry.mapping}</td>
+                      <td className="p-2 align-top">{entry.ruleTitle}</td>
+                      <td className="p-2 text-xs text-muted-foreground align-top">{(entry.description || '').substring(0, 200)}{(entry.description?.length || 0) > 200 ? '...' : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Page {page + 1} of {totalPages} ({total} entries)
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 0}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </>
+  );
+}
+
+// Component for displaying selected manifest view with profiles
+function SelectedManifestView({
+  manifest,
+  onBack,
+}: {
+  manifest: any;
+  onBack: () => void;
+}) {
+  const { data: profilesData, isLoading, error } = useSSGProfiles(manifest.product);
+
+  const profiles: any[] = (profilesData && Array.isArray(profilesData.profiles)) ? profilesData.profiles : [];
+
+  return (
+    <>
+      <CardHeader className="pb-2">
+        <Button variant="ghost" size="sm" className="w-fit" onClick={onBack}>
+          ← Back to list
+        </Button>
+        <CardTitle className="text-base">Manifest: {manifest.product}</CardTitle>
+        <CardDescription>
+          Product: {manifest.product}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : error ? (
+          <div className="text-sm text-destructive">Error loading profiles: {error.message}</div>
+        ) : profiles.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No profiles found for this manifest</div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Profiles ({profiles.length})</div>
+            <div className="space-y-2 overflow-auto">
+              {profiles.map((profile: any) => (
+                <div
+                  key={profile.id}
+                  className="p-3 border rounded-md space-y-2 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {profile.profileId}
+                    </Badge>
+                  </div>
+                  {profile.description && (
+                    <div className="text-sm text-muted-foreground">
+                      {profile.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </>
+  );
+}
+
+// Component for displaying selected data stream view
+function SelectedDataStreamView({
+  dataStream,
+  dsDetailData,
+  dsProfilesData,
+  onBack,
+}: {
+  dataStream: any;
+  dsDetailData: any;
+  dsProfilesData: any;
+  onBack: () => void;
+}) {
+  const benchmark = dsDetailData?.benchmark;
+  const profiles: any[] = (dsProfilesData && Array.isArray(dsProfilesData.profiles)) ? dsProfilesData.profiles : [];
+
+  return (
+    <>
+      <CardHeader className="pb-2">
+        <Button variant="ghost" size="sm" className="w-fit" onClick={onBack}>
+          ← Back to list
+        </Button>
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="h-5 w-5 text-cyan-500" />
+          Data Stream: {dataStream.product}
+        </CardTitle>
+        <CardDescription>
+          SCAP {dataStream.scapVersion}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col overflow-auto">
+        <div className="space-y-4">
+          {/* Benchmark Info */}
+          {benchmark && (
+            <div className="border rounded-md p-3 space-y-2">
+              <div className="text-sm font-medium">XCCDF Benchmark</div>
+              <div className="text-sm">{benchmark.title}</div>
+              <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+                <div>
+                  <span className="font-medium">Version:</span> {benchmark.version}
+                </div>
+                <div>
+                  <span className="font-medium">Profiles:</span> {benchmark.totalProfiles}
+                </div>
+                <div>
+                  <span className="font-medium">Groups:</span> {benchmark.totalGroups}
+                </div>
+                <div>
+                  <span className="font-medium">Rules:</span> {benchmark.totalRules}
+                </div>
+                <div>
+                  <span className="font-medium">Max Level:</span> {benchmark.maxGroupLevel}
+                </div>
+              </div>
+              {benchmark.description && (
+                <div className="text-xs text-muted-foreground mt-2">
+                  {benchmark.description}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Profiles */}
+          {profiles.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Profiles ({profiles.length})</div>
+              <div className="space-y-2">
+                {profiles.map((profile: any) => (
+                  <div
+                    key={profile.id}
+                    className="p-3 border rounded-md space-y-2 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {profile.xccdfProfileId}
+                        </Badge>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {profile.totalRules} rules
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-medium">
+                      {profile.title}
+                    </div>
+                    {profile.description && (
+                      <div className="text-xs text-muted-foreground">
+                        {profile.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </>
+  );
+}
+
+// Component for displaying selected guide tree
+function SelectedGuideTree({
+  guideId,
+  guideTitle,
+  onNodeSelect,
+}: {
+  guideId: string;
+  guideTitle: string;
+  onNodeSelect: (node: TreeNode) => void;
+}) {
+  const { data, isLoading, error } = useSSGTree(guideId);
+
+  const treeNodes: TreeNode[] = data?.tree?.nodes || [];
+
+  return (
+    <>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{guideTitle}</CardTitle>
+        <CardDescription>Tree structure of groups and rules</CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-0 overflow-auto">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : error ? (
+          <div className="text-sm text-destructive">Error loading tree</div>
+        ) : treeNodes.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-8">
+            No tree structure available
+          </div>
+        ) : (
+          <div className="border rounded-md p-2">
+            {treeNodes.map((node) => (
+              <TreeViewNode key={node.id} node={node} onNodeClick={onNodeSelect} />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </>
+  );
+}

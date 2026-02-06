@@ -3,6 +3,7 @@
  * Implements the Service-Consumer pattern to bridge UI and backend
  */
 
+import React from 'react';
 import type {
   RPCRequest,
   RPCResponse,
@@ -101,14 +102,18 @@ import type {
   RevertBookmarkStateRequest,
   RevertBookmarkStateResponse,
 } from './types';
+import { logError, logWarn, logDebug, createLogger } from './logger';
+
+// Create component-specific logger
+const logger = createLogger('rpc-client');
 
 // ============================================================================
-// Configuration
+// Default Configuration
 // ============================================================================
 
 const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-const DEFAULT_TIMEOUT = 30000; // 30 seconds
-const MOCK_DELAY_MS = 500; // Simulate network delay in mock mode
+const DEFAULT_TIMEOUT = 120000; // 120 seconds (2 minutes) - increased for SSG operations
+const MOCK_DELAY_MS = 500; // 500ms delay for mock responses
 
 // ============================================================================
 // Mock Data for Development
@@ -263,6 +268,258 @@ function convertKeysToSnakeCase<T>(obj: unknown): T {
 // RPC Client Class
 // ============================================================================
 
+// Track pending requests to prevent duplicates
+const pendingRequests = new Map<string, Promise<RPCResponse<unknown>>>();
+
+// Create a cache for RPC calls to deduplicate requests
+const cachedCall = React.cache(async function (
+  baseUrl: string,
+  method: string,
+  params: any,
+  target: string,
+  timeout: number,
+  useMock: boolean
+): Promise<RPCResponse<unknown>> {
+  // Create a unique key for this request
+  const requestKey = `${method}:${JSON.stringify(params || {})}:${target}`;
+  
+  // Check if we already have a pending request for this key
+  if (pendingRequests.has(requestKey)) {
+    logger.debug('Deduplicating request', { requestKey });
+    return pendingRequests.get(requestKey)!;
+  }
+  
+  if (useMock) {
+    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
+    const result = getMockResponseForCache(method, params);
+    pendingRequests.delete(requestKey); // Clean up
+    return result;
+  }
+
+  const request: RPCRequest<unknown> = {
+    method,
+    params: params ? convertKeysToSnakeCase(params) : undefined,
+    target,
+  };
+
+  // Create promise for this request
+  const requestPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      logger.debug('Making RPC request', { method, target, params });
+
+      const response = await fetch(`${baseUrl}/restful/rpc`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const raw = await response.text();
+
+      if (!response.ok) {
+        // HTTP-level error with full details for debugging
+        logger.error(`HTTP error: ${response.status} ${response.statusText}`, new Error(`HTTP ${response.status}`), {
+          url: `${baseUrl}/restful/rpc`,
+          method,
+          target,
+          status: response.status,
+          statusText: response.statusText,
+          responseBody: raw.substring(0, 500), // First 500 chars
+        });
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      let rpcResponse: RPCResponse<unknown>;
+      try {
+        rpcResponse = JSON.parse(raw);
+      } catch (err) {
+        logger.error('Invalid JSON response from RPC endpoint', err, {
+          responseBody: raw.substring(0, 500),
+          method,
+          target,
+        });
+        throw new Error('Invalid JSON response from RPC endpoint');
+      }
+
+      if (rpcResponse.payload) {
+        rpcResponse.payload = convertKeysToCamelCase(rpcResponse.payload);
+      }
+
+      // Log failed RPC calls for debugging/bugfix purposes
+      if (rpcResponse.retcode !== 0) {
+        logger.error(`RPC call failed with retcode=${rpcResponse.retcode}`, new Error(rpcResponse.message || 'Unknown RPC error'), {
+          request: { method, params, target },
+          response: {
+            retcode: rpcResponse.retcode,
+            message: rpcResponse.message,
+            payload: rpcResponse.payload,
+          },
+        });
+      }
+
+      logger.debug('RPC request completed', { method, retcode: rpcResponse.retcode });
+      return rpcResponse;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('Request timeout', error, { method, target, timeout });
+        return {
+          retcode: 500,
+          message: 'Request timeout',
+          payload: null,
+        };
+      }
+      logger.error('RPC request failed', error, { method, target });
+      return {
+        retcode: 500,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        payload: null,
+      };
+    } finally {
+      // Clean up pending request
+      pendingRequests.delete(requestKey);
+    }
+  })();
+  
+  // Store the promise
+  pendingRequests.set(requestKey, requestPromise);
+  return requestPromise;
+});
+
+function getMockResponseForCache<TResponse>(
+  method: string,
+  params?: unknown
+): RPCResponse<TResponse> {
+  switch (method) {
+    case 'RPCGetCVE':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          cve: MOCK_CVE_DATA,
+          source: 'local',
+        } as TResponse,
+      };
+
+    case 'RPCListCVEs':
+      const listParams = params as ListCVEsRequest | undefined;
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          cves: [MOCK_CVE_DATA, { ...MOCK_CVE_DATA, id: 'CVE-2021-44229' }],
+          total: 2,
+          offset: listParams?.offset || 0,
+          limit: listParams?.limit || 10,
+        } as TResponse,
+      };
+
+    case 'RPCCountCVEs':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          count: 150,
+        } as TResponse,
+      };
+
+    case 'RPCGetSessionStatus':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          hasSession: false,
+        } as TResponse,
+      };
+
+    case 'RPCListCWEViews': {
+      const lp = params as ListCWEViewsRequest | undefined;
+      const sample: CWEView[] = [
+        { id: 'V-1', name: 'View One', type: 'catalog', status: 'active', objective: 'Sample objective', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} },
+        { id: 'V-2', name: 'View Two', type: 'catalog', status: 'deprecated', objective: 'Second view', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} },
+      ];
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          views: sample.slice(0, lp?.limit || sample.length),
+          offset: lp?.offset || 0,
+          limit: lp?.limit || sample.length,
+          total: sample.length,
+        } as TResponse,
+      };
+    }
+
+    case 'RPCGetCWEViewByID': {
+      const req = params as { id?: string } | undefined;
+      const id = req?.id || 'V-1';
+      const view: CWEView = { id, name: `View ${id}`, type: 'catalog', status: 'active', objective: 'Mocked view detail', audience: [], members: [], references: [], notes: [], contentHistory: [], raw: {} };
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: { view } as TResponse,
+      };
+    }
+
+    case 'RPCListCAPECs': {
+      const lp = params as { offset?: number; limit?: number } | undefined;
+      const sample: any[] = [
+        { id: 'CAPEC-1', name: 'Example CAPEC One', summary: 'Example attack pattern one', description: 'Detailed description 1' },
+        { id: 'CAPEC-2', name: 'Example CAPEC Two', summary: 'Example attack pattern two', description: 'Detailed description 2' },
+      ];
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          capecs: sample.slice(0, lp?.limit || sample.length),
+          offset: lp?.offset || 0,
+          limit: lp?.limit || sample.length,
+          total: sample.length,
+        } as unknown as TResponse,
+      };
+    }
+
+    case 'RPCGetCAPECByID': {
+      const req = params as { capecId?: string } | undefined;
+      const id = req?.capecId || 'CAPEC-1';
+      const item = { id, name: `CAPEC ${id}`, summary: 'Mocked CAPEC summary', description: 'Mocked CAPEC details' };
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: item as unknown as TResponse,
+      };
+    }
+
+    case 'RPCStartCWEViewJob':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: { success: true, sessionId: `mock-session-${Date.now()}` } as TResponse,
+      };
+
+    case 'RPCStopCWEViewJob':
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: { success: true, sessionId: undefined } as TResponse,
+      };
+
+    default:
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {} as TResponse,
+      };
+  }
+}
+
 export class RPCClient {
   private baseUrl: string;
   private timeout: number;
@@ -286,83 +543,19 @@ export class RPCClient {
     params?: TRequest,
     target: string = 'meta'
   ): Promise<RPCResponse<TResponse>> {
-    // Mock mode: return simulated data
-    if (this.useMock) {
-      await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-      return this.getMockResponse<TResponse>(method, params);
-    }
-
-    // Real mode: make HTTP request
-    const request: RPCRequest<unknown> = {
+    // Use the cached call function to deduplicate requests
+    const result = await cachedCall(
+      this.baseUrl,
       method,
-      params: params ? convertKeysToSnakeCase(params) : undefined,
+      params ? convertKeysToSnakeCase(params) : undefined,
       target,
-    };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
-    try {
-      // Debug: log request details
-      console.debug('[rpc-client] RPC request', { url: `${this.baseUrl}/restful/rpc`, method, target, params: request.params });
-
-      const response = await fetch(`${this.baseUrl}/restful/rpc`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      // Read raw response text so we can log invalid JSON bodies as well
-      const raw = await response.text();
-
-      if (!response.ok) {
-        console.error('[rpc-client] HTTP error response', { status: response.status, body: raw });
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      let rpcResponse: RPCResponse<unknown>;
-      try {
-        rpcResponse = JSON.parse(raw);
-      } catch (err) {
-        console.error('[rpc-client] Failed to parse JSON response', { raw, err });
-        throw new Error('Invalid JSON response from RPC endpoint');
-      }
-
-      // Debug: log parsed RPC response
-      console.debug('[rpc-client] RPC response', rpcResponse);
-
-      // Convert response payload keys to camelCase
-      if (rpcResponse.payload) {
-        rpcResponse.payload = convertKeysToCamelCase(rpcResponse.payload);
-      }
-
-      return rpcResponse as RPCResponse<TResponse>;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error('[rpc-client] request aborted (timeout)', { method, target });
-        return {
-          retcode: 500,
-          message: 'Request timeout',
-          payload: null,
-        };
-      }
-      console.error('[rpc-client] request failed', {
-        method,
-        target,
-        error: error instanceof Error ? error.message : error,
-      });
-      return {
-        retcode: 500,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        payload: null,
-      };
-    }
+      this.timeout,
+      this.useMock
+    );
+    
+    // Log moved to cachedCall function for better timing
+    
+    return result as RPCResponse<TResponse>;
   }
 
   /**
@@ -540,10 +733,30 @@ export class RPCClient {
           updated_at: new Date().toISOString(),
           metadata: req?.metadata || {},
         };
+        const mockMemoryCard: MemoryCard = {
+          id: Math.floor(Math.random() * 10000),
+          bookmark_id: mockBookmark.id,
+          front_content: mockBookmark.title,
+          back_content: mockBookmark.description,
+          major_class: '',
+          minor_class: '',
+          status: 'new',
+          content: '{}',
+          card_type: 'basic',
+          learning_state: 'to_review',
+          is_private: false,
+          interval: 1,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          next_review_at: new Date().toISOString(),
+          metadata: {},
+        };
         return {
           retcode: 0,
           message: 'success',
-          payload: { success: true, bookmark: mockBookmark } as unknown as TResponse,
+          payload: { success: true, bookmark: mockBookmark, memoryCard: mockMemoryCard } as unknown as TResponse,
         };
       }
 
@@ -690,8 +903,12 @@ export class RPCClient {
         const mockCard: MemoryCard = {
           id: Math.floor(Math.random() * 1000),
           bookmark_id: req?.bookmark_id || 1,
-          front_content: req?.front_content || 'What is Log4Shell?',
-          back_content: req?.back_content || 'A critical vulnerability in Log4j allowing RCE',
+          front_content: req?.front || 'What is Log4Shell?',
+          back_content: req?.back || 'A critical vulnerability in Log4j allowing RCE',
+          major_class: '',
+          minor_class: '',
+          status: 'new',
+          content: '{}',
           card_type: req?.card_type || 'basic',
           learning_state: 'to_review',
           author: req?.author,
@@ -719,6 +936,10 @@ export class RPCClient {
             bookmark_id: 1,
             front_content: 'What is Log4Shell?',
             back_content: 'A critical vulnerability in Log4j allowing RCE',
+            major_class: '',
+            minor_class: '',
+            status: 'new',
+            content: '{}',
             card_type: 'basic',
             learning_state: req?.learning_state || 'to_review',
             author: 'test-user',
@@ -736,6 +957,10 @@ export class RPCClient {
             bookmark_id: 1,
             front_content: 'How to mitigate Log4Shell?',
             back_content: 'Upgrade to Log4j 2.15.0 or apply JVM parameters',
+            major_class: '',
+            minor_class: '',
+            status: 'learning',
+            content: '{}',
             card_type: 'basic',
             learning_state: 'learning',
             author: 'test-user',
@@ -1220,6 +1445,278 @@ export class RPCClient {
   // Bookmark State Reversion
   async revertBookmarkState(params: RevertBookmarkStateRequest): Promise<RPCResponse<RevertBookmarkStateResponse>> {
     return this.call<RevertBookmarkStateRequest, RevertBookmarkStateResponse>('RPCRevertBookmarkState', params, 'local');
+  }
+
+  // ==========================================================================
+  // SSG (SCAP Security Guide) Methods
+  // ==========================================================================
+
+  // SSG Import Job Methods
+  async startSSGImportJob(runId?: string): Promise<RPCResponse<{ success: boolean; runId: string }>> {
+    return this.call<{ runId?: string }, { success: boolean; runId: string }>('RPCSSGStartImportJob', { runId }, 'meta');
+  }
+
+  async stopSSGImportJob(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<undefined, { success: boolean }>('RPCSSGStopImportJob', undefined, 'meta');
+  }
+
+  async pauseSSGImportJob(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<undefined, { success: boolean }>('RPCSSGPauseImportJob', undefined, 'meta');
+  }
+
+  async resumeSSGImportJob(runId: string): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{ runId: string }, { success: boolean }>('RPCSSGResumeImportJob', { runId }, 'meta');
+  }
+
+  async getSSGImportStatus(): Promise<RPCResponse<any>> {
+    return this.call<undefined, any>('RPCSSGGetImportStatus', undefined, 'meta');
+  }
+
+  // SSG Guide Methods
+  async listSSGGuides(product?: string, profileId?: string): Promise<RPCResponse<{ guides: any[]; count: number }>> {
+    return this.call<{ product?: string; profileId?: string }, { guides: any[]; count: number }>('RPCSSGListGuides', { product, profileId }, 'local');
+  }
+
+  async getSSGGuide(id: string): Promise<RPCResponse<{ guide: any }>> {
+    return this.call<{ id: string }, { guide: any }>('RPCSSGGetGuide', { id }, 'local');
+  }
+
+  async getSSGTree(guideId: string): Promise<RPCResponse<{ tree: any }>> {
+    return this.call<{ guideId: string }, { tree: any }>('RPCSSGGetTree', { guideId }, 'local');
+  }
+
+  async getSSGTreeNodes(guideId: string): Promise<RPCResponse<{ nodes: any[]; count: number }>> {
+    return this.call<{ guideId: string }, { nodes: any[]; count: number }>('RPCSSGGetTreeNode', { guideId }, 'local');
+  }
+
+  async getSSGGroup(id: string): Promise<RPCResponse<{ group: any }>> {
+    return this.call<{ id: string }, { group: any }>('RPCSSGGetGroup', { id }, 'local');
+  }
+
+  async getSSGChildGroups(parentId?: string): Promise<RPCResponse<{ groups: any[]; count: number }>> {
+    return this.call<{ parentId?: string }, { groups: any[]; count: number }>('RPCSSGGetChildGroups', { parentId }, 'local');
+  }
+
+  async getSSGRule(id: string): Promise<RPCResponse<{ rule: any }>> {
+    return this.call<{ id: string }, { rule: any }>('RPCSSGGetRule', { id }, 'local');
+  }
+
+  async listSSGRules(groupId?: string, severity?: string, offset?: number, limit?: number): Promise<RPCResponse<{ rules: any[]; total: number }>> {
+    return this.call<{ groupId?: string; severity?: string; offset?: number; limit?: number }, { rules: any[]; total: number }>('RPCSSGListRules', { groupId, severity, offset, limit }, 'local');
+  }
+
+  async getSSGChildRules(groupId: string): Promise<RPCResponse<{ rules: any[]; count: number }>> {
+    return this.call<{ groupId: string }, { rules: any[]; count: number }>('RPCSSGGetChildRules', { groupId }, 'local');
+  }
+
+  // SSG Table Methods
+  async listSSGTables(product?: string, tableType?: string): Promise<RPCResponse<{ tables: any[]; count: number }>> {
+    return this.call<{ product?: string; tableType?: string }, { tables: any[]; count: number }>('RPCSSGListTables', { product, tableType }, 'local');
+  }
+
+  async getSSGTable(id: string): Promise<RPCResponse<{ table: any }>> {
+    return this.call<{ id: string }, { table: any }>('RPCSSGGetTable', { id }, 'local');
+  }
+
+  async getSSGTableEntries(tableId: string, offset?: number, limit?: number): Promise<RPCResponse<{ entries: any[]; total: number }>> {
+    return this.call<{ tableId: string; offset?: number; limit?: number }, { entries: any[]; total: number }>('RPCSSGGetTableEntries', { tableId, offset, limit }, 'local');
+  }
+
+  // SSG Manifest Methods
+  async listSSGManifests(product?: string, limit?: number, offset?: number): Promise<RPCResponse<{ manifests: any[]; count: number }>> {
+    return this.call<{ product?: string; limit?: number; offset?: number }, { manifests: any[]; count: number }>('RPCSSGListManifests', { product, limit, offset }, 'local');
+  }
+
+  async getSSGManifest(manifestId: string): Promise<RPCResponse<{ manifest: any }>> {
+    return this.call<{ manifestId: string }, { manifest: any }>('RPCSSGGetManifest', { manifestId }, 'local');
+  }
+
+  async listSSGProfiles(product?: string, profileId?: string, limit?: number, offset?: number): Promise<RPCResponse<{ profiles: any[]; count: number }>> {
+    return this.call<{ product?: string; profileId?: string; limit?: number; offset?: number }, { profiles: any[]; count: number }>('RPCSSGListProfiles', { product, profileId, limit, offset }, 'local');
+  }
+
+  async getSSGProfile(profileId: string): Promise<RPCResponse<{ profile: any }>> {
+    return this.call<{ profileId: string }, { profile: any }>('RPCSSGGetProfile', { profileId }, 'local');
+  }
+
+  async getSSGProfileRules(profileId: string, limit?: number, offset?: number): Promise<RPCResponse<{ rules: any[]; count: number }>> {
+    return this.call<{ profileId: string; limit?: number; offset?: number }, { rules: any[]; count: number }>('RPCSSGGetProfileRules', { profileId, limit, offset }, 'local');
+  }
+
+  // SSG Data Stream Methods
+  async listSSGDataStreams(product?: string, limit?: number, offset?: number): Promise<RPCResponse<{ dataStreams: any[]; count: number }>> {
+    return this.call<{ product?: string; limit?: number; offset?: number }, { dataStreams: any[]; count: number }>('RPCSSGListDataStreams', { product, limit, offset }, 'local');
+  }
+
+  async getSSGDataStream(dataStreamId: string): Promise<RPCResponse<{ dataStream: any; benchmark?: any }>> {
+    return this.call<{ dataStreamId: string }, { dataStream: any; benchmark?: any }>('RPCSSGGetDataStream', { dataStreamId }, 'local');
+  }
+
+  async listDSProfiles(dataStreamId: string, limit?: number, offset?: number): Promise<RPCResponse<{ profiles: any[]; count: number }>> {
+    return this.call<{ dataStreamId: string; limit?: number; offset?: number }, { profiles: any[]; count: number }>('RPCSSGListDSProfiles', { dataStreamId, limit, offset }, 'local');
+  }
+
+  async getDSProfile(profileId: string): Promise<RPCResponse<{ profile: any }>> {
+    return this.call<{ profileId: string }, { profile: any }>('RPCSSGGetDSProfile', { profileId }, 'local');
+  }
+
+  async getDSProfileRules(profileId: string, limit?: number, offset?: number): Promise<RPCResponse<{ rules: any[]; count: number }>> {
+    return this.call<{ profileId: string; limit?: number; offset?: number }, { rules: any[]; count: number }>('RPCSSGGetDSProfileRules', { profileId, limit, offset }, 'local');
+  }
+
+  async listDSGroups(dataStreamId: string, parentXccdfGroupId?: string, limit?: number, offset?: number): Promise<RPCResponse<{ groups: any[]; count: number }>> {
+    return this.call<{ dataStreamId: string; parentXccdfGroupId?: string; limit?: number; offset?: number }, { groups: any[]; count: number }>('RPCSSGListDSGroups', { dataStreamId, parentXccdfGroupId, limit, offset }, 'local');
+  }
+
+  async listDSRules(dataStreamId: string, groupXccdfId?: string, severity?: string, limit?: number, offset?: number): Promise<RPCResponse<{ rules: any[]; total: number }>> {
+    return this.call<{ dataStreamId: string; groupXccdfId?: string; severity?: string; limit?: number; offset?: number }, { rules: any[]; total: number }>('RPCSSGListDSRules', { dataStreamId, groupXccdfId, severity, limit, offset }, 'local');
+  }
+
+  async getDSRule(ruleId: string): Promise<RPCResponse<{ rule: any; references: any[]; identifiers: any[] }>> {
+    return this.call<{ ruleId: string }, { rule: any; references: any[]; identifiers: any[] }>('RPCSSGGetDSRule', { ruleId }, 'local');
+  }
+
+  // SSG Cross-Reference Methods
+  async getSSGCrossReferences(params: {
+    sourceType?: string;
+    sourceId?: string;
+    targetType?: string;
+    targetId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RPCResponse<{ crossReferences: any[]; count: number }>> {
+    return this.call<typeof params, { crossReferences: any[]; count: number }>('RPCSSGGetCrossReferences', params, 'local');
+  }
+
+  async findSSGRelatedObjects(params: {
+    objectType: string;
+    objectId: string;
+    linkType?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RPCResponse<{ relatedObjects: any[]; count: number }>> {
+    return this.call<typeof params, { relatedObjects: any[]; count: number }>('RPCSSGFindRelatedObjects', params, 'local');
+  }
+
+  // ============================================================================
+  // UEE (Unified ETL Engine) Methods
+  // ============================================================================
+
+  /**
+   * Get the ETL tree showing macro FSM and all providers
+   */
+  async getEtlTree(): Promise<RPCResponse<{ tree: any }>> {
+    if (this.useMock) {
+      // Mock data for development
+      return {
+        retcode: 0,
+        message: 'Success',
+        payload: {
+          tree: {
+            macro: {
+              id: 'main-orchestrator',
+              state: 'ORCHESTRATING',
+              providers: [
+                {
+                  id: 'cve-provider',
+                  providerType: 'cve',
+                  state: 'RUNNING',
+                  processedCount: 245,
+                  errorCount: 3,
+                  permitsHeld: 5,
+                  lastCheckpoint: 'v2e::nvd::cve::CVE-2024-00245',
+                  createdAt: new Date(Date.now() - 3600000).toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  id: 'cwe-provider',
+                  providerType: 'cwe',
+                  state: 'PAUSED',
+                  processedCount: 128,
+                  errorCount: 0,
+                  permitsHeld: 0,
+                  lastCheckpoint: 'v2e::mitre::cwe::CWE-128',
+                  createdAt: new Date(Date.now() - 7200000).toISOString(),
+                  updatedAt: new Date(Date.now() - 1800000).toISOString(),
+                },
+                {
+                  id: 'capec-provider',
+                  providerType: 'capec',
+                  state: 'WAITING_QUOTA',
+                  processedCount: 89,
+                  errorCount: 1,
+                  permitsHeld: 2,
+                  lastCheckpoint: 'v2e::mitre::capec::CAPEC-89',
+                  createdAt: new Date(Date.now() - 5400000).toISOString(),
+                  updatedAt: new Date(Date.now() - 300000).toISOString(),
+                },
+              ],
+              createdAt: new Date(Date.now() - 86400000).toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            totalProviders: 3,
+            activeProviders: 1,
+          },
+        },
+      };
+    }
+    return this.call<{}, { tree: any }>('RPCGetEtlTree', {}, 'meta');
+  }
+
+  /**
+   * Get kernel performance metrics from the broker
+   */
+  async getKernelMetrics(): Promise<RPCResponse<{ metrics: any }>> {
+    if (this.useMock) {
+      // Mock data for development
+      const now = new Date().toISOString();
+      return {
+        retcode: 0,
+        message: 'Success',
+        payload: {
+          metrics: {
+            p99Latency: 18.5 + Math.random() * 10, // 18.5-28.5ms
+            bufferSaturation: 45 + Math.random() * 20, // 45-65%
+            messageRate: 120 + Math.random() * 30, // 120-150 msgs/sec
+            errorRate: Math.random() * 2, // 0-2 errors/sec
+            timestamp: now,
+          },
+        },
+      };
+    }
+    return this.call<{}, { metrics: any }>('RPCGetKernelMetrics', {}, 'broker');
+  }
+
+  /**
+   * Get checkpoints for a specific provider
+   */
+  async getProviderCheckpoints(
+    providerID: string,
+    limit?: number,
+    offset?: number
+  ): Promise<RPCResponse<{ checkpoints: any[]; count: number }>> {
+    if (this.useMock) {
+      // Mock data for development
+      const mockCheckpoints = Array.from({ length: limit || 10 }, (_, i) => ({
+        urn: `v2e::nvd::cve::CVE-2024-${String((offset || 0) + i + 1).padStart(5, '0')}`,
+        providerID,
+        success: Math.random() > 0.1,
+        errorMessage: Math.random() > 0.9 ? 'Network timeout' : undefined,
+        processedAt: new Date(Date.now() - i * 60000).toISOString(),
+      }));
+      return {
+        retcode: 0,
+        message: 'Success',
+        payload: {
+          checkpoints: mockCheckpoints,
+          count: 500,
+        },
+      };
+    }
+    return this.call<
+      { providerID: string; limit?: number; offset?: number },
+      { checkpoints: any[]; count: number }
+    >('RPCGetProviderCheckpoints', { providerID, limit, offset }, 'meta');
   }
 }
 

@@ -9,12 +9,12 @@ import (
 
 // Client provides RPC-based access to the notes services
 type Client struct {
-	subprocess *subprocess.Subprocess
-	BookmarkService      notes.BookmarkServiceInterface
-	NoteService          notes.NoteServiceInterface  
-	MemoryCardService    notes.MemoryCardServiceInterface
+	subprocess            *subprocess.Subprocess
+	BookmarkService       notes.BookmarkServiceInterface
+	NoteService           notes.NoteServiceInterface
+	MemoryCardService     notes.MemoryCardServiceInterface
 	CrossReferenceService notes.CrossReferenceServiceInterface
-	HistoryService       notes.HistoryServiceInterface
+	HistoryService        notes.HistoryServiceInterface
 }
 
 // NewClient creates a new RPC client for the notes services

@@ -7,10 +7,12 @@ import (
 )
 
 var (
-	configFile       = flag.String("config", "config.json", "Path to the configuration file")
-	generateDefaults = flag.Bool("generate-defaults", false, "Generate configuration with default values")
-	tuiMode          = flag.Bool("tui", false, "Run in TUI mode")
-	getBuildFlags    = flag.Bool("get-build-flags", false, "Output build flags based on configuration")
+	configFile         = flag.String("config", "config.json", "Path to the configuration file")
+	generateDefaults   = flag.Bool("generate-defaults", false, "Generate configuration with default values")
+	tuiMode            = flag.Bool("tui", false, "Run in TUI mode")
+	getBuildFlags      = flag.Bool("get-build-flags", false, "Output build flags based on configuration")
+	getDetailedMapping = flag.Bool("get-detailed-mapping", false, "Output detailed config to build flags mapping")
+	getLdflags         = flag.Bool("get-ldflags", false, "Output ldflags based on configuration")
 )
 
 func main() {
@@ -37,6 +39,82 @@ func main() {
 			fmt.Printf("Error running TUI: %v\n", err)
 			os.Exit(1)
 		}
+		return
+	}
+
+	if *getDetailedMapping {
+		// Try to load simple config format first
+		simpleConfig, err := LoadSimpleConfig(*configFile)
+		if err != nil {
+			// If simple config fails, try full config format
+			config, err := LoadConfig(*configFile)
+			if err != nil {
+				fmt.Printf("Error loading config: %v\n", err)
+				os.Exit(1)
+			}
+
+			mapping, err := GenerateDetailedConfigMapping(config)
+			if err != nil {
+				fmt.Printf("Error generating detailed config mapping: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Print(mapping)
+			return
+		}
+
+		// Convert simple config to full config
+		config, err := ConvertSimpleToFullConfig(simpleConfig)
+		if err != nil {
+			fmt.Printf("Error converting simple config: %v\n", err)
+			os.Exit(1)
+		}
+
+		mapping, err := GenerateDetailedConfigMapping(config)
+		if err != nil {
+			fmt.Printf("Error generating detailed config mapping: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Print(mapping)
+		return
+	}
+
+	if *getLdflags {
+		// Try to load simple config format first
+		simpleConfig, err := LoadSimpleConfig(*configFile)
+		if err != nil {
+			// If simple config fails, try full config format
+			config, err := LoadConfig(*configFile)
+			if err != nil {
+				fmt.Printf("Error loading config: %v\n", err)
+				os.Exit(1)
+			}
+
+			ldflags, err := GenerateLdflags(config)
+			if err != nil {
+				fmt.Printf("Error generating ldflags: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Print(ldflags)
+			return
+		}
+
+		// Convert simple config to full config
+		config, err := ConvertSimpleToFullConfig(simpleConfig)
+		if err != nil {
+			fmt.Printf("Error converting simple config: %v\n", err)
+			os.Exit(1)
+		}
+
+		ldflags, err := GenerateLdflags(config)
+		if err != nil {
+			fmt.Printf("Error generating ldflags: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Print(ldflags)
 		return
 	}
 

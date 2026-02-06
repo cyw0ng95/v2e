@@ -1,6 +1,8 @@
 package job
 
 import (
+"gorm.io/gorm"
+"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"errors"
 	"sync"
@@ -44,70 +46,76 @@ func (m *mockCWERPCInvoker) InvokeRPC(ctx context.Context, target, method string
 
 // TestCWEController_StartStop ensures basic CWE job lifecycle.
 func TestCWEController_StartStop(t *testing.T) {
-	logger := common.NewLogger(testCWEWriter{t}, "test", common.ErrorLevel)
-	invoker := &mockCWERPCInvoker{}
-	ctrl := NewController(invoker, logger)
+	testutils.Run(t, testutils.Level2, "TestCWEController_StartStop", nil, func(t *testing.T, tx *gorm.DB) {
+		logger := common.NewLogger(testCWEWriter{t}, "test", common.ErrorLevel)
+		invoker := &mockCWERPCInvoker{}
+		ctrl := NewController(invoker, logger)
 
-	if ctrl.IsRunning() {
-		t.Fatalf("controller should not be running initially")
-	}
+		if ctrl.IsRunning() {
+			t.Fatalf("controller should not be running initially")
+		}
 
-	params := map[string]interface{}{"start_index": 0, "results_per_page": 50}
-	sessionID, err := ctrl.Start(context.Background(), params)
-	if err != nil {
-		t.Fatalf("Start failed: %v", err)
-	}
+		params := map[string]interface{}{"start_index": 0, "results_per_page": 50}
+		sessionID, err := ctrl.Start(context.Background(), params)
+		if err != nil {
+			t.Fatalf("Start failed: %v", err)
+		}
 
-	if sessionID == "" {
-		t.Fatalf("expected non-empty session ID")
-	}
+		if sessionID == "" {
+			t.Fatalf("expected non-empty session ID")
+		}
 
-	if !ctrl.IsRunning() {
-		t.Fatalf("controller should be running after Start")
-	}
+		if !ctrl.IsRunning() {
+			t.Fatalf("controller should be running after Start")
+		}
 
-	if err := ctrl.Stop(context.Background(), sessionID); err != nil {
-		t.Fatalf("Stop failed: %v", err)
-	}
+		if err := ctrl.Stop(context.Background(), sessionID); err != nil {
+			t.Fatalf("Stop failed: %v", err)
+		}
 
-	if ctrl.IsRunning() {
-		t.Fatalf("controller should not be running after Stop")
-	}
+		if ctrl.IsRunning() {
+			t.Fatalf("controller should not be running after Stop")
+		}
+	})
+
 }
 
 // TestCWEController_ConcurrentStarts ensures only one Start succeeds.
 func TestCWEController_ConcurrentStarts(t *testing.T) {
-	logger := common.NewLogger(testCWEWriter{t}, "test", common.ErrorLevel)
-	invoker := &mockCWERPCInvoker{}
-	ctrl := NewController(invoker, logger)
+	testutils.Run(t, testutils.Level2, "TestCWEController_ConcurrentStarts", nil, func(t *testing.T, tx *gorm.DB) {
+		logger := common.NewLogger(testCWEWriter{t}, "test", common.ErrorLevel)
+		invoker := &mockCWERPCInvoker{}
+		ctrl := NewController(invoker, logger)
 
-	params := map[string]interface{}{"start_index": 0, "results_per_page": 50}
-	numGoroutines := 20
-	var wg sync.WaitGroup
-	successes := 0
-	var mu sync.Mutex
+		params := map[string]interface{}{"start_index": 0, "results_per_page": 50}
+		numGoroutines := 20
+		var wg sync.WaitGroup
+		successes := 0
+		var mu sync.Mutex
 
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func() {
-			defer wg.Done()
-			_, err := ctrl.Start(context.Background(), params)
-			if err == nil {
-				mu.Lock()
-				successes++
-				mu.Unlock()
-			}
-		}()
-	}
-	wg.Wait()
+		wg.Add(numGoroutines)
+		for i := 0; i < numGoroutines; i++ {
+			go func() {
+				defer wg.Done()
+				_, err := ctrl.Start(context.Background(), params)
+				if err == nil {
+					mu.Lock()
+					successes++
+					mu.Unlock()
+				}
+			}()
+		}
+		wg.Wait()
 
-	mu.Lock()
-	defer mu.Unlock()
-	if successes != 1 {
-		t.Fatalf("expected exactly 1 Start to succeed, got %d", successes)
-	}
+		mu.Lock()
+		defer mu.Unlock()
+		if successes != 1 {
+			t.Fatalf("expected exactly 1 Start to succeed, got %d", successes)
+		}
 
-	ctrl.Stop(context.Background(), "test-session")
+		ctrl.Stop(context.Background(), "test-session")
+	})
+
 }
 
 // testCWEWriter adapts testing.T to io.Writer for logger output.

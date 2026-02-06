@@ -1,4 +1,4 @@
-//go:build !libxml2
+//go:build !CONFIG_USE_LIBXML2
 
 package capec
 
@@ -220,14 +220,14 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 				if tt.Name.Local == "Attack_Pattern" {
 					// commit to DB
 					item := CAPECItemModel{
-						CAPECID:         capecID,
-						Name:            firstNonEmpty(nameAttr, ""),
-						Summary:         func() string {
-												if summary != "" {
-													return summary
-												}
-												return truncateString(description, 200)
-											}(),
+						CAPECID: capecID,
+						Name:    firstNonEmpty(nameAttr, ""),
+						Summary: func() string {
+							if summary != "" {
+								return summary
+							}
+							return truncateString(description, 200)
+						}(),
 						Description:     description,
 						Status:          "",
 						Likelihood:      likelihood,
@@ -244,11 +244,16 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 						tx.Rollback()
 						return err
 					}
+					// Deduplicate related weaknesses to avoid unique constraint violations
+					seenCWEs := make(map[string]bool)
 					for _, w := range weaknesses {
-						rw := CAPECRelatedWeaknessModel{CAPECID: capecID, CWEID: w}
-						if err := tx.Create(&rw).Error; err != nil {
-							tx.Rollback()
-							return err
+						if w != "" && !seenCWEs[w] {
+							seenCWEs[w] = true
+							rw := CAPECRelatedWeaknessModel{CAPECID: capecID, CWEID: w}
+							if err := tx.Create(&rw).Error; err != nil {
+								tx.Rollback()
+								return err
+							}
 						}
 					}
 					if err := tx.Where("capec_id = ?", capecID).Delete(&CAPECExampleModel{}).Error; err != nil {
@@ -277,11 +282,16 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 						tx.Rollback()
 						return err
 					}
+					// Deduplicate references to avoid unique constraint violations
+					seenRefs := make(map[string]bool)
 					for _, r := range references {
-						rr := CAPECReferenceModel{CAPECID: capecID, ExternalReference: r, URL: ""}
-						if err := tx.Create(&rr).Error; err != nil {
-							tx.Rollback()
-							return err
+						if r != "" && !seenRefs[r] {
+							seenRefs[r] = true
+							rr := CAPECReferenceModel{CAPECID: capecID, ExternalReference: r, URL: ""}
+							if err := tx.Create(&rr).Error; err != nil {
+								tx.Rollback()
+								return err
+							}
 						}
 					}
 					if err := tx.Commit().Error; err != nil {

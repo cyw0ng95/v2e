@@ -703,6 +703,7 @@ export interface Bookmark {
   global_item_id: string;
   item_type: string;
   item_id: string;
+  urn: string; // URN reference (e.g., v2e::nvd::cve::CVE-2021-1234)
   title: string;
   description: string;
   author?: string;
@@ -726,6 +727,7 @@ export interface CreateBookmarkRequest {
 export interface CreateBookmarkResponse {
   success: boolean;
   bookmark: Bookmark;
+  memoryCard?: MemoryCard;
 }
 
 export interface GetBookmarkRequest {
@@ -845,12 +847,17 @@ export interface DeleteNoteResponse {
 export interface MemoryCard {
   id: number;
   bookmark_id: number;
+  urn: string; // URN reference from associated bookmark
   front_content: string;
   back_content: string;
-  card_type: string; // 'basic', 'cloze', 'image_occlusion', etc.
-  learning_state: string; // 'to_review', 'learning', 'mastered', 'archived'
-  author?: string;
-  is_private: boolean;
+  major_class: string;
+  minor_class: string;
+  status: string;
+  content: any; // TipTap JSON
+  card_type: string; // TODO: Not yet implemented in backend MemoryCardModel
+  learning_state: string; // Derived from bookmark.learning_state, not stored on card
+  author?: string; // TODO: Not yet implemented in backend MemoryCardModel
+  is_private: boolean; // TODO: Not yet implemented in backend MemoryCardModel
   interval: number; // Days until next review
   ease_factor: number; // SM-2 algorithm factor
   repetitions: number; // Number of times reviewed
@@ -862,11 +869,15 @@ export interface MemoryCard {
 
 export interface CreateMemoryCardRequest {
   bookmark_id: number;
-  front_content: string;
-  back_content: string;
-  card_type?: string;
-  author?: string;
-  is_private?: boolean;
+  front: string; // Note: backend expects 'front', stored as front_content in model
+  back: string; // Note: backend expects 'back', stored as back_content in model
+  major_class?: string;
+  minor_class?: string;
+  status?: string;
+  content?: any; // TipTap JSON
+  card_type?: string; // TODO: Not yet implemented in backend
+  author?: string; // TODO: Not yet implemented in backend
+  is_private?: boolean; // TODO: Not yet implemented in backend
   metadata?: Record<string, unknown>;
 }
 
@@ -900,12 +911,16 @@ export interface ListMemoryCardsResponse {
 }
 
 export interface UpdateMemoryCardRequest {
-  id: number;
-  front_content?: string;
-  back_content?: string;
-  learning_state?: string;
-  author?: string;
-  is_private?: boolean;
+  card_id: number; // Note: backend expects 'card_id' not 'id'
+  front?: string; // Note: backend expects 'front', stored as front_content in model
+  back?: string; // Note: backend expects 'back', stored as back_content in model
+  major_class?: string;
+  minor_class?: string;
+  status?: string;
+  content?: any; // TipTap JSON
+  learning_state?: string; // Derived from bookmark, use bookmark RPC to update
+  author?: string; // TODO: Not yet implemented in backend
+  is_private?: boolean; // TODO: Not yet implemented in backend
   interval?: number;
   ease_factor?: number;
   repetitions?: number;
@@ -919,7 +934,7 @@ export interface UpdateMemoryCardResponse {
 }
 
 export interface DeleteMemoryCardRequest {
-  id: number;
+  card_id: number; // Note: backend expects 'card_id' not 'id'
 }
 
 export interface DeleteMemoryCardResponse {
@@ -927,7 +942,7 @@ export interface DeleteMemoryCardResponse {
 }
 
 export interface RateMemoryCardRequest {
-  id: number;
+  card_id: number; // Note: backend expects 'card_id' not 'id'
   rating: string; // 'again', 'hard', 'good', 'easy'
 }
 
@@ -1088,4 +1103,705 @@ export interface RevertBookmarkStateRequest {
 export interface RevertBookmarkStateResponse {
   success: boolean;
   message: string;
+}
+
+// ============================================================================
+// SSG (SCAP Security Guide) Data Types
+// ============================================================================
+
+export interface SSGGuide {
+  id: string;
+  product: string;
+  profileId: string;
+  shortId: string;
+  title: string;
+  htmlContent: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGGroup {
+  id: string;
+  guideId: string;
+  parentId: string;
+  title: string;
+  description: string;
+  level: number;
+  groupCount: number;
+  ruleCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGReference {
+  href: string;
+  label: string;
+  value: string;
+}
+
+export interface SSGRule {
+  id: string;
+  guideId: string;
+  groupId: string;
+  shortId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  severity: 'low' | 'medium' | 'high';
+  references: SSGReference[];
+  level: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGTable {
+  id: string;
+  product: string;
+  tableType: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGTableEntry {
+  id: number;
+  tableId: string;
+  mapping: string;
+  ruleTitle: string;
+  description: string;
+  rationale: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGManifest {
+  id: string;
+  product: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGProfile {
+  id: string;
+  manifestId: string;
+  profileId: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGProfileRule {
+  id: number;
+  profileId: string;
+  ruleShortId: string;
+  createdAt: string;
+}
+
+export interface SSGTree {
+  guide: SSGGuide;
+  groups: SSGGroup[];
+  rules: SSGRule[];
+}
+
+export interface TreeNode {
+  id: string;
+  parentId: string;
+  level: number;
+  type: 'group' | 'rule';
+  group?: SSGGroup;
+  rule?: SSGRule;
+  children: TreeNode[];
+}
+
+// SSG RPC Request/Response Types
+
+export interface SSGImportGuideRequest {
+  path: string;
+}
+
+export interface SSGImportGuideResponse {
+  success: boolean;
+  guideId: string;
+  groupCount: number;
+  ruleCount: number;
+}
+
+export interface SSGGetGuideRequest {
+  id: string;
+}
+
+export interface SSGGetGuideResponse {
+  guide: SSGGuide;
+}
+
+export interface SSGListGuidesRequest {
+  product?: string;
+  profileId?: string;
+}
+
+export interface SSGListGuidesResponse {
+  guides: SSGGuide[];
+  count: number;
+}
+
+export interface SSGGetTreeRequest {
+  guideId: string;
+}
+
+export interface SSGGetTreeResponse {
+  tree: SSGTree;
+}
+
+export interface SSGGetTreeNodeRequest {
+  guideId: string;
+}
+
+export interface SSGGetTreeNodeResponse {
+  nodes: TreeNode[];
+  count: number;
+}
+
+export interface SSGGetGroupRequest {
+  id: string;
+}
+
+export interface SSGGetGroupResponse {
+  group: SSGGroup;
+}
+
+export interface SSGGetChildGroupsRequest {
+  parentId?: string;
+}
+
+export interface SSGGetChildGroupsResponse {
+  groups: SSGGroup[];
+  count: number;
+}
+
+export interface SSGGetRuleRequest {
+  id: string;
+}
+
+export interface SSGGetRuleResponse {
+  rule: SSGRule;
+}
+
+export interface SSGListRulesRequest {
+  groupId?: string;
+  severity?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface SSGListRulesResponse {
+  rules: SSGRule[];
+  total: number;
+}
+
+export interface SSGGetChildRulesRequest {
+  groupId: string;
+}
+
+export interface SSGGetChildRulesResponse {
+  rules: SSGRule[];
+  count: number;
+}
+
+// SSG Table RPC Types
+
+export interface SSGListTablesRequest {
+  product?: string;
+  tableType?: string;
+}
+
+export interface SSGListTablesResponse {
+  tables: SSGTable[];
+  count: number;
+}
+
+export interface SSGGetTableRequest {
+  id: string;
+}
+
+export interface SSGGetTableResponse {
+  table: SSGTable;
+}
+
+export interface SSGGetTableEntriesRequest {
+  tableId: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface SSGGetTableEntriesResponse {
+  entries: SSGTableEntry[];
+  total: number;
+}
+
+export interface SSGImportTableRequest {
+  path: string;
+}
+
+export interface SSGImportTableResponse {
+  success: boolean;
+  tableId: string;
+  entryCount: number;
+}
+
+// SSG Manifest RPC Types
+
+export interface SSGListManifestsRequest {
+  product?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListManifestsResponse {
+  manifests: SSGManifest[];
+  count: number;
+}
+
+export interface SSGGetManifestRequest {
+  manifestId: string;
+}
+
+export interface SSGGetManifestResponse {
+  manifest: SSGManifest;
+}
+
+export interface SSGListProfilesRequest {
+  product?: string;
+  profileId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListProfilesResponse {
+  profiles: SSGProfile[];
+  count: number;
+}
+
+export interface SSGGetProfileRequest {
+  profileId: string;
+}
+
+export interface SSGGetProfileResponse {
+  profile: SSGProfile;
+}
+
+export interface SSGGetProfileRulesRequest {
+  profileId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGGetProfileRulesResponse {
+  rules: SSGProfileRule[];
+  count: number;
+}
+
+// SSG Data Stream Types
+
+export interface SSGDataStream {
+  id: string;
+  product: string;
+  scapVersion: string;
+  generated: string;
+  xccdfBenchmarkId: string;
+  ovalChecksId: string;
+  ocilQuestionnairesId: string;
+  cpeDictId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGBenchmark {
+  id: string;
+  dataStreamId: string;
+  xccdfId: string;
+  title: string;
+  version: string;
+  description: string;
+  totalProfiles: number;
+  totalGroups: number;
+  totalRules: number;
+  maxGroupLevel: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSProfile {
+  id: string;
+  dataStreamId: string;
+  xccdfProfileId: string;
+  title: string;
+  description: string;
+  totalRules: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSProfileRule {
+  id: number;
+  profileId: string;
+  ruleShortId: string;
+  selected: boolean;
+  createdAt: string;
+}
+
+export interface SSGDSGroup {
+  id: string;
+  dataStreamId: string;
+  xccdfGroupId: string;
+  parentXccdfGroupId: string;
+  title: string;
+  description: string;
+  level: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SSGDSRule {
+  id: string;
+  dataStreamId: string;
+  xccdfRuleId: string;
+  groupXccdfId: string;
+  shortId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  severity: string;
+  warning: string;
+  createdAt: string;
+  updatedAt: string;
+  references?: SSGDSRuleReference[];
+  identifiers?: SSGDSRuleIdentifier[];
+}
+
+export interface SSGDSRuleReference {
+  id: number;
+  ruleId: string;
+  href: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface SSGDSRuleIdentifier {
+  id: number;
+  ruleId: string;
+  system: string;
+  identifier: string;
+  createdAt: string;
+}
+
+// SSG Data Stream RPC Types
+
+export interface SSGListDataStreamsRequest {
+  product?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDataStreamsResponse {
+  dataStreams: SSGDataStream[];
+  count: number;
+}
+
+export interface SSGGetDataStreamRequest {
+  dataStreamId: string;
+}
+
+export interface SSGGetDataStreamResponse {
+  dataStream: SSGDataStream;
+  benchmark?: SSGBenchmark;
+}
+
+export interface SSGListDSProfilesRequest {
+  dataStreamId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSProfilesResponse {
+  profiles: SSGDSProfile[];
+  count: number;
+}
+
+export interface SSGGetDSProfileRequest {
+  profileId: string;
+}
+
+export interface SSGGetDSProfileResponse {
+  profile: SSGDSProfile;
+}
+
+export interface SSGGetDSProfileRulesRequest {
+  profileId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGGetDSProfileRulesResponse {
+  rules: SSGDSProfileRule[];
+  count: number;
+}
+
+export interface SSGListDSGroupsRequest {
+  dataStreamId: string;
+  parentXccdfGroupId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSGroupsResponse {
+  groups: SSGDSGroup[];
+  count: number;
+}
+
+export interface SSGListDSRulesRequest {
+  dataStreamId: string;
+  groupXccdfId?: string;
+  severity?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGListDSRulesResponse {
+  rules: SSGDSRule[];
+  total: number;
+}
+
+export interface SSGGetDSRuleRequest {
+  ruleId: string;
+}
+
+export interface SSGGetDSRuleResponse {
+  rule: SSGDSRule;
+  references: SSGDSRuleReference[];
+  identifiers: SSGDSRuleIdentifier[];
+}
+
+export interface SSGImportDataStreamRequest {
+  path: string;
+}
+
+export interface SSGImportDataStreamResponse {
+  success: boolean;
+  dataStreamId: string;
+  profileCount: number;
+  groupCount: number;
+  ruleCount: number;
+}
+
+// SSG Import Job RPC Types
+
+export interface SSGStartImportJobRequest {
+  runId?: string;
+}
+
+export interface SSGStartImportJobResponse {
+  success: boolean;
+  runId: string;
+}
+
+export interface SSGStopImportJobResponse {
+  success: boolean;
+}
+
+export interface SSGPauseImportJobResponse {
+  success: boolean;
+}
+
+export interface SSGResumeImportJobRequest {
+  runId: string;
+}
+
+export interface SSGResumeImportJobResponse {
+  success: boolean;
+}
+
+export interface SSGGetImportStatusResponse {
+  id: string;
+  dataType: string;
+  state: 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'stopped';
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+  progress: {
+    totalGuides: number;
+    processedGuides: number;
+    failedGuides: number;
+    totalTables: number;
+    processedTables: number;
+    failedTables: number;
+    totalManifests: number;
+    processedManifests: number;
+    failedManifests: number;
+    totalDataStreams: number;
+    processedDataStreams: number;
+    failedDataStreams: number;
+    currentFile: string;
+    currentPhase?: string;
+  };
+  metadata?: Record<string, string>;
+}
+
+// SSG Remote Service RPC Types (Git operations)
+
+export interface SSGCloneRepoResponse {
+  success: boolean;
+  path: string;
+}
+
+export interface SSGPullRepoResponse {
+  success: boolean;
+}
+
+export interface SSGGetRepoStatusResponse {
+  commitHash: string;
+  branch: string;
+  isClean: boolean;
+}
+
+export interface SSGListGuideFilesResponse {
+  files: string[];
+  count: number;
+}
+
+export interface SSGGetFilePathRequest {
+  filename: string;
+}
+
+export interface SSGGetFilePathResponse {
+  path: string;
+}
+
+// SSG Cross-Reference Types
+
+export interface SSGCrossReference {
+  id: number;
+  sourceType: string;  // "guide", "table", "manifest", "datastream"
+  sourceId: string;
+  targetType: string;  // "guide", "table", "manifest", "datastream"
+  targetId: string;
+  linkType: string;    // "rule_id", "cce", "product", "profile_id"
+  metadata: string;    // JSON string with additional context
+  createdAt: string;
+}
+
+export interface SSGGetCrossReferencesRequest {
+  sourceType?: string;
+  sourceId?: string;
+  targetType?: string;
+  targetId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGGetCrossReferencesResponse {
+  crossReferences: SSGCrossReference[];
+  count: number;
+}
+
+export interface SSGFindRelatedObjectsRequest {
+  objectType: string;
+  objectId: string;
+  linkType?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SSGFindRelatedObjectsResponse {
+  relatedObjects: SSGCrossReference[];
+  count: number;
+}
+
+// ============================================================================
+// UEE (Unified ETL Engine) Types
+// ============================================================================
+
+export type MacroFSMState = 
+  | "BOOTSTRAPPING"
+  | "ORCHESTRATING"
+  | "STABILIZING"
+  | "DRAINING";
+
+export type ProviderFSMState = 
+  | "IDLE"
+  | "ACQUIRING"
+  | "RUNNING"
+  | "WAITING_QUOTA"
+  | "WAITING_BACKOFF"
+  | "PAUSED"
+  | "TERMINATED";
+
+export interface ProviderNode {
+  id: string;
+  providerType: string;
+  state: ProviderFSMState;
+  processedCount: number;
+  errorCount: number;
+  permitsHeld: number;
+  lastCheckpoint?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MacroNode {
+  id: string;
+  state: MacroFSMState;
+  providers: ProviderNode[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ETLTree {
+  macro: MacroNode;
+  totalProviders: number;
+  activeProviders: number;
+}
+
+export interface KernelMetrics {
+  p99Latency: number;           // P99 latency in milliseconds
+  bufferSaturation: number;     // Buffer saturation percentage (0-100)
+  messageRate: number;          // Messages per second
+  errorRate: number;            // Errors per second
+  timestamp: string;            // ISO timestamp
+}
+
+export interface Checkpoint {
+  urn: string;                  // URN key (v2e::provider::type::id)
+  providerID: string;
+  success: boolean;
+  errorMessage?: string;
+  processedAt: string;          // ISO timestamp
+}
+
+export interface PermitAllocation {
+  providerID: string;
+  permitsHeld: number;
+  permitsRequested: number;
+  timestamp: string;
+}
+
+// RPC Request/Response types
+
+export interface GetEtlTreeResponse {
+  tree: ETLTree;
+}
+
+export interface GetKernelMetricsResponse {
+  metrics: KernelMetrics;
+}
+
+export interface GetProviderCheckpointsRequest {
+  providerID: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetProviderCheckpointsResponse {
+  checkpoints: Checkpoint[];
+  count: number;
 }

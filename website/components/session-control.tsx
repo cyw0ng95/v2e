@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useSessionStatus,
-  useStartSession,
   useStartTypedSession,
   useStopSession,
   usePauseJob,
@@ -22,9 +21,24 @@ import {
 import { PlayIcon as Play, SquareIcon as Square, PauseIcon as Pause, RotateCwIcon as RotateCw } from '@/components/icons';
 import { toast } from "sonner";
 
+// Helper function to capitalize data type for display
+function formatDataType(dataType: string): string {
+  switch (dataType.toLowerCase()) {
+    case 'cve':
+      return 'CVE';
+    case 'cwe':
+      return 'CWE';
+    case 'capec':
+      return 'CAPEC';
+    case 'attack':
+      return 'ATT&CK';
+    default:
+      return dataType.toUpperCase();
+  }
+}
+
 export function SessionControl() {
   const { data: sessionStatus } = useSessionStatus();
-  const startSession = useStartSession();
   const startTypedSession = useStartTypedSession();
   const stopSession = useStopSession();
   const pauseJob = usePauseJob();
@@ -34,6 +48,8 @@ export function SessionControl() {
   const [startIndex, setStartIndex] = useState(0);
   const [resultsPerBatch, setResultsPerBatch] = useState(100);
   const [dataType, setDataType] = useState('cve'); // Default to CVE
+  // Track if we're currently handling a stop operation
+  const [isStopping, setIsStopping] = useState(false);
 
   const handleStartSession = () => {
     startTypedSession.mutate(
@@ -45,7 +61,10 @@ export function SessionControl() {
       },
       {
         onSuccess: () => {
-          toast.success(`Session started successfully for ${dataType.toUpperCase()}`);
+          toast.success(`Session started successfully for ${formatDataType(dataType)}`);
+          // Reset stop session error tracking when starting a new session
+          stopSession.reset();
+          setIsStopping(false);
         },
         onError: (error) => {
           toast.error(`Failed to start session: ${error.message}`);
@@ -55,14 +74,27 @@ export function SessionControl() {
   };
 
   const handleStopSession = () => {
+    // Prevent multiple simultaneous stop requests
+    if (stopSession.isPending || isStopping) {
+      console.warn('Stop session request already pending or in progress');
+      return;
+    }
+    
+    setIsStopping(true);
+    
     stopSession.mutate(undefined, {
       onSuccess: (data) => {
         toast.success(
           `Session stopped. Fetched: ${data?.fetchedCount}, Stored: ${data?.storedCount}`
         );
+        setIsStopping(false);
       },
       onError: (error) => {
-        toast.error(`Failed to stop session: ${error.message}`);
+        // Don't show toast for "run not active" errors as they're expected
+        if (!error.message.includes('run not active')) {
+          toast.error(`Failed to stop session: ${error.message}`);
+        }
+        setIsStopping(false);
       },
     });
   };
@@ -89,15 +121,31 @@ export function SessionControl() {
     });
   };
 
+  // Reset stop session state when session becomes inactive
+  React.useEffect(() => {
+    if (sessionStatus && !sessionStatus.hasSession) {
+      setIsStopping(false);
+      stopSession.reset();
+    }
+  }, [sessionStatus, stopSession]);
+
+  // Cleanup function to reset state when component unmounts
+  React.useEffect(() => {
+    return () => {
+      setIsStopping(false);
+      stopSession.reset();
+    };
+  }, [stopSession]);
+
   const isRunning = sessionStatus?.hasSession && sessionStatus.state === 'running';
   const isPaused = sessionStatus?.hasSession && sessionStatus.state === 'paused';
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Session Control</CardTitle>
+        <CardTitle>Job Session Control</CardTitle>
         <CardDescription>
-          Start, stop, or manage CVE fetching job sessions
+          Start, stop, or manage data fetching job sessions (CVE, CWE, CAPEC, ATT&CK)
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -166,16 +214,6 @@ export function SessionControl() {
 
           {/* Control Buttons */}
           <div className="flex gap-2">
-            {!sessionStatus?.hasSession && (
-              <Button
-                onClick={handleStartSession}
-                disabled={startSession.isPending || !sessionId}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Start Session
-              </Button>
-            )}
-
             {isRunning && (
               <>
                 <Button
@@ -188,7 +226,7 @@ export function SessionControl() {
                 </Button>
                 <Button
                   onClick={handleStopSession}
-                  disabled={stopSession.isPending}
+                  disabled={stopSession.isPending || isStopping}
                   variant="destructive"
                 >
                   <Square className="h-4 w-4 mr-2" />
@@ -208,7 +246,7 @@ export function SessionControl() {
                 </Button>
                 <Button
                   onClick={handleStopSession}
-                  disabled={stopSession.isPending}
+                  disabled={stopSession.isPending || isStopping}
                   variant="destructive"
                 >
                   <Square className="h-4 w-4 mr-2" />
@@ -228,7 +266,7 @@ export function SessionControl() {
                 </div>
                 <div>
                   <span className="font-medium">Data Type:</span>{" "}
-                  <span className="text-muted-foreground">{sessionStatus.dataType || 'cve'}</span>
+                  <span className="text-muted-foreground">{formatDataType(sessionStatus.dataType || 'cve')}</span>
                 </div>
                 <div>
                   <span className="font-medium">State:</span>{" "}
@@ -274,7 +312,7 @@ export function SessionControl() {
                       };
                       return (
                         <div key={dt} className="mb-1 text-xs">
-                          <span className="font-medium">{dt.toUpperCase()}:</span>{" "}
+                          <span className="font-medium">{formatDataType(dt)}:</span>{" "}
                           <span>Processed: {typedProgress.processedCount}/{typedProgress.totalCount} ({Math.round((typedProgress.processedCount / Math.max(typedProgress.totalCount, 1)) * 100)}%)</span>
                           {typedProgress.errorCount > 0 && (
                             <span className="ml-2 text-destructive">Errors: {typedProgress.errorCount}</span>

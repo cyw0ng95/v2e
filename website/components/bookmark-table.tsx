@@ -100,6 +100,9 @@ const BookmarkTable: React.FC<BookmarkTableProps> = ({ initialBookmarks = [] }) 
                 ID
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                URN
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Title
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -119,7 +122,7 @@ const BookmarkTable: React.FC<BookmarkTableProps> = ({ initialBookmarks = [] }) 
           <tbody className="bg-white divide-y divide-gray-200">
             {bookmarks.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   No bookmarks found
                 </td>
               </tr>
@@ -128,6 +131,9 @@ const BookmarkTable: React.FC<BookmarkTableProps> = ({ initialBookmarks = [] }) 
                 <tr key={bookmark.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {bookmark.id}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 font-mono max-w-xs truncate" title={bookmark.urn || 'N/A'}>
+                    {bookmark.urn || 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                     {bookmark.title}
