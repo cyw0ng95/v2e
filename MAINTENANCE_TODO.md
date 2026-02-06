@@ -28,7 +28,7 @@
 
 | 238 | pkg/notes        | Docs    | Document FSM state machine transitions with state diagrams                         | 200      | 2        |         |
 | 248 | pkg/notes        | Code    | Add input validation for all learning RPC parameters                               | 200      | 2        |         |
-| 249 | pkg/notes/fsm    | Code    | Add context-based timeout for FSM state persistence operations                     | 100      | 2        |         |
+
 | 020 | cmd/v2broker     | Code    | Implement segmented locks (sharded locks) for large maps                           | 600      | 2        |         |
 | 022 | cmd/v2broker     | Code    | Introduce Optimistic Concurrency Control (OCC) for read-heavy scenarios            | 600      | 2        |         |
 | 038 | cmd/v2broker     | Code    | Research and select lock-free hash map implementation (Cuckoo Filter or SwissMap)  | 600      | 2        |         |

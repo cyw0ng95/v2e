@@ -282,9 +282,12 @@ func (l *LearningFSM) MarkViewed(urn string) error {
 	l.viewedItems = append(l.viewedItems, urn)
 	l.lastActivity = time.Now()
 
-	// Save state
+	// Save state with timeout
 	if l.storage != nil {
-		if err := l.SaveState(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := l.SaveStateWithContext(ctx); err != nil {
 			return fmt.Errorf("failed to save state: %w", err)
 		}
 	}
@@ -312,9 +315,12 @@ func (l *LearningFSM) MarkLearned(urn string) error {
 		l.currentItemURN = ""
 	}
 
-	// Save state
+	// Save state with timeout
 	if l.storage != nil {
-		if err := l.SaveState(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := l.SaveStateWithContext(ctx); err != nil {
 			return fmt.Errorf("failed to save state: %w", err)
 		}
 	}
@@ -396,25 +402,51 @@ func (l *LearningFSM) GetContext() *LearningContext {
 	}
 }
 
+// SaveStateWithContext persists the learning FSM state with context timeout
+func (l *LearningFSM) SaveStateWithContext(ctx context.Context) error {
+	if l.storage == nil {
+		return nil
+	}
+
+	// Check if context is already cancelled
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	// Create a channel to handle timeout
+	type result struct {
+		err error
+	}
+	resultCh := make(chan result, 1)
+
+	go func() {
+		state := &LearningFSMState{
+			State:           l.state,
+			CurrentStrategy: l.currentStrategy,
+			CurrentItemURN:  l.currentItemURN,
+			ViewedItems:     l.viewedItems,
+			CompletedItems:  l.completedItems,
+			PathStack:       l.pathStack,
+			SessionStart:    l.sessionStart,
+			LastActivity:    l.lastActivity,
+			UpdatedAt:       time.Now(),
+		}
+		resultCh <- result{l.storage.SaveLearningFSMState(state)}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("save state timeout: %w", ctx.Err())
+	case res := <-resultCh:
+		return res.err
+	}
+}
+
 // SaveState persists the learning FSM state
 func (l *LearningFSM) SaveState() error {
-	if l.storage == nil {
-		return nil // No storage configured
-	}
-
-	state := &LearningFSMState{
-		State:           l.state,
-		CurrentStrategy: l.currentStrategy,
-		CurrentItemURN:  l.currentItemURN,
-		ViewedItems:     l.viewedItems,
-		CompletedItems:  l.completedItems,
-		PathStack:       l.pathStack,
-		SessionStart:    l.sessionStart,
-		LastActivity:    l.lastActivity,
-		UpdatedAt:       time.Now(),
-	}
-
-	return l.storage.SaveLearningFSMState(state)
+	return l.SaveStateWithContext(context.Background())
 }
 
 // LoadState restores the learning FSM state
