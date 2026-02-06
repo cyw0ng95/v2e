@@ -287,10 +287,10 @@ The system reuses existing services (no new services) and manages all learning o
 - [ ] Implement periodic state backup (every 5 minutes - TODO)
 
 ### Phase 9: Refactor Existing Services ⚠️ PARTIAL
-- [ ] Refactor BookmarkService to use MemoryFSM for generated cards
-- [x] Refactor NoteService to use MemoryFSM for state management (models updated)
-- [x] Refactor MemoryCardService to use unified MemoryFSM (models updated)
-- [ ] Update database migrations for new URN fields (needs migration)
+- [x] Refactor BookmarkService to use MemoryFSM for generated cards (auto-generated cards use FSMState)
+- [x] Refactor NoteService to use MemoryFSM for state management (AddNote sets FSMState to "draft")
+- [x] Refactor MemoryCardService to use unified MemoryFSM (CreateFromBookmark sets FSMState to "new")
+- [x] Update database migrations for new URN fields (MigrateExistingData generates URNs)
 - [ ] Maintain backward compatibility with existing data
 
 ### Phase 10: RPC Handler Extensions ✅ COMPLETED
@@ -298,7 +298,7 @@ The system reuses existing services (no new services) and manages all learning o
 - [x] Add RPC handler for creating notes in viewing context (existing NoteService)
 - [x] Add RPC handler for creating memory cards in viewing context (existing MemoryCardService)
 - [x] Add RPC handler for managing URN links (RPCAddURNLink, RPCRemoveURNLink)
-- [ ] Update service.md documentation for all new RPC handlers (TODO)
+- [x] Update service.md documentation for all new RPC handlers
 
 ### Phase 11: Frontend Integration
 - [ ] Implement unified viewing interface for all learning objects
@@ -317,7 +317,7 @@ The system reuses existing services (no new services) and manages all learning o
 - [ ] Test backward compatibility with existing data
 
 ### Phase 13: Documentation
-- [ ] Update pkg/notes/service.md with new RPC handlers
+- [x] Update cmd/v2local/service.md with new RPC handlers (11 learning RPC methods documented)
 - [ ] Update design documentation with MemoryFSM and LearningFSM details
 - [x] Document internal learning strategies (BFS/DFS) - code comments
 - [ ] Document data migration strategy (create migration file)
@@ -327,25 +327,27 @@ The system reuses existing services (no new services) and manages all learning o
 
 ## Implementation Status Summary
 
-### Completed (Phase 1, 5, 8, 10)
+### Completed (Phase 1, 5, 8, 9, 10, 13)
 - ✅ Core FSM implementation (MemoryFSM, LearningFSM, BoltDB storage)
 - ✅ BFS/DFS learning strategies with automatic switching
-- ✅ URN link management (URNIndex, bidirectional relationships)
+- ��� URN link management (URNIndex, bidirectional relationships)
 - ✅ Model updates (URN fields, FSM state columns)
-- ✅ RPC handlers for learning operations
+- ✅ RPC handlers for learning operations (11 methods)
 - ✅ Build fixes (gorm.Stmt, PredictionModel, CCE removal)
+- ✅ Service refactoring (BookmarkService, NoteService, MemoryCardService use FSM)
+- ✅ Database migration (URN generation, FSM state initialization)
+- ✅ Documentation updates (cmd/v2local/service.md with Learning Operations)
 
-### In Progress / Partial (Phase 2, 6, 9)
+### In Progress / Partial (Phase 2, 6)
 - ⚠️ TipTap JSON serialization (models have Content field, needs validation)
-- ⚠️ Database migration (needs migration file for new columns)
-- ⚠️ Service refactoring (models updated, services need integration)
+- ⚠️ MemoryFSM integration with review results (UpdateCardAfterReview)
 
-### TODO (Phase 3, 4, 7, 11, 12, 13)
-- 📋 Bookmark auto-generation with memory cards
+### TODO (Phase 3, 4, 7, 11, 12)
+- 📋 Bookmark auto-generation with memory cards (service integration done, needs testing)
 - 📋 TipTap JSON validation and round-trip tests
 - 📋 Frontend components (TipTap editor, unified viewing, URN linking)
-- 📋 Documentation updates (service.md, migration guide)
 - 📋 Unit tests for FSM and strategies
+- 📋 Migration guide documentation
 
 ### Files Created (17 new files)
 ```
@@ -361,14 +363,18 @@ pkg/notes/urn_index.go          - Bidirectional URN index
 cmd/v2local/learning_handlers.go - RPC handlers
 ```
 
-### Files Modified (8 files)
+### Files Modified (11 files)
 ```
 cmd/v2broker/scaling/load_predictor.go - Fixed PredictionModel conflict
 cmd/v2local/main.go                    - Removed CCE support
+cmd/v2local/service.md                 - Added Learning Operations documentation
 cmd/v2meta/main.go                     - Removed CCE support
 pkg/cve/local/smart_pool.go            - Fixed gorm.Stmt type
 pkg/notes/card_status_test.go          - Fixed test signature
+pkg/notes/interfaces.go                - Added GetByURN methods to interfaces
+pkg/notes/migration.go                 - Added URNLink migration, URN generation
 pkg/notes/models.go                    - Added URN fields, FSM state
-pkg/notes/service.go                   - Added GetByURN methods
+pkg/notes/service.go                   - Added GetByURN methods, FSM integration
+pkg/notes/rpc_client.go                - Added GetByURN RPC client methods
 pkg/ssg/local/store_tables_test.go    - Fixed test signature
 ```
