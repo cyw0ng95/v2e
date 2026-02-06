@@ -6,6 +6,36 @@
   |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
 | 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                         | 600      | 1        |         |
   | 178 | pkg/cve/remote   | Code    | Replace panic() with error return in fetcher.go:50                                     | 20       | 1        |         |
+  | 235 | pkg/notes        | Code    | Fix syntax error at service.go:1035 (unmatched closing parenthesis)                   | 5        | 1        |         |
+| 221 | pkg/notes/fsm       | Test    | Add comprehensive unit tests for learning_fsm.go (444 lines)              | 400      | 1        |         |
+| 222 | pkg/notes/fsm       | Test    | Add unit tests for memory_fsm.go (146 lines)                              | 150      | 1        |         |
+| 223 | pkg/notes/fsm       | Test    | Add unit tests for storage.go (228 lines)                                   | 200      | 1        |         |
+| 224 | pkg/notes/strategy  | Test    | Add unit tests for bfs.go (142 lines)                                       | 150      | 1        |         |
+| 225 | pkg/notes/strategy  | Test    | Add unit tests for dfs.go (190 lines)                                        | 200      | 1        |         |
+| 226 | pkg/notes/strategy  | Test    | Add unit tests for manager.go (243 lines)                                   | 200      | 1        |         |
+| 227 | pkg/notes          | Test    | Add unit tests for tiptap.go (261 lines)                                  | 200      | 1        |         |
+| 228 | pkg/notes          | Test    | Add integration tests for FSM state transitions                            | 300      | 1        |         |
+| 229 | pkg/notes/fsm       | Test    | Add concurrent access tests for LearningFSM (lines 54-67)                     | 200      | 1        |         |
+| 232 | pkg/notes/fsm       | Test    | Add BoltDB storage failure scenario tests                                     | 150      | 2        |         |
+| 231 | pkg/notes/strategy  | Test    | Add tests for strategy switching edge cases                                   | 150      | 2        |         |
+| 232 | pkg/notes          | Code    | Implement buildItemGraph() in learning_fsm.go:136 (currently empty)             | 150      | 1        |         |
+| 233 | pkg/notes/service   | Code    | Complete TODO at service.go:26 (CardType, Author, IsPrivate, Metadata missing) | 100      | 2        |         |
+| 234 | pkg/notes/service   | Code    | Complete TODO at service.go:118 (author, is_private filters not implemented) | 100      | 2        |         |
+| 236 | pkg/notes/strategy  | Code    | Implement proper cross-reference graph construction in manager.go:26-31         | 200      | 2        |         |
+| 237 | pkg/notes/fsm       | Code    | Add storage cleanup and proper error handling in BoltDBStorage               | 150      | 2        |         |
+| 238 | pkg/notes          | Docs    | Document FSM state machine transitions with state diagrams                   | 200      | 2        |         |
+| 239 | pkg/notes          | Docs    | Add architecture documentation for learning strategy system                      | 200      | 3        |         |
+| 240 | pkg/notes/tiptap    | Docs    | Document TipTap JSON schema validation rules and supported node types           | 150      | 3        |         |
+| 241 | pkg/notes/fsm       | Refactor | Extract common FSM state transition logic into shared module                      | 200      | 3        |         |
+| 242 | pkg/notes/strategy  | Refactor | Extract strategy interface and implementation pattern for reusability           | 300      | 3        |         |
+| 243 | pkg/notes/service   | Refactor | Refactor service.go (1063 lines) - split into bookmark, note, memory modules | 400      | 3        |         |
+| 244 | pkg/notes/fsm       | Perf    | Optimize ItemGraph link lookups using index data structure                     | 150      | 3        |         |
+| 245 | pkg/notes/strategy  | Perf    | Benchmark strategy switching overhead                                         | 100      | 4        |         |
+| 246 | pkg/notes/fsm       | Code    | Add user ID/session management for multi-user support                          | 400      | 3        |         |
+| 247 | pkg/notes          | Code    | Add rate limiting for learning operations to prevent abuse                     | 150      | 3        |         |
+| 248 | pkg/notes          | Code    | Add input validation for all learning RPC parameters                         | 200      | 2        |         |
+| 249 | pkg/notes/fsm       | Code    | Add context-based timeout for FSM state persistence operations                   | 100      | 2        |         |
+| 250 | pkg/notes          | Code    | Add metrics for FSM state transitions and strategy usage                      | 150      | 3        |         |
   | 020 | cmd/v2broker     | Code    | Implement segmented locks (sharded locks) for large maps                           | 600      | 2        |         |
   | 022 | cmd/v2broker     | Code    | Introduce Optimistic Concurrency Control (OCC) for read-heavy scenarios                | 600      | 2        |         |
 | 038 | cmd/v2broker     | Code    | Research and select lock-free hash map implementation (Cuckoo Filter or SwissMap)      | 600      | 2        |         |
