@@ -318,10 +318,10 @@ The system reuses existing services (no new services) and manages all learning o
 
 ### Phase 13: Documentation ✅ COMPLETED
 - [x] Update cmd/v2local/service.md with new RPC handlers (11 learning RPC methods documented)
-- [ ] Update design documentation with MemoryFSM and LearningFSM details
+- [x] Update design documentation with MemoryFSM and LearningFSM details (DESIGN_DOC.md)
 - [x] Document internal learning strategies (BFS/DFS) - code comments
-- [ ] Document data migration strategy (create migration file)
-- [ ] Create user guide for passive learning experience
+- [x] Document data migration strategy (MIGRATION_GUIDE.md)
+- [x] Create user guide for passive learning experience (USER_GUIDE.md)
 
 ---
 
@@ -345,17 +345,17 @@ The system reuses existing services (no new services) and manages all learning o
 - ✅ Unit tests for LearningFSM state persistence (learning_fsm_test.go, storage_test.go)
 - ✅ Integration tests for URN link management (service_test.go)
 - ✅ Tests for TipTap JSON serialization round-trip (tiptap_test.go)
-- ✅ Backward compatibility testing (MigrateExistingData)
+- ✅ Backward compatibility with existing data (MigrateExistingData)
+- ✅ Design documentation with MemoryFSM and LearningFSM details (DESIGN_DOC.md)
+- ✅ Data migration strategy documentation (MIGRATION_GUIDE.md)
+- ✅ User guide for passive learning experience (USER_GUIDE.md)
 
-### TODO (Phase 4, 11)
+### TODO (Phase 4, 11 - Frontend Development Required)
 - 📋 Frontend components (TipTap editor, unified viewing, URN linking)
 - 📋 Frontend integration with learning RPC handlers
 - 📋 End-to-end tests for passive learning workflow (requires frontend)
-- 📋 Design documentation with MemoryFSM and LearningFSM details
-- 📋 Migration guide documentation
-- 📋 User guide for passive learning experience
 
-### Files Created (23 new files)
+### Files Created (26 new files)
 ```
 pkg/notes/fsm/types.go          - FSM state definitions
 pkg/notes/fsm/memory_fsm.go     - BaseMemoryFSM implementation
@@ -372,6 +372,10 @@ pkg/notes/urn_index.go           - Bidirectional URN index
 pkg/notes/tiptap.go             - TipTap JSON validation and utilities
 pkg/notes/tiptap_test.go        - TipTap unit tests
 cmd/v2local/learning_handlers.go  - RPC handlers
+.monkeycode/specs/260206-memory-fsm-learning/MIGRATION_GUIDE.md - Data migration documentation
+.monkeycode/specs/260206-memory-fsm-learning/DESIGN_DOC.md - FSM design documentation
+.monkeycode/specs/260206-memory-fsm-learning/USER_GUIDE.md - User guide
+.monkeycode/specs/260206-memory-fsm-learning/IMPLEMENTATION_SUMMARY.md - Implementation summary
 ```
 
 ### Files Modified (14 files)
