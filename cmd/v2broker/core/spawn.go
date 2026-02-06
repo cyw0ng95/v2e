@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,16 @@ import (
 type serviceToSpawn struct {
 	name string
 	path string
+}
+
+// normalizeServiceName converts a binary name (e.g., v2access) to the process ID (e.g., access).
+// The subprocess binaries have v2* prefix but their internal ProcessID is without the prefix.
+func normalizeServiceName(binaryName string) string {
+	// Strip "v2" prefix if present (e.g., v2access -> access)
+	if strings.HasPrefix(binaryName, "v2") && len(binaryName) > 2 {
+		return binaryName[2:]
+	}
+	return binaryName
 }
 
 // Spawn starts a new subprocess with the given command and arguments.
@@ -217,13 +228,14 @@ func (b *Broker) loadDetectedBinaries() error {
 		return err
 	}
 
-	// Predefined list of expected service names
+	// Predefined list of expected service names (v2* prefixed)
 	expectedServices := map[string]bool{
-		"access": true,
-		"remote": true,
-		"local":  true,
-		"meta":   true,
-		"sysmon": true,
+		"v2access":  true,
+		"v2remote":  true,
+		"v2local":   true,
+		"v2meta":    true,
+		"v2sysmon":  true,
+		"v2analysis": true,
 	}
 
 	// Collect executables to spawn
@@ -311,19 +323,23 @@ func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
 
 	for _, svc := range services {
 		go func(s serviceToSpawn) {
+			// Normalize binary name to process ID (v2access -> access)
+			// The subprocess uses this normalized ID for its internal ProcessID
+			processID := normalizeServiceName(s.name)
+
 			b.mu.Lock()
-			if _, exists := b.processes[s.name]; exists {
+			if _, exists := b.processes[processID]; exists {
 				b.mu.Unlock()
-				resultChan <- spawnResult{name: s.name, err: fmt.Errorf("process with id '%s' already exists", s.name)}
+				resultChan <- spawnResult{name: processID, err: fmt.Errorf("process with id '%s' already exists", processID)}
 				return
 			}
 			b.mu.Unlock()
 
 			ctx, cancel := context.WithCancel(b.ctx)
 			cmd := exec.CommandContext(ctx, "./"+s.name)
-			setProcessEnv(cmd, s.name)
+			setProcessEnv(cmd, processID)
 
-			info := &ProcessInfo{ID: s.name, Command: "./" + s.name, Status: ProcessStatusRunning, StartTime: time.Now()}
+			info := &ProcessInfo{ID: processID, Command: "./" + s.name, Status: ProcessStatusRunning, StartTime: time.Now()}
 			proc := &Process{
 				info:          info,
 				cmd:           cmd,
@@ -333,12 +349,12 @@ func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
 				restartConfig: &RestartConfig{Enabled: true, MaxRestarts: -1, Command: "./" + s.name, IsRPC: true},
 			}
 
-			// Register UDS transport before starting
+			// Register UDS transport before starting using the process ID (not binary name)
 			if b.transportManager != nil {
-				if _, err := b.transportManager.RegisterUDSTransport(s.name, true); err != nil {
+				if _, err := b.transportManager.RegisterUDSTransport(processID, true); err != nil {
 					cancel()
 					info.Status = ProcessStatusFailed
-					resultChan <- spawnResult{name: s.name, err: fmt.Errorf("failed to register UDS transport: %w", err)}
+					resultChan <- spawnResult{name: processID, err: fmt.Errorf("failed to register UDS transport: %w", err)}
 					return
 				}
 			}
@@ -346,31 +362,31 @@ func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
 			if err := cmd.Start(); err != nil {
 				cancel()
 				if b.transportManager != nil {
-					b.transportManager.UnregisterTransport(s.name)
+					b.transportManager.UnregisterTransport(processID)
 				}
 				info.Status = ProcessStatusFailed
-				resultChan <- spawnResult{name: s.name, err: fmt.Errorf("failed to start process: %w", err)}
+				resultChan <- spawnResult{name: processID, err: fmt.Errorf("failed to start process: %w", err)}
 				return
 			}
 
 			info.PID = cmd.Process.Pid
 			b.mu.Lock()
-			b.processes[s.name] = proc
+			b.processes[processID] = proc
 			b.mu.Unlock()
 
 			// Start UDS message reading goroutine
 			if b.transportManager != nil {
-				udsTransport, err := b.transportManager.GetTransport(s.name)
+				udsTransport, err := b.transportManager.GetTransport(processID)
 				if err == nil {
 					b.wg.Add(1)
-					go b.readUDSMessages(s.name, udsTransport)
+					go b.readUDSMessages(processID, udsTransport)
 				}
 			}
 
 			b.wg.Add(1)
 			go b.reapProcess(proc)
 
-			resultChan <- spawnResult{name: s.name, info: info, proc: proc, err: nil}
+			resultChan <- spawnResult{name: processID, info: info, proc: proc, err: nil}
 		}(svc)
 	}
 
