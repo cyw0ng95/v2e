@@ -284,17 +284,17 @@ Per `.github/agents/v2e-go.agent.md`:
 6. **NO flaky remote API tests** - never add tests that access NVD, GitHub, or other external services
 7. **NO new documentation files** - only update existing `README.md` or `cmd/*/service.md`. Never create new markdown files (DESIGN.md, TODO.md, etc.)
 
-## Job Session Management
+## ETL Provider Management (UEE Architecture)
 
-The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with BoltDB persistence:
+The meta service orchestrates data population using the Unified ETL Engine (UEE) framework with hierarchical FSM-based providers:
 
-**Job States**: Queued → Running → (Paused | Completed | Failed | Stopped)
+**Provider States**: IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → TERMINATED
 
-**Single Active Run Policy**: Only one job run can be active at a time.
+**Macro FSM**: BOOTSTRAPPING → ORCHESTRATING → STABILIZING → DRAINING
 
-**Auto-Recovery**: Running jobs resume on service restart; paused jobs remain paused.
+**Auto-Recovery**: On service restart, RUNNING providers resume with permit re-acquisition; PAUSED providers remain paused.
 
-**Session Control RPCs**: `RPCStartSession`, `RPCStopSession`, `RPCPauseJob`, `RPCResumeJob`, `RPCGetSessionStatus`
+**Provider System**: CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider with resource-aware execution and field-level diffing.
 
 ## Database Migrations
 
