@@ -22,11 +22,19 @@ func (s *MemoryCardService) CreateMemoryCardFull(ctx context.Context, bookmarkID
 		EaseFactor: 2.5,
 		Interval:   1,
 		Repetition: 0,
+		FSMState:   "new",
 		// TODO: CardType, Author, IsPrivate, Metadata (if you add to model)
 	}
 	if err := s.db.WithContext(ctx).Create(card).Error; err != nil {
 		return nil, fmt.Errorf("failed to create memory card: %w", err)
 	}
+
+	// Generate URN after creation (needs the ID)
+	card.URN = GetCardURN(card.ID)
+	if err := s.db.WithContext(ctx).Save(card).Error; err != nil {
+		return nil, fmt.Errorf("failed to update memory card URN: %w", err)
+	}
+
 	return card, nil
 }
 
@@ -699,6 +707,12 @@ func (s *MemoryCardService) CreateMemoryCard(ctx context.Context, bookmarkID uin
 
 	if err := s.db.WithContext(ctx).Create(card).Error; err != nil {
 		return nil, fmt.Errorf("failed to create memory card: %w", err)
+	}
+
+	// Generate URN after creation (needs the ID)
+	card.URN = GetCardURN(card.ID)
+	if err := s.db.WithContext(ctx).Save(card).Error; err != nil {
+		return nil, fmt.Errorf("failed to update memory card URN: %w", err)
 	}
 
 	return card, nil
