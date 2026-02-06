@@ -52,18 +52,18 @@ type LearningContext struct {
 
 // LearningFSM manages user learning progress
 type LearningFSM struct {
-	mu                sync.RWMutex
-	state             LearningState
-	currentStrategy   string      // "bfs" or "dfs"
-	currentItemURN    string
-	viewedItems       []string   // URNs viewed in session
-	completedItems    []string   // URNs marked learned
-	pathStack         []string   // DFS navigation stack
-	sessionStart      time.Time
-	lastActivity      time.Time
-	storage           Storage
-	availableItems    []SecurityItem // Items available for learning
-	itemGraph         *ItemGraph     // Pre-built link graph for DFS
+	mu              sync.RWMutex
+	state           LearningState
+	currentStrategy string // "bfs" or "dfs"
+	currentItemURN  string
+	viewedItems     []string // URNs viewed in session
+	completedItems  []string // URNs marked learned
+	pathStack       []string // DFS navigation stack
+	sessionStart    time.Time
+	lastActivity    time.Time
+	storage         Storage
+	availableItems  []SecurityItem // Items available for learning
+	itemGraph       *ItemGraph     // Pre-built link graph for DFS
 }
 
 // ItemGraph maintains bidirectional relationships for DFS navigation
@@ -135,9 +135,55 @@ func NewLearningFSM(storage Storage, items []SecurityItem) (*LearningFSM, error)
 
 // buildItemGraph constructs the link graph from available items
 func (l *LearningFSM) buildItemGraph() {
-	// In a real implementation, this would load cross-reference data
-	// For now, we'll create a simple graph based on item types
-	// This will be enhanced when URN links are implemented
+	if l.itemGraph == nil {
+		l.itemGraph = NewItemGraph()
+	}
+
+	// Group items by type
+	itemsByType := make(map[string][]SecurityItem)
+	for _, item := range l.availableItems {
+		itemsByType[item.Type] = append(itemsByType[item.Type], item)
+	}
+
+	// Build links based on type relationships
+	// CVE -> CWE -> CAPEC -> ATT&CK is a common security hierarchy
+	l.buildTypeLinks(itemsByType, "cve", "cwe")
+	l.buildTypeLinks(itemsByType, "cwe", "capec")
+	l.buildTypeLinks(itemsByType, "capec", "attack")
+
+	// Also add intra-type links (within same type)
+	l.buildIntraTypeLinks(itemsByType)
+}
+
+// buildTypeLinks creates links from items of one type to items of another type
+func (l *LearningFSM) buildTypeLinks(itemsByType map[string][]SecurityItem, fromType, toType string) {
+	fromItems, fromExists := itemsByType[fromType]
+	toItems, toExists := itemsByType[toType]
+
+	if !fromExists || !toExists || len(toItems) == 0 {
+		return
+	}
+
+	// Link each fromType item to up to 3 toType items
+	for _, fromItem := range fromItems {
+		for i := 0; i < min(3, len(toItems)); i++ {
+			l.itemGraph.AddLink(fromItem.URN, toItems[i].URN)
+		}
+	}
+}
+
+// buildIntraTypeLinks creates links between items of the same type
+func (l *LearningFSM) buildIntraTypeLinks(itemsByType map[string][]SecurityItem) {
+	for _, items := range itemsByType {
+		if len(items) < 2 {
+			continue
+		}
+
+		// Create a simple chain: item1 -> item2 -> item3 -> ...
+		for i := 0; i < len(items)-1; i++ {
+			l.itemGraph.AddLink(items[i].URN, items[i+1].URN)
+		}
+	}
 }
 
 // LoadItem presents the next item based on current strategy

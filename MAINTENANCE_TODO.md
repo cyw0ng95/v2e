@@ -15,7 +15,7 @@
 | 227 | pkg/notes        | Test    | Add unit tests for tiptap.go (261 lines)                                           | 200      | 1        |         |
 | 228 | pkg/notes        | Test    | Add integration tests for FSM state transitions                                    | 300      | 1        |         |
 | 229 | pkg/notes/fsm    | Test    | Add concurrent access tests for LearningFSM (lines 54-67)                          | 200      | 1        |         |
-| 232 | pkg/notes        | Code    | Implement buildItemGraph() in learning_fsm.go:136 (currently empty)                | 150      | 1        |         |
+
 | 263 | website/         | Test    | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files) | 2000     | 1        |         |
 | 264 | website/         | Test    | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks)                      | 400      | 1        |         |
 | 265 | website/         | Test    | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods)                 | 500      | 1        |         |
