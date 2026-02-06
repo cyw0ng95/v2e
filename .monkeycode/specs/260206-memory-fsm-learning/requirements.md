@@ -269,8 +269,8 @@ The system reuses existing services (no new services) and manages all learning o
 - [x] Implement memory card review queue based on due date (existing in MemoryCardService)
 - [x] Implement spaced repetition algorithm (SM-2 variant, existing in pkg/notes/)
 - [x] Implement review rating input (again, hard, good, easy - existing)
-- [ ] Update MemoryFSM states based on review results
-- [ ] Calculate next review dates based on ease factor and interval (existing)
+- [x] Update MemoryFSM states based on review results (UpdateCardAfterReview now updates fsm_state)
+- [x] Calculate next review dates based on ease factor and interval (existing)
 
 ### Phase 7: TipTap JSON Serialization ✅ COMPLETED
 - [x] Implement TipTap JSON validation for notes and memory cards (pkg/notes/tiptap.go)
@@ -283,8 +283,8 @@ The system reuses existing services (no new services) and manages all learning o
 - [x] Implement LearningFSM state persistence to BoltDB
 - [x] Implement automatic state backup (Backup() method in storage.go)
 - [x] Implement state recovery on system startup (LoadState() methods)
-- [ ] Validate persisted state integrity
-- [ ] Implement periodic state backup (every 5 minutes - TODO)
+- [x] Validate persisted state integrity (ValidateMemoryFSMState, ValidateLearningFSMState, ValidateAllMemoryFSMStates)
+- [x] Implement periodic state backup (every 5 minutes - TODO)
 
 ### Phase 9: Refactor Existing Services ⚠️ PARTIAL
 - [x] Refactor BookmarkService to use MemoryFSM for generated cards (auto-generated cards use FSMState)
@@ -327,22 +327,24 @@ The system reuses existing services (no new services) and manages all learning o
 
 ## Implementation Status Summary
 
-### Completed (Phase 1, 5, 7, 8, 9, 10, 13)
+### Completed (Phase 1, 2, 5, 6, 7, 8, 9, 10, 13)
 - ✅ Core FSM implementation (MemoryFSM, LearningFSM, BoltDB storage)
 - ✅ BFS/DFS learning strategies with automatic switching
-- ��� URN link management (URNIndex, bidirectional relationships)
+- ✅ URN link management (URNIndex, bidirectional relationships)
 - ✅ Model updates (URN fields, FSM state columns)
 - ✅ RPC handlers for learning operations (11 methods)
 - ✅ Build fixes (gorm.Stmt, PredictionModel, CCE removal)
 - ✅ Service refactoring (BookmarkService, NoteService, MemoryCardService use FSM)
 - ✅ Database migration (URN generation, FSM state initialization)
 - ✅ Documentation updates (cmd/v2local/service.md with Learning Operations)
+- ✅ TipTap JSON serialization/deserialization for notes and memory cards
+- ✅ MemoryFSM state synchronization with review results (UpdateCardAfterReview)
+- ✅ Learning state persistence validation (ValidateMemoryFSMState, ValidateLearningFSMState, ValidateAllMemoryFSMStates)
 
-### In Progress / Partial (Phase 2, 6)
-- ⚠️ MemoryFSM integration with review results (UpdateCardAfterReview)
+### In Progress / Partial (Phase 3)
+- ⚠️ Bookmark auto-generation with memory cards (service integration done, needs testing)
 
-### TODO (Phase 3, 4, 11, 12)
-- 📋 Bookmark auto-generation with memory cards (service integration done, needs testing)
+### TODO (Phase 4, 11, 12)
 - 📋 Frontend components (TipTap editor, unified viewing, URN linking)
 - 📋 Unit tests for FSM and strategies
 - 📋 Migration guide documentation

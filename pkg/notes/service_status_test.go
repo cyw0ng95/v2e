@@ -1,8 +1,8 @@
 package notes
 
 import (
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"sync"
 	"testing"
 	"time"
@@ -91,8 +91,68 @@ func TestUpdateCardAfterReview_Transition(t *testing.T) {
 		if updated.NextReview == nil || updated.NextReview.Before(time.Now()) {
 			t.Fatalf("expected next review set in future")
 		}
+		// Verify FSM state is also updated
+		if updated.FSMState != "mastered" {
+			t.Fatalf("expected FSM state mastered, got %s", updated.FSMState)
+		}
 	})
 
+}
+
+func TestUpdateCardAfterReview_FSMStateSync(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestUpdateCardAfterReview_FSMStateSync", nil, func(t *testing.T, tx *gorm.DB) {
+		db := setupTestDBForSvc(t)
+		svc := NewMemoryCardService(db)
+
+		bm := &BookmarkModel{GlobalItemID: "g3", ItemType: "test", ItemID: "i3", Title: "t3"}
+		if err := db.Create(bm).Error; err != nil {
+			t.Fatal(err)
+		}
+
+		// Test new -> learning transition
+		card := &MemoryCardModel{BookmarkID: bm.ID, Front: "q3", Back: "a3", Status: string(StatusNew), Content: "{}"}
+		if err := db.Create(card).Error; err != nil {
+			t.Fatal(err)
+		}
+
+		if err := svc.UpdateCardAfterReview(context.Background(), card.ID, CardRatingGood); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		var updated MemoryCardModel
+		if err := db.First(&updated, card.ID).Error; err != nil {
+			t.Fatal(err)
+		}
+
+		if updated.Status != string(StatusLearning) {
+			t.Fatalf("expected status learning, got %s", updated.Status)
+		}
+		if updated.FSMState != "learning" {
+			t.Fatalf("expected FSM state learning, got %s", updated.FSMState)
+		}
+
+		// Test learning -> reviewed transition (low repetition)
+		card2 := &MemoryCardModel{BookmarkID: bm.ID, Front: "q4", Back: "a4", Status: string(StatusLearning), Content: "{}", Repetition: 1}
+		if err := db.Create(card2).Error; err != nil {
+			t.Fatal(err)
+		}
+
+		if err := svc.UpdateCardAfterReview(context.Background(), card2.ID, CardRatingGood); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		var updated2 MemoryCardModel
+		if err := db.First(&updated2, card2.ID).Error; err != nil {
+			t.Fatal(err)
+		}
+
+		if updated2.Status != string(StatusReviewed) {
+			t.Fatalf("expected status reviewed, got %s", updated2.Status)
+		}
+		if updated2.FSMState != "reviewed" {
+			t.Fatalf("expected FSM state reviewed, got %s", updated2.FSMState)
+		}
+	})
 }
 
 func TestConcurrentStatusTransitions(t *testing.T) {

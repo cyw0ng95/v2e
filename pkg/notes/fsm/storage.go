@@ -226,3 +226,178 @@ func (s *BoltDBStorage) GetAllMemoryFSMStates() (map[string]*MemoryFSMState, err
 
 	return states, nil
 }
+
+// ValidateMemoryFSMState validates the integrity of a single memory FSM state
+func (s *BoltDBStorage) ValidateMemoryFSMState(urn string) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(BucketMemoryFSMStates)
+		if b == nil {
+			return fmt.Errorf("bucket %s not found", BucketMemoryFSMStates)
+		}
+
+		data := b.Get([]byte(urn))
+		if data == nil {
+			return fmt.Errorf("state not found for URN: %s", urn)
+		}
+
+		var state MemoryFSMState
+		if err := json.Unmarshal(data, &state); err != nil {
+			return fmt.Errorf("failed to unmarshal state: %w", err)
+		}
+
+		// Validate URN matches
+		if state.URN != urn {
+			return fmt.Errorf("state URN mismatch: expected %s, got %s", urn, state.URN)
+		}
+
+		// Validate state is a known memory state
+		if !isValidMemoryState(state.State) {
+			return fmt.Errorf("invalid memory state: %s", state.State)
+		}
+
+		// Validate timestamps
+		if state.CreatedAt.IsZero() {
+			return fmt.Errorf("created_at timestamp is zero")
+		}
+		if state.UpdatedAt.IsZero() {
+			return fmt.Errorf("updated_at timestamp is zero")
+		}
+
+		// Validate state history is ordered by timestamp
+		for i := 1; i < len(state.StateHistory); i++ {
+			if state.StateHistory[i].Timestamp.Before(state.StateHistory[i-1].Timestamp) {
+				return fmt.Errorf("state history not ordered: entry %d timestamp before entry %d", i, i-1)
+			}
+		}
+
+		return nil
+	})
+}
+
+// ValidateLearningFSMState validates the integrity of the learning FSM state
+func (s *BoltDBStorage) ValidateLearningFSMState() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(BucketLearningFSMState)
+		if b == nil {
+			return fmt.Errorf("bucket %s not found", BucketLearningFSMState)
+		}
+
+		data := b.Get([]byte("current"))
+		if data == nil {
+			return fmt.Errorf("no learning state found")
+		}
+
+		var state LearningFSMState
+		if err := json.Unmarshal(data, &state); err != nil {
+			return fmt.Errorf("failed to unmarshal state: %w", err)
+		}
+
+		// Validate strategy is valid
+		if !isValidLearningStrategy(state.CurrentStrategy) {
+			return fmt.Errorf("invalid learning strategy: %s", state.CurrentStrategy)
+		}
+
+		// Validate timestamps
+		if state.SessionStart.IsZero() {
+			return fmt.Errorf("session_start timestamp is zero")
+		}
+
+		// Validate current item URN is valid if set
+		if state.CurrentItemURN != "" {
+			// URN should be non-empty and have valid format
+			if len(state.CurrentItemURN) < 10 {
+				return fmt.Errorf("current_item_urn appears invalid: %s", state.CurrentItemURN)
+			}
+		}
+
+		// Validate viewed items URNs are not empty
+		for _, urn := range state.ViewedItems {
+			if urn == "" {
+				return fmt.Errorf("viewed items contains empty URN")
+			}
+		}
+
+		return nil
+	})
+}
+
+// ValidateAllMemoryFSMStates validates all stored memory FSM states
+func (s *BoltDBStorage) ValidateAllMemoryFSMStates() (map[string]error, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	errors := make(map[string]error)
+
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(BucketMemoryFSMStates)
+		if b == nil {
+			return fmt.Errorf("bucket %s not found", BucketMemoryFSMStates)
+		}
+
+		return b.ForEach(func(k, v []byte) error {
+			urn := string(k)
+			data := v
+
+			var state MemoryFSMState
+			if err := json.Unmarshal(data, &state); err != nil {
+				errors[urn] = fmt.Errorf("failed to unmarshal state: %w", err)
+				return nil
+			}
+
+			// Validate state fields
+			if state.URN != urn {
+				errors[urn] = fmt.Errorf("state URN mismatch: expected %s, got %s", urn, state.URN)
+				return nil
+			}
+
+			if !isValidMemoryState(state.State) {
+				errors[urn] = fmt.Errorf("invalid memory state: %s", state.State)
+				return nil
+			}
+
+			if state.CreatedAt.IsZero() {
+				errors[urn] = fmt.Errorf("created_at timestamp is zero")
+				return nil
+			}
+
+			if state.UpdatedAt.IsZero() {
+				errors[urn] = fmt.Errorf("updated_at timestamp is zero")
+				return nil
+			}
+
+			return nil
+		})
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return errors, nil
+}
+
+// isValidMemoryState checks if a memory state string is valid
+func isValidMemoryState(state MemoryState) bool {
+	switch state {
+	case MemoryStateDraft, MemoryStateNew, MemoryStateLearning, MemoryStateReviewed, MemoryStateLearned, MemoryStateMastered, MemoryStateArchived:
+		return true
+	default:
+		return false
+	}
+}
+
+// isValidLearningStrategy checks if a learning strategy string is valid
+func isValidLearningStrategy(strategy string) bool {
+	switch strategy {
+	case "bfs", "dfs":
+		return true
+	default:
+		return false
+	}
+}

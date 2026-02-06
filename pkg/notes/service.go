@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/notes/fsm"
 	"gorm.io/gorm"
 )
 
@@ -838,31 +839,39 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 
 	// Determine logical next status from current state and repetition
 	var nextStatus CardStatus
+	var nextFSMState fsm.MemoryState
 	currentStatus := CardStatus(card.Status)
 
 	// For new cards, move to learning state
 	if currentStatus == StatusNew {
 		nextStatus = StatusLearning
+		nextFSMState = fsm.MemoryStateLearning
 	} else if currentStatus == StatusLearning {
 		// Cards in learning transition to reviewed or mastered if enough repetitions
 		if card.Repetition >= 5 {
 			nextStatus = StatusMastered
+			nextFSMState = fsm.MemoryStateMastered
 		} else {
 			nextStatus = StatusReviewed
+			nextFSMState = fsm.MemoryStateReviewed
 		}
 	} else if currentStatus == StatusReviewed {
 		// Reviewed cards can go back to learning (more practice) or mastered (if enough repetitions)
 		if card.Repetition >= 5 {
 			nextStatus = StatusMastered
+			nextFSMState = fsm.MemoryStateMastered
 		} else {
 			nextStatus = StatusLearning
+			nextFSMState = fsm.MemoryStateLearning
 		}
 	} else {
 		// Default fallback for other states
 		if card.Repetition >= 5 {
 			nextStatus = StatusMastered
+			nextFSMState = fsm.MemoryStateMastered
 		} else {
 			nextStatus = StatusReviewed
+			nextFSMState = fsm.MemoryStateReviewed
 		}
 	}
 
@@ -888,6 +897,7 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 				"repetition":  card.Repetition,
 				"next_review": card.NextReview,
 				"status":      string(nextStatus),
+				"fsm_state":   string(nextFSMState),
 				"version":     cur.Version + 1,
 			})
 		if res.Error != nil {
@@ -907,6 +917,24 @@ func (s *MemoryCardService) UpdateCardAfterReview(ctx context.Context, cardID ui
 	}
 
 	return nil
+}
+
+// statusToFSMState converts CardStatus to MemoryState
+func statusToFSMState(status CardStatus) fsm.MemoryState {
+	switch status {
+	case StatusNew:
+		return fsm.MemoryStateNew
+	case StatusLearning:
+		return fsm.MemoryStateLearning
+	case StatusReviewed:
+		return fsm.MemoryStateReviewed
+	case StatusMastered:
+		return fsm.MemoryStateMastered
+	case StatusArchived:
+		return fsm.MemoryStateArchived
+	default:
+		return fsm.MemoryStateNew
+	}
 }
 
 // transitionCardStatusTx performs a versioned status transition within an existing transaction.
