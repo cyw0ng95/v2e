@@ -154,42 +154,6 @@
       "major_class": "proc",
       "minor_class": "remote"
     },
-    "CONFIG_CWE_RAWPATH": {
-      "description": "Raw path for CWE data",
-      "type": "string",
-      "default": "assets/cwe-raw.json",
-      "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/cwe.buildCWERawPath",
-      "major_class": "proc",
-      "minor_class": "local"
-    },
-    "CONFIG_CAPEC_XMLPATH": {
-      "description": "XML path for CAPEC data",
-      "type": "string",
-      "default": "assets/capec_contents_latest.xml",
-      "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildCAPECXMLPath",
-      "major_class": "proc",
-      "minor_class": "local"
-    },
-    "CONFIG_CAPEC_XSDPATH": {
-      "description": "XSD path for CAPEC data",
-      "type": "string",
-      "default": "assets/capec_schema_latest.xsd",
-      "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildCAPECXSDPath",
-      "major_class": "proc",
-      "minor_class": "local"
-    },
-    "CONFIG_CAPEC_XSDENABLED": {
-      "description": "Enable XSD validation for CAPEC data",
-      "type": "bool",
-      "default": false,
-      "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildXSDValidation",
-      "major_class": "proc",
-      "minor_class": "local"
-    },
     "CONFIG_SESSION_DBPATH": {
       "description": "Database path for session data",
       "type": "string",
@@ -198,24 +162,6 @@
       "target": "github.com/cyw0ng95/v2e/pkg/meta.buildSessionDBPath",
       "major_class": "proc",
       "minor_class": "meta"
-    },
-    "CONFIG_CWE_VIEWURL": {
-      "description": "URL for fetching CWE view data",
-      "type": "string",
-      "default": "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip",
-      "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/cwe.buildViewURL",
-      "major_class": "proc",
-      "minor_class": "remote"
-    },
-    "CONFIG_LEARNING_DBPATH": {
-      "description": "Database path for learning progress tracking",
-      "type": "string",
-      "default": "./learning.db",
-      "method": "ldflags",
-      "target": "github.com/cyw0ng95/v2e/pkg/cve.local.buildLearningDBPath",
-      "major_class": "proc",
-      "minor_class": "local"
     },
     "CONFIG_BROKER_UDS_BASEPATH": {
       "description": "Base path for Unix Domain Socket files for broker transport manager",

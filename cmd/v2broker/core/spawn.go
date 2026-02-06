@@ -431,17 +431,10 @@ func setProcessEnv(cmd *exec.Cmd, processID string) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CVE_DB_PATH=%s", cve.DefaultBuildCVEDBPath()))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_DB_PATH=%s", cwe.DefaultBuildCWEDBPath()))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_DB_PATH=%s", capec.DefaultBuildCAPECDBPath()))
-		cmd.Env = append(cmd.Env, fmt.Sprintf("CWE_RAW_PATH=%s", cwe.DefaultBuildCWERawPath()))
-		cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_XML_PATH=%s", capec.DefaultBuildCAPECXMLPath()))
-		cmd.Env = append(cmd.Env, fmt.Sprintf("CAPEC_XSD_PATH=%s", capec.DefaultBuildCAPECXSDPath()))
-		if capec.DefaultBuildXSDValidation() {
-			cmd.Env = append(cmd.Env, "CAPEC_STRICT_XSD=1")
-		}
 	case "meta":
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SESSION_DB_PATH=%s", meta.DefaultBuildSessionDBPath()))
 	case "remote":
 		// NVD_API_KEY is no longer supported
-		cmd.Env = append(cmd.Env, fmt.Sprintf("VIEW_FETCH_URL=%s", cwe.DefaultBuildViewURL()))
 	case "access":
 		// Note: Static dir is now build-time config, so broker doesn't override it with runtime config
 		// The access service will use its build-time static dir
