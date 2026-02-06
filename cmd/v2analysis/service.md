@@ -28,6 +28,32 @@ The service provides readonly access to data from other services for analysis pu
 - `exploits`: Exploitation relationship
 - `contains`: Containment relationship
 
+### Technical Implementation
+
+**Graph Structure:**
+- Nodes stored in a map: `map[string]*Node` (keyed by URN string)
+- Outgoing edges: `map[string][]*Edge` (from URN -> list of edges)
+- Incoming edges: `map[string][]*Edge` (to URN -> list of edges for reverse lookup)
+- Bidirectional indexing enables efficient neighbor queries
+
+**Concurrency:**
+- Uses `sync.RWMutex` for thread-safe operations
+- Read operations (GetNode, GetNeighbors) use RLock for concurrent reads
+- Write operations (AddNode, AddEdge) use exclusive Lock
+- All exported slices are copied to prevent concurrent modification
+
+**Path Finding:**
+- Breadth-First Search (BFS) algorithm
+- Finds shortest path in directed graph
+- Tracks visited nodes to prevent cycles
+- Returns ordered path from source to destination
+
+**Data Integration:**
+- Communicates with local service via RPC for CVE/CWE/CAPEC/ATT&CK data
+- Communicates with meta service via RPC for UEE status
+- All data access is readonly to ensure integrity
+- Graph can be rebuilt from fresh data at any time
+
 ## Available RPC Methods
 
 ### 1. RPCGetGraphStats
@@ -200,10 +226,94 @@ v2e::<provider>::<type>::<atomic_id>
 2. Build from data source: `RPCBuildCVEGraph` with desired limit
 3. Query graph statistics: `RPCGetGraphStats`
 
+**Example workflow via /restful/rpc endpoint:**
+```bash
+# 1. Clear the graph
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"method": "RPCClearGraph", "target": "analysis"}'
+
+# 2. Build graph from CVE data (limit 500)
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"method": "RPCBuildCVEGraph", "target": "analysis", "params": {"limit": 500}}'
+
+# 3. Check graph statistics
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"method": "RPCGetGraphStats", "target": "analysis"}'
+```
+
 ### Analyzing Relationships
 1. Find related entities: `RPCGetNeighbors` for a specific URN
 2. Trace attack paths: `RPCFindPath` between a CVE and ATT&CK technique
 3. List all vulnerabilities: `RPCGetNodesByType` with type="cve"
+
+**Example: Finding related weaknesses for a vulnerability**
+```bash
+# Get neighbors of a CVE
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCGetNeighbors",
+    "target": "analysis",
+    "params": {"urn": "v2e::nvd::cve::CVE-2024-1234"}
+  }'
+
+# Find path between CVE and ATT&CK technique
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCFindPath",
+    "target": "analysis",
+    "params": {
+      "from": "v2e::nvd::cve::CVE-2024-1234",
+      "to": "v2e::mitre::attack::T1566"
+    }
+  }'
+```
+
+### Manual Graph Construction
+You can also manually build custom graphs:
+
+```bash
+# Add a CVE node
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCAddNode",
+    "target": "analysis",
+    "params": {
+      "urn": "v2e::nvd::cve::CVE-2024-1234",
+      "properties": {"severity": "HIGH", "description": "XSS vulnerability"}
+    }
+  }'
+
+# Add a CWE node
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCAddNode",
+    "target": "analysis",
+    "params": {
+      "urn": "v2e::mitre::cwe::CWE-79",
+      "properties": {"name": "Cross-site Scripting"}
+    }
+  }'
+
+# Create a reference edge
+curl -X POST http://localhost:8080/restful/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "RPCAddEdge",
+    "target": "analysis",
+    "params": {
+      "from": "v2e::nvd::cve::CVE-2024-1234",
+      "to": "v2e::mitre::cwe::CWE-79",
+      "type": "references"
+    }
+  }'
+```
 
 ### Monitoring UEE
 1. Check UEE status: `RPCGetUEEStatus`
