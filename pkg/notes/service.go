@@ -198,9 +198,11 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 		}
 
 		// Auto-create a memory card for this bookmark using title/description
+		// Generate unique URN for the memory card (v2e::card::<id>)
+		cardURN := GenerateURN("card", "", "") // Will be set to actual ID after creation
 		card := &MemoryCardModel{
 			BookmarkID: bookmark.ID,
-			URN:        urnStr,
+			URN:        cardURN,
 			Front:      title,
 			Back:       description,
 			EaseFactor: 2.5,
@@ -211,6 +213,11 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 		}
 		if err := tx.Create(card).Error; err != nil {
 			return fmt.Errorf("failed to create memory card: %w", err)
+		}
+		// Update card URN with actual ID
+		card.URN = GetCardURN(card.ID)
+		if err := tx.Save(card).Error; err != nil {
+			return fmt.Errorf("failed to update memory card URN: %w", err)
 		}
 		createdCard = card
 
