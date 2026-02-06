@@ -6,8 +6,6 @@
 |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|
 | 142 | website           | Critical| Fix missing node_modules - all dependencies show as MISSING                           | 10       | 1        |
 | 143 | website           | Critical| Fix TypeScript compiler accessibility - tsc not found                                  | 10       | 1        |
-| 014 | cmd/v2broker     | Code    | Implement batch size predictor based on historical data patterns                     | 600      | 1        |
-| 015 | cmd/v2broker     | Code    | Add dynamic batch size adjustment in Optimizer                                      | 400      | 1        |
 | 020 | cmd/v2broker     | Code    | Implement segmented locks (sharded locks) for large maps                           | 600      | 1        |
 | 022 | cmd/v2broker     | Code    | Introduce Optimistic Concurrency Control (OCC) for read-heavy scenarios                | 600      | 1        |
 | 038 | cmd/v2broker     | Code    | Research and select lock-free hash map implementation (Cuckoo Filter or SwissMap)      | 600      | 1        |
@@ -147,6 +145,8 @@
 | 085 | cmd/v2broker/transport | Test    | Add comprehensive tests for shared memory correctness                | 2026-02-06 |
 | 086 | cmd/v2broker/transport | Perf    | Benchmark high-frequency message transmission latency (target: 30-40% reduction) | 2026-02-06 |
 | 087 | cmd/v2broker/transport | Docs    | Document shared memory size requirements and tuning parameters         | 2026-02-06 |
+| 014 | cmd/v2broker/perf    | Code    | Implement batch size predictor based on historical data patterns       | 2026-02-06 |
+| 015 | cmd/v2broker/perf    | Code    | Add dynamic batch size adjustment in Optimizer                        | 2026-02-06 |
 | 088 | cmd/v2broker/monitor | Code    | Research eBPF probes relevant to v2e architecture                 | 2026-02-06 |
 | 089 | cmd/v2broker/monitor | Code    | Implement eBPF-based kernel-level monitoring for key system calls  | 2026-02-06 |
 | 090 | cmd/v2broker/monitor | Code    | Create flame graph generation tool for hotspot identification           | 2026-02-06 |

@@ -153,6 +153,12 @@ type Optimizer struct {
 
 	// Analysis optimizer for service-level optimization
 	analysisOptimizer *AnalysisOptimizer
+
+	// Batch size predictor for dynamic batch sizing (Task 014)
+	batchPredictor *BatchSizePredictor
+
+	// Dynamic batch size adjustment enabled flag (Task 015)
+	dynamicBatchSizeEnabled bool
 }
 
 func (o *Optimizer) EnableAdaptiveOptimization() {
@@ -218,6 +224,17 @@ func (o *Optimizer) applyAdaptedParameters() {
 		o.flushInterval = flushInterval
 		if o.logger != nil {
 			o.logger.Info("Adjusted flush interval to: %v", flushInterval)
+		}
+	}
+
+	// Task 015: Apply dynamic batch size adjustment if enabled
+	if o.dynamicBatchSizeEnabled && o.batchPredictor != nil {
+		predictedBatchSize := o.batchPredictor.PredictBatchSize()
+		if predictedBatchSize != o.batchSize {
+			if o.logger != nil {
+				o.logger.Info("Dynamic batch size adjustment: %d -> %d", o.batchSize, predictedBatchSize)
+			}
+			o.batchSize = predictedBatchSize
 		}
 	}
 }
@@ -316,17 +333,19 @@ func New(router routing.Router) *Optimizer {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	opt := &Optimizer{
-		router:            router,
-		statsSyncInterval: 100 * time.Millisecond,
-		optimizedMessages: make(chan *proc.Message, 1000),
-		bufferCap:         1000,
-		numWorkers:        n,
-		ctx:               ctx,
-		cancel:            cancel,
-		monitor:           sched.NewSystemMonitor(5 * time.Second),
-		adaptiveOpt:       sched.NewAdaptiveOptimizer(),
-		adaptationFreq:    10 * time.Second,
-		lastAdaptation:    time.Now(),
+		router:                  router,
+		statsSyncInterval:       100 * time.Millisecond,
+		optimizedMessages:       make(chan *proc.Message, 1000),
+		bufferCap:               1000,
+		numWorkers:              n,
+		ctx:                     ctx,
+		cancel:                  cancel,
+		monitor:                 sched.NewSystemMonitor(5 * time.Second),
+		adaptiveOpt:             sched.NewAdaptiveOptimizer(),
+		adaptationFreq:          10 * time.Second,
+		lastAdaptation:          time.Now(),
+		batchPredictor:          NewBatchSizePredictor(1, 100, 1000), // Task 014
+		dynamicBatchSizeEnabled: false,                               // Task 015: Disabled by default
 	}
 	opt.statsSyncTicker = time.NewTicker(opt.statsSyncInterval)
 	for i := 0; i < opt.numWorkers; i++ {
@@ -397,21 +416,23 @@ func NewWithConfig(router routing.Router, cfg Config) *Optimizer {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	opt := &Optimizer{
-		router:            router,
-		statsSyncInterval: cfg.StatsInterval,
-		optimizedMessages: make(chan *proc.Message, cfg.BufferCap),
-		bufferCap:         cfg.BufferCap,
-		numWorkers:        cfg.NumWorkers,
-		offerPolicy:       cfg.OfferPolicy,
-		offerTimeout:      cfg.OfferTimeout,
-		batchSize:         cfg.BatchSize,
-		flushInterval:     cfg.FlushInterval,
-		ctx:               ctx,
-		cancel:            cancel,
-		monitor:           sched.NewSystemMonitor(5 * time.Second),
-		adaptiveOpt:       sched.NewAdaptiveOptimizer(),
-		adaptationFreq:    cfg.AdaptationFreq,
-		lastAdaptation:    time.Now(),
+		router:                  router,
+		statsSyncInterval:       cfg.StatsInterval,
+		optimizedMessages:       make(chan *proc.Message, cfg.BufferCap),
+		bufferCap:               cfg.BufferCap,
+		numWorkers:              cfg.NumWorkers,
+		offerPolicy:             cfg.OfferPolicy,
+		offerTimeout:            cfg.OfferTimeout,
+		batchSize:               cfg.BatchSize,
+		flushInterval:           cfg.FlushInterval,
+		ctx:                     ctx,
+		cancel:                  cancel,
+		monitor:                 sched.NewSystemMonitor(5 * time.Second),
+		adaptiveOpt:             sched.NewAdaptiveOptimizer(),
+		adaptationFreq:          cfg.AdaptationFreq,
+		lastAdaptation:          time.Now(),
+		batchPredictor:          NewBatchSizePredictor(1, 100, 1000), // Task 014
+		dynamicBatchSizeEnabled: false,                               // Task 015: Disabled by default
 	}
 	opt.statsSyncTicker = time.NewTicker(opt.statsSyncInterval)
 	for i := 0; i < opt.numWorkers; i++ {
@@ -521,6 +542,16 @@ func (o *Optimizer) worker(id int) {
 			if len(batch) > 0 {
 				avgProcessingTime := processingDuration / time.Duration(len(batch))
 				o.monitor.AddLatencySample(avgProcessingTime)
+			}
+		}
+
+		// Task 015: Record batch metrics for prediction
+		if o.batchPredictor != nil && o.dynamicBatchSizeEnabled && len(batch) > 0 {
+			// Calculate throughput for this batch (messages processed per millisecond)
+			batchDurationMs := float64(processingDuration) / float64(time.Millisecond)
+			throughput := float64(len(batch)) / batchDurationMs
+			if batchDurationMs > 0 && throughput > 0 {
+				o.batchPredictor.RecordBatch(len(batch), throughput, processingDuration, 0)
 			}
 		}
 	}
@@ -709,5 +740,59 @@ func (o *Optimizer) conflictMonitorLoop() {
 			}
 			return
 		}
+	}
+}
+
+// EnableDynamicBatchSize enables dynamic batch size adjustment (Task 015)
+func (o *Optimizer) EnableDynamicBatchSize(minBatch, maxBatch int) {
+	o.adaptationMu.Lock()
+	defer o.adaptationMu.Unlock()
+
+	if minBatch < 1 {
+		minBatch = 1
+	}
+	if maxBatch < minBatch {
+		maxBatch = minBatch * 10
+	}
+
+	o.batchPredictor = NewBatchSizePredictor(minBatch, maxBatch, 1000)
+	o.dynamicBatchSizeEnabled = true
+
+	if o.logger != nil {
+		o.logger.Info("Dynamic batch size adjustment enabled: [%d, %d]", minBatch, maxBatch)
+	}
+}
+
+// DisableDynamicBatchSize disables dynamic batch size adjustment (Task 015)
+func (o *Optimizer) DisableDynamicBatchSize() {
+	o.adaptationMu.Lock()
+	defer o.adaptationMu.Unlock()
+
+	o.dynamicBatchSizeEnabled = false
+
+	if o.logger != nil {
+		o.logger.Info("Dynamic batch size adjustment disabled")
+	}
+}
+
+// GetBatchPredictorMetrics returns metrics from the batch size predictor (Task 014/015)
+func (o *Optimizer) GetBatchPredictorMetrics() map[string]interface{} {
+	o.adaptationMu.Lock()
+	defer o.adaptationMu.Unlock()
+
+	if o.batchPredictor == nil {
+		return map[string]interface{}{
+			"enabled": false,
+		}
+	}
+
+	trend, confidence := o.batchPredictor.GetTrendInfo()
+
+	return map[string]interface{}{
+		"enabled":              o.dynamicBatchSizeEnabled,
+		"current_batch_size":   o.batchPredictor.GetCurrentBatchSize(),
+		"predicted_batch_size": o.batchPredictor.PredictBatchSize(),
+		"trend":                int(trend),
+		"trend_confidence":     confidence,
 	}
 }
