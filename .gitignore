@@ -26,6 +26,7 @@ v2meta
 v2broker
 v2access
 v2sysmon
+v2analysis
 
 # Test binary, built with `go test -c`
 *.test

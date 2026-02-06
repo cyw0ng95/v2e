@@ -103,7 +103,7 @@
     "CONFIG_BROKER_BOOTBINS": {
       "description": "Comma-separated list of binaries to boot when detect_bins is false",
       "type": "string",
-      "default": "v2access,v2remote,v2local,v2meta,v2sysmon",
+      "default": "v2access,v2remote,v2local,v2meta,v2sysmon,v2analysis",
       "method": "ldflags",
       "target": "github.com/cyw0ng95/v2e/cmd/v2broker.core.buildBootBins",
       "major_class": "broker",
