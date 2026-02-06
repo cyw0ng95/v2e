@@ -141,14 +141,21 @@ graph TB
 
     subgraph "Backend Services"
         C[Access Service]
-        D[Meta Service]
+        D[Meta Service - UEE]
         E[Local Service]
         F[Remote Service]
         G[SysMon Service]
+        H[Analysis Service - UDA]
     end
 
-    subgraph "Transport Layer"
+    subgraph "Transport Layer - UME"
         UDS[Unix Domain Sockets]
+        RPC[RPC Message Protocol]
+    end
+
+    subgraph "Building Blocks"
+        URN[URN - Atomic Identifiers]
+        MSG[Message Types]
     end
 
     A <--> C
@@ -157,6 +164,7 @@ graph TB
     B <--> E
     B <--> F
     B <--> G
+    B <--> H
     B <--> Opt
     B <--> UDS
     UDS <--> C
@@ -164,9 +172,229 @@ graph TB
     UDS <--> E
     UDS <--> F
     UDS <--> G
+    UDS <--> H
+    
+    RPC -.-> UDS
+    URN -.-> D
+    URN -.-> H
+    MSG -.-> RPC
+
+    style D fill:#90EE90,stroke:#333,stroke-width:2px
+    style H fill:#87CEEB,stroke:#333,stroke-width:2px
+    style UDS fill:#FFE4B5,stroke:#333,stroke-width:2px
+    style URN fill:#DDA0DD,stroke:#333,stroke-width:2px
 ```
 
 The system utilizes a Unix Domain Sockets (UDS) transport layer with 0600 permissions for secure inter-process communication. The broker incorporates an advanced adaptive optimizer that dynamically adjusts performance parameters based on system load and message throughput.
+
+## Architectural Frameworks
+
+The v2e system is built on three unified architectural frameworks, with URN and RPC serving as foundational building blocks. This layered architecture provides separation of concerns while enabling comprehensive security data management and analysis.
+
+### Framework Hierarchy
+
+```mermaid
+graph TB
+    subgraph "Top-Level Frameworks"
+        UEE[UEE - Unified ETL Engine]
+        UDA[UDA - Unified Data Analysis]
+        UME[UME - Unified Message Exchanging]
+    end
+
+    subgraph "Building Blocks"
+        URN[URN - Atomic Identifiers]
+        RPC[RPC - Remote Procedure Call]
+    end
+
+    subgraph "Services"
+        Meta[Meta Service]
+        Analysis[Analysis Service]
+        Broker[Broker + Transport]
+    end
+
+    UEE --> Meta
+    UDA --> Analysis
+    UME --> Broker
+
+    Meta -.uses.-> URN
+    Meta -.uses.-> RPC
+    Analysis -.uses.-> URN
+    Analysis -.uses.-> RPC
+    Broker -.implements.-> RPC
+
+    URN -.foundation.-> UEE
+    URN -.foundation.-> UDA
+    RPC -.foundation.-> UME
+
+    style UEE fill:#90EE90,stroke:#333,stroke-width:3px
+    style UDA fill:#87CEEB,stroke:#333,stroke-width:3px
+    style UME fill:#FFE4B5,stroke:#333,stroke-width:3px
+    style URN fill:#DDA0DD,stroke:#333,stroke-width:2px
+    style RPC fill:#F0E68C,stroke:#333,stroke-width:2px
+```
+
+### Building Blocks
+
+#### URN (Uniform Resource Name) - Atomic Identifiers
+
+URNs provide hierarchical, immutable identification for all security data entities in the v2e system.
+
+**Format**: `v2e::<provider>::<type>::<atomic_id>`
+
+**Purpose**:
+- **Immutable Identity**: Unique identification across all services and databases
+- **Type Safety**: Structured validation of provider, type, and ID components
+- **Cross-References**: Enable relationship tracking between CVE, CWE, CAPEC, ATT&CK, and SSG entities
+- **Resumable Workflows**: Support checkpoint/resume operations in ETL pipelines
+- **Graph Nodes**: Serve as node identifiers in the UDA relationship graph
+
+**Examples**:
+```
+v2e::nvd::cve::CVE-2024-12233       # National Vulnerability Database CVE
+v2e::mitre::cwe::CWE-79             # MITRE Common Weakness Enumeration
+v2e::mitre::capec::CAPEC-66         # MITRE Attack Pattern
+v2e::mitre::attack::T1566           # MITRE ATT&CK Technique
+v2e::ssg::ssg::rhel9-guide-ospp     # SCAP Security Guide
+```
+
+**Supported Providers**: `nvd`, `mitre`, `ssg`  
+**Supported Types**: `cve`, `cwe`, `capec`, `attack`, `ssg`
+
+**Implementation**: See [pkg/urn](pkg/urn) for parsing, validation, and utilities.
+
+#### RPC (Remote Procedure Call) - Inter-Service Communication
+
+RPC provides the foundational communication protocol for all inter-service interactions, implemented through structured JSON messages over stdin/stdout.
+
+**Message Types**:
+- **Request**: Method invocation with parameters
+- **Response**: Successful result from a request
+- **Event**: Asynchronous notification (e.g., quota updates, state changes)
+- **Error**: Error response with detailed information
+
+**Message Structure**:
+```json
+{
+  "type": "request|response|event|error",
+  "id": "unique-message-id",
+  "payload": { ... },
+  "source": "service-id",
+  "target": "service-id",
+  "correlation_id": "request-response-matching"
+}
+```
+
+**Key Features**:
+- **Broker-Mediated**: All RPC messages routed through the central broker
+- **Correlation IDs**: Request-response matching for asynchronous operations
+- **Binary Protocol**: Optional 128-byte header with JSON/GOB/PLAIN encoding
+- **Timeout Handling**: Configurable timeouts with automatic cleanup
+- **Pooled Objects**: Message object pooling for reduced allocations
+
+**Implementation**: See [pkg/proc/message.go](pkg/proc/message.go) and [pkg/rpc](pkg/rpc).
+
+### Top-Level Frameworks
+
+#### UEE (Unified ETL Engine)
+
+**Service**: Meta Service ([cmd/v2meta](cmd/v2meta))  
+**Purpose**: Resource-aware ETL orchestration for security data ingestion
+
+**Key Concepts**:
+- **Master-Slave Architecture**: Broker manages resources, Meta orchestrates ETL logic
+- **Hierarchical FSM**: Macro FSM (orchestration) + Provider FSMs (worker execution)
+- **Worker Permits**: Global concurrency control with dynamic quota management
+- **Auto-Recovery**: Resume providers from checkpoints after restart
+- **URN Checkpointing**: Persist progress every 100 items using URN identifiers
+
+**Provider FSM States**:
+```
+IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → TERMINATED
+```
+
+**Data Providers**:
+- **CVEProvider**: NVD API with incremental `lastModStartDate` updates
+- **CWEProvider**: MITRE CWE from `assets/cwe-raw.json`
+- **CAPECProvider**: MITRE CAPEC from XML with XSD validation
+- **ATTACKProvider**: MITRE ATT&CK techniques from XLSX
+
+**Advanced Features**:
+- Field-level diffing (reduces I/O by 50-80% on updates)
+- Circuit breaker (auto-pause on 10% error threshold)
+- Graceful shutdown with checkpoint persistence
+- Dead Letter Queue for failed items
+
+See [Unified ETL Engine (UEE) Architecture](#unified-etl-engine-uee-architecture) section below for details.
+
+#### UDA (Unified Data Analysis)
+
+**Service**: Analysis Service ([cmd/v2analysis](cmd/v2analysis))  
+**Purpose**: URN-based relationship graph analysis and security entity correlation
+
+**Key Concepts**:
+- **In-Memory Graph Database**: URN-based nodes with typed directed edges
+- **Relationship Types**: references, related_to, mitigates, exploits, contains
+- **Path Finding**: BFS algorithm for attack path discovery (CVE → CWE → CAPEC → ATT&CK)
+- **FSM-Based Lifecycle**: GraphFSM (graph operations) + AnalyzeFSM (service lifecycle)
+- **BoltDB Persistence**: Save/load graph state with metadata tracking
+
+**Graph Operations**:
+- Add/retrieve nodes and edges by URN
+- Find neighbors (incoming/outgoing connections)
+- Find shortest path between entities
+- Filter nodes by type or provider
+- Query graph statistics
+
+**Integration with UEE**:
+- Monitor UEE status via RPC to meta service
+- Build graphs from fresh ETL data
+- Analyze relationships after data population
+
+**Performance**:
+- AddNode: ~150-200 ns/op
+- GetNode: ~100-150 ns/op
+- FindPath: ~10-15 µs/op (4-node path)
+- Thread-safe with RWMutex for concurrent reads
+
+**Example Use Case**: Trace attack paths from a specific CVE through CWE weaknesses and CAPEC attack patterns to ATT&CK techniques, identifying the complete attack chain.
+
+See [cmd/v2analysis/service.md](cmd/v2analysis/service.md) for complete RPC API specification.
+
+#### UME (Unified Message Exchanging)
+
+**Service**: Broker Service ([cmd/v2broker](cmd/v2broker))  
+**Purpose**: High-performance message routing and transport management
+
+**Key Concepts**:
+- **Binary Message Protocol**: 128-byte fixed header with JSON/GOB/PLAIN encoding
+- **Unix Domain Sockets**: 0600 permissions for secure IPC
+- **Adaptive Optimization**: Dynamic tuning of buffers, batching, and worker pools
+- **Message Statistics**: Per-process tracking, encoding distribution, wire-size telemetry
+
+**Transport Features**:
+- **Zero-Copy Operations**: Linux `splice()` and `sendfile()` syscalls
+- **Connection Pooling**: Efficient socket reuse
+- **Backpressure Handling**: Dynamic throttling based on buffer saturation
+- **Linux Optimizations**: CPU affinity, thread pinning, `madvise()` hints
+
+**Message Routing**:
+- Source/Target-based routing through process map
+- Correlation ID tracking for request-response matching
+- Broadcast support for events (e.g., quota updates)
+- Dead process cleanup and zombie reaping
+
+**Performance Benchmarks**:
+- JSON encoding: 418 ns/op (marshal), 236 ns/op (unmarshal)
+- GOB encoding: 1286 ns/op (marshal), 1592 ns/op (unmarshal)
+- Round-trip latency: ~2.1µs (JSON), ~4.6µs (GOB)
+
+**Adaptive Algorithms**:
+- Worker count: CPU utilization + queue depth
+- Buffer capacity: Throughput patterns
+- Batch size: Throughput vs. latency trade-off
+- Flush interval: Latency requirements
+
+See [Binary Message Protocol](#binary-message-protocol) section above for encoding details.
 
 ### Unified ETL Engine (UEE) Architecture
 
@@ -343,7 +571,9 @@ Meta Service (Slave)              Broker (Master)
 
 ### Core Services
 
-- **Broker Service** ([cmd/v2broker](cmd/v2broker)): The central orchestrator responsible for:
+The v2e system consists of six core backend services, each implementing specific functionality within the architectural frameworks:
+
+- **Broker Service** ([cmd/v2broker](cmd/v2broker)) - **UME (Unified Message Exchanging)**: The central orchestrator responsible for:
   - Spawning and managing all subprocess services with robust supervision and restart policies
   - Routing RPC messages via a high-performance Unix Domain Sockets (UDS) transport layer
   - Utilizing `bytedance/sonic` for zero-copy JSON serialization/deserialization
@@ -352,6 +582,7 @@ Meta Service (Slave)              Broker (Master)
   - Tracking comprehensive real-time message statistics and performance metrics
   - Supporting advanced logging with dual output (console + file) and configurable log levels
   - Providing dynamic configuration of performance parameters via adaptive optimization algorithms
+  - Managing the global Worker Permit pool for UEE quota control
   - **Linux-native performance optimizations**: CPU affinity binding, thread pinning, process/I/O priority tuning for deterministic low-latency message routing (see [docs/LINUX_PERFORMANCE.md](docs/LINUX_PERFORMANCE.md))
 
 - **Access Service** ([cmd/v2access](cmd/v2access)): The REST gateway that:
@@ -360,9 +591,12 @@ Meta Service (Slave)              Broker (Master)
   - Translates HTTP requests to RPC calls and responses back
   - Provides health checks and basic service discovery
 
-- **Meta Service** ([cmd/v2meta](cmd/v2meta)): The orchestration layer that:
-  - Coordinates data population operations using the UEE (Unified ETL Engine) framework
-  - Manages ETL providers for CVE, CWE, CAPEC, and ATT&CK data sources
+- **Meta Service** ([cmd/v2meta](cmd/v2meta)) - **UEE (Unified ETL Engine)**: The ETL orchestration layer that:
+  - Coordinates data population operations using the UEE framework
+  - Manages ETL providers for CVE, CWE, CAPEC, and ATT&CK data sources with hierarchical FSM-based state management
+  - Implements field-level diffing to reduce I/O by 50-80% on incremental updates
+  - Handles URN-based checkpointing for resumable workflows
+  - Requests and manages Worker Permits from the broker
   - Performs automatic CWE and CAPEC imports at startup
   - Provides memory card management (delegates to local service):
     - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
@@ -395,6 +629,25 @@ Meta Service (Slave)              Broker (Master)
   - Monitors resource utilization across services
   - Provides health indicators for operational awareness
   - Reports system status to the frontend
+
+- **Analysis Service** ([cmd/v2analysis](cmd/v2analysis)) - **UDA (Unified Data Analysis)**: The relationship graph analysis layer that:
+  - Maintains an in-memory URN-based graph database for security entity relationships
+  - Provides graph operations: add/retrieve nodes and edges, find paths, query neighbors
+  - Implements FSM-based lifecycle management (GraphFSM + AnalyzeFSM)
+  - Persists graph state to BoltDB with automatic load/save on startup/shutdown
+  - Builds relationship graphs from CVE, CWE, CAPEC, and ATT&CK data
+  - Finds attack paths between security entities (e.g., CVE → CWE → CAPEC → ATT&CK)
+  - Monitors UEE status via RPC to meta service for coordinated data analysis
+  - Thread-safe operations with RWMutex for efficient concurrent reads
+  - Performance characteristics: ~150-200 ns/op for node operations, ~10-15 µs/op for path finding
+
+### Framework Distribution Summary
+
+| Framework | Primary Service | Secondary Services | Building Blocks Used |
+|-----------|----------------|-------------------|----------------------|
+| **UEE** (Unified ETL Engine) | v2meta | v2local, v2remote | URN (checkpointing), RPC (coordination) |
+| **UDA** (Unified Data Analysis) | v2analysis | v2local (data source) | URN (node IDs), RPC (queries) |
+| **UME** (Unified Message Exchanging) | v2broker | All services | RPC (message protocol) |
 
 ## Configuration
 
@@ -639,15 +892,20 @@ Available metrics include:
 ## Project Layout
 
 - **cmd/** - Service implementations
-  - v2broker/ - Process manager and RPC router with message optimization
+  - v2broker/ - Process manager and RPC router with message optimization (UME framework)
   - v2access/ - REST gateway (subprocess)
   - v2local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK/ASVS)
   - v2remote/ - Remote data fetching service
-  - v2meta/ - UEE orchestration and ETL provider management
+  - v2meta/ - UEE orchestration and ETL provider management (UEE framework)
   - v2sysmon/ - System monitoring service
+  - v2analysis/ - Relationship graph analysis service (UDA framework)
 - **pkg/** - Shared packages
   - proc/subprocess - Subprocess framework (stdin/stdout RPC)
   - proc/message - Optimized message handling with pooling
+  - urn/ - URN atomic identifiers (building block)
+  - rpc/ - RPC client and parameter helpers (building block)
+  - graph/ - In-memory graph database for UDA
+  - analysis/ - FSM and storage for UDA framework
   - cve/taskflow - ETL executor framework with persistent state
   - cve - CVE domain types and helpers
   - cwe - CWE domain types and helpers
@@ -696,44 +954,74 @@ Decoupled optimization module for high-throughput message handling.
 
 ```mermaid
 graph TB
-    subgraph "Broker Core"
+    subgraph "Broker Core - UME Framework"
         B[Broker]
         P[Process Map]
-        R[Router]
+        R[Message Router]
+        PM[Permit Manager]
     end
 
-    subgraph "Transport Layer"
+    subgraph "Transport Layer - UDS"
         TI{Transport Interface}
         UDS[UDSTransport]
+        BIN[Binary Protocol<br/>128-byte Header]
     end
 
     subgraph "Performance Layer"
         OPT[Optimizer]
         AO[Adaptive Optimizer]
         SM[System Monitor]
+        STATS[Message Stats]
     end
 
-    subgraph "Subprocesses"
-        S1[Service 1]
-        S2[Service 2]
+    subgraph "Backend Subprocesses"
+        ACCESS[v2access<br/>REST Gateway]
+        META[v2meta<br/>UEE Framework]
+        LOCAL[v2local<br/>Data Persistence]
+        REMOTE[v2remote<br/>Data Acquisition]
+        SYSMON[v2sysmon<br/>System Monitoring]
+        ANALYSIS[v2analysis<br/>UDA Framework]
+    end
+
+    subgraph "Messaging - RPC"
+        RPC[RPC Messages<br/>Request/Response/Event/Error]
+        CORR[Correlation ID<br/>Tracking]
     end
 
     B --> P
     B --> R
     B --> OPT
+    B --> PM
 
     OPT --> AO
     AO --> SM
+    B --> STATS
 
     P --> TI
-    TI -.-> UDS
+    TI --> UDS
+    UDS --> BIN
 
-    UDS <==> S1
-    UDS <==> S2
+    R --> RPC
+    RPC --> CORR
+
+    UDS <==> ACCESS
+    UDS <==> META
+    UDS <==> LOCAL
+    UDS <==> REMOTE
+    UDS <==> SYSMON
+    UDS <==> ANALYSIS
+
+    PM -.quota.-> META
+    META -.URN.-> ANALYSIS
+    ANALYSIS -.query.-> LOCAL
 
     style B fill:#4e8cff,stroke:#333,stroke-width:2px,color:#fff
     style OPT fill:#ff9900,stroke:#333,stroke-width:2px,color:#fff
     style TI fill:#66cc99,stroke:#333,stroke-width:2px,color:#fff
+    style META fill:#90EE90,stroke:#333,stroke-width:2px
+    style ANALYSIS fill:#87CEEB,stroke:#333,stroke-width:2px
+    style RPC fill:#F0E68C,stroke:#333,stroke-width:2px
+    style PM fill:#FFB6C1,stroke:#333,stroke-width:2px
 ```
 
 
@@ -757,12 +1045,25 @@ The broker implements intelligent adaptive tuning that responds to system and ap
 
 ## Where to Look Next
 
-- [cmd/v2broker](cmd/v2broker) — Broker implementation and message routing
-- [pkg/proc/subprocess](pkg/proc/subprocess) — Helper framework for subprocesses
-- [pkg/cve/taskflow](pkg/cve/taskflow) — ETL executor framework
-- [cmd/v2access](cmd/v2access) — REST gateway and example of using the RPC client
+### Framework Documentation
+- [Architectural Frameworks](#architectural-frameworks) — Overview of UEE, UDA, and UME frameworks
 - [cmd/v2meta](cmd/v2meta) — UEE orchestration and ETL provider management
-- [cmd/v2meta/providers](cmd/v2meta/providers) — ETL provider implementations
+- [cmd/v2analysis](cmd/v2analysis) — UDA relationship graph analysis
+- [cmd/v2broker](cmd/v2broker) — UME message routing and broker implementation
+
+### Building Blocks
+- [pkg/urn](pkg/urn) — URN atomic identifiers for entity identification
+- [pkg/rpc](pkg/rpc) — RPC client for inter-service communication
+- [pkg/proc](pkg/proc) — Message protocol and subprocess framework
+
+### Core Implementations
+- [cmd/v2meta/providers](cmd/v2meta/providers) — ETL provider implementations (CVE, CWE, CAPEC, ATT&CK)
+- [pkg/graph](pkg/graph) — In-memory graph database for relationship analysis
+- [pkg/analysis](pkg/analysis) — FSM and storage for UDA framework
+- [pkg/cve/taskflow](pkg/cve/taskflow) — ETL executor framework
+
+### Integration & Examples
+- [cmd/v2access](cmd/v2access) — REST gateway and example of using the RPC client
 - [website/](website/) — Next.js frontend implementation
 - [tests/](tests/) — Integration tests demonstrating usage patterns
 
