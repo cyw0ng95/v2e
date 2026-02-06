@@ -1,0 +1,249 @@
+{
+  "build": {
+    "config_file": ".config"
+  },
+  "features": {
+        "CONFIG_BOOKMARK_DBPATH": {
+          "description": "Database path for bookmarks and memory cards",
+          "type": "string",
+          "default": "bookmark.db",
+          "method": "ldflags",
+          "target": "github.com/cyw0ng95/v2e/pkg/notes.buildBookmarkDBPath",
+          "major_class": "proc",
+          "minor_class": "local"
+        },
+    "CONFIG_MIN_LOG_LEVEL": {
+      "description": "Minimum log level for the application",
+      "type": "string",
+      "default": "INFO",
+      "values": ["DEBUG", "INFO", "WARN", "ERROR"],
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogLevel",
+      "major_class": "logging",
+      "minor_class": "level"
+    },
+    "CONFIG_LOGGING_DIR": {
+      "description": "Directory for log files",
+      "type": "string",
+      "default": "./logs",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogDir",
+      "major_class": "logging",
+      "minor_class": "path"
+    },
+    "CONFIG_USE_LIBXML2": {
+      "description": "Enable libxml2 support for CAPEC parsing",
+      "type": "bool",
+      "default": true,
+      "method": "build-tag",
+      "major_class": "parsing",
+      "minor_class": "xml"
+    },
+    "CONFIG_USE_SONIC": {
+      "description": "Use Sonic JSON instead of original encoding/json",
+      "type": "bool",
+      "default": true,
+      "method": "build-tag",
+      "major_class": "parsing",
+      "minor_class": "json"
+    },
+    "CONFIG_LOGGING_REFRESH": {
+      "description": "Remove log directory first to ensure fresh logs",
+      "type": "bool",
+      "default": true,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildLogRefresh",
+      "major_class": "logging",
+      "minor_class": "path"
+    },
+    "CONFIG_ACCESS_SERVERADDR": {
+      "description": "Server address for access service",
+      "type": "string",
+      "default": "0.0.0.0:8080",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2access.buildServerAddr",
+      "major_class": "access",
+      "minor_class": "network"
+    },
+    "CONFIG_ACCESS_STATICDIR": {
+      "description": "Static directory for access service",
+      "type": "string",
+      "default": "website",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2access.buildStaticDir",
+      "major_class": "access",
+      "minor_class": "path"
+    },
+    "CONFIG_PROC_AUTOEXIT": {
+      "description": "If true, subprocess will gracefully exit when it detects the broker has exited",
+      "type": "bool",
+      "default": true,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildProcAutoExit",
+      "major_class": "proc",
+      "minor_class": "lifecycle"
+    },
+    "CONFIG_PROC_UDS_BASEPATH": {
+      "description": "Base path for Unix Domain Socket files for process RPC transports",
+      "type": "string",
+      "default": "/tmp/v2e_uds",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/proc/subprocess.buildProcUDSBasePath",
+      "major_class": "proc",
+      "minor_class": "comm"
+    },
+    "CONFIG_BROKER_DETECTBINS": {
+      "description": "Enable automatic binary detection for broker processes",
+      "type": "bool",
+      "default": true,
+      "method": "build-tag",
+      "major_class": "broker",
+      "minor_class": "process"
+    },
+    "CONFIG_BROKER_BOOTBINS": {
+      "description": "Comma-separated list of binaries to boot when detect_bins is false",
+      "type": "string",
+      "default": "v2access,v2remote,v2local,v2meta,v2sysmon,v2analysis",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker.core.buildBootBins",
+      "major_class": "broker",
+      "minor_class": "process"
+    },
+    "CONFIG_CVE_DBPATH": {
+      "description": "Database path for CVE data",
+      "type": "string",
+      "default": "cve.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/cve.buildCVEDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_CWE_DBPATH": {
+      "description": "Database path for CWE data",
+      "type": "string",
+      "default": "cwe.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/cwe.buildCWEDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_CAPEC_DBPATH": {
+      "description": "Database path for CAPEC data",
+      "type": "string",
+      "default": "capec.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/capec.buildCAPECDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_ASVS_DBPATH": {
+      "description": "Database path for ASVS data",
+      "type": "string",
+      "default": "asvs.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/asvs.buildASVSDBPath",
+      "major_class": "proc",
+      "minor_class": "local"
+    },
+    "CONFIG_ASVS_CSVURL": {
+      "description": "URL for fetching OWASP ASVS v5.0.0 CSV data",
+      "type": "string",
+      "default": "https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.csv",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/asvs.buildASVSCSVURL",
+      "major_class": "proc",
+      "minor_class": "remote"
+    },
+    "CONFIG_SESSION_DBPATH": {
+      "description": "Database path for session data",
+      "type": "string",
+      "default": "session.db",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/meta.buildSessionDBPath",
+      "major_class": "proc",
+      "minor_class": "meta"
+    },
+    "CONFIG_BROKER_UDS_BASEPATH": {
+      "description": "Base path for Unix Domain Socket files for broker transport manager",
+      "type": "string",
+      "default": "/tmp/v2e_uds",
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/transport.manager.buildUDSBasePath",
+      "major_class": "broker",
+      "minor_class": "transport"
+    },
+    "CONFIG_OPTIMIZER_BATCH": {
+      "description": "Batch size for message batching",
+      "type": "int",
+      "default": 1,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerBatch",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_BUFFER": {
+      "description": "Message channel buffer capacity for the broker optimizer",
+      "type": "int",
+      "default": 1000,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerBuffer",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_FLUSH": {
+      "description": "Flush interval for message batching (milliseconds)",
+      "type": "int",
+      "default": 10,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerFlush",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_POLICY": {
+      "description": "Offer policy for message handling when buffer is full (drop, wait, or reject)",
+      "type": "string",
+      "default": "drop",
+      "values": ["drop", "wait", "reject"],
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerPolicy",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_OPTIMIZER_WORKERS": {
+      "description": "Number of worker goroutines for message processing",
+      "type": "int",
+      "default": 4,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/cmd/v2broker/main.buildOptimizerWorkers",
+      "major_class": "broker",
+      "minor_class": "optimizer"
+    },
+    "CONFIG_WORKERPOOL_INITIAL_SIZE": {
+      "description": "Initial size of worker pool for subprocess RPC handling",
+      "type": "int",
+      "default": 0,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/common/workerpool.buildInitialSize",
+      "major_class": "proc",
+      "minor_class": "workerpool"
+    },
+    "CONFIG_WORKERPOOL_MIN_SIZE": {
+      "description": "Minimum size of worker pool",
+      "type": "int",
+      "default": 2,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/common/workerpool.buildMinSize",
+      "major_class": "proc",
+      "minor_class": "workerpool"
+    },
+    "CONFIG_WORKERPOOL_MAX_SIZE": {
+      "description": "Maximum size of worker pool",
+      "type": "int",
+      "default": 0,
+      "method": "ldflags",
+      "target": "github.com/cyw0ng95/v2e/pkg/common/workerpool.buildMaxSize",
+      "major_class": "proc",
+      "minor_class": "workerpool"
+    }
+  }
+}

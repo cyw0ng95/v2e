@@ -1,0 +1,312 @@
+name: CI Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  merge_group:
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
+      
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.11'
+      
+      - name: Cache .build directory
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-build-${{ hashFiles('**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+      
+      - name: Run all unit tests (Level 3 - includes all test levels)
+        env:
+          V2E_TEST_LEVEL: 3
+        run: ./build.sh -t -v
+      
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: .build/coverage.html
+          if-no-files-found: ignore
+
+  fuzz-tests:
+    name: Fuzz Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    # Skip on pull requests to save CI time
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
+      
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.11'
+      
+      - name: Cache .build directory
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-fuzz-${{ hashFiles('**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-fuzz-
+      
+      - name: Run fuzz tests via build.sh
+        run: ./build.sh -f -v
+        timeout-minutes: 5
+      
+      - name: Upload fuzz test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-test-report
+          path: .build/fuzz-report.txt
+          if-no-files-found: ignore
+          retention-days: 30
+      
+      - name: Upload fuzz test raw log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-test-raw-log
+          path: .build/fuzz-raw.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  build-and-package:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    # Skip on pull requests to save CI time
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
+      
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.11'
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: website/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('website/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      
+      - name: Cache .build directory
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-build-${{ hashFiles('**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+      
+      - name: Build and package via build.sh
+        run: ./build.sh -p -v
+      
+      - name: Verify package contents
+        run: |
+          echo "Package contents:"
+          ls -lh .build/package/
+          echo ""
+          echo "Checking for binaries:"
+          test -f .build/package/v2access && echo "✓ v2access binary exists"
+          test -f .build/package/v2broker && echo "✓ v2broker binary exists"
+          test -f .build/package/v2meta && echo "✓ v2meta binary exists"
+          echo ""
+          echo "Checking for frontend:"
+          if [ -d .build/package/website ]; then
+            echo "✓ Frontend website directory exists"
+            echo "Website files:"
+            ls -lh .build/package/website/ | head -10
+            test -f .build/package/website/index.html && echo "✓ index.html exists"
+          else
+            echo "⚠ Frontend website directory not found"
+          fi
+      
+      - name: Test frontend accessibility
+        run: |
+          if [ -d .build/package/website ]; then
+            echo "Testing frontend can be served..."
+            cd .build/package/website
+            # Start a simple HTTP server in background
+            python3 -m http.server 8000 &
+            SERVER_PID=$!
+            sleep 2
+            # Test if we can fetch the index page
+            if curl -f http://localhost:8000/index.html > /dev/null 2>&1; then
+              echo "✓ Frontend is accessible via HTTP"
+            else
+              echo "✗ Failed to access frontend"
+              kill $SERVER_PID
+              exit 1
+            fi
+            kill $SERVER_PID
+          else
+            echo "Skipping frontend accessibility test (no website directory)"
+          fi
+      
+      - name: Get short commit SHA
+        id: git-sha
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2e-package-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/package/
+          if-no-files-found: error
+          retention-days: 30
+
+  performance-benchmarks:
+    name: Unit Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    # Skip on pull requests to save CI time
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: assets/ssg-static
+          key: ${{ runner.os }}-submodule-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodule-
+      
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.11'
+      
+      - name: Cache .build directory
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-benchmark-${{ hashFiles('**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-benchmark-
+      
+      - name: Install benchstat (optional, improves benchmark reporting)
+        run: |
+          go install golang.org/x/perf/cmd/benchstat@latest
+          echo "${GOPATH:-$HOME/go}/bin" >> $GITHUB_PATH
+
+      - name: Run performance benchmarks via build.sh
+        run: ./build.sh -m -v
+      
+      - name: Get short commit SHA
+        id: git-sha
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/benchmark-report.txt
+          if-no-files-found: ignore
+          retention-days: 30
+      
+      - name: Upload raw benchmark output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-raw-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/benchmark-raw.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload benchstat formatted output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-benchstat-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/benchmark-benchstat.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload benchmark aggregated TSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-agg-${{ steps.git-sha.outputs.sha_short }}
+          path: .build/benchmark-agg.tsv
+          if-no-files-found: ignore
+          retention-days: 30
