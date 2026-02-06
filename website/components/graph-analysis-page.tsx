@@ -5,7 +5,7 @@ import GraphViewer from '@/components/graph-viewer';
 import GraphControlPanel from '@/components/graph-controls';
 import NodeDetailDialog from '@/components/node-detail-dialog';
 import { useNodesByType, useFindPath } from '@/lib/hooks';
-import { Node, Edge, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from '@xyflow/react';
+import { Node, Edge, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { AlertCircle, Route, X, MapPin } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -348,13 +348,15 @@ function GraphAnalysisPage() {
         )}
 
         <div className="h-full border rounded-lg overflow-hidden bg-background">
-          <GraphViewer
-            nodes={styledNodes}
-            edges={styledEdges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            onNodeClick={handleNodeClick}
-          />
+          <ReactFlowProvider>
+            <GraphViewer
+              nodes={styledNodes}
+              edges={styledEdges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={handleEdgesChange}
+              onNodeClick={handleNodeClick}
+            />
+          </ReactFlowProvider>
         </div>
       </div>
 
