@@ -83,12 +83,6 @@
 | 063 | pkg/analysis      | Test    | Review and verify test levels are correct                                            | 200      | 5        |
 | 064 | pkg/notes        | Test    | Review test levels - ensure Level 1 for basic logic, Level 2 for database           | 200      | 5        |
 | 065 | pkg/ssg          | Test    | Add test level definitions for all tests                                             | 400      | 5        |
-| 066 | cmd/v2access     | Docs    | Ensure service.md is up to date with current implementation                           | 400      | 5        |
-| 067 | cmd/v2local      | Docs    | Ensure service.md is up to date with current implementation                           | 400      | 5        |
-| 068 | cmd/v2remote     | Docs    | Ensure service.md is up to date with current implementation                           | 400      | 5        |
-| 069 | cmd/v2broker     | Docs    | Ensure service.md is up to date with current implementation                           | 400      | 5        |
-| 070 | cmd/v2sysmon     | Docs    | Ensure service.md is up to date with current implementation                           | 400      | 5        |
-| 071 | cmd/v2meta       | Docs    | Ensure service.md is up to date with current implementation                           | 400      | 5        |
 | 128 | pkg/cve/remote   | Code    | Design AdaptiveRetry struct with configurable strategies                                  | 400      | 5        |
 | 129 | pkg/cve/remote   | Code    | Implement exponential backoff with jitter generation                                     | 400      | 5        |
 | 130 | pkg/cve/remote   | Code    | Add circuit breaker pattern for fast failure                                            | 400      | 5        |
@@ -167,4 +161,10 @@
 | 105 | cmd/v2broker/scaling | Perf    | Benchmark prediction accuracy and scaling effectiveness            | 2026-02-06 |
  | 141 | General          | Ops     | Optimize website build bundle size, achieve better loading speed      | 2026-02-06 |
  | 072 | pkg/cve/remote   | Code    | Upgrade HTTP clients from HTTP/1.1 to HTTP/2                          | 2026-02-06 |
- | 076 | pkg/cve/remote   | Code    | Implement persistent HTTP/2 connection pools                          | 2026-02-06 |
+|  | 076 | pkg/cve/remote   | Code    | Implement persistent HTTP/2 connection pools                          | 2026-02-06 |
+|  | 066 | cmd/v2access     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+|  | 067 | cmd/v2local      | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+|  | 068 | cmd/v2remote     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+|  | 069 | cmd/v2broker     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+|  | 070 | cmd/v2sysmon     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
+|  | 071 | cmd/v2meta       | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |

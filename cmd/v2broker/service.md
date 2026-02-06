@@ -9,7 +9,9 @@ Central process manager and message router for the v2e system. Spawns and manage
 
 ## Available RPC Methods
 
-### 1. RPCSpawn
+### Process Management
+
+#### 1. RPCSpawn
 - **Description**: Spawns a new subprocess with specified command and arguments
 - **Request Parameters**:
   - `id` (string, required): Unique identifier for the process
@@ -19,12 +21,15 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `id` (string): Process identifier
   - `pid` (int): Process ID
   - `status` (string): Process status ("running", "exited", "failed")
+  - `command` (string): The command that was executed
+  - `args` ([]string): The arguments passed to the command
+  - `exit_code` (int, optional): Exit code if process has exited
 - **Errors**:
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
 
-### 2. RPCSpawnRPC
+#### 2. RPCSpawnRPC
 - **Description**: Spawns a subprocess with RPC support (custom file descriptors for message passing)
 - **Request Parameters**:
   - `id` (string, required): Unique identifier for the process
@@ -34,12 +39,14 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `id` (string): Process identifier
   - `pid` (int): Process ID
   - `status` (string): Process status ("running", "exited", "failed")
+  - `command` (string): The command that was executed
+  - `args` ([]string): The arguments passed to the command
 - **Errors**:
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
 
-### 3. RPCSpawnWithRestart
+#### 3. RPCSpawnWithRestart
 - **Description**: Spawns a subprocess with auto-restart capability
 - **Request Parameters**:
   - `id` (string, required): Unique identifier for the process
@@ -50,12 +57,15 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `id` (string): Process identifier
   - `pid` (int): Process ID
   - `status` (string): Process status ("running", "exited", "failed")
+  - `command` (string): The command that was executed
+  - `restart_config` (object): Restart configuration
+    - `max_restarts` (int): Maximum restart attempts
 - **Errors**:
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
 
-### 4. RPCSpawnRPCWithRestart
+#### 4. RPCSpawnRPCWithRestart
 - **Description**: Spawns a subprocess with RPC support and auto-restart capability
 - **Request Parameters**:
   - `id` (string, required): Unique identifier for the process
@@ -66,12 +76,17 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `id` (string): Process identifier
   - `pid` (int): Process ID
   - `status` (string): Process status ("running", "exited", "failed")
+  - `command` (string): The command that was executed
+  - `restart_config` (object): Restart configuration
+    - `max_restarts` (int): Maximum restart attempts
 - **Errors**:
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
   - Spawn failure: Failed to start the process
 
-### 5. RPCGetMessageStats
+### Message Statistics
+
+#### 5. RPCGetMessageStats
 - **Description**: Retrieves message statistics for the broker and all managed processes
 - **Request Parameters**: None
 - **Response**:
@@ -87,14 +102,16 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `per_process` (object): Message statistics broken down by process ID
 - **Errors**: None
 
-### 6. RPCGetMessageCount
+#### 6. RPCGetMessageCount
 - **Description**: Retrieves the total number of messages processed by the broker
 - **Request Parameters**: None
 - **Response**:
   - `count` (int): Total number of messages processed (sent + received)
 - **Errors**: None
 
-### 7. RPCRequestPermits
+### Permit Management
+
+#### 7. RPCRequestPermits
 - **Description**: Requests worker permits from the broker's global pool for concurrent execution
 - **Request Parameters**:
   - `provider_id` (string, required): Unique identifier for the requesting provider
@@ -105,9 +122,10 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `provider_id` (string): The provider ID
 - **Errors**:
   - Invalid request: Missing provider_id or permit_count <= 0
+  - Permit manager not initialized: Permit management is not enabled
   - No permits available: No permits currently available in the pool
 
-### 8. RPCReleasePermits
+#### 8. RPCReleasePermits
 - **Description**: Returns worker permits to the broker's global pool
 - **Request Parameters**:
   - `provider_id` (string, required): Unique identifier for the provider releasing permits
@@ -119,18 +137,11 @@ Central process manager and message router for the v2e system. Spawns and manage
 - **Errors**:
   - Invalid request: Missing provider_id or permit_count <= 0
   - Provider not found: No permits allocated to this provider
+  - Permit manager not initialized: Permit management is not enabled
 
-### 9. RPCOnQuotaUpdate
-- **Description**: Event broadcast from broker to providers when permits are revoked due to kernel metrics breaches
-- **Request Parameters**: None (this is a broker-initiated event)
-- **Response**: Not applicable (event only)
-- **Event Payload**:
-  - `revoked_permits` (int): Number of permits being revoked globally
-  - `reason` (string): Reason for revocation (e.g., "P99 latency exceeded 50ms")
-  - `kernel_metrics` (object): Current kernel performance metrics
-- **Notes**: Providers should transition to WAITING_QUOTA state when receiving this event
+### Kernel Metrics
 
-### 10. RPCGetKernelMetrics
+#### 9. RPCGetKernelMetrics
 - **Description**: Retrieves current kernel performance metrics from the broker
 - **Request Parameters**: None
 - **Response**:
@@ -142,7 +153,20 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `available_permits` (int): Number of permits available for allocation
   - `message_rate` (float): Messages per second
   - `error_rate` (float): Errors per second
-- **Errors**: None
+- **Errors**:
+  - Optimizer not initialized: Performance optimization is not enabled
+
+### Event Broadcasting
+
+#### 10. RPCOnQuotaUpdate
+- **Description**: Event broadcast from broker to providers when permits are revoked due to kernel metrics breaches
+- **Request Parameters**: None (this is a broker-initiated event)
+- **Response**: Not applicable (event only)
+- **Event Payload**:
+  - `revoked_permits` (int): Number of permits being revoked globally
+  - `reason` (string): Reason for revocation (e.g., "P99 latency exceeded 50ms")
+  - `kernel_metrics` (object): Current kernel performance metrics
+- **Notes**: Providers should transition to WAITING_QUOTA state when receiving this event
 
 ---
 
@@ -150,6 +174,8 @@ Central process manager and message router for the v2e system. Spawns and manage
 - **Log File**: Configurable via `config.json` under `broker.log_file` for dual output (stdout + file)
 - **Process Management**: Processes can be configured to auto-restart with configurable max restarts
 - **RPC File Descriptors**: Custom file descriptor numbers for RPC communication can be configured via `proc.rpc_input_fd`, `proc.rpc_output_fd`, `broker.rpc_input_fd`, or `broker.rpc_output_fd`
+- **Permit Manager**: Global worker permit pool size configurable via PermitManager
+- **Optimizer**: Batch size and performance tuning parameters configurable
 
 ## Notes
 - Uses custom file descriptors (typically fd 3 and 4) for RPC communication to avoid conflicts with stdio

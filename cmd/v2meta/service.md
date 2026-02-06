@@ -1,76 +1,3 @@
-### Memory Card Operations
-
-#### 20. RPCCreateMemoryCard
-- **Description**: Creates a new memory card (delegates to local service)
-- **Request Parameters**:
-  - `bookmark_id` (int, required): The bookmark ID to associate
-  - `front_content` (string, required): Front/question content
-  - `back_content` (string, required): Back/answer content
-  - `major_class` (string, required): Major class/category
-  - `minor_class` (string, required): Minor class/category
-  - `status` (string, required): Status (e.g., active, archived)
-  - `content` (object, required): TipTap JSON content
-  - `card_type` (string, optional): Card type (basic, cloze, etc.)
-  - `author` (string, optional): Author
-  - `is_private` (bool, optional): Privacy flag
-  - `metadata` (object, optional): Additional metadata
-- **Response**:
-  - `success` (bool): true if created
-  - `memory_card` (object): The created memory card
-- **Errors**:
-  - Missing/invalid parameters
-  - RPC/local service error
-
-#### 21. RPCGetMemoryCard
-- **Description**: Retrieves a memory card by ID (delegates to local service)
-- **Request Parameters**:
-  - `id` (int, required): Memory card ID
-- **Response**:
-  - `memory_card` (object): The memory card
-- **Errors**:
-  - Not found
-  - RPC/local service error
-
-#### 22. RPCUpdateMemoryCard
-- **Description**: Updates a memory card by ID (delegates to local service)
-- **Request Parameters**:
-  - `id` (int, required): Memory card ID
-  - Any updatable field (see Create)
-- **Response**:
-  - `success` (bool): true if updated
-  - `memory_card` (object): The updated memory card
-- **Errors**:
-  - Not found
-  - RPC/local service error
-
-#### 23. RPCDeleteMemoryCard
-- **Description**: Deletes a memory card by ID (delegates to local service)
-- **Request Parameters**:
-  - `id` (int, required): Memory card ID
-- **Response**:
-  - `success` (bool): true if deleted
-- **Errors**:
-  - Not found
-  - RPC/local service error
-
-#### 24. RPCListMemoryCards
-- **Description**: Lists memory cards with optional filters and pagination (delegates to local service)
-- **Request Parameters**:
-  - `bookmark_id` (int, optional): Filter by bookmark
-  - `major_class` (string, optional): Filter by major class
-  - `minor_class` (string, optional): Filter by minor class
-  - `status` (string, optional): Filter by status
-  - `author` (string, optional): Filter by author
-  - `is_private` (bool, optional): Filter by privacy
-  - `offset` (int, optional): Pagination offset
-  - `limit` (int, optional): Pagination limit
-- **Response**:
-  - `memory_cards` (array): List of memory cards
-  - `total` (int): Total count
-  - `offset` (int): Offset used
-  - `limit` (int): Limit used
-- **Errors**:
-  - RPC/local service error
 
 # CVE Meta Service
 
@@ -252,6 +179,8 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - No paused job: No job is currently paused
   - RPC error: Failed to communicate with backend services
 
+### CWE Import Operations
+
 #### 13. RPCStartCWEViewJob
 - **Description**: Starts a background job to fetch and save CWE views
 - **Request Parameters**:
@@ -275,36 +204,138 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - No running job: No job is currently running
   - RPC error: Failed to communicate with backend services
 
+#### 15. RPCStartCWEImport
+- **Description**: Starts a CWE data import job
+- **Request Parameters**:
+  - `path` (string, optional): Path to the CWE JSON file (default: "assets/cwe-raw.json")
+- **Response**:
+  - `success` (bool): true if job started successfully
+  - `session_id` (string): ID of the started job session
+- **Errors**:
+  - RPC error: Failed to communicate with backend services
+  - Import error: Failed to start the import process
+
+#### 16. RPCStartCAPECImport
+- **Description**: Starts a CAPEC data import job
+- **Request Parameters**:
+  - `path` (string, optional): Path to the CAPEC XML file (default: "assets/capec_contents_latest.xml")
+  - `xsd` (string, optional): Path to XSD schema file (default: "assets/capec_schema_latest.xsd")
+- **Response**:
+  - `success` (bool): true if job started successfully
+  - `session_id` (string): ID of the started job session
+- **Errors**:
+  - RPC error: Failed to communicate with backend services
+  - Import error: Failed to start the import process
+
+#### 17. RPCStartATTACKImport
+- **Description**: Starts an ATT&CK data import job
+- **Request Parameters**:
+  - `path` (string, optional): Path to the ATT&CK XLSX file (default: "assets/attack-enterprise-v15.1.xlsx")
+- **Response**:
+  - `success` (bool): true if job started successfully
+  - `session_id` (string): ID of the started job session
+- **Errors**:
+  - RPC error: Failed to communicate with backend services
+  - Import error: Failed to start the import process
+
+#### 18. RPCStartCCEImport
+- **Description**: Starts a CCE data import job
+- **Request Parameters**:
+  - `path` (string, optional): Path to the CCE JSON file (default: "assets/cce-5.0-2023-06-08.json")
+- **Response**:
+  - `success` (bool): true if job started successfully
+  - `session_id` (string): ID of the started job session
+- **Errors**:
+  - RPC error: Failed to communicate with backend services
+  - Import error: Failed to start the import process
+
+### Memory Card Operations
+
+#### 19. RPCCreateMemoryCard
+- **Description**: Creates a new memory card for a bookmark (delegates to local service)
+- **Request Parameters**:
+  - `bookmark_id` (int, required): The bookmark ID to associate
+  - `front_content` (string, required): Front/question content
+  - `back_content` (string, required): Back/answer content
+  - `major_class` (string, required): Major class/category
+  - `minor_class` (string, required): Minor class/category
+  - `status` (string, required): Status (e.g., active, archived)
+  - `content` (object, required): TipTap JSON content
+  - `card_type` (string, optional): Card type (basic, cloze, etc.)
+  - `author` (string, optional): Author
+  - `is_private` (bool, optional): Privacy flag
+  - `metadata` (object, optional): Additional metadata
+- **Response**:
+  - `success` (bool): true if created
+  - `memory_card` (object): The created memory card
+- **Errors**:
+  - Missing/invalid parameters
+  - RPC/local service error
+
+#### 20. RPCGetMemoryCard
+- **Description**: Retrieves a memory card by ID (delegates to local service)
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+- **Response**:
+  - `memory_card` (object): The memory card
+- **Errors**:
+  - Not found
+  - RPC/local service error
+
+#### 21. RPCUpdateMemoryCard
+- **Description**: Updates a memory card by ID (delegates to local service)
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+  - Any updatable field (see Create)
+- **Response**:
+  - `success` (bool): true if updated
+  - `memory_card` (object): The updated memory card
+- **Errors**:
+  - Not found
+  - RPC/local service error
+
+#### 22. RPCDeleteMemoryCard
+- **Description**: Deletes a memory card by ID (delegates to local service)
+- **Request Parameters**:
+  - `id` (int, required): Memory card ID
+- **Response**:
+  - `success` (bool): true if deleted
+- **Errors**:
+  - Not found
+  - RPC/local service error
+
+#### 23. RPCListMemoryCards
+- **Description**: Lists memory cards with optional filters and pagination (delegates to local service)
+- **Request Parameters**:
+  - `bookmark_id` (int, optional): Filter by bookmark
+  - `major_class` (string, optional): Filter by major class
+  - `minor_class` (string, optional): Filter by minor class
+  - `status` (string, optional): Filter by status
+  - `author` (string, optional): Filter by author
+  - `is_private` (bool, optional): Filter by privacy
+  - `offset` (int, optional): Pagination offset
+  - `limit` (int, optional): Pagination limit
+- **Response**:
+  - `memory_cards` (array): List of memory cards
+  - `total` (int): Total count
+  - `offset` (int): Offset used
+  - `limit` (int): Limit used
+- **Errors**:
+  - RPC/local service error
+
 ---
 
-## Configuration
-- **Session Database Path**: Configurable via `SESSION_DB_PATH` environment variable (default: "session.db")
-- **RPC Timeout**: Fixed at 30 seconds for communication with other services
+## SSG Meta Service
 
-## Notes
-- Orchestrates operations between local and remote services
-- Job sessions are persistent (stored in bolt K-V database)
-- Only one job session can run at a time
-- Session state survives service restarts
-- Uses RPC to communicate with local and remote services
-- All communication is routed through the broker
-- Automatically imports CWE data from "assets/cwe-raw.json" at startup
-- Automatically imports CAPEC data from "assets/capec_contents_latest.xml" at startup if not already present
-- Recovers running sessions after restart (auto-resumes running sessions, keeps paused sessions paused)
-
----
-
-# SSG Meta Service
-
-## Service Type
+### Service Type
 RPC (stdin/stdout message passing)
 
-## Description
+### Description
 Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remote and local services. Pulls SSG repository, lists guide files, and imports HTML guides into the local database.
 
-## Available RPC Methods
+### Available RPC Methods
 
-#### 15. RPCSSGStartImportJob
+#### 24. RPCSSGStartImportJob
 - **Description**: Starts a new SSG import job that pulls repository and imports all guides
 - **Request Parameters**:
   - `run_id` (string, optional): Unique identifier for the run (auto-generated if not provided)
@@ -315,7 +346,7 @@ Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remot
   - Job running: An import job is already running
   - RPC error: Failed to communicate with backend services
 
-#### 16. RPCSSGStopImportJob
+#### 25. RPCSSGStopImportJob
 - **Description**: Stops the currently running SSG import job
 - **Request Parameters**: None
 - **Response**:
@@ -324,7 +355,7 @@ Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remot
   - No running job: No import job is currently running
   - RPC error: Failed to communicate with backend services
 
-#### 17. RPCSSGPauseImportJob
+#### 26. RPCSSGPauseImportJob
 - **Description**: Pauses the currently running SSG import job
 - **Request Parameters**: None
 - **Response**:
@@ -333,7 +364,7 @@ Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remot
   - No running job: No import job is currently running
   - Not running: Job is not in running state
 
-#### 18. RPCSSGResumeImportJob
+#### 27. RPCSSGResumeImportJob
 - **Description**: Resumes a paused SSG import job
 - **Request Parameters**:
   - `run_id` (string, required): ID of the job to resume
@@ -343,7 +374,7 @@ Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remot
   - No paused job: No import job is currently paused
   - RPC error: Failed to communicate with backend services
 
-#### 19. RPCSSGGetImportStatus
+#### 28. RPCSSGGetImportStatus
 - **Description**: Gets the current status of the SSG import job
 - **Request Parameters**: None
 - **Response**:
@@ -362,25 +393,19 @@ Orchestrates SSG (SCAP Security Guide) import jobs by coordinating between remot
 - **Errors**:
   - No active job: No import job is currently running
 
-## Notes
-- SSG import job workflow: 1) Pull repository, 2) List guide files, 3) Import each guide
-- Job state is in-memory only (not persisted across restarts)
-- Supports pause/resume during import process
-- Only one SSG import job can run at a time
-
 ---
 
-# ETL Engine Monitoring
+## ETL Engine Monitoring
 
-## Service Type
+### Service Type
 RPC (stdin/stdout message passing)
 
-## Description
+### Description
 Provides observability into the Unified ETL Engine's hierarchical FSM structure and permit allocations.
 
-## Available RPC Methods
+### Available RPC Methods
 
-#### 20. RPCGetEtlTree
+#### 29. RPCGetEtlTree
 - **Description**: Retrieves the hierarchical ETL tree showing Macro FSM and all Provider FSMs
 - **Request Parameters**: None
 - **Response**:
@@ -403,7 +428,7 @@ Provides observability into the Unified ETL Engine's hierarchical FSM structure 
 - **Errors**:
   - No active ETL session: No ETL orchestration is currently active
 
-#### 21. RPCGetProviderCheckpoints
+#### 30. RPCGetProviderCheckpoints
 - **Description**: Retrieves checkpoints for a specific provider
 - **Request Parameters**:
   - `provider_id` (string, required): Provider FSM identifier
@@ -420,11 +445,24 @@ Provides observability into the Unified ETL Engine's hierarchical FSM structure 
 - **Errors**:
   - Provider not found: No provider with the given ID exists
 
+---
+
+## Configuration
+- **Session Database Path**: Configurable via `SESSION_DB_PATH` environment variable (default: "session.db")
+- **RPC Timeout**: Fixed at 30 seconds for communication with other services
+
 ## Notes
-- ETL tree provides real-time view of orchestration hierarchy
-- Checkpoints are stored every 100 items for resilience
-- Provider states persist across service restarts
-- Macro FSM coordinates all provider FSMs
+- Orchestrates operations between local and remote services
+- Job sessions are persistent (stored in bolt K-V database)
+- Only one job session can run at a time
+- Session state survives service restarts
+- Uses RPC to communicate with local and remote services
+- All communication is routed through the broker
+- Automatically imports CWE data from "assets/cwe-raw.json" at startup
+- Automatically imports CAPEC data from "assets/capec_contents_latest.xml" at startup if not already present
+- Recovers running sessions after restart (auto-resumes running sessions, keeps paused sessions paused)
+- SSG import job workflow: 1) Pull repository, 2) List guide files, 3) Import each guide
+- SSG job state is in-memory only (not persisted across restarts)
 
 ---
 
@@ -474,9 +512,9 @@ All providers use atomic URN identifiers for checkpoints:
 // CVE provider processing
 for _, cveID := range batch {
     urn := urn.MustParse(fmt.Sprintf("v2e::nvd::cve::%s", cveID))
-    
+
     // Process CVE...
-    
+
     // Save checkpoint
     checkpoint := &Checkpoint{
         URN: urn.Key(),
@@ -521,20 +559,20 @@ type CVEProvider struct {
 func (p *CVEProvider) execute(ctx context.Context) error {
     // Fetch CVE list
     cveList := p.fetchCVEList()
-    
+
     // Process in batches
     for i, batch := range batches(cveList, p.batchSize) {
         // Check if paused/stopped
         if ctx.Err() != nil {
             return ctx.Err()
         }
-        
+
         // Process each CVE in batch
         for _, cveID := range batch {
             urn := urn.MustParse("v2e::nvd::cve::" + cveID)
             p.SaveCheckpoint(urn.Key(), time.Now())
         }
-        
+
         // Report progress
         p.EmitEvent(fsm.Event{
             Type: fsm.PROVIDER_PROGRESS,

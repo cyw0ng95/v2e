@@ -1,3 +1,4 @@
+
 # CVE Remote Service
 
 ## Service Type
@@ -8,7 +9,9 @@ Fetches CVE (Common Vulnerabilities and Exposures) data from the NVD (National V
 
 ## Available RPC Methods
 
-### 1. RPCGetCVEByID
+### CVE Remote Operations
+
+#### 1. RPCGetCVEByID
 - **Description**: Fetches a specific CVE by its ID from the NVD API
 - **Request Parameters**:
   - `cve_id` (string, required): CVE identifier (e.g., "CVE-2021-44228")
@@ -25,7 +28,7 @@ Fetches CVE (Common Vulnerabilities and Exposures) data from the NVD (National V
   - **Request**: {"cve_id": "CVE-2021-44228"}
   - **Response**: {"vulnerabilities": [{"cve": {"id": "CVE-2021-44228", "descriptions": [...], ...}}]}
 
-### 2. RPCGetCVECnt
+#### 2. RPCGetCVECnt
 - **Description**: Gets the total count of CVEs available in the NVD database
 - **Request Parameters**: None
 - **Response**:
@@ -34,7 +37,7 @@ Fetches CVE (Common Vulnerabilities and Exposures) data from the NVD (National V
   - NVD API error: Failed to query NVD API
   - NVD_RATE_LIMITED: NVD API rate limit exceeded (HTTP 429)
 
-### 3. RPCFetchCVEs
+#### 3. RPCFetchCVEs
 - **Description**: Fetches multiple CVEs from the NVD API with pagination
 - **Request Parameters**:
   - `start_index` (int, optional): Index to start fetching from (default: 0)
@@ -50,7 +53,7 @@ Fetches CVE (Common Vulnerabilities and Exposures) data from the NVD (National V
   - **Request**: {"start_index": 0, "results_per_page": 10}
   - **Response**: {"vulnerabilities": [...], "total_results": 180000, "result_count": 10}
 
-### 4. RPCFetchViews
+#### 4. RPCFetchViews
 - **Description**: Fetches CWE views from the GitHub repository
 - **Request Parameters**:
   - `start_index` (int, optional): Index to start fetching from (default: 0)
@@ -70,6 +73,14 @@ Fetches CVE (Common Vulnerabilities and Exposures) data from the NVD (National V
 - **NVD API Key**: Configurable via `NVD_API_KEY` environment variable (optional, increases rate limits)
 - **View Fetch URL**: Configurable via `VIEW_FETCH_URL` environment variable (default: "https://github.com/CWE-CAPEC/REST-API-wg/archive/refs/heads/main.zip")
 
+## Notes
+- Rate limits apply to NVD API access (requests with API key have higher limits)
+- Automatically retries failed requests with exponential backoff
+- Downloads and parses CWE views from GitHub repository
+- Uses ZIP archive extraction to retrieve JSON files from GitHub repository
+- All requests are routed through the broker for centralized management
+- Service runs as a subprocess managed by the broker
+
 ---
 
 # SSG Remote Service
@@ -82,7 +93,9 @@ Manages Git repository operations for SCAP Security Guide (SSG) data. Provides c
 
 ## Available RPC Methods
 
-### 5. RPCSSGCloneRepo
+### SSG Git Operations
+
+#### 5. RPCSSGCloneRepo
 - **Description**: Clones the SSG repository to the local path
 - **Request Parameters**: None
 - **Response**:
@@ -92,7 +105,7 @@ Manages Git repository operations for SCAP Security Guide (SSG) data. Provides c
   - Repository exists: Repository already exists at the target path
   - Git error: Failed to clone repository
 
-### 6. RPCSSGPullRepo
+#### 6. RPCSSGPullRepo
 - **Description**: Pulls the latest changes from the SSG repository
 - **Request Parameters**: None
 - **Response**:
@@ -100,7 +113,7 @@ Manages Git repository operations for SCAP Security Guide (SSG) data. Provides c
 - **Errors**:
   - Git error: Failed to pull repository
 
-### 7. RPCSSGGetRepoStatus
+#### 7. RPCSSGGetRepoStatus
 - **Description**: Gets the current status of the SSG repository
 - **Request Parameters**: None
 - **Response**:
@@ -111,7 +124,7 @@ Manages Git repository operations for SCAP Security Guide (SSG) data. Provides c
   - Not found: Repository does not exist locally
   - Git error: Failed to get repository status
 
-### 8. RPCSSGListGuideFiles
+#### 8. RPCSSGListGuideFiles
 - **Description**: Lists all SSG guide HTML files in the repository
 - **Request Parameters**: None
 - **Response**:
@@ -121,7 +134,7 @@ Manages Git repository operations for SCAP Security Guide (SSG) data. Provides c
   - Not found: Repository does not exist or guides directory is missing
   - Git error: Failed to read repository
 
-### 9. RPCSSGGetFilePath
+#### 9. RPCSSGGetFilePath
 - **Description**: Gets the absolute path to a file in the SSG repository
 - **Request Parameters**:
   - `filename` (string, required): Relative path to file (e.g., "guides/ssg-al2023-guide-cis.html")
@@ -129,6 +142,26 @@ Manages Git repository operations for SCAP Security Guide (SSG) data. Provides c
   - `path` (string): Absolute path to the file
 - **Errors**:
   - Missing filename: filename parameter is required
+
+#### 10. RPCSSGGetGitClientStatus
+- **Description**: Gets the status of the SSG Git client
+- **Request Parameters**: None
+- **Response**:
+  - `initialized` (bool): Whether the client is initialized
+  - `repo_exists` (bool): Whether the repository exists locally
+  - `repo_url` (string): Repository URL
+  - `repo_path` (string): Local repository path
+- **Errors**: None
+
+#### 11. RPCSSGEnsureRepo
+- **Description**: Ensures the SSG repository exists, cloning if necessary
+- **Request Parameters**: None
+- **Response**:
+  - `success` (bool): true if repository exists
+  - `cloned` (bool): true if repository was cloned during this call
+  - `path` (string): Local repository path
+- **Errors**:
+  - Git error: Failed to clone repository
 
 ## Configuration
 SSG Git configuration is via build-time ldflags (see config_spec.json):
@@ -139,13 +172,5 @@ SSG Git configuration is via build-time ldflags (see config_spec.json):
 - Uses go-git library for pure Go Git operations (no system git required)
 - Repository is cloned to local path on first use
 - Guide files must match `*-guide-*.html` pattern to be listed
-- All requests are routed through the broker for centralized management
-- Service runs as a subprocess managed by the broker
-
-## Notes
-- Rate limits apply to NVD API access (requests with API key have higher limits)
-- Automatically retries failed requests with exponential backoff
-- Downloads and parses CWE views from GitHub repository
-- Uses ZIP archive extraction to retrieve JSON files from GitHub repository
 - All requests are routed through the broker for centralized management
 - Service runs as a subprocess managed by the broker
