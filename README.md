@@ -1,6 +1,6 @@
 # v2e
 
-A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive CVE (Common Vulnerabilities and Exposures) management platform with integrated CWE (Common Weakness Enumeration), CAPEC (Common Attack Pattern Enumeration and Classification), and ATT&CK (Adversarial Tactics, Techniques, and Common Knowledge) framework data handling.
+A sophisticated Go-based system that demonstrates a broker-first architecture for orchestrating multiple subprocess services that communicate via RPC messages over stdin/stdout. The system provides a comprehensive security data management platform with integrated CVE (Common Vulnerabilities and Exposures), CWE (Common Weakness Enumeration), CAPEC (Common Attack Pattern Enumeration and Classification), ATT&CK (Adversarial Tactics, Techniques, and Common Knowledge), and OWASP ASVS (Application Security Verification Standard) framework data handling.
 
 ## Executive Summary
 
@@ -10,7 +10,7 @@ Key architectural principles:
 - **Centralized Process Management**: The broker is the sole orchestrator of all subprocess services
 - **Enforced Communication Pattern**: All inter-service communication occurs through broker routing
 - **RPC-Based Messaging**: Services communicate via structured JSON RPC messages over stdin/stdout
-- **Comprehensive Data Handling**: Integrated CVE, CWE, CAPEC, and ATT&CK data management
+- **Comprehensive Security Data**: Integrated CVE, CWE, CAPEC, ATT&CK, and OWASP ASVS data management
 - **Frontend Integration**: A Next.js-based web application provides user interface access
 - **Performance Monitoring**: Built-in metrics collection and system monitoring capabilities
 - **Message Optimization**: Asynchronous message routing with configurable buffering and batching
@@ -372,13 +372,16 @@ Meta Service (Slave)              Broker (Master)
     - RPCDeleteMemoryCard, RPCListMemoryCards
 
 - **Local Service** ([cmd/v2local](cmd/v2local)): The data persistence layer that:
-  - Manages local SQLite databases for CVE, CWE, CAPEC, and ATT&CK data
+  - Manages local SQLite databases for CVE, CWE, CAPEC, ATT&CK, and OWASP ASVS data
   - Provides CRUD operations for vulnerability information
   - Handles data indexing and querying
   - Implements caching mechanisms for improved performance
   - Imports ATT&CK data from XLSX files and provides access to techniques, tactics, mitigations, software, and groups
   - Supports CAPEC XML schema validation and catalog metadata retrieval
   - Offers CWE view management with storage and retrieval capabilities
+  - Provides OWASP ASVS v5.0.0 security requirements management:
+    - RPCImportASVS (from official OWASP CSV), RPCListASVS (with filtering), RPCGetASVSByID
+    - Supports filtering by chapter (V1-V14) and security level (1-3)
   - Provides memory card storage for bookmark/knowledge management:
     - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
     - RPCDeleteMemoryCard, RPCListMemoryCards
@@ -480,7 +483,7 @@ The Next.js-based frontend ([website](website)) provides:
 
 - **REST Gateway Interface**: Access service exposes `/restful/rpc` endpoint for frontend-backend communication
 - **Sophisticated RPC Client**: Handles automatic case conversion (camelCase ↔ snake_case) and comprehensive error handling
-- **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, and system monitoring data
+- **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, ATT&CK, OWASP ASVS, and system monitoring data
 - **Real-time Updates**: Session control and live metrics display
 - **Responsive Design**: Adaptable interface for various screen sizes and devices
 - **Modern Tech Stack**: Uses Next.js 16+, React 19+, with TypeScript, Tailwind CSS, and Radix UI components
@@ -491,6 +494,7 @@ The frontend includes dedicated sections for:
 - CWE Database and view management
 - CAPEC data visualization
 - ATT&CK framework data (techniques, tactics, mitigations, software, groups)
+- OWASP ASVS v5.0.0 security requirements (browsable by chapter and level)
 - System monitoring and performance metrics
 - Session control for data fetching jobs
 
@@ -778,7 +782,7 @@ Available metrics include:
 - **cmd/** - Service implementations
   - v2broker/ - Process manager and RPC router with message optimization
   - v2access/ - REST gateway (subprocess)
-  - v2local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK)
+  - v2local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK/ASVS)
   - v2remote/ - Remote data fetching service
   - v2meta/ - Orchestration and job control (with Taskflow)
   - v2sysmon/ - System monitoring service

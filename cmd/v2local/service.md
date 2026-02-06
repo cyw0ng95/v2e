@@ -75,7 +75,7 @@
 RPC (stdin/stdout message passing)
 
 ## Description
-Manages local storage and retrieval of CVE, CWE, CAPEC, and ATT&CK data using SQLite databases. Provides CRUD operations for CVE records and read/import operations for CWE, CAPEC, and ATT&CK records.
+Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, and ASVS data using SQLite databases. Provides CRUD operations for CVE records and read/import operations for CWE, CAPEC, ATT&CK, and ASVS records.
 
 
 ## Available RPC Methods
@@ -481,11 +481,67 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, and ATT&CK data using SQ
 - **Errors**:
   - Not found: No ATT&CK import metadata in database
 
+### 35. RPCImportASVS
+- **Description**: Imports ASVS requirements from a CSV URL
+- **Request Parameters**:
+  - `url` (string, required): URL to the ASVS CSV file
+- **Response**:
+  - `success` (bool): true if imported successfully
+- **Errors**:
+  - Missing URL: `url` parameter is required
+  - Download error: Failed to download CSV from URL
+  - Parse error: Failed to parse CSV file
+  - Database error: Failed to save ASVS requirements to database
+- **Example**:
+  - **Request**: {"url": "https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.csv"}
+  - **Response**: {"success": true}
+
+### 36. RPCListASVS
+- **Description**: Lists ASVS requirements from the local database with pagination and filtering
+- **Request Parameters**:
+  - `offset` (int, optional): Offset for pagination (default: 0)
+  - `limit` (int, optional): Limit for pagination (default: 100, max: 1000)
+  - `chapter` (string, optional): Filter by chapter (e.g., "V1", "V2")
+  - `level` (int, optional): Filter by ASVS level (1, 2, or 3)
+- **Response**:
+  - `requirements` ([]object): Array of ASVS requirement objects
+  - `total` (int): Total number of requirements matching filters
+  - `offset` (int): The offset used
+  - `limit` (int): The limit used
+- **Errors**:
+  - Database error: Failed to query database
+- **Example**:
+  - **Request**: {"offset": 0, "limit": 10, "chapter": "V1", "level": 1}
+  - **Response**: {"requirements": [...], "total": 25, "offset": 0, "limit": 10}
+
+### 37. RPCGetASVSByID
+- **Description**: Retrieves an ASVS requirement by its ID
+- **Request Parameters**:
+  - `requirement_id` (string, required): ASVS requirement identifier (e.g., "1.1.1")
+- **Response**:
+  - ASVS requirement object with fields:
+    - `requirementID` (string): Requirement identifier
+    - `chapter` (string): Chapter identifier (e.g., "V1")
+    - `section` (string): Section name
+    - `description` (string): Requirement description
+    - `level1` (bool): Applies to Level 1
+    - `level2` (bool): Applies to Level 2
+    - `level3` (bool): Applies to Level 3
+    - `cwe` (string, optional): Related CWE identifiers
+- **Errors**:
+  - Missing requirement ID: `requirement_id` parameter is required
+  - Not found: ASVS requirement not found in database
+  - Database error: Failed to query database
+- **Example**:
+  - **Request**: {"requirement_id": "1.1.1"}
+  - **Response**: {"requirementID": "1.1.1", "chapter": "V1", "section": "Architecture", "description": "...", "level1": true, "level2": true, "level3": true, "cwe": "CWE-1127"}
+
 ## Configuration
 - **CVE Database Path**: Configurable via `CVE_DB_PATH` environment variable (default: "cve.db")
 - **CWE Database Path**: Configurable via `CWE_DB_PATH` environment variable (default: "cwe.db")
 - **CAPEC Database Path**: Configurable via `CAPEC_DB_PATH` environment variable (default: "capec.db")
 - **ATT&CK Database Path**: Configurable via `ATTACK_DB_PATH` environment variable (default: "attack.db")
+- **ASVS Database Path**: Configurable via `ASVS_DB_PATH` environment variable (default: "asvs.db")
 - **CAPEC Strict XSD Validation**: Enabled via `CAPEC_STRICT_XSD` environment variable (default: disabled)
 
 
@@ -525,72 +581,12 @@ This section documents the CWE "View" feature and how it is implemented in the l
 ---
 
 ## Notes
-- Uses SQLite databases for local storage of CVE, CWE, CAPEC, ATT&CK, and SSG data
+- Uses SQLite databases for local storage of CVE, CWE, CAPEC, ATT&CK, ASVS, and SSG data
 - Automatically imports ATT&CK data from XLSX files in the assets directory at startup
-- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK, SSG) in separate databases
+- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK, ASVS, SSG) in separate databases
 - Provides comprehensive CRUD operations for all data types
+- ASVS data can be imported from the official OWASP ASVS v5.0.0 CSV file on GitHub
 - Includes pagination support for listing operations
-
----
-
-# SSG Local Service
-
-## Service Type
-RPC (stdin/stdout message passing)
-
-## Description
-Manages local storage and retrieval of SCAP Security Guide (SSG) data using SQLite database. Provides CRUD operations for SSG guides, groups, and rules with hierarchical tree structure support.
-
-## Available RPC Methods
-
-### 55. RPCSSGImportGuide
-- **Description**: Imports an SSG guide from an HTML file into the database
-- **Request Parameters**:
-  - `path` (string, required): Absolute or relative path to the HTML guide file
-- **Response**:
-  - `success` (bool): true if imported successfully
-  - `guide_id` (string): ID of the imported guide
-  - `group_count` (int): Number of groups imported
-  - `rule_count` (int): Number of rules imported
-- **Errors**:
-  - Missing path: `path` parameter is required
-  - Parse error: Failed to parse HTML file
-  - Database error: Failed to save to database
-- **Example**:
-  - **Request**: {"path": "/path/to/ssg-al2023-guide-cis.html"}
-  - **Response**: {"success": true, "guide_id": "ssg-al2023-guide-cis", "group_count": 106, "rule_count": 356}
-
-### 56. RPCSSGGetGuide
-- **Description**: Retrieves an SSG guide by ID
-- **Request Parameters**:
-  - `id` (string, required): Guide identifier
-- **Response**:
-  - Guide object with all fields (id, product, profile_id, title, html_content, etc.)
-- **Errors**:
-  - Missing id: `id` parameter is required
-  - Not found: Guide not found in database
-  - Database error: Failed to query database
-
-### 57. RPCSSGListGuides
-- **Description**: Lists SSG guides with optional filters
-- **Request Parameters**:
-  - `product` (string, optional): Filter by product (e.g., "al2023", "rhel9")
-  - `profile_id` (string, optional): Filter by profile ID
-- **Response**:
-  - `guides` (array): Array of guide objects
-  - `count` (int): Number of guides returned
-- **Errors**:
-  - Database error: Failed to query database
-
-### 58. RPCSSGGetTree
-- **Description**: Retrieves the complete tree structure for a guide (flat groups + rules)
-- **Request Parameters**:
-  - `guide_id` (string, required): Guide identifier
-- **Response**:
-  - SSGTree object containing guide, groups array, and rules array
-- **Errors**:
-  - Missing guide_id: `guide_id` parameter is required
-  - Not found: Guide not found in database
   - Database error: Failed to query database
 
 ### 59. RPCSSGGetTreeNode
