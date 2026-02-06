@@ -165,10 +165,109 @@
  | 218 | pkg/cve/local     | Docs    | Document query pattern analysis and caching strategies                                    | 200      | 4        |
  | 219 | pkg/cve/remote   | Docs    | Document external API retry and fallback strategies                                       | 200      | 4        |
  | 220 | pkg/cve/taskflow  | Test    | Add integration tests for job workflow with subprocesses                                   | 400      | 3        |
+ | 221 | pkg/cve/remote   | Security| Replace math/rand with crypto/rand for secure random number generation in adaptive_retry.go | 50       | 1        |
+ | 222 | pkg/cve/remote   | Security| Validate and sanitize all external API parameters before use                               | 150      | 1        |
+ | 223 | pkg/notes        | Security| Add input validation and sanitization for user-provided data in RPC handlers              | 300      | 1        |
+ | 224 | pkg/cve/local     | Security| Review and implement proper SQL injection prevention for all dynamic queries               | 200      | 1        |
+ | 225 | pkg/proc/subprocess | Security| Validate message size limits to prevent memory exhaustion attacks                          | 100      | 1        |
+ | 226 | cmd/v2broker     | Code    | Add goroutine leak detection and monitoring for broker processes                          | 300      | 2        |
+ | 227 | pkg/cve/taskflow  | Code    | Add goroutine leak detection for job executor and worker pools                            | 250      | 2        |
+ | 228 | pkg/meta/fsm     | Code    | Add goroutine leak detection for provider state machines                                  | 200      | 2        |
+ | 229 | pkg/proc/subprocess | Code    | Implement graceful shutdown for all goroutines on context cancellation                      | 300      | 2        |
+ | 230 | pkg/cve/local     | Code    | Replace time.Sleep with context-based timeout in retry logic                            | 100      | 2        |
+ | 231 | pkg/meta/fsm     | Code    | Replace time.Sleep with context-based timeout in provider retry logic                    | 100      | 2        |
+ | 232 | pkg/cve/local     | Code    | Add context-based timeouts to all database queries                                        | 200      | 2        |
+ | 233 | pkg/cve/remote   | Code    | Ensure all HTTP response bodies are properly closed                                      | 100      | 2        |
+ | 234 | pkg/asvs         | Code    | Ensure all HTTP response bodies are properly closed (resp.Body.Close())                   | 50       | 2        |
+ | 235 | pkg/cve/local     | Code    | Add connection pool monitoring and leak detection                                         | 250      | 2        |
+ | 236 | pkg/cwe/local     | Code    | Add connection pool monitoring and leak detection                                         | 250      | 2        |
+ | 237 | pkg/attack/local  | Code    | Add connection pool monitoring and leak detection                                         | 250      | 2        |
+ | 238 | pkg/capec/local   | Code    | Add connection pool monitoring and leak detection                                         | 250      | 2        |
+ | 239 | pkg/asvs/local    | Code    | Add connection pool monitoring and leak detection                                         | 250      | 2        |
+ | 240 | pkg/ssg/local/store | Code   | Add connection pool monitoring and leak detection                                         | 250      | 2        |
+ | 241 | pkg/proc/subprocess | Code    | Add structured error handling for all ignored errors (_ = ...)                            | 300      | 2        |
+ | 242 | pkg/notes        | Code    | Add structured error handling for all ignored errors (_ = ...)                            | 300      | 2        |
+ | 243 | pkg/cve/local     | Code    | Add structured error handling for all ignored errors (_ = ...)                            | 300      | 2        |
+ | 244 | pkg/proc/subprocess | Code    | Replace 130 instances of context.Background with context from parent                        | 400      | 2        |
+ | 245 | pkg/notes        | Code    | Add proper error messages with context for all RPC handlers                              | 200      | 2        |
+ | 246 | pkg/cve/local     | Code    | Add proper error messages with context for database operations                            | 200      | 2        |
+ | 247 | pkg/cve/remote   | Code    | Add proper error messages with context for external API calls                            | 200      | 2        |
+ | 248 | cmd/v2access     | Code    | Add comprehensive error logging for HTTP requests                                        | 150      | 2        |
+ | 249 | cmd/v2local      | Code    | Add comprehensive error logging for database operations                                    | 150      | 2        |
+ | 250 | pkg/proc/subprocess | Perf    | Optimize message batching to reduce memory allocations                                     | 200      | 2        |
+ | 251 | pkg/proc/subprocess | Perf    | Pre-allocate slices in hot paths to reduce allocations                                    | 150      | 2        |
+ | 252 | pkg/cve/local     | Perf    | Pre-allocate slices for batch operations to reduce allocations                             | 150      | 2        |
+ | 253 | pkg/notes        | Perf    | Pre-allocate slices for list operations to reduce allocations                              | 150      | 2        |
+ | 254 | pkg/cve/remote   | Perf    | Implement connection pooling for resty client beyond HTTP/2 transport                      | 200      | 2        |
+ | 255 | pkg/cve/remote   | Perf    | Optimize JSON unmarshaling with faster library or zero-copy techniques                    | 200      | 2        |
+ | 256 | pkg/proc/subprocess | Perf    | Use sync.Pool for temporary buffers in message processing                                 | 150      | 3        |
+ | 257 | pkg/proc/subprocess | Perf    | Use atomic operations for message counters in hot paths                                   | 100      | 3        |
+ | 258 | pkg/proc/subprocess | Perf    | Implement lock-free statistics collection for message metrics                             | 300      | 3        |
+ | 259 | pkg/cve/local     | Perf    | Use sync.Pool for frequently allocated database query structures                           | 150      | 3        |
+ | 260 | pkg/cve/local     | Perf    | Optimize batch insert with prepared statement caching                                    | 200      | 3        |
+ | 261 | pkg/notes        | Perf    | Use sync.Pool for frequently allocated RPC response structures                            | 150      | 3        |
+ | 262 | pkg/meta/fsm     | Perf    | Use sync.Pool for frequently allocated FSM state structures                              | 150      | 3        |
+ | 263 | pkg/cve/remote   | Perf    | Implement request deduplication for repeated CVE fetches                                 | 200      | 3        |
+ | 264 | pkg/cve/remote   | Perf    | Add response caching for frequently accessed CVEs                                       | 200      | 3        |
+ | 265 | pkg/ssg/parser    | Code    | Implement TODO at guide.go: parse references from SSG guides                           | 150      | 4        |
+ | 266 | pkg/notes/service | Code    | Implement TODO: Add CardType, Author, IsPrivate, Metadata fields to model                 | 100      | 4        |
+ | 267 | pkg/notes/service | Code    | Implement TODO: Add author, is_private if added to model                                 | 50       | 4        |
+ | 268 | pkg/ssg/local/store | Code    | Add context-based timeouts to all database operations                                     | 150      | 3        |
+ | 269 | pkg/cwe/local     | Code    | Add context-based timeouts to all database operations                                     | 150      | 3        |
+ | 270 | pkg/attack/local  | Code    | Add context-based timeouts to all database operations                                     | 150      | 3        |
+ | 271 | pkg/capec/local   | Code    | Add context-based timeouts to all database operations                                     | 150      | 3        |
+ | 272 | pkg/asvs/local    | Code    | Add context-based timeouts to all database operations                                     | 150      | 3        |
+ | 273 | pkg/cve/local     | Code    | Add database transaction health checks and monitoring                                      | 200      | 3        |
+ | 274 | pkg/notes        | Code    | Add database transaction health checks and monitoring                                      | 200      | 3        |
+ | 275 | pkg/ssg/local/store | Code    | Add database transaction health checks and monitoring                                      | 200      | 3        |
+ | 276 | pkg/proc/subprocess | Test    | Add race condition tests for concurrent message handling                                 | 300      | 3        |
+ | 277 | pkg/cve/taskflow  | Test    | Add race condition tests for concurrent job execution                                   | 300      | 3        |
+ | 278 | pkg/meta/fsm     | Test    | Add race condition tests for concurrent state transitions                                | 300      | 3        |
+ | 279 | pkg/proc/subprocess | Test    | Add stress tests for high-frequency message processing                                   | 300      | 3        |
+ | 280 | pkg/cve/remote   | Test    | Add stress tests for concurrent HTTP requests                                            | 300      | 3        |
+ | 281 | pkg/cve/local     | Test    | Add stress tests for concurrent database operations                                      | 300      | 3        |
+ | 282 | pkg/notes        | Test    | Add stress tests for concurrent RPC operations                                          | 300      | 3        |
+ | 283 | pkg/proc/subprocess | Test    | Add t.Parallel() to all independent tests                                              | 400      | 4        |
+ | 284 | pkg/cve/taskflow  | Test    | Add t.Parallel() to all independent tests                                              | 300      | 4        |
+ | 285 | pkg/cve/local     | Test    | Add t.Parallel() to all independent tests                                              | 300      | 4        |
+ | 286 | pkg/notes        | Test    | Add t.Parallel() to all independent tests                                              | 300      | 4        |
+ | 287 | pkg/proc/subprocess | Docs    | Document goroutine lifecycle and cleanup requirements                                     | 150      | 4        |
+ | 288 | pkg/cve/taskflow  | Docs    | Document job executor lifecycle and resource management                                    | 150      | 4        |
+ | 289 | pkg/meta/fsm     | Docs    | Document provider FSM state transition rules and validation                              | 150      | 4        |
+ | 290 | pkg/proc/subprocess | Docs    | Document context propagation requirements for RPC handlers                                | 100      | 4        |
+ | 291 | pkg/cve/local     | Docs    | Document database connection pool configuration and tuning                               | 150      | 4        |
+ | 292 | pkg/notes        | Docs    | Document RPC handler error handling patterns                                            | 150      | 4        |
+ | 293 | pkg/proc/subprocess | Ops     | Add metrics for goroutine count and memory usage                                         | 150      | 3        |
+ | 294 | pkg/cve/taskflow  | Ops     | Add metrics for worker pool utilization and queue depth                                   | 150      | 3        |
+ | 295 | pkg/cve/local     | Ops     | Add metrics for database connection pool metrics                                        | 150      | 3        |
+ | 296 | pkg/cve/remote   | Ops     | Add metrics for HTTP client connection pool and request latency                          | 150      | 3        |
+ | 297 | pkg/notes        | Ops     | Add metrics for RPC request/response latency and error rates                              | 150      | 3        |
+ | 298 | pkg/proc/subprocess | Ops     | Add health check endpoint for subprocess status                                          | 100      | 3        |
+ | 299 | pkg/cve/taskflow  | Ops     | Add health check endpoint for job executor status                                        | 100      | 3        |
+ | 300 | pkg/meta/fsm     | Ops     | Add health check endpoint for provider status                                             | 100      | 3        |
+ | 301 | pkg/cve/local     | Ops     | Add health check endpoint for database connectivity                                       | 100      | 3        |
+ | 302 | pkg/notes        | Ops     | Add health check endpoint for service status                                             | 100      | 3        |
+ | 303 | pkg/proc/subprocess | Debug   | Add debug logging for message routing and handler dispatch                                | 150      | 4        |
+ | 304 | pkg/cve/taskflow  | Debug   | Add debug logging for job state transitions and worker assignments                       | 150      | 4        |
+ | 305 | pkg/meta/fsm     | Debug   | Add debug logging for provider state transitions                                      | 150      | 4        |
+ | 306 | pkg/cve/local     | Debug   | Add debug logging for database query execution                                         | 150      | 4        |
+ | 307 | pkg/notes        | Debug   | Add debug logging for RPC request/response lifecycle                                    | 150      | 4        |
+ | 308 | pkg/cve/remote   | Debug   | Add debug logging for external API requests and retries                                | 150      | 4        |
+ | 309 | pkg/proc/subprocess | Config  | Make message batch size configurable via environment variables                             | 100      | 3        |
+ | 310 | pkg/cve/taskflow  | Config  | Make worker pool size configurable via environment variables                             | 100      | 3        |
+ | 311 | pkg/cve/local     | Config  | Make connection pool sizes configurable via environment variables                        | 100      | 3        |
+ | 312 | pkg/cve/remote   | Config  | Make HTTP client timeout and retry limits configurable                                 | 100      | 3        |
+ | 313 | pkg/meta/fsm     | Config  | Make FSM state transition timeouts configurable                                        | 100      | 3        |
+ | 314 | pkg/proc/subprocess | Feature| Add message replay capability for debugging                                            | 200      | 4        |
+ | 315 | pkg/cve/taskflow  | Feature| Add job execution visualization and timeline view                                        | 200      | 4        |
+ | 316 | pkg/meta/fsm     | Feature| Add provider state visualization dashboard                                             | 200      | 4        |
+ | 317 | pkg/notes        | Feature| Add RPC call tracing and profiling                                                    | 200      | 4        |
+ | 318 | pkg/cve/local     | Feature| Add database query execution plan visualization                                         | 200      | 4        |
 
 ---
 
 ## DONE
+
 
 | ID  | Package          | Type    | Description                                                                      | Date       |
 |-----|------------------|---------|------------------------------------------------------------------------------------|------------|
