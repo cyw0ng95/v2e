@@ -355,6 +355,153 @@ export interface HealthResponse {
 }
 
 // ============================================================================
+// Graph Analysis RPC Types (from cmd/v2analysis/service.md)
+// ============================================================================
+
+export interface GraphStats {
+  node_count: number;
+  edge_count: number;
+}
+
+export interface GraphNode {
+  urn: string;
+  properties: Record<string, unknown>;
+}
+
+export interface GraphEdge {
+  from: string;
+  to: string;
+  type: string;
+  properties?: Record<string, unknown>;
+}
+
+export interface GraphPath {
+  path: string[];
+  length: number;
+}
+
+export interface GetGraphStatsRequest {}
+
+export interface GetGraphStatsResponse {
+  node_count: number;
+  edge_count: number;
+}
+
+export interface AddNodeRequest {
+  urn: string;
+  properties?: Record<string, unknown>;
+}
+
+export interface AddNodeResponse {
+  urn: string;
+}
+
+export interface AddEdgeRequest {
+  from: string;
+  to: string;
+  type: string;
+  properties?: Record<string, unknown>;
+}
+
+export interface AddEdgeResponse {
+  from: string;
+  to: string;
+  type: string;
+}
+
+export interface GetNodeRequest {
+  urn: string;
+}
+
+export interface GetNodeResponse {
+  urn: string;
+  properties: Record<string, unknown>;
+}
+
+export interface GetNeighborsRequest {
+  urn: string;
+}
+
+export interface GetNeighborsResponse {
+  neighbors: string[];
+}
+
+export interface FindPathRequest {
+  from: string;
+  to: string;
+}
+
+export interface FindPathResponse {
+  path: string[];
+  length: number;
+}
+
+export interface GetNodesByTypeRequest {
+  type: string;
+}
+
+export interface GetNodesByTypeResponse {
+  nodes: Array<{
+    urn: string;
+    properties: Record<string, unknown>;
+  }>;
+  count: number;
+}
+
+export interface BuildCVEGraphRequest {
+  limit?: number;
+}
+
+export interface BuildCVEGraphResponse {
+  nodes_added: number;
+  edges_added: number;
+  total_nodes: number;
+  total_edges: number;
+}
+
+export interface ClearGraphRequest {}
+
+export interface ClearGraphResponse {
+  status: string;
+}
+
+export interface GetFSMStateRequest {}
+
+export interface GetFSMStateResponse {
+  analyze_state: string;
+  graph_state: string;
+}
+
+export interface PauseAnalysisRequest {}
+
+export interface PauseAnalysisResponse {
+  status: string;
+}
+
+export interface ResumeAnalysisRequest {}
+
+export interface ResumeAnalysisResponse {
+  status: string;
+}
+
+export interface SaveGraphRequest {}
+
+export interface SaveGraphResponse {
+  status: string;
+  node_count: number;
+  edge_count: number;
+  last_saved: string;
+}
+
+export interface LoadGraphRequest {}
+
+export interface LoadGraphResponse {
+  status: string;
+  node_count: number;
+  edge_count: number;
+}
+
+// ============================================================================
 // CWE Data Types (from pkg/cwe/types.go)
 // ============================================================================
 

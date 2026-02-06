@@ -101,6 +101,35 @@ import type {
   GetHistoryByActionResponse,
   RevertBookmarkStateRequest,
   RevertBookmarkStateResponse,
+  // Graph Analysis Types
+  GetGraphStatsRequest,
+  GetGraphStatsResponse,
+  AddNodeRequest,
+  AddNodeResponse,
+  AddEdgeRequest,
+  AddEdgeResponse,
+  GetNodeRequest,
+  GetNodeResponse,
+  GetNeighborsRequest,
+  GetNeighborsResponse,
+  FindPathRequest,
+  FindPathResponse,
+  GetNodesByTypeRequest,
+  GetNodesByTypeResponse,
+  BuildCVEGraphRequest,
+  BuildCVEGraphResponse,
+  ClearGraphRequest,
+  ClearGraphResponse,
+  GetFSMStateRequest,
+  GetFSMStateResponse,
+  PauseAnalysisRequest,
+  PauseAnalysisResponse,
+  ResumeAnalysisRequest,
+  ResumeAnalysisResponse,
+  SaveGraphRequest,
+  SaveGraphResponse,
+  LoadGraphRequest,
+  LoadGraphResponse,
 } from './types';
 import { logError, logWarn, logDebug, createLogger } from './logger';
 
@@ -1717,6 +1746,212 @@ export class RPCClient {
       { providerID: string; limit?: number; offset?: number },
       { checkpoints: any[]; count: number }
     >('RPCGetProviderCheckpoints', { providerID, limit, offset }, 'meta');
+  }
+
+  // ============================================================================
+  // Graph Analysis RPC Methods
+  // ============================================================================
+
+  /**
+   * Get graph statistics
+   */
+  async getGraphStats(): Promise<RPCResponse<GetGraphStatsResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          node_count: 1500,
+          edge_count: 3200,
+        },
+      };
+    }
+    return this.call<GetGraphStatsRequest, GetGraphStatsResponse>('RPCGetGraphStats', {}, 'analysis');
+  }
+
+  /**
+   * Get neighbors of a node
+   */
+  async getNeighbors(urn: string): Promise<RPCResponse<GetNeighborsResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          neighbors: [
+            'v2e::mitre::cwe::CWE-79',
+            'v2e::mitre::cwe::CWE-89',
+            'v2e::mitre::capec::CAPEC-66',
+          ],
+        },
+      };
+    }
+    return this.call<GetNeighborsRequest, GetNeighborsResponse>('RPCGetNeighbors', { urn }, 'analysis');
+  }
+
+  /**
+   * Find path between two nodes
+   */
+  async findPath(from: string, to: string): Promise<RPCResponse<FindPathResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          path: [
+            'v2e::nvd::cve::CVE-2024-1234',
+            'v2e::mitre::cwe::CWE-79',
+            'v2e::mitre::capec::CAPEC-66',
+            'v2e::mitre::attack::T1566',
+          ],
+          length: 4,
+        },
+      };
+    }
+    return this.call<FindPathRequest, FindPathResponse>('RPCFindPath', { from, to }, 'analysis');
+  }
+
+  /**
+   * Get nodes by type
+   */
+  async getNodesByType(type: string): Promise<RPCResponse<GetNodesByTypeResponse>> {
+    if (this.useMock) {
+      const mockNodes = Array.from({ length: 10 }, (_, i) => ({
+        urn: `v2e::nvd::cve::CVE-2024-${String(i + 1).padStart(5, '0')}`,
+        properties: { severity: 'HIGH' },
+      }));
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          nodes: mockNodes,
+          count: 10,
+        },
+      };
+    }
+    return this.call<GetNodesByTypeRequest, GetNodesByTypeResponse>('RPCGetNodesByType', { type }, 'analysis');
+  }
+
+  /**
+   * Build CVE graph
+   */
+  async buildCVEGraph(limit?: number): Promise<RPCResponse<BuildCVEGraphResponse>> {
+    if (this.useMock) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          nodes_added: 250,
+          edges_added: 180,
+          total_nodes: 250,
+          total_edges: 180,
+        },
+      };
+    }
+    return this.call<BuildCVEGraphRequest, BuildCVEGraphResponse>('RPCBuildCVEGraph', { limit }, 'analysis');
+  }
+
+  /**
+   * Clear graph
+   */
+  async clearGraph(): Promise<RPCResponse<ClearGraphResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          status: 'cleared',
+        },
+      };
+    }
+    return this.call<ClearGraphRequest, ClearGraphResponse>('RPCClearGraph', {}, 'analysis');
+  }
+
+  /**
+   * Get FSM state
+   */
+  async getFSMState(): Promise<RPCResponse<GetFSMStateResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          analyze_state: 'IDLE',
+          graph_state: 'READY',
+        },
+      };
+    }
+    return this.call<GetFSMStateRequest, GetFSMStateResponse>('RPCGetFSMState', {}, 'analysis');
+  }
+
+  /**
+   * Pause analysis
+   */
+  async pauseAnalysis(): Promise<RPCResponse<PauseAnalysisResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          status: 'paused',
+        },
+      };
+    }
+    return this.call<PauseAnalysisRequest, PauseAnalysisResponse>('RPCPauseAnalysis', {}, 'analysis');
+  }
+
+  /**
+   * Resume analysis
+   */
+  async resumeAnalysis(): Promise<RPCResponse<ResumeAnalysisResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          status: 'resumed',
+        },
+      };
+    }
+    return this.call<ResumeAnalysisRequest, ResumeAnalysisResponse>('RPCResumeAnalysis', {}, 'analysis');
+  }
+
+  /**
+   * Save graph to disk
+   */
+  async saveGraph(): Promise<RPCResponse<SaveGraphResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          status: 'saved',
+          node_count: 250,
+          edge_count: 180,
+          last_saved: new Date().toISOString(),
+        },
+      };
+    }
+    return this.call<SaveGraphRequest, SaveGraphResponse>('RPCSaveGraph', {}, 'analysis');
+  }
+
+  /**
+   * Load graph from disk
+   */
+  async loadGraph(): Promise<RPCResponse<LoadGraphResponse>> {
+    if (this.useMock) {
+      return {
+        retcode: 0,
+        message: 'success',
+        payload: {
+          status: 'loaded',
+          node_count: 250,
+          edge_count: 180,
+        },
+      };
+    }
+    return this.call<LoadGraphRequest, LoadGraphResponse>('RPCLoadGraph', {}, 'analysis');
   }
 }
 

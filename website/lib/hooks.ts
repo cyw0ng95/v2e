@@ -2431,3 +2431,280 @@ export function useProviderCheckpoints(
 
   return { data, isLoading, error };
 }
+
+// ============================================================================
+// Graph Analysis Hooks
+// ============================================================================
+
+/**
+ * Hook to fetch graph statistics
+ */
+export function useGraphStats() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getGraphStats();
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch graph stats');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching graph stats', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, []);
+
+  const refetch = useCallback(() => {
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error, refetch };
+}
+
+/**
+ * Hook to fetch neighbors of a node
+ */
+export function useNeighbors(urn: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!urn) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getNeighbors(urn);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch neighbors');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching neighbors', err, { urn });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [urn]);
+
+  const fetchNeighbors = useCallback((targetUrn: string) => {
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error, fetchNeighbors };
+}
+
+/**
+ * Hook to find path between two nodes
+ */
+export function useFindPath() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const findPath = useCallback(async (from: string, to: string) => {
+    try {
+      setIsLoading(true);
+      const response = await rpcClient.findPath(from, to);
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to find path');
+      }
+
+      setData(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error finding path', err, { from, to });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return { data, isLoading, error, findPath };
+}
+
+/**
+ * Hook to fetch nodes by type
+ */
+export function useNodesByType(type?: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!type) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await rpcClient.getNodesByType(type);
+
+        if (response.retcode !== 0) {
+          throw new Error(response.message || 'Failed to fetch nodes');
+        }
+
+        setData(response.payload);
+        setError(null);
+      } catch (err: any) {
+        setError(err);
+        logger.error('Error fetching nodes', err, { type });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {};
+  }, [type]);
+
+  const fetchNodes = useCallback((nodeType: string) => {
+    fetchData();
+  }, []);
+
+  return { data, isLoading, error, fetchNodes };
+}
+
+/**
+ * Hook for graph control operations
+ */
+export function useGraphControl() {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [buildResult, setBuildResult] = useState<any>(null);
+  const [clearResult, setClearResult] = useState<any>(null);
+  const [saveResult, setSaveResult] = useState<any>(null);
+  const [loadResult, setLoadResult] = useState<any>(null);
+
+  const buildGraph = useCallback(async (limit?: number) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setBuildResult(null);
+
+      const response = await rpcClient.buildCVEGraph(limit);
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to build graph');
+      }
+
+      setBuildResult(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error building graph', err, { limit });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const clearGraph = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setClearResult(null);
+
+      const response = await rpcClient.clearGraph();
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to clear graph');
+      }
+
+      setClearResult(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error clearing graph', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const saveGraph = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSaveResult(null);
+
+      const response = await rpcClient.saveGraph();
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to save graph');
+      }
+
+      setSaveResult(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error saving graph', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadGraph = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setLoadResult(null);
+
+      const response = await rpcClient.loadGraph();
+
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to load graph');
+      }
+
+      setLoadResult(response.payload);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      logger.error('Error loading graph', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    buildGraph,
+    clearGraph,
+    saveGraph,
+    loadGraph,
+    isLoading,
+    error,
+    buildResult,
+    clearResult,
+    saveResult,
+    loadResult,
+  };
+}
