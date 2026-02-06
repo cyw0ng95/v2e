@@ -2,17 +2,22 @@ package strategy
 
 import (
 	"context"
+	"log"
 	"sync"
+
+	"github.com/cyw0ng95/v2e/pkg/notes"
+	"gorm.io/gorm"
 )
 
 // Manager handles automatic strategy switching based on user behavior
 type Manager struct {
-	mu             sync.RWMutex
+	mu              sync.RWMutex
 	currentStrategy LearningStrategy
 	bfsStrategy     *BFSStrategy
 	dfsStrategy     *DFSStrategy
 	items           []SecurityItem
 	itemGraph       *ItemGraph
+	db              *gorm.DB
 
 	// FSM state (simplified, without direct FSM dependency)
 	viewedItems    []string
@@ -20,14 +25,31 @@ type Manager struct {
 	pathStack      []string
 }
 
-// NewManager creates a new strategy manager
-func NewManager(items []SecurityItem) *Manager {
+// NewManager creates a new strategy manager with cross-reference graph
+func NewManager(items []SecurityItem, db *gorm.DB) *Manager {
 	graph := NewItemGraph()
-	// Build item graph from cross-references
-	for _, item := range items {
-		// In a real implementation, this would load cross-reference data
-		// For now, we'll create simple links based on item types
-		graph.AddLink(item.URN, item.URN)
+
+	// Build item graph from cross-references in database
+	if db != nil {
+		ctx := context.Background()
+		crossRefService := notes.NewCrossReferenceService(db)
+
+		for _, item := range items {
+			// Get all cross-references where this item is the source
+			crossRefs, err := crossRefService.GetCrossReferencesBySource(ctx, item.URN)
+			if err != nil {
+				log.Printf("Warning: failed to get cross-references for %s: %v", item.URN, err)
+				continue
+			}
+
+			// Add links from cross-references
+			for _, ref := range crossRefs {
+				graph.AddLink(ref.SourceItemID, ref.TargetItemID)
+			}
+		}
+	} else {
+		// Fallback: create simple links based on item types if no DB
+		buildSimpleGraph(graph, items)
 	}
 
 	bfs := NewBFSStrategy(items)
@@ -39,9 +61,50 @@ func NewManager(items []SecurityItem) *Manager {
 		dfsStrategy:     dfs,
 		items:           items,
 		itemGraph:       graph,
+		db:              db,
 		viewedItems:     make([]string, 0),
 		completedItems:  make([]string, 0),
 		pathStack:       make([]string, 0),
+	}
+}
+
+// buildSimpleGraph creates a simple type-based graph as fallback
+func buildSimpleGraph(graph *ItemGraph, items []SecurityItem) {
+	itemsByType := make(map[string][]SecurityItem)
+	for _, item := range items {
+		itemsByType[item.Type] = append(itemsByType[item.Type], item)
+	}
+
+	// Create links based on type relationships
+	buildTypeLinks(graph, itemsByType, "cve", "cwe")
+	buildTypeLinks(graph, itemsByType, "cwe", "capec")
+	buildTypeLinks(graph, itemsByType, "capec", "attack")
+
+	// Add intra-type links
+	for _, typeItems := range itemsByType {
+		if len(typeItems) < 2 {
+			continue
+		}
+		for i := 0; i < len(typeItems)-1; i++ {
+			graph.AddLink(typeItems[i].URN, typeItems[i+1].URN)
+		}
+	}
+}
+
+// buildTypeLinks creates links between items of different types
+func buildTypeLinks(graph *ItemGraph, itemsByType map[string][]SecurityItem, fromType, toType string) {
+	fromItems, fromExists := itemsByType[fromType]
+	toItems, toExists := itemsByType[toType]
+
+	if !fromExists || !toExists || len(toItems) == 0 {
+		return
+	}
+
+	// Link each fromType item to up to 3 toType items
+	for _, fromItem := range fromItems {
+		for i := 0; i < min(3, len(toItems)); i++ {
+			graph.AddLink(fromItem.URN, toItems[i].URN)
+		}
 	}
 }
 

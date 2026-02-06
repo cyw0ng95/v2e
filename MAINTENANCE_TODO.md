@@ -24,7 +24,7 @@
 | 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
 
-| 236 | pkg/notes/strategy | Code    | Implement proper cross-reference graph construction in manager.go:26-31            | 200      | 2        |         |
+
 | 237 | pkg/notes/fsm    | Code    | Add storage cleanup and proper error handling in BoltDBStorage                     | 150      | 2        |         |
 | 238 | pkg/notes        | Docs    | Document FSM state machine transitions with state diagrams                         | 200      | 2        |         |
 | 248 | pkg/notes        | Code    | Add input validation for all learning RPC parameters                               | 200      | 2        |         |
