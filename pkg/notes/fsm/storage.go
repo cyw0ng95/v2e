@@ -25,8 +25,9 @@ var (
 
 // BoltDBStorage implements FSM state persistence using BoltDB
 type BoltDBStorage struct {
-	db *bolt.DB
-	mu sync.RWMutex
+	db     *bolt.DB
+	mu     sync.RWMutex
+	closed bool
 }
 
 // NewBoltDBStorage creates a new BoltDB-based FSM storage
@@ -50,14 +51,55 @@ func NewBoltDBStorage(dbPath string) (*BoltDBStorage, error) {
 		return nil, fmt.Errorf("failed to create buckets: %w", err)
 	}
 
-	return &BoltDBStorage{db: db}, nil
+	return &BoltDBStorage{db: db, closed: false}, nil
 }
 
-// Close closes the BoltDB database
+// Close closes the BoltDB database and releases resources
 func (s *BoltDBStorage) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.closed {
+		return nil // Already closed
+	}
+
+	s.closed = true
 	return s.db.Close()
+}
+
+// cleanup performs storage cleanup operations
+func (s *BoltDBStorage) cleanup() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return fmt.Errorf("storage is already closed")
+	}
+
+	return s.db.Update(func(tx *bolt.Tx) error {
+		// Clean up stale memory FSM states (older than 30 days)
+		memoryBucket := tx.Bucket(BucketMemoryFSMStates)
+		if memoryBucket == nil {
+			return fmt.Errorf("bucket %s not found", BucketMemoryFSMStates)
+		}
+
+		cutoff := time.Now().AddDate(0, 0, -30)
+		cursor := memoryBucket.Cursor()
+		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
+			var state MemoryFSMState
+			if err := json.Unmarshal(v, &state); err != nil {
+				continue // Skip corrupted entries
+			}
+
+			if state.UpdatedAt.Before(cutoff) {
+				if err := memoryBucket.Delete(k); err != nil {
+					return fmt.Errorf("delete stale state %s: %w", string(k), err)
+				}
+			}
+		}
+
+		return nil
+	})
 }
 
 // SaveMemoryFSMState saves an object's FSM state

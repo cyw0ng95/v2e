@@ -25,7 +25,7 @@
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
 
 
-| 237 | pkg/notes/fsm    | Code    | Add storage cleanup and proper error handling in BoltDBStorage                     | 150      | 2        |         |
+
 | 238 | pkg/notes        | Docs    | Document FSM state machine transitions with state diagrams                         | 200      | 2        |         |
 | 248 | pkg/notes        | Code    | Add input validation for all learning RPC parameters                               | 200      | 2        |         |
 | 249 | pkg/notes/fsm    | Code    | Add context-based timeout for FSM state persistence operations                     | 100      | 2        |         |
