@@ -1,9 +1,9 @@
 package common
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"bytes"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestLogLevel_String(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogLevel_String", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogLevel_String", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			level    LogLevel
 			expected string
@@ -35,7 +35,7 @@ func TestLogLevel_String(t *testing.T) {
 }
 
 func TestNewLogger(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestNewLogger", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestNewLogger", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "TEST: ", InfoLevel)
 
@@ -51,7 +51,7 @@ func TestNewLogger(t *testing.T) {
 }
 
 func TestLogger_SetLevel(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_SetLevel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_SetLevel", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "", InfoLevel)
 
@@ -69,7 +69,7 @@ func TestLogger_SetLevel(t *testing.T) {
 }
 
 func TestLogger_Debug(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_Debug", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_Debug", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "", DebugLevel)
 
@@ -90,7 +90,7 @@ func TestLogger_Debug(t *testing.T) {
 }
 
 func TestLogger_Info(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_Info", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_Info", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "", InfoLevel)
 
@@ -108,7 +108,7 @@ func TestLogger_Info(t *testing.T) {
 }
 
 func TestLogger_Warn(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_Warn", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_Warn", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "", WarnLevel)
 
@@ -126,7 +126,7 @@ func TestLogger_Warn(t *testing.T) {
 }
 
 func TestLogger_Error(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_Error", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_Error", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "", ErrorLevel)
 
@@ -144,7 +144,7 @@ func TestLogger_Error(t *testing.T) {
 }
 
 func TestLogger_LevelFiltering(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_LevelFiltering", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_LevelFiltering", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name         string
 			loggerLevel  LogLevel
@@ -198,7 +198,7 @@ func TestLogger_LevelFiltering(t *testing.T) {
 }
 
 func TestLogger_SetOutput(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_SetOutput", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_SetOutput", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf1 bytes.Buffer
 		var buf2 bytes.Buffer
 
@@ -225,7 +225,7 @@ func TestLogger_SetOutput(t *testing.T) {
 }
 
 func TestLogger_FormatString(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestLogger_FormatString", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestLogger_FormatString", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		logger := NewLogger(&buf, "", InfoLevel)
 
@@ -240,7 +240,7 @@ func TestLogger_FormatString(t *testing.T) {
 }
 
 func TestDefaultLogger(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestDefaultLogger", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestDefaultLogger", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test that default logger functions work
 		var buf bytes.Buffer
 		SetOutput(&buf)
@@ -260,7 +260,7 @@ func TestDefaultLogger(t *testing.T) {
 }
 
 func TestDefaultLogger_AllLevels(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestDefaultLogger_AllLevels", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestDefaultLogger_AllLevels", nil, func(t *testing.T, tx *gorm.DB) {
 		var buf bytes.Buffer
 		SetOutput(&buf)
 		SetLevel(DebugLevel)
@@ -293,7 +293,7 @@ func TestDefaultLogger_AllLevels(t *testing.T) {
 }
 
 func TestGetLevel(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestGetLevel", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestGetLevel", nil, func(t *testing.T, tx *gorm.DB) {
 		// Save original level
 		originalLevel := GetLevel()
 		defer SetLevel(originalLevel)
@@ -312,7 +312,7 @@ func TestGetLevel(t *testing.T) {
 }
 
 func TestNewLoggerWithFile(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestNewLoggerWithFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestNewLoggerWithFile", nil, func(t *testing.T, tx *gorm.DB) {
 		tmpDir := t.TempDir()
 		fname := filepath.Join(tmpDir, "testlog.log")
 

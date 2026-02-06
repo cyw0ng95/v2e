@@ -2,15 +2,15 @@
 package remote
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestNewGitClient(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestNewGitClient", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestNewGitClient", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name     string
 			repoURL  string
@@ -49,7 +49,7 @@ func TestNewGitClient(t *testing.T) {
 }
 
 func TestDefaultRepoURL(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestDefaultRepoURL", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestDefaultRepoURL", nil, func(t *testing.T, tx *gorm.DB) {
 		url := DefaultRepoURL()
 		if url == "" {
 			t.Error("DefaultRepoURL returned empty string")
@@ -62,7 +62,7 @@ func TestDefaultRepoURL(t *testing.T) {
 }
 
 func TestDefaultRepoPath(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestDefaultRepoPath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestDefaultRepoPath", nil, func(t *testing.T, tx *gorm.DB) {
 		path := DefaultRepoPath()
 		if path == "" {
 			t.Error("DefaultRepoPath returned empty string")
@@ -75,7 +75,7 @@ func TestDefaultRepoPath(t *testing.T) {
 }
 
 func TestMatchGuideFilePattern(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestMatchGuideFilePattern", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestMatchGuideFilePattern", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
 			name     string
 			filename string
@@ -131,7 +131,7 @@ func TestMatchGuideFilePattern(t *testing.T) {
 }
 
 func TestGitClient_GetFilePath(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestGitClient_GetFilePath", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestGitClient_GetFilePath", nil, func(t *testing.T, tx *gorm.DB) {
 		client := NewGitClient("", "/test/repo")
 		want := filepath.Join("/test/repo", "guides", "test.html")
 		got := client.GetFilePath("test.html")
@@ -144,7 +144,7 @@ func TestGitClient_GetFilePath(t *testing.T) {
 
 // TestGitClient_Clone_Error tests Clone with various error conditions.
 func TestGitClient_Clone_Error(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestGitClient_Clone_Error", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestGitClient_Clone_Error", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create a temporary directory for testing
 		tempDir := t.TempDir()
 		client := NewGitClient("", filepath.Join(tempDir, "test-repo"))
@@ -161,7 +161,7 @@ func TestGitClient_Clone_Error(t *testing.T) {
 
 // TestRepoStatus validation.
 func TestRepoStatus(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestRepoStatus", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestRepoStatus", nil, func(t *testing.T, tx *gorm.DB) {
 		status := &RepoStatus{
 			CommitHash: "abc1234",
 			Branch:     "main",
@@ -183,7 +183,7 @@ func TestRepoStatus(t *testing.T) {
 
 // TestListGuideFiles tests listing guide files in a directory structure.
 func TestListGuideFiles_EmptyDir(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestListGuideFiles_EmptyDir", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestListGuideFiles_EmptyDir", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create empty temp directory
 		tempDir := t.TempDir()
 		client := NewGitClient("", tempDir)
@@ -207,7 +207,7 @@ func TestListGuideFiles_EmptyDir(t *testing.T) {
 
 // TestListGuideFiles_NoGuidesDir tests when guides directory doesn't exist.
 func TestListGuideFiles_NoGuidesDir(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestListGuideFiles_NoGuidesDir", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestListGuideFiles_NoGuidesDir", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create empty temp directory (no guides subdirectory)
 		tempDir := t.TempDir()
 		client := NewGitClient("", tempDir)
@@ -222,7 +222,7 @@ func TestListGuideFiles_NoGuidesDir(t *testing.T) {
 
 // TestListGuideFiles_WithMixedFiles tests listing with mixed file types.
 func TestListGuideFiles_WithMixedFiles(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestListGuideFiles_WithMixedFiles", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestListGuideFiles_WithMixedFiles", nil, func(t *testing.T, tx *gorm.DB) {
 		// Create temp directory with guides subdirectory
 		tempDir := t.TempDir()
 		guidesDir := filepath.Join(tempDir, "guides")
@@ -234,8 +234,8 @@ func TestListGuideFiles_WithMixedFiles(t *testing.T) {
 		testFiles := []string{
 			"ssg-al2023-guide-cis.html",
 			"ssg-al2023-guide-index.html",
-			"ssg-al2023-ds.xml",          // Not a guide
-			"other.html",                  // Not a guide pattern
+			"ssg-al2023-ds.xml", // Not a guide
+			"other.html",        // Not a guide pattern
 		}
 
 		for _, name := range testFiles {

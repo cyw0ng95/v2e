@@ -1,17 +1,17 @@
 package capec
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/xml"
 	"fmt"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
 	"strings"
 	"testing"
 )
 
 // TestCAPECAttackPattern_XMLMarshalUnmarshal covers CAPEC XML serialization edge cases.
 func TestCAPECAttackPattern_XMLMarshalUnmarshal(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_XMLMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_XMLMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name    string
 			pattern CAPECAttackPattern
@@ -212,7 +212,7 @@ func TestCAPECAttackPattern_XMLMarshalUnmarshal(t *testing.T) {
 
 // TestInnerXML_Formats covers InnerXML content variations.
 func TestInnerXML_Formats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestInnerXML_Formats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestInnerXML_Formats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name string
 			xml  string
@@ -257,7 +257,7 @@ func TestInnerXML_Formats(t *testing.T) {
 
 // TestRelatedWeakness_Formats covers CWE ID format variations.
 func TestRelatedWeakness_Formats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestRelatedWeakness_Formats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestRelatedWeakness_Formats", nil, func(t *testing.T, tx *gorm.DB) {
 		cweIDs := []string{
 			"CWE-1",
 			"CWE-79",
@@ -298,7 +298,7 @@ func TestRelatedWeakness_Formats(t *testing.T) {
 
 // TestCAPECAttackPattern_IDRanges validates various CAPEC ID values.
 func TestCAPECAttackPattern_IDRanges(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_IDRanges", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_IDRanges", nil, func(t *testing.T, tx *gorm.DB) {
 		ids := []int{1, 10, 100, 500, 1000, 9999}
 
 		for _, id := range ids {
@@ -325,7 +325,7 @@ func TestCAPECAttackPattern_IDRanges(t *testing.T) {
 
 // TestCAPECAttackPattern_AbstractionLevels validates abstraction values.
 func TestCAPECAttackPattern_AbstractionLevels(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_AbstractionLevels", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_AbstractionLevels", nil, func(t *testing.T, tx *gorm.DB) {
 		abstractions := []string{
 			"Meta",
 			"Standard",
@@ -357,7 +357,7 @@ func TestCAPECAttackPattern_AbstractionLevels(t *testing.T) {
 
 // TestCAPECAttackPattern_StatusValues validates status values.
 func TestCAPECAttackPattern_StatusValues(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_StatusValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_StatusValues", nil, func(t *testing.T, tx *gorm.DB) {
 		statuses := []string{
 			"Draft",
 			"Stable",
@@ -390,7 +390,7 @@ func TestCAPECAttackPattern_StatusValues(t *testing.T) {
 
 // TestCAPECAttackPattern_LikelihoodValues validates likelihood values.
 func TestCAPECAttackPattern_LikelihoodValues(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_LikelihoodValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_LikelihoodValues", nil, func(t *testing.T, tx *gorm.DB) {
 		likelihoods := []string{
 			"High",
 			"Medium",
@@ -422,7 +422,7 @@ func TestCAPECAttackPattern_LikelihoodValues(t *testing.T) {
 
 // TestCAPECAttackPattern_SeverityValues validates severity values.
 func TestCAPECAttackPattern_SeverityValues(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_SeverityValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_SeverityValues", nil, func(t *testing.T, tx *gorm.DB) {
 		severities := []string{
 			"Very High",
 			"High",
@@ -456,7 +456,7 @@ func TestCAPECAttackPattern_SeverityValues(t *testing.T) {
 
 // TestCAPECAttackPattern_ArraySizes validates various array sizes.
 func TestCAPECAttackPattern_ArraySizes(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_ArraySizes", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_ArraySizes", nil, func(t *testing.T, tx *gorm.DB) {
 		sizes := []int{0, 1, 5, 10, 50}
 
 		for _, size := range sizes {

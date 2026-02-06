@@ -1,9 +1,9 @@
 package broker
 
 import (
-	"testing"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"gorm.io/gorm"
+	"testing"
 )
 
 // fakeSpawner implements Spawner for compile-time contract testing.
@@ -21,14 +21,14 @@ func (fakeSpawner) SpawnRPCWithRestart(id, command string, maxRestarts int, args
 }
 
 func TestSpawnerInterfaceCompilation(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestSpawnerInterfaceCompilation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestSpawnerInterfaceCompilation", nil, func(t *testing.T, tx *gorm.DB) {
 		var _ Spawner = fakeSpawner{}
 	})
 
 }
 
 func TestSpawnResultFields(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestSpawnResultFields", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestSpawnResultFields", nil, func(t *testing.T, tx *gorm.DB) {
 		res := SpawnResult{ID: "pid", PID: 123, Command: "echo", Args: []string{"hi"}, Status: "running", ExitCode: 0}
 		if res.ID != "pid" || res.PID != 123 || res.Command != "echo" || res.Status != "running" || res.ExitCode != 0 {
 			t.Fatalf("unexpected spawn result: %+v", res)

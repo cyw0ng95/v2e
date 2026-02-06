@@ -1,17 +1,17 @@
 package attack
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/json"
 	"fmt"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
 	"strings"
 	"testing"
 )
 
 // TestAttackTechnique_JSONMarshalUnmarshal covers ATT&CK technique JSON serialization.
 func TestAttackTechnique_JSONMarshalUnmarshal(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackTechnique_JSONMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackTechnique_JSONMarshalUnmarshal", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name      string
 			technique AttackTechnique
@@ -103,7 +103,7 @@ func TestAttackTechnique_JSONMarshalUnmarshal(t *testing.T) {
 
 // TestAttackTactic_JSONFormats covers ATT&CK tactic JSON serialization.
 func TestAttackTactic_JSONFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackTactic_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackTactic_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name   string
 			tactic AttackTactic
@@ -164,7 +164,7 @@ func TestAttackTactic_JSONFormats(t *testing.T) {
 
 // TestAttackTechnique_IDFormats validates various technique ID formats.
 func TestAttackTechnique_IDFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackTechnique_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackTechnique_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		validIDs := []string{
 			"T1001",
 			"T1002",
@@ -200,7 +200,7 @@ func TestAttackTechnique_IDFormats(t *testing.T) {
 
 // TestAttackTactic_IDFormats validates various tactic ID formats.
 func TestAttackTactic_IDFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackTactic_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackTactic_IDFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		validIDs := []string{
 			"TA0001",
 			"TA0002",
@@ -233,7 +233,7 @@ func TestAttackTactic_IDFormats(t *testing.T) {
 
 // TestAttackTechnique_DomainValues validates domain field values.
 func TestAttackTechnique_DomainValues(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackTechnique_DomainValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackTechnique_DomainValues", nil, func(t *testing.T, tx *gorm.DB) {
 		domains := []string{
 			"enterprise-attack",
 			"mobile-attack",
@@ -265,7 +265,7 @@ func TestAttackTechnique_DomainValues(t *testing.T) {
 
 // TestAttackTechnique_PlatformValues validates platform field values.
 func TestAttackTechnique_PlatformValues(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackTechnique_PlatformValues", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackTechnique_PlatformValues", nil, func(t *testing.T, tx *gorm.DB) {
 		platforms := []string{
 			"Windows",
 			"Linux",
@@ -302,7 +302,7 @@ func TestAttackTechnique_PlatformValues(t *testing.T) {
 
 // TestAttackMitigation_JSONFormats validates mitigation JSON serialization.
 func TestAttackMitigation_JSONFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackMitigation_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackMitigation_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name       string
 			mitigation AttackMitigation
@@ -343,7 +343,7 @@ func TestAttackMitigation_JSONFormats(t *testing.T) {
 
 // TestAttackSoftware_JSONFormats validates software JSON serialization.
 func TestAttackSoftware_JSONFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackSoftware_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackSoftware_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name     string
 			software AttackSoftware
@@ -376,7 +376,7 @@ func TestAttackSoftware_JSONFormats(t *testing.T) {
 
 // TestAttackGroup_JSONFormats validates group JSON serialization.
 func TestAttackGroup_JSONFormats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestAttackGroup_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestAttackGroup_JSONFormats", nil, func(t *testing.T, tx *gorm.DB) {
 		cases := []struct {
 			name  string
 			group AttackGroup

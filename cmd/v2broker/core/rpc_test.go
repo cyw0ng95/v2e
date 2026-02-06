@@ -1,8 +1,8 @@
 package core
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
 	"testing"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
@@ -10,7 +10,7 @@ import (
 
 // TestBroker_RegisterEndpoint tests endpoint registration
 func TestBroker_RegisterEndpoint(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestBroker_RegisterEndpoint", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestBroker_RegisterEndpoint", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -32,7 +32,7 @@ func TestBroker_RegisterEndpoint(t *testing.T) {
 
 // TestBroker_GetAllEndpoints tests getting all endpoints
 func TestBroker_GetAllEndpoints(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestBroker_GetAllEndpoints", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestBroker_GetAllEndpoints", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -61,7 +61,7 @@ func TestBroker_GetAllEndpoints(t *testing.T) {
 }
 
 func TestHandleRPCGetMessageStats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestHandleRPCGetMessageStats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestHandleRPCGetMessageStats", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -119,7 +119,7 @@ func TestHandleRPCGetMessageStats(t *testing.T) {
 }
 
 func TestHandleRPCGetMessageCount(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestHandleRPCGetMessageCount", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestHandleRPCGetMessageCount", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -179,7 +179,7 @@ func TestHandleRPCGetMessageCount(t *testing.T) {
 }
 
 func TestProcessMessage_RPCGetMessageStats(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestProcessMessage_RPCGetMessageStats", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestProcessMessage_RPCGetMessageStats", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
@@ -207,7 +207,7 @@ func TestProcessMessage_RPCGetMessageStats(t *testing.T) {
 }
 
 func TestProcessMessage_UnknownRPC(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestProcessMessage_UnknownRPC", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestProcessMessage_UnknownRPC", nil, func(t *testing.T, tx *gorm.DB) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 

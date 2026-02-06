@@ -1,14 +1,14 @@
 package capec
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/xml"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
 	"testing"
 )
 
 func TestCAPECAttackPattern_Unmarshal(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestCAPECAttackPattern_Unmarshal", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestCAPECAttackPattern_Unmarshal", nil, func(t *testing.T, tx *gorm.DB) {
 		data := `<?xml version="1.0"?>
 	    <Attack_Pattern ID="123" Name="Test Pattern" Abstraction="Detailed" Status="Stable">
 	      <Summary>Short summary</Summary>
