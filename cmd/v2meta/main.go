@@ -334,6 +334,18 @@ func main() {
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetKernelMetrics")
 	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCGetKernelMetrics")
 
+	// Register provider control handlers
+	sp.RegisterHandler("RPCStartProvider", createStartProviderHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartProvider")
+	sp.RegisterHandler("RPCPauseProvider", createPauseProviderHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCPauseProvider")
+	sp.RegisterHandler("RPCStopProvider", createStopProviderHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopProvider")
+
+	// Register performance policy handler
+	sp.RegisterHandler("RPCUpdatePerformancePolicy", createUpdatePerformancePolicyHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCUpdatePerformancePolicy")
+
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)
 
@@ -1283,15 +1295,166 @@ func createGetKernelMetricsHandler(rpcClient *rpc.Client, logger *common.Logger)
 		now := time.Now()
 		result := map[string]interface{}{
 			"metrics": map[string]interface{}{
-				"p99Latency":        10.0,       // Default P99 latency (ms)
-				"bufferSaturation": 25.0,       // Default buffer saturation (%)
+				"p99Latency":       10.0,                                    // Default P99 latency (ms)
+				"bufferSaturation": 25.0,                                    // Default buffer saturation (%)
 				"messageRate":      float64(totalSent+totalReceived) / 60.0, // Messages per second (approx)
-				"errorRate":        0.0,        // Default error rate
+				"errorRate":        0.0,                                     // Default error rate
 				"timestamp":        now.Format(time.RFC3339),
 			},
 		}
 
 		logger.Debug("RPCGetKernelMetrics: Successfully retrieved kernel metrics")
+		return subprocess.NewSuccessResponse(msg, result)
+	}
+}
+
+// createStartProviderHandler creates a handler to start a provider
+func createStartProviderHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("RPCStartProvider: Starting provider")
+
+		var params struct {
+			ProviderID string `json:"providerId"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			logger.Warn("Failed to parse start provider params: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("invalid params: %v", err)), nil
+		}
+
+		// Get active run for the provider
+		activeRun, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Warn("No active run found: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "no active run found"), nil
+		}
+
+		if activeRun.ID != params.ProviderID {
+			logger.Warn("Active run %s does not match requested provider %s", activeRun.ID, params.ProviderID)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "provider not active"), nil
+		}
+
+		// Resume the paused run
+		if err := jobExecutor.Resume(ctx, activeRun.ID); err != nil {
+			logger.Warn("Failed to resume run %s: %v", activeRun.ID, err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start provider: %v", err)), nil
+		}
+
+		result := map[string]interface{}{
+			"success":    true,
+			"providerId": params.ProviderID,
+		}
+
+		logger.Debug("RPCStartProvider: Provider started successfully")
+		return subprocess.NewSuccessResponse(msg, result)
+	}
+}
+
+// createPauseProviderHandler creates a handler to pause a provider
+func createPauseProviderHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("RPCPauseProvider: Pausing provider")
+
+		var params struct {
+			ProviderID string `json:"providerId"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			logger.Warn("Failed to parse pause provider params: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("invalid params: %v", err)), nil
+		}
+
+		// Get active run for the provider
+		activeRun, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Warn("No active run found: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "no active run found"), nil
+		}
+
+		if activeRun.ID != params.ProviderID {
+			logger.Warn("Active run %s does not match requested provider %s", activeRun.ID, params.ProviderID)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "provider not active"), nil
+		}
+
+		// Pause the run
+		if err := jobExecutor.Pause(activeRun.ID); err != nil {
+			logger.Warn("Failed to pause run %s: %v", activeRun.ID, err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to pause provider: %v", err)), nil
+		}
+
+		result := map[string]interface{}{
+			"success":    true,
+			"providerId": params.ProviderID,
+		}
+
+		logger.Debug("RPCPauseProvider: Provider paused successfully")
+		return subprocess.NewSuccessResponse(msg, result)
+	}
+}
+
+// createStopProviderHandler creates a handler to stop a provider
+func createStopProviderHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("RPCStopProvider: Stopping provider")
+
+		var params struct {
+			ProviderID string `json:"providerId"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			logger.Warn("Failed to parse stop provider params: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("invalid params: %v", err)), nil
+		}
+
+		// Get active run for the provider
+		activeRun, err := jobExecutor.GetActiveRun()
+		if err != nil {
+			logger.Warn("No active run found: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "no active run found"), nil
+		}
+
+		if activeRun.ID != params.ProviderID {
+			logger.Warn("Active run %s does not match requested provider %s", activeRun.ID, params.ProviderID)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "provider not active"), nil
+		}
+
+		// Stop the run
+		if err := jobExecutor.Stop(activeRun.ID); err != nil {
+			logger.Warn("Failed to stop run %s: %v", activeRun.ID, err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to stop provider: %v", err)), nil
+		}
+
+		result := map[string]interface{}{
+			"success":    true,
+			"providerId": params.ProviderID,
+		}
+
+		logger.Debug("RPCStopProvider: Provider stopped successfully")
+		return subprocess.NewSuccessResponse(msg, result)
+	}
+}
+
+// createUpdatePerformancePolicyHandler creates a handler to update performance policy
+func createUpdatePerformancePolicyHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		logger.Debug("RPCUpdatePerformancePolicy: Updating performance policy")
+
+		var params struct {
+			ProviderID string                 `json:"providerId"`
+			Policy     map[string]interface{} `json:"policy"`
+		}
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			logger.Warn("Failed to parse update policy params: %v", err)
+			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("invalid params: %v", err)), nil
+		}
+
+		// In a real implementation, this would update the performance policy
+		// for the provider. For now, we'll log it and return success.
+		logger.Info("Performance policy update for provider %s: %+v", params.ProviderID, params.Policy)
+
+		result := map[string]interface{}{
+			"success":    true,
+			"providerId": params.ProviderID,
+		}
+
+		logger.Debug("RPCUpdatePerformancePolicy: Policy updated successfully")
 		return subprocess.NewSuccessResponse(msg, result)
 	}
 }

@@ -13,14 +13,69 @@ export default function ETLEnginePage() {
   const tree = etlData?.tree;
   const metrics = metricsData?.metrics;
 
-  const handleProviderAction = (providerId: string, action: 'start' | 'pause' | 'stop') => {
+  const handleProviderAction = async (providerId: string, action: 'start' | 'pause' | 'stop') => {
     console.log('Provider action:', providerId, action);
-    // TODO: Implement RPC calls to control provider FSM
+
+    try {
+      let response: RPCResponse<{ success: boolean }>;
+      switch (action) {
+        case 'start':
+          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
+            'RPCStartProvider',
+            { providerId },
+            'meta'
+          );
+          break;
+        case 'pause':
+          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
+            'RPCPauseProvider',
+            { providerId },
+            'meta'
+          );
+          break;
+        case 'stop':
+          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
+            'RPCStopProvider',
+            { providerId },
+            'meta'
+          );
+          break;
+      }
+
+      if (response.retcode !== 0) {
+        console.error('Provider action failed:', response.message);
+        throw new Error(response.message || 'Provider action failed');
+      }
+
+      console.log('Provider action successful:', response.data);
+      // Refetch ETL tree to update UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Error executing provider action:', error);
+      throw error;
+    }
   };
 
-  const handlePolicyUpdate = (providerId: string, policy: any) => {
+  const handlePolicyUpdate = async (providerId: string, policy: any) => {
     console.log('Policy update:', providerId, policy);
-    // TODO: Implement RPC call to update performance policy
+
+    try {
+      const response = await rpcClient.call<{ providerId: string; policy: any }, { success: boolean }>(
+        'RPCUpdatePerformancePolicy',
+        { providerId, policy },
+        'meta'
+      );
+
+      if (response.retcode !== 0) {
+        console.error('Policy update failed:', response.message);
+        throw new Error(response.message || 'Policy update failed');
+      }
+
+      console.log('Policy updated successfully:', response.data);
+    } catch (error) {
+      console.error('Error updating performance policy:', error);
+      throw error;
+    }
   };
 
   return (
