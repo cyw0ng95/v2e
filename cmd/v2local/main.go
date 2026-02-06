@@ -17,6 +17,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cyw0ng95/v2e/pkg/asvs"
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/common"
@@ -166,6 +167,19 @@ func main() {
 	}
 	logger.Info(LogMsgATTACKDatabaseOpened, attackDBPath)
 
+	// Initialize ASVS store (using ASVS_DB_PATH env var)
+	asvsDBPath := os.Getenv("ASVS_DB_PATH")
+	if asvsDBPath == "" {
+		asvsDBPath = "asvs.db"
+	}
+	logger.Info(LogMsgASVSDatabasePathConfigured, asvsDBPath)
+	asvsStore, err := asvs.NewLocalASVSStore(asvsDBPath)
+	if err != nil {
+		logger.Error(LogMsgFailedOpenASVSDB, err)
+		os.Exit(1)
+	}
+	logger.Info(LogMsgASVSDatabaseOpened, asvsDBPath)
+
 	// Import CWEs from JSON file at startup (if file exists)
 	// Removed duplicate importCWEsAtStartup definition; now only in cwe_handlers.go
 
@@ -295,6 +309,14 @@ func main() {
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCListAttackGroups")
 	sp.RegisterHandler("RPCGetAttackImportMetadata", createGetAttackImportMetadataHandler(attackStore, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetAttackImportMetadata")
+
+	// Register ASVS handlers
+	sp.RegisterHandler("RPCImportASVS", createImportASVSHandler(asvsStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCImportASVS")
+	sp.RegisterHandler("RPCListASVS", createListASVSHandler(asvsStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCListASVS")
+	sp.RegisterHandler("RPCGetASVSByID", createGetASVSByIDHandler(asvsStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetASVSByID")
 
 	// Register Notes service handlers
 	notes.NewRPCHandlers(notesServiceContainer, sp, logger)

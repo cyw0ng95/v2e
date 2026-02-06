@@ -390,6 +390,21 @@ export interface CWEItem {
 }
 
 // ============================================================================
+// ASVS Data Types (from pkg/asvs/types.go)
+// ============================================================================
+
+export interface ASVSItem {
+  requirementID: string;
+  chapter: string;
+  section: string;
+  description: string;
+  level1: boolean;
+  level2: boolean;
+  level3: boolean;
+  cwe?: string;
+}
+
+// ============================================================================
 // CAPEC Data Types
 // ============================================================================
 
@@ -603,6 +618,38 @@ export interface ListCWEsResponse {
   offset: number;
   limit: number;
   total: number;
+}
+
+// ============================================================================
+// ASVS RPC Types
+// ============================================================================
+
+export interface ListASVSRequest {
+  offset?: number;
+  limit?: number;
+  chapter?: string;
+  level?: number;
+}
+
+export interface ListASVSResponse {
+  requirements: ASVSItem[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface GetASVSByIDRequest {
+  requirementId: string;
+}
+
+export interface GetASVSByIDResponse extends ASVSItem {}
+
+export interface ImportASVSRequest {
+  url: string;
+}
+
+export interface ImportASVSResponse {
+  success: boolean;
 }
 
 // CWE View Types (from pkg/cwe/views.go)
