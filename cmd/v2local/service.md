@@ -1139,6 +1139,154 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, 
   - Missing object_type or object_id
   - Database error
 
+## Learning Operations
+
+The Learning Operations provide a unified learning experience with transparent BFS/DFS navigation strategies for notes and memory cards. Users navigate through security items (CVE, CWE, CAPEC, ATT&CK) without manual strategy selection - the system automatically switches between breadth-first and depth-first navigation based on user behavior.
+
+### URN Format
+All learning objects use Uniform Resource Names (URNs) with the format:
+- Notes: `v2e::note::<id>`
+- Memory Cards: `v2e::card::<id>`
+- Security Items: `v2e::<provider>::<type>::<atomic_id>` (e.g., `v2e::nvd::cve::CVE-2023-1234`)
+
+### Memory FSM States
+- **draft**: Note in initial editing state
+- **new**: Memory card initial state
+- **learning**: Active learning in progress
+- **reviewed**: Post-first-review state
+- **learned**: Note marked complete
+- **mastered**: Memory card fully learned
+- **archived**: Object archived
+
+#### 94. RPCLearningNextItem
+- **Description**: Gets the next learning item based on current strategy (BFS/DFS). Strategy switching is transparent - the system automatically uses DFS when following links and BFS for sequential browsing. Item is automatically marked as viewed.
+- **Request Parameters**: None
+- **Response**:
+  - `success` (bool): true if item retrieved successfully
+  - `item` (object): Learning item with URN, title, content, and context
+    - `urn` (string): Item URN
+    - `title` (string): Item title
+    - `content` (string): Item content (TipTap JSON for notes, front/back for cards)
+    - `context` (string): Learning context ("browsing", "deep_dive", "reviewing")
+    - `type` (string): Item type ("note", "memory_card", "security_item")
+  - `message` (string): Present when success=false with "no more items to review"
+- **Errors**:
+  - Failed to get next item
+  - Storage error
+
+#### 95. RPCLearningMarkViewed
+- **Description**: Manually records an item as viewed (automatic in RPCLearningNextItem, but available for explicit marking)
+- **Request Parameters**:
+  - `urn` (string, required): URN of the item to mark as viewed
+- **Response**:
+  - `success` (bool): true if marked successfully
+- **Errors**:
+  - Missing urn parameter
+  - Failed to mark viewed
+
+#### 96. RPCLearningMarkLearned
+- **Description**: Marks an item as learned/completed in the current learning session
+- **Request Parameters**:
+  - `urn` (string, required): URN of the item to mark as learned
+- **Response**:
+  - `success` (bool): true if marked successfully
+- **Errors**:
+  - Missing urn parameter
+  - Failed to mark learned
+
+#### 97. RPCLearningFollowLink
+- **Description**: Follows a related link between items, automatically switching to DFS (depth-first) strategy. The current item is pushed to the navigation stack for potential backtracking.
+- **Request Parameters**:
+  - `from_urn` (string, required): URN of the current item
+  - `to_urn` (string, required): URN of the target item to navigate to
+- **Response**:
+  - `success` (bool): true if link followed successfully
+- **Errors**:
+  - Missing from_urn or to_urn parameters
+  - Failed to follow link
+
+#### 98. RPCLearningGoBack
+- **Description**: Navigates back to the previous item in the DFS path stack
+- **Request Parameters**: None
+- **Response**:
+  - `success` (bool): true if navigation successful
+  - `item` (object): Previous learning item (same structure as RPCLearningNextItem)
+  - `message` (string): Present when success=false with "no previous item"
+- **Errors**:
+  - Failed to go back
+  - No previous item (not an error, returns success=false with message)
+
+#### 99. RPCLearningGetProgress
+- **Description**: Gets current learning session progress including viewed/completed counts and current strategy
+- **Request Parameters**: None
+- **Response**:
+  - `success` (bool): true if retrieved successfully
+  - `progress` (object): Progress information
+    - `state` (string): Current learning state ("idle", "browsing", "deep_dive", "reviewing", "paused")
+    - `strategy` (string): Current strategy ("bfs", "dfs")
+    - `viewed_count` (int): Number of items viewed in session
+    - `completed_count` (int): Number of items marked learned
+    - `current_urn` (string): URN of current item (empty if none)
+    - `path_depth` (int): Current DFS path stack depth
+- **Errors**: None (always returns progress)
+
+#### 100. RPCLearningReset
+- **Description**: Resets the learning session, clearing viewed/completed items and returning to idle state
+- **Request Parameters**: None
+- **Response**:
+  - `success` (bool): true if reset successfully
+- **Errors**:
+  - Failed to reset learning session
+
+#### 101. RPCNoteMarkLearned
+- **Description**: Marks a specific note as learned, transitioning its FSM state from "draft" to "learned". Note must have content before marking learned.
+- **Request Parameters**:
+  - `urn` (string, required): URN of the note to mark as learned
+  - `user_id` (string, optional): User identifier for tracking
+- **Response**:
+  - `success` (bool): true if marked successfully
+- **Errors**:
+  - Missing urn parameter
+  - Note not found
+  - Note must have content before marking learned
+  - Failed to update note
+
+#### 102. RPCAddURNLink
+- **Description**: Creates a bidirectional URN link between a note/card and a security item (CVE, CWE, CAPEC, ATT&CK)
+- **Request Parameters**:
+  - `source_urn` (string, required): URN of the note or card
+  - `source_type` (string, required): Type of source ("note" or "card")
+  - `target_urn` (string, required): URN of the target security item
+  - `target_type` (string, required): Type of target ("cve", "cwe", "capec", "attack")
+- **Response**:
+  - `success` (bool): true if link created successfully
+- **Errors**:
+  - Missing source_urn or target_urn parameters
+  - Failed to add URN link
+
+#### 103. RPCRemoveURNLink
+- **Description**: Removes a URN link between objects
+- **Request Parameters**:
+  - `source_urn` (string, required): URN of the source object
+  - `target_urn` (string, required): URN of the target object
+- **Response**:
+  - `success` (bool): true if link removed successfully
+- **Errors**:
+  - Missing source_urn or target_urn parameters
+  - Failed to remove URN link
+
+#### 104. RPCGetByURN
+- **Description**: Retrieves any learning object (note or memory card) by its URN
+- **Request Parameters**:
+  - `urn` (string, required): URN of the object to retrieve
+- **Response**:
+  - `success` (bool): true if found
+  - `type` (string): Object type ("note" or "card")
+  - `data` (object): The note or memory card object with all fields
+- **Errors**:
+  - Missing urn parameter
+  - Object not found
+
 ## Configuration
 - **CVE Database Path**: Configurable via `CVE_DB_PATH` environment variable (default: "cve.db")
 - **CWE Database Path**: Configurable via `CWE_DB_PATH` environment variable (default: "cwe.db")
