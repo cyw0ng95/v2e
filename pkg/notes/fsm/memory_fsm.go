@@ -95,7 +95,15 @@ func (m *BaseMemoryFSM) Transition(newState MemoryState, reason string, userID s
 
 	// Persist state
 	if m.storage != nil {
-		if err := m.storage.SaveMemoryFSMState(m.object.GetURN(), m.GetState()); err != nil {
+		// Capture state to save (without acquiring lock again)
+		stateToSave := &MemoryFSMState{
+			URN:          m.object.GetURN(),
+			State:        newState,
+			StateHistory: m.stateHistory,
+			CreatedAt:    m.createdAt,
+			UpdatedAt:    m.updatedAt,
+		}
+		if err := m.storage.SaveMemoryFSMState(m.object.GetURN(), stateToSave); err != nil {
 			// Note: We don't rollback here since the object state was updated
 			// The storage error should be logged but shouldn't block the transition
 			return fmt.Errorf("failed to persist FSM state: %w", err)
