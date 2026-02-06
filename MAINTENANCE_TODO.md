@@ -4,7 +4,7 @@
 
   | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
   |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
-| 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                         | 600      | 1        |         |
+| 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                         | 600      | 2        |         |
   | 178 | pkg/cve/remote   | Code    | Replace panic() with error return in fetcher.go:50                                     | 20       | 1        |         |
   | 235 | pkg/notes        | Code    | Fix syntax error at service.go:1035 (unmatched closing parenthesis)                   | 5        | 1        |         |
 | 221 | pkg/notes/fsm       | Test    | Add comprehensive unit tests for learning_fsm.go (444 lines)              | 400      | 1        |         |
@@ -195,6 +195,50 @@
 | 165 | website           | Debt    | Make RPC timeout configurable per request type                                          | 50       | 5        |         |
 | 166 | website           | Debt    | Remove or conditionalize console.log statements in production                             | 25       | 5        |         |
   | 167 | website           | Debt    | Extract magic numbers to configuration constants                                          | 25       | 5        |         |
+| 251 | website/lib       | Types     | Replace 330+ instances of `any` type with proper TypeScript types in hooks.ts, rpc-client.ts, types.ts           | 500      | 2        |         |
+| 252 | website/lib       | Refactor  | Split lib/hooks.ts (2439 lines) into separate modules by domain (attack, capec, session, etc.)                 | 300      | 3        |         |
+| 253 | website/lib       | Refactor  | Split lib/rpc-client.ts (1975 lines) - separate mock data, client logic, and type imports                        | 250      | 3        |         |
+| 254 | website/lib       | Refactor  | Split lib/types.ts (1954 lines) into separate type definition files (cve.ts, attack.ts, notes.ts, etc.)        | 200      | 3        |         |
+| 255 | website/components | Refactor  | Split components/ssg-views.tsx (939 lines) into separate TreeViewNode, DetailPanel, and RuleDetail components    | 150      | 3        |         |
+| 256 | website/components | Refactor  | Split components/notes-framework.tsx (724 lines) - extract bookmark, note, memory card logic into hooks          | 200      | 3        |         |
+| 257 | website/components | Refactor  | Split components/ui/sidebar.tsx (726 lines) - extract sidebar subcomponents                                     | 150      | 3        |         |
+| 258 | website/app       | Refactor  | Split app/page.tsx (468 lines) - extract RightColumn component and lazy-loaded imports to separate file         | 150      | 3        |         |
+| 259 | website/components | Refactor  | Split components/etl-topology-viewer.tsx (409 lines) into smaller focused components                              | 150      | 3        |         |
+| 260 | website/lib       | Types     | Implement TODO items in lib/types.ts (lines 1004-1070, 1069-1070) - add card_type, author, is_private fields   | 100      | 2        |         |
+| 261 | website/app/etl   | Code      | Implement TODO at page.tsx:18 - Add RPC calls to control provider FSM                                          | 150      | 2        |         |
+| 262 | website/app/etl   | Code      | Implement TODO at page.tsx:23 - Add RPC call to update performance policy                                      | 100      | 2        |         |
+| 263 | website/          | Test      | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files)                   | 2000     | 1        |         |
+| 264 | website/          | Test      | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks)                                                   | 400      | 1        |         |
+| 265 | website/          | Test      | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods)                                             | 500      | 1        |         |
+| 266 | website/components | Test      | Add integration tests for major data tables (CVE, CWE, CAPEC, ATT&CK, ASVS)                                     | 300      | 2        |         |
+| 267 | website/components | Test      | Add component tests for notes-framework.tsx (724 lines, complex state management)                              | 200      | 2        |         |
+| 268 | website/components | Test      | Add tests for graph-analysis-page.tsx and graph-viewer.tsx (interactive visualization)                         | 200      | 2        |         |
+| 269 | website/          | DX        | Remove 29 console.log statements - use proper logger throughout                                                 | 50       | 3        |         |
+| 270 | website/          | DX        | Remove 4 instances of dangerouslySetInnerHTML/eval/innerHTML for security                                      | 20       | 1        |         |
+| 271 | website/          | Security   | Review and sanitize all user inputs in RPC client (lib/rpc-client.ts)                                           | 150      | 2        |         |
+| 272 | website/          | A11y      | Add aria-label to all buttons without text content (only 19 aria-label attributes found in 55 components)       | 100      | 3        |         |
+| 273 | website/          | A11y      | Add keyboard navigation support for interactive components (graphs, modals, tables)                              | 200      | 3        |         |
+| 274 | website/          | A11y      | Add proper role attributes to interactive elements (currently only 12 instances with role=)                    | 80       | 3        |         |
+| 275 | website/          | Code      | Fix array index keys in components (notes-framework.tsx:570, notes-dashboard.tsx:259)                             | 20       | 3        |         |
+| 276 | website/          | Code      | Ensure all components use consistent import statements (89 files import React, only 23 use named exports)      | 50       | 4        |         |
+| 277 | website/          | Code      | Add error boundaries for client-side error handling                                                            | 100      | 2        |         |
+| 278 | website/components | Code      | Add loading states and error handling to all async data fetching (incomplete in several components)              | 150      | 2        |         |
+| 279 | website/          | Perf      | Implement React.memo for 64 components (currently only 24 use useMemo/useCallback)                               | 300      | 3        |         |
+| 280 | website/app       | Perf      | Optimize lazy-loading in page.tsx - combine duplicate loading skeletons (10 identical Skeleton components)        | 50       | 4        |         |
+| 281 | website/          | Perf      | Add virtualization for large tables (CVE, CWE, CAPEC lists can be thousands of rows)                             | 200      | 3        |         |
+| 282 | website/lib       | Perf      | Optimize data fetching - implement request deduplication and caching for repeated calls                       | 150      | 3        |         |
+| 283 | website/          | Docs      | Add component documentation (JSDoc comments) for all 55 components                                               | 300      | 4        |         |
+| 284 | website/lib       | Docs      | Document RPC API methods in lib/rpc-client.ts (60+ methods need documentation)                                  | 200      | 3        |         |
+| 285 | website/          | Docs      | Create architecture documentation for frontend structure and data flow                                           | 150      | 3        |         |
+| 286 | website/          | Debt      | Standardize export patterns - choose between default and named exports (32 use default, 23 use named)           | 100      | 4        |         |
+| 287 | website/          | Debt      | Remove duplicate code patterns in hooks.ts (16 hooks with nearly identical useEffect patterns)                 | 150      | 3        |         |
+| 288 | website/          | Code      | Remove unused imports - currently no unused import detection                                                   | 50       | 3        |         |
+| 289 | website/          | Code      | Add TypeScript strict mode compliance - fix implicit any types                                                 | 300      | 2        |         |
+| 290 | website/          | Feature    | Implement proper error toast notifications using Sonner for all user-facing errors                              | 150      | 2        |         |
+| 291 | website/          | Feature    | Add data validation for all forms (currently minimal validation)                                                | 200      | 2        |         |
+| 292 | website/components | UX       | Add skeleton loaders for all data fetching operations (currently only in page.tsx dynamic imports)             | 100      | 3        |         |
+| 293 | website/          | Types      | Create proper interface for memoized component props (RightColumn in page.tsx uses complex props object)       | 50       | 4        |         |
+| 294 | website/          | Code      | Review and optimize 173 useEffect, useMemo, useCallback usages for dependency correctness                        | 200      | 3        |         |
 
 ---
 
