@@ -245,7 +245,7 @@ func normalizeParentID(parentID string) string {
 // parseGroupFromNode and parseRuleFromNode implementations.
 func buildNodeIndexMap(doc *goquery.Document) map[string]*goquery.Selection {
 	nodeMap := make(map[string]*goquery.Selection)
-	
+
 	// Single pass through all elements with data-tt-id
 	doc.Find("[data-tt-id]").Each(func(i int, s *goquery.Selection) {
 		if id, exists := s.Attr("data-tt-id"); exists {
@@ -259,7 +259,7 @@ func buildNodeIndexMap(doc *goquery.Document) map[string]*goquery.Selection {
 			}
 		}
 	})
-	
+
 	// Also index anchor links by their href targets
 	doc.Find("a[href]").Each(func(i int, s *goquery.Selection) {
 		if href, exists := s.Attr("href"); exists && strings.HasPrefix(href, "#") {
@@ -270,7 +270,7 @@ func buildNodeIndexMap(doc *goquery.Document) map[string]*goquery.Selection {
 			}
 		}
 	})
-	
+
 	return nodeMap
 }
 

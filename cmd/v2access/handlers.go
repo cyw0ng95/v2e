@@ -30,8 +30,8 @@ func httpErrorResponse(c *gin.Context, code int, message string) {
 func httpSuccessResponse(c *gin.Context, payload interface{}) {
 	c.JSON(http.StatusOK, gin.H{
 		"retcode": 0,
-		"message":  "success",
-		"payload":  payload,
+		"message": "success",
+		"payload": payload,
 	})
 }
 

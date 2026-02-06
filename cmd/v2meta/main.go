@@ -25,9 +25,9 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
-	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
+	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 )
 
 // Default constants are now in pkg/common/defaults.go
@@ -61,7 +61,7 @@ func NewDataPopulationController(rpcClient *rpc.Client, logger *common.Logger) *
 
 // StartDataPopulation starts a data population job for a specific data type
 func (c *DataPopulationController) StartDataPopulation(ctx context.Context, dataType DataType, params map[string]interface{}) (string, error) {
-	sessionID := fmt.Sprintf("%s-%d", string(dataType), time.Now().Unix())
+	sessionID := fmt.Sprintf("%s-%d", dataType, time.Now().Unix())
 
 	switch dataType {
 	case DataTypeCWE:
@@ -338,13 +338,10 @@ func main() {
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", params)
 		if err != nil {
 			logger.Warn("Failed to import CWE on local: %v", err)
-			logger.Debug("CWE import process failed: %v", err)
 		} else if resp.Type == subprocess.MessageTypeError {
 			logger.Warn("CWE import error: %s", resp.Error)
-			logger.Debug("CWE import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CWE import triggered on local")
-			logger.Debug("CWE import process started successfully with path: %s", params.Path)
 		}
 	}()
 
@@ -370,13 +367,10 @@ func main() {
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
 		if err != nil {
 			logger.Warn("Failed to import CAPEC on local: %v", err)
-			logger.Debug("CAPEC import process failed: %v", err)
 		} else if resp.Type == subprocess.MessageTypeError {
 			logger.Warn("CAPEC import error: %s", resp.Error)
-			logger.Debug("CAPEC import process returned error: %s", resp.Error)
 		} else {
 			logger.Info("CAPEC import triggered on local")
-			logger.Debug("CAPEC import process started successfully with path: %s", params.Path)
 		}
 	}()
 

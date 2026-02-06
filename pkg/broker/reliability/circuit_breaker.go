@@ -82,7 +82,7 @@ func (cb *CircuitBreaker) Call(fn func() error) error {
 	}
 
 	err := fn()
-	
+
 	if err != nil {
 		cb.RecordFailure()
 		return err
@@ -202,10 +202,10 @@ func (cb *CircuitBreaker) GetStats() map[string]interface{} {
 
 // CircuitBreakerManager manages circuit breakers for multiple targets
 type CircuitBreakerManager struct {
-	mu             sync.RWMutex
-	breakers       map[string]*CircuitBreaker
-	defaultConfig  CircuitBreakerConfig
-	onStateChange  func(target string, oldState, newState CircuitState)
+	mu            sync.RWMutex
+	breakers      map[string]*CircuitBreaker
+	defaultConfig CircuitBreakerConfig
+	onStateChange func(target string, oldState, newState CircuitState)
 }
 
 // NewCircuitBreakerManager creates a new circuit breaker manager
@@ -233,7 +233,7 @@ func (m *CircuitBreakerManager) GetOrCreateBreaker(target string) *CircuitBreake
 // Call executes a request through the circuit breaker for a target
 func (m *CircuitBreakerManager) Call(target string, fn func() error) error {
 	breaker := m.GetOrCreateBreaker(target)
-	
+
 	oldState := breaker.GetState()
 	err := breaker.Call(fn)
 	newState := breaker.GetState()

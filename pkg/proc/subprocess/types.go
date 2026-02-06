@@ -17,10 +17,10 @@ type Handler func(ctx context.Context, msg *Message) (*Message, error)
 
 // Re-export MessageType constants for convenience
 const (
-	MessageTypeRequest    = proc.MessageTypeRequest
-	MessageTypeResponse   = proc.MessageTypeResponse
-	MessageTypeEvent      = proc.MessageTypeEvent
-	MessageTypeError      = proc.MessageTypeError
+	MessageTypeRequest  = proc.MessageTypeRequest
+	MessageTypeResponse = proc.MessageTypeResponse
+	MessageTypeEvent    = proc.MessageTypeEvent
+	MessageTypeError    = proc.MessageTypeError
 )
 
 // bufferPool is a sync.Pool for scanner buffers to reduce allocations

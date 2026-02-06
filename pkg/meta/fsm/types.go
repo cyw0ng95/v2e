@@ -85,19 +85,19 @@ func NewEvent(eventType EventType, providerID string) *Event {
 type MacroFSM interface {
 	// GetState returns the current macro state
 	GetState() MacroState
-	
+
 	// Transition attempts to transition to a new state
 	Transition(newState MacroState) error
-	
+
 	// HandleEvent processes an event from a provider FSM
 	HandleEvent(event *Event) error
-	
+
 	// GetProviders returns all managed provider FSMs
 	GetProviders() []ProviderFSM
-	
+
 	// AddProvider adds a provider FSM to be managed
 	AddProvider(provider ProviderFSM) error
-	
+
 	// RemoveProvider removes a provider FSM
 	RemoveProvider(providerID string) error
 }
@@ -106,40 +106,40 @@ type MacroFSM interface {
 type ProviderFSM interface {
 	// GetID returns the unique provider identifier
 	GetID() string
-	
+
 	// GetType returns the provider type (cve, cwe, capec, attack)
 	GetType() string
-	
+
 	// GetState returns the current provider state
 	GetState() ProviderState
-	
+
 	// Transition attempts to transition to a new state
 	Transition(newState ProviderState) error
-	
+
 	// Start begins execution (IDLE -> ACQUIRING -> RUNNING)
 	Start() error
-	
+
 	// Pause pauses execution (RUNNING -> PAUSED)
 	Pause() error
-	
+
 	// Resume resumes execution (PAUSED -> ACQUIRING -> RUNNING)
 	Resume() error
-	
+
 	// Stop terminates execution (any state -> TERMINATED)
 	Stop() error
-	
+
 	// OnQuotaRevoked handles quota revocation from broker
 	OnQuotaRevoked(revokedCount int) error
-	
+
 	// OnQuotaGranted handles quota grant from broker
 	OnQuotaGranted(grantedCount int) error
-	
+
 	// OnRateLimited handles rate limiting (429 errors)
 	OnRateLimited(retryAfter time.Duration) error
-	
+
 	// Execute performs the actual work (called when in RUNNING state)
 	Execute() error
-	
+
 	// SetEventHandler sets the callback for event bubbling to MacroFSM
 	SetEventHandler(handler func(*Event) error)
 }
@@ -168,20 +168,20 @@ var validMacroTransitions = map[StateTransition]bool{
 
 // Provider FSM valid transitions
 var validProviderTransitions = map[ProviderStateTransition]bool{
-	{ProviderIdle, ProviderAcquiring}:             true,
-	{ProviderAcquiring, ProviderRunning}:          true,
-	{ProviderAcquiring, ProviderPaused}:           true, // Pause during acquisition
-	{ProviderAcquiring, ProviderTerminated}:       true, // Stop during acquisition
-	{ProviderRunning, ProviderWaitingQuota}:       true,
-	{ProviderRunning, ProviderWaitingBackoff}:     true,
-	{ProviderRunning, ProviderPaused}:             true,
-	{ProviderRunning, ProviderTerminated}:         true,
-	{ProviderWaitingQuota, ProviderAcquiring}:     true, // Retry acquisition
-	{ProviderWaitingQuota, ProviderTerminated}:    true,
-	{ProviderWaitingBackoff, ProviderAcquiring}:   true, // Retry after backoff
-	{ProviderWaitingBackoff, ProviderTerminated}:  true,
-	{ProviderPaused, ProviderAcquiring}:           true, // Resume
-	{ProviderPaused, ProviderTerminated}:          true,
+	{ProviderIdle, ProviderAcquiring}:            true,
+	{ProviderAcquiring, ProviderRunning}:         true,
+	{ProviderAcquiring, ProviderPaused}:          true, // Pause during acquisition
+	{ProviderAcquiring, ProviderTerminated}:      true, // Stop during acquisition
+	{ProviderRunning, ProviderWaitingQuota}:      true,
+	{ProviderRunning, ProviderWaitingBackoff}:    true,
+	{ProviderRunning, ProviderPaused}:            true,
+	{ProviderRunning, ProviderTerminated}:        true,
+	{ProviderWaitingQuota, ProviderAcquiring}:    true, // Retry acquisition
+	{ProviderWaitingQuota, ProviderTerminated}:   true,
+	{ProviderWaitingBackoff, ProviderAcquiring}:  true, // Retry after backoff
+	{ProviderWaitingBackoff, ProviderTerminated}: true,
+	{ProviderPaused, ProviderAcquiring}:          true, // Resume
+	{ProviderPaused, ProviderTerminated}:         true,
 }
 
 // ValidateMacroTransition checks if a macro state transition is valid
@@ -189,12 +189,12 @@ func ValidateMacroTransition(from, to MacroState) error {
 	if from == to {
 		return nil // Same state is always valid
 	}
-	
+
 	transition := StateTransition{From: from, To: to}
 	if !validMacroTransitions[transition] {
 		return fmt.Errorf("invalid macro state transition: %s -> %s", from, to)
 	}
-	
+
 	return nil
 }
 
@@ -203,11 +203,11 @@ func ValidateProviderTransition(from, to ProviderState) error {
 	if from == to {
 		return nil // Same state is always valid
 	}
-	
+
 	transition := ProviderStateTransition{From: from, To: to}
 	if !validProviderTransitions[transition] {
 		return fmt.Errorf("invalid provider state transition: %s -> %s", from, to)
 	}
-	
+
 	return nil
 }

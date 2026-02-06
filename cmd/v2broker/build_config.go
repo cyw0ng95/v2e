@@ -10,11 +10,11 @@ import (
 
 var (
 	// Optimizer configuration
-	buildOptimizerBuffer  = "1000"          // Default buffer capacity
-	buildOptimizerWorkers = "4"             // Default number of workers
-	buildOptimizerBatch    = "1"             // Default batch size
-	buildOptimizerFlush    = "10"            // Flush interval in milliseconds
-	buildOptimizerPolicy   = "drop"          // Offer policy: drop, wait, reject
+	buildOptimizerBuffer  = "1000" // Default buffer capacity
+	buildOptimizerWorkers = "4"    // Default number of workers
+	buildOptimizerBatch   = "1"    // Default batch size
+	buildOptimizerFlush   = "10"   // Flush interval in milliseconds
+	buildOptimizerPolicy  = "drop" // Offer policy: drop, wait, reject
 )
 
 // buildOptimizerBufferValue returns the buffer capacity from build-time config

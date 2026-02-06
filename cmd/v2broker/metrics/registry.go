@@ -19,11 +19,11 @@ const (
 
 // Registry tracks message statistics and wire-level metrics
 type Registry struct {
-	mu                sync.RWMutex
-	messageCount      int64
-	sentCount         int64
-	receivedCount     int64
-	totalWireSize     int64
+	mu                   sync.RWMutex
+	messageCount         int64
+	sentCount            int64
+	receivedCount        int64
+	totalWireSize        int64
 	encodingDistribution map[EncodingType]int64
 }
 
@@ -56,10 +56,10 @@ func (r *Registry) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message
 	defer r.mu.RUnlock()
 
 	result := map[string]interface{}{
-		"total_messages":       r.messageCount,
-		"sent_messages":        r.sentCount,
-		"received_messages":    r.receivedCount,
-		"total_wire_bytes":     r.totalWireSize,
+		"total_messages":        r.messageCount,
+		"sent_messages":         r.sentCount,
+		"received_messages":     r.receivedCount,
+		"total_wire_bytes":      r.totalWireSize,
 		"encoding_distribution": r.encodingDistribution,
 	}
 
@@ -92,10 +92,10 @@ func (r *Registry) MarshalJSON() ([]byte, error) {
 	defer r.mu.RUnlock()
 
 	return json.Marshal(map[string]interface{}{
-		"message_count":        r.messageCount,
-		"sent_count":           r.sentCount,
-		"received_count":       r.receivedCount,
-		"total_wire_size":      r.totalWireSize,
+		"message_count":         r.messageCount,
+		"sent_count":            r.sentCount,
+		"received_count":        r.receivedCount,
+		"total_wire_size":       r.totalWireSize,
 		"encoding_distribution": r.encodingDistribution,
 	})
 }

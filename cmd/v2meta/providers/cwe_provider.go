@@ -218,12 +218,12 @@ func (p *CWEProvider) saveCWE(ctx context.Context, cweData map[string]interface{
 				if err != nil {
 					return fmt.Errorf("failed to update CWE: %w", err)
 				}
-				
+
 				// Check for error response
 				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
 					return fmt.Errorf("update CWE failed: %s", errMsg)
 				}
-				
+
 				return nil
 			}
 		}

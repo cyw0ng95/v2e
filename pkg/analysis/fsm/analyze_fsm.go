@@ -17,7 +17,7 @@ type BaseAnalyzeFSM struct {
 // NewAnalyzeFSM creates a new AnalyzeFSM instance
 func NewAnalyzeFSM(logger *common.Logger) AnalyzeFSM {
 	graphFSM := NewGraphFSM(logger)
-	
+
 	fsm := &BaseAnalyzeFSM{
 		state:    AnalyzeBootstrapping,
 		graphFSM: graphFSM,
@@ -59,11 +59,11 @@ func (a *BaseAnalyzeFSM) Transition(newState AnalyzeState) error {
 // Start starts the analysis service
 func (a *BaseAnalyzeFSM) Start() error {
 	currentState := a.GetState()
-	
+
 	if currentState == AnalyzeBootstrapping {
 		return a.Transition(AnalyzeIdle)
 	}
-	
+
 	return nil
 }
 

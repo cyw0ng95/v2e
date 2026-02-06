@@ -52,10 +52,6 @@ Notes:
 */
 package main
 
-import "os"
-
 func main() {
-	// Delegate to runAccess which contains the original main implementation moved to another file
 	runAccess()
-	_ = os.Stdout
 }

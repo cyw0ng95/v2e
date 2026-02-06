@@ -218,12 +218,12 @@ func (p *ATTACKProvider) saveATTACKTechnique(ctx context.Context, techniqueData 
 				if err != nil {
 					return fmt.Errorf("failed to update ATT&CK technique: %w", err)
 				}
-				
+
 				// Check for error response
 				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
 					return fmt.Errorf("update ATT&CK technique failed: %s", errMsg)
 				}
-				
+
 				return nil
 			}
 		}

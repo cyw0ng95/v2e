@@ -100,7 +100,7 @@ func (p *CVEProvider) executeBatch() error {
 	params := map[string]interface{}{
 		"limit": p.batchSize,
 	}
-	
+
 	// Use incremental fetching if lastModStartDate is set
 	if p.lastModStartDate != "" {
 		params["lastModStartDate"] = p.lastModStartDate
@@ -206,12 +206,12 @@ func (p *CVEProvider) saveCVE(ctx context.Context, cveData map[string]interface{
 				if err != nil {
 					return fmt.Errorf("failed to update CVE: %w", err)
 				}
-				
+
 				// Check for error response
 				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
 					return fmt.Errorf("update CVE failed: %s", errMsg)
 				}
-				
+
 				return nil
 			}
 		}
@@ -235,18 +235,18 @@ func (p *CVEProvider) saveCVE(ctx context.Context, cveData map[string]interface{
 // Implements Requirement 15: Field-Level Data Diffing
 func (p *CVEProvider) diffFields(existing, incoming map[string]interface{}) map[string]interface{} {
 	changed := make(map[string]interface{})
-	
+
 	for key, newVal := range incoming {
 		if key == "cve_id" {
 			continue // Don't compare ID
 		}
-		
+
 		oldVal, exists := existing[key]
 		if !exists || !deepEqual(oldVal, newVal) {
 			changed[key] = newVal
 		}
 	}
-	
+
 	return changed
 }
 
@@ -279,20 +279,20 @@ func (p *CVEProvider) checkErrorThreshold() error {
 	if p.totalProcessed == 0 {
 		return nil // No data yet
 	}
-	
+
 	errorRate := float64(p.errorCount) / float64(p.totalProcessed)
 	if errorRate > p.failureThreshold {
-		p.logger.Error("Error rate %.2f%% exceeds threshold %.2f%%, auto-pausing provider", 
+		p.logger.Error("Error rate %.2f%% exceeds threshold %.2f%%, auto-pausing provider",
 			errorRate*100, p.failureThreshold*100)
-		
+
 		// Transition to PAUSED state
 		if err := p.Transition(fsm.ProviderPaused); err != nil {
 			return fmt.Errorf("failed to pause provider: %w", err)
 		}
-		
+
 		return fmt.Errorf("provider auto-paused due to high error rate: %.2f%%", errorRate*100)
 	}
-	
+
 	return nil
 }
 

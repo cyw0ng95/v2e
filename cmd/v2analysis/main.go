@@ -25,7 +25,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 	"github.com/cyw0ng95/v2e/pkg/urn"
-	
+
 	analysisfsm "github.com/cyw0ng95/v2e/pkg/analysis/fsm"
 	analysisstorage "github.com/cyw0ng95/v2e/pkg/analysis/storage"
 )
@@ -44,13 +44,13 @@ type AnalysisService struct {
 func NewAnalysisService(rpcClient *rpc.Client, logger *common.Logger, graphDBPath string) (*AnalysisService, error) {
 	// Create FSM
 	analyzeFSM := analysisfsm.NewAnalyzeFSM(logger)
-	
+
 	// Create graph storage
 	graphStore, err := analysisstorage.NewGraphStore(graphDBPath, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create graph store: %w", err)
 	}
-	
+
 	service := &AnalysisService{
 		graph:       graph.New(),
 		rpcClient:   rpcClient,
@@ -59,19 +59,19 @@ func NewAnalysisService(rpcClient *rpc.Client, logger *common.Logger, graphDBPat
 		graphStore:  graphStore,
 		graphDBPath: graphDBPath,
 	}
-	
+
 	// Try to load existing graph from storage
 	if err := service.loadGraphFromStorage(); err != nil {
 		logger.Warn("Failed to load graph from storage: %v", err)
 		// Not a fatal error - continue with empty graph
 	}
-	
+
 	// Start the FSM
 	if err := analyzeFSM.Start(); err != nil {
 		graphStore.Close()
 		return nil, fmt.Errorf("failed to start FSM: %w", err)
 	}
-	
+
 	return service, nil
 }
 
@@ -83,16 +83,16 @@ func (s *AnalysisService) loadGraphFromStorage() error {
 		// No existing graph
 		return nil
 	}
-	
+
 	s.logger.Info("Loading existing graph from storage (nodes: %d, edges: %d, last saved: %v)",
 		metadata.NodeCount, metadata.EdgeCount, metadata.LastSaved)
-	
+
 	// Load the graph
 	loadedGraph, err := s.graphStore.LoadGraph()
 	if err != nil {
 		return err
 	}
-	
+
 	s.graph = loadedGraph
 	return nil
 }
@@ -106,12 +106,12 @@ func (s *AnalysisService) Close() error {
 			s.logger.Error("Failed to save graph: %v", err)
 		}
 	}
-	
+
 	// Stop FSM
 	if err := s.analyzeFSM.Stop(); err != nil {
 		s.logger.Warn("Error stopping FSM: %v", err)
 	}
-	
+
 	// Close storage
 	return s.graphStore.Close()
 }
@@ -132,7 +132,7 @@ func main() {
 
 	// Create RPC client for communicating with other services
 	rpcClient := rpc.NewClient(sp, logger, rpc.DefaultRPCTimeout)
-	
+
 	// Create analysis service with FSM and storage
 	service, err := NewAnalysisService(rpcClient, logger, graphDBPath)
 	if err != nil {
@@ -152,7 +152,7 @@ func main() {
 	sp.RegisterHandler("RPCGetUEEStatus", createGetUEEStatusHandler(service))
 	sp.RegisterHandler("RPCBuildCVEGraph", createBuildCVEGraphHandler(service))
 	sp.RegisterHandler("RPCClearGraph", createClearGraphHandler(service))
-	
+
 	// Register new FSM control handlers
 	sp.RegisterHandler("RPCGetFSMState", createGetFSMStateHandler(service))
 	sp.RegisterHandler("RPCPauseAnalysis", createPauseAnalysisHandler(service))
@@ -488,96 +488,96 @@ func createClearGraphHandler(service *AnalysisService) subprocess.Handler {
 
 // createGetFSMStateHandler returns the current FSM state
 func createGetFSMStateHandler(service *AnalysisService) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-analyzeState := service.analyzeFSM.GetState()
-graphFSM := service.analyzeFSM.GetGraphFSM()
-graphState := graphFSM.GetState()
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		analyzeState := service.analyzeFSM.GetState()
+		graphFSM := service.analyzeFSM.GetGraphFSM()
+		graphState := graphFSM.GetState()
 
-return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-"analyze_state": string(analyzeState),
-"graph_state":   string(graphState),
-})
-}
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"analyze_state": string(analyzeState),
+			"graph_state":   string(graphState),
+		})
+	}
 }
 
 // createPauseAnalysisHandler pauses the analysis service
 func createPauseAnalysisHandler(service *AnalysisService) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-if err := service.analyzeFSM.Pause(); err != nil {
-return subprocess.NewErrorResponse(msg, "failed to pause analysis: "+err.Error()), nil
-}
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if err := service.analyzeFSM.Pause(); err != nil {
+			return subprocess.NewErrorResponse(msg, "failed to pause analysis: "+err.Error()), nil
+		}
 
-service.logger.Info("Analysis service paused")
-return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-"status": "paused",
-})
-}
+		service.logger.Info("Analysis service paused")
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"status": "paused",
+		})
+	}
 }
 
 // createResumeAnalysisHandler resumes the analysis service
 func createResumeAnalysisHandler(service *AnalysisService) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-if err := service.analyzeFSM.Resume(); err != nil {
-return subprocess.NewErrorResponse(msg, "failed to resume analysis: "+err.Error()), nil
-}
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if err := service.analyzeFSM.Resume(); err != nil {
+			return subprocess.NewErrorResponse(msg, "failed to resume analysis: "+err.Error()), nil
+		}
 
-service.logger.Info("Analysis service resumed")
-return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-"status": "resumed",
-})
-}
+		service.logger.Info("Analysis service resumed")
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"status": "resumed",
+		})
+	}
 }
 
 // createSaveGraphHandler saves the graph to disk
 func createSaveGraphHandler(service *AnalysisService) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-graphFSM := service.analyzeFSM.GetGraphFSM()
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		graphFSM := service.analyzeFSM.GetGraphFSM()
 
-// Start persistence
-if err := graphFSM.StartPersist(); err != nil {
-return subprocess.NewErrorResponse(msg, "failed to start persistence: "+err.Error()), nil
-}
+		// Start persistence
+		if err := graphFSM.StartPersist(); err != nil {
+			return subprocess.NewErrorResponse(msg, "failed to start persistence: "+err.Error()), nil
+		}
 
-// Save graph
-if err := service.graphStore.SaveGraph(service.graph); err != nil {
-graphFSM.FailPersist(err)
-return subprocess.NewErrorResponse(msg, "failed to save graph: "+err.Error()), nil
-}
+		// Save graph
+		if err := service.graphStore.SaveGraph(service.graph); err != nil {
+			graphFSM.FailPersist(err)
+			return subprocess.NewErrorResponse(msg, "failed to save graph: "+err.Error()), nil
+		}
 
-// Complete persistence
-if err := graphFSM.CompletePersist(); err != nil {
-return subprocess.NewErrorResponse(msg, "failed to complete persistence: "+err.Error()), nil
-}
+		// Complete persistence
+		if err := graphFSM.CompletePersist(); err != nil {
+			return subprocess.NewErrorResponse(msg, "failed to complete persistence: "+err.Error()), nil
+		}
 
-metadata, _ := service.graphStore.GetMetadata()
-service.logger.Info("Graph saved to disk")
+		metadata, _ := service.graphStore.GetMetadata()
+		service.logger.Info("Graph saved to disk")
 
-return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-"status":      "saved",
-"node_count":  metadata.NodeCount,
-"edge_count":  metadata.EdgeCount,
-"last_saved":  metadata.LastSaved,
-})
-}
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"status":     "saved",
+			"node_count": metadata.NodeCount,
+			"edge_count": metadata.EdgeCount,
+			"last_saved": metadata.LastSaved,
+		})
+	}
 }
 
 // createLoadGraphHandler loads the graph from disk
 func createLoadGraphHandler(service *AnalysisService) subprocess.Handler {
-return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-// Load graph
-loadedGraph, err := service.graphStore.LoadGraph()
-if err != nil {
-return subprocess.NewErrorResponse(msg, "failed to load graph: "+err.Error()), nil
-}
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		// Load graph
+		loadedGraph, err := service.graphStore.LoadGraph()
+		if err != nil {
+			return subprocess.NewErrorResponse(msg, "failed to load graph: "+err.Error()), nil
+		}
 
-// Replace current graph
-service.graph = loadedGraph
-service.logger.Info("Graph loaded from disk")
+		// Replace current graph
+		service.graph = loadedGraph
+		service.logger.Info("Graph loaded from disk")
 
-return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-"status":      "loaded",
-"node_count":  service.graph.NodeCount(),
-"edge_count":  service.graph.EdgeCount(),
-})
-}
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"status":     "loaded",
+			"node_count": service.graph.NodeCount(),
+			"edge_count": service.graph.EdgeCount(),
+		})
+	}
 }

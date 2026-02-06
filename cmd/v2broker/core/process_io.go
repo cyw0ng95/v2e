@@ -21,9 +21,9 @@ func (b *Broker) SendToProcess(processID string, msg *proc.Message) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal message: %w", err)
 		}
-		
+
 		wireSize := len(data)
-		
+
 		err = b.transportManager.SendToProcess(processID, msg)
 		if err == nil {
 			b.bus.Record(msg, true)

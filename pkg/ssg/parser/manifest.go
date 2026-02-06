@@ -13,9 +13,9 @@ import (
 
 // ManifestData represents the raw structure of a manifest JSON file.
 type ManifestData struct {
-	ProductName string                       `json:"product_name"`
-	Rules       map[string]interface{}       `json:"rules"` // Empty in current manifests
-	Profiles    map[string]ManifestProfile   `json:"profiles"`
+	ProductName string                     `json:"product_name"`
+	Rules       map[string]interface{}     `json:"rules"` // Empty in current manifests
+	Profiles    map[string]ManifestProfile `json:"profiles"`
 }
 
 // ManifestProfile represents a profile within a manifest.
@@ -40,7 +40,7 @@ func ParseManifestFile(path string) (*ssg.SSGManifest, []ssg.SSGProfile, []ssg.S
 
 	// Extract manifest ID and product from filename
 	manifestID, product := extractManifestIDFromPath(path)
-	
+
 	// Use product from JSON if available, otherwise from filename
 	if manifestData.ProductName != "" {
 		product = manifestData.ProductName
@@ -85,11 +85,11 @@ func ParseManifestFile(path string) (*ssg.SSGManifest, []ssg.SSGProfile, []ssg.S
 func extractManifestIDFromPath(path string) (id, product string) {
 	filename := filepath.Base(path)
 	id = strings.TrimSuffix(filename, ".json")
-	
+
 	// Extract product from filename pattern: manifest-{product}.json
 	if strings.HasPrefix(id, "manifest-") {
 		product = strings.TrimPrefix(id, "manifest-")
 	}
-	
+
 	return id, product
 }

@@ -587,4 +587,3 @@ func calculateBackoff(err error, retryCount int) time.Duration {
 	}
 	return backoff
 }
-

@@ -84,7 +84,7 @@ func SetThreadAffinity(cpuSet []int) error {
 	for _, cpu := range cpuSet {
 		mask.Set(cpu)
 	}
-	
+
 	// Pin current thread to specified CPUs
 	return unix.SchedSetaffinity(0, &mask)
 }
@@ -106,7 +106,7 @@ func Memcpy(dst, src []byte) {
 	if len(dst) == 0 {
 		return
 	}
-	
+
 	// Use unsafe pointer conversion for direct memory copy
 	// This bypasses Go's bounds checking for maximum performance
 	memmove(unsafe.Pointer(&dst[0]), unsafe.Pointer(&src[0]), uintptr(len(dst)))

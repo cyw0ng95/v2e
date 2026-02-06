@@ -21,11 +21,11 @@ const (
 // SSGGuide represents an HTML documentation guide from SSG.
 // Guides contain formatted security guidance for specific products and profiles.
 type SSGGuide struct {
-	ID          string    `gorm:"primaryKey" json:"id"`           // e.g., "ssg-al2023-guide-cis"
-	Product     string    `gorm:"index" json:"product"`           // al2023, rhel9, etc.
-	ProfileID   string    `gorm:"index" json:"profile_id"`        // Profile ID from HTML (empty for index)
-	ShortID     string    `gorm:"index" json:"short_id"`          // e.g., "cis", "index"
-	Title       string    `json:"title"`                          // e.g., "CIS Amazon Linux 2023 Benchmark"
+	ID          string    `gorm:"primaryKey" json:"id"`          // e.g., "ssg-al2023-guide-cis"
+	Product     string    `gorm:"index" json:"product"`          // al2023, rhel9, etc.
+	ProfileID   string    `gorm:"index" json:"profile_id"`       // Profile ID from HTML (empty for index)
+	ShortID     string    `gorm:"index" json:"short_id"`         // e.g., "cis", "index"
+	Title       string    `json:"title"`                         // e.g., "CIS Amazon Linux 2023 Benchmark"
 	HTMLContent string    `gorm:"type:text" json:"html_content"` // Full HTML content
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -39,14 +39,14 @@ func (SSGGuide) TableName() string {
 // SSGGroup represents an XCCDF group (category) from HTML guide.
 // Groups organize rules into a hierarchical tree structure.
 type SSGGroup struct {
-	ID          string    `gorm:"primaryKey" json:"id"`      // e.g., "xccdf_org.ssgproject.content_group_system"
-	GuideID     string    `gorm:"index" json:"guide_id"`     // Parent guide
-	ParentID    string    `gorm:"index" json:"parent_id"`    // Parent group (empty for top-level)
-	Title       string    `json:"title"`                     // e.g., "System Settings"
+	ID          string    `gorm:"primaryKey" json:"id"`   // e.g., "xccdf_org.ssgproject.content_group_system"
+	GuideID     string    `gorm:"index" json:"guide_id"`  // Parent guide
+	ParentID    string    `gorm:"index" json:"parent_id"` // Parent group (empty for top-level)
+	Title       string    `json:"title"`                  // e.g., "System Settings"
 	Description string    `json:"description"`
-	Level       int       `json:"level"`                    // Tree depth (0, 1, 2...)
-	GroupCount  int       `json:"group_count"`              // Number of child groups
-	RuleCount   int       `json:"rule_count"`               // Number of child rules
+	Level       int       `json:"level"`       // Tree depth (0, 1, 2...)
+	GroupCount  int       `json:"group_count"` // Number of child groups
+	RuleCount   int       `json:"rule_count"`  // Number of child rules
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -59,16 +59,16 @@ func (SSGGroup) TableName() string {
 // SSGRule represents an XCCDF rule from HTML guide.
 // Rules define specific security requirements or recommendations.
 type SSGRule struct {
-	ID          string         `gorm:"primaryKey" json:"id"`       // e.g., "xccdf_org.ssgproject.content_rule_package_aide_installed"
-	GuideID     string         `gorm:"index" json:"guide_id"`      // Parent guide
-	GroupID     string         `gorm:"index" json:"group_id"`      // Parent group
-	ShortID     string         `gorm:"index" json:"short_id"`      // e.g., "package_aide_installed"
-	Title       string         `json:"title"`                      // e.g., "Install AIDE"
+	ID          string         `gorm:"primaryKey" json:"id"`  // e.g., "xccdf_org.ssgproject.content_rule_package_aide_installed"
+	GuideID     string         `gorm:"index" json:"guide_id"` // Parent guide
+	GroupID     string         `gorm:"index" json:"group_id"` // Parent group
+	ShortID     string         `gorm:"index" json:"short_id"` // e.g., "package_aide_installed"
+	Title       string         `json:"title"`                 // e.g., "Install AIDE"
 	Description string         `json:"description"`
 	Rationale   string         `json:"rationale"`
-	Severity    string         `gorm:"index" json:"severity"`     // low, medium, high
+	Severity    string         `gorm:"index" json:"severity"` // low, medium, high
 	References  []SSGReference `gorm:"foreignKey:RuleID" json:"references"`
-	Level       int            `json:"level"`                      // Tree depth
+	Level       int            `json:"level"` // Tree depth
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
@@ -83,9 +83,9 @@ func (SSGRule) TableName() string {
 type SSGReference struct {
 	ID     uint   `gorm:"primaryKey" json:"-"`
 	RuleID string `gorm:"index" json:"rule_id"` // Foreign key to SSGRule
-	Href   string `json:"href"`        // e.g., "https://www.cisecurity.org/controls/"
-	Label  string `json:"label"`       // e.g., "cis-csc"
-	Value  string `json:"value"`       // e.g., "1, 11, 12, 13, 14, 15, 16, 2, 3, 5, 7, 8, 9"
+	Href   string `json:"href"`                 // e.g., "https://www.cisecurity.org/controls/"
+	Label  string `json:"label"`                // e.g., "cis-csc"
+	Value  string `json:"value"`                // e.g., "1, 11, 12, 13, 14, 15, 16, 2, 3, 5, 7, 8, 9"
 }
 
 // TableName specifies the table name for SSGReference.
@@ -97,8 +97,8 @@ func (SSGReference) TableName() string {
 // Used for returning the full hierarchical data structure.
 type SSGTree struct {
 	Guide  SSGGuide   `json:"guide"`
-	Groups []SSGGroup  `json:"groups"`
-	Rules  []SSGRule   `json:"rules"`
+	Groups []SSGGroup `json:"groups"`
+	Rules  []SSGRule  `json:"rules"`
 }
 
 // TreeNode represents a node in the SSG tree (for building the tree structure).
@@ -109,7 +109,7 @@ type TreeNode struct {
 	Type     string      `json:"type"` // "group" or "rule"
 	Group    *SSGGroup   `json:"group,omitempty"`
 	Rule     *SSGRule    `json:"rule,omitempty"`
-	Children []*TreeNode  `json:"children,omitempty"`
+	Children []*TreeNode `json:"children,omitempty"`
 }
 
 // BeforeCreate is a GORM hook called before creating a new record.
@@ -158,11 +158,11 @@ func (r *SSGRule) BeforeUpdate(tx *gorm.DB) error {
 // Tables contain flat lists of rules with their mappings to security identifiers.
 // The actual table data is stored in SSGTableEntry records, not as HTML.
 type SSGTable struct {
-	ID          string    `gorm:"primaryKey" json:"id"`           // e.g., "table-al2023-cces"
-	Product     string    `gorm:"index" json:"product"`           // al2023, rhel9, etc.
-	TableType   string    `gorm:"index" json:"table_type"`        // cces, nistrefs, stig, etc.
-	Title       string    `json:"title"`                          // e.g., "CCE Identifiers in Guide..."
-	Description string    `json:"description"`                    // Optional description
+	ID          string    `gorm:"primaryKey" json:"id"`    // e.g., "table-al2023-cces"
+	Product     string    `gorm:"index" json:"product"`    // al2023, rhel9, etc.
+	TableType   string    `gorm:"index" json:"table_type"` // cces, nistrefs, stig, etc.
+	Title       string    `json:"title"`                   // e.g., "CCE Identifiers in Guide..."
+	Description string    `json:"description"`             // Optional description
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -176,9 +176,9 @@ func (SSGTable) TableName() string {
 // Each entry maps a rule to a security identifier (CCE, NIST, STIG, etc.).
 type SSGTableEntry struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
-	TableID     string    `gorm:"index" json:"table_id"`     // Foreign key to SSGTable
-	Mapping     string    `gorm:"index" json:"mapping"`      // e.g., "CCE-80644-8", "NIST 800-53"
-	RuleTitle   string    `json:"rule_title"`                // e.g., "Install the tmux Package"
+	TableID     string    `gorm:"index" json:"table_id"`        // Foreign key to SSGTable
+	Mapping     string    `gorm:"index" json:"mapping"`         // e.g., "CCE-80644-8", "NIST 800-53"
+	RuleTitle   string    `json:"rule_title"`                   // e.g., "Install the tmux Package"
 	Description string    `gorm:"type:text" json:"description"` // Full description
 	Rationale   string    `gorm:"type:text" json:"rationale"`   // Rationale text
 	CreatedAt   time.Time `json:"created_at"`
@@ -193,10 +193,10 @@ func (SSGTableEntry) TableName() string {
 // SSGManifest represents a product manifest from SSG containing profile definitions.
 // Manifests are JSON files that list available profiles and their associated rules.
 type SSGManifest struct {
-	ID          string    `gorm:"primaryKey" json:"id"`    // e.g., "manifest-al2023"
-	Product     string    `gorm:"index" json:"product"`    // al2023, rhel8, etc.
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID        string    `gorm:"primaryKey" json:"id"` // e.g., "manifest-al2023"
+	Product   string    `gorm:"index" json:"product"` // al2023, rhel8, etc.
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // TableName specifies the table name for SSGManifest.
@@ -207,13 +207,13 @@ func (SSGManifest) TableName() string {
 // SSGProfile represents a security profile from a manifest.
 // Profiles define sets of rules for specific compliance frameworks (CIS, STIG, etc.).
 type SSGProfile struct {
-	ID          string    `gorm:"primaryKey" json:"id"`       // e.g., "al2023:cis"
-	ManifestID  string    `gorm:"index" json:"manifest_id"`   // Foreign key to manifest
-	Product     string    `gorm:"index" json:"product"`       // Denormalized for queries
-	ProfileID   string    `gorm:"index" json:"profile_id"`    // e.g., "cis"
-	RuleCount   int       `json:"rule_count"`                 // Number of rules in this profile
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID         string    `gorm:"primaryKey" json:"id"`     // e.g., "al2023:cis"
+	ManifestID string    `gorm:"index" json:"manifest_id"` // Foreign key to manifest
+	Product    string    `gorm:"index" json:"product"`     // Denormalized for queries
+	ProfileID  string    `gorm:"index" json:"profile_id"`  // e.g., "cis"
+	RuleCount  int       `json:"rule_count"`               // Number of rules in this profile
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // TableName specifies the table name for SSGProfile.
@@ -258,18 +258,18 @@ func (SSGDataStream) TableName() string {
 // SSGBenchmark represents an XCCDF Benchmark from a data stream.
 // Benchmarks contain the complete security guidance hierarchy (profiles, groups, rules).
 type SSGBenchmark struct {
-	ID            string    `gorm:"primaryKey" json:"id"`   // e.g., "xccdf_org.ssgproject.content_benchmark_AL-2023"
-	DataStreamID  string    `gorm:"index" json:"data_stream_id"`
-	Title         string    `json:"title"`        // e.g., "Guide to the Secure Configuration of Amazon Linux 2023"
-	Description   string    `gorm:"type:text" json:"description"`
-	Version       string    `json:"version"`      // Benchmark version
-	Status        string    `json:"status"`       // draft, accepted, etc.
-	StatusDate    string    `json:"status_date"`  // ISO 8601 date
-	ProfileCount  int       `json:"profile_count"` // Number of profiles in benchmark
-	GroupCount    int       `json:"group_count"`   // Number of groups
-	RuleCount     int       `json:"rule_count"`    // Number of rules
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID           string    `gorm:"primaryKey" json:"id"` // e.g., "xccdf_org.ssgproject.content_benchmark_AL-2023"
+	DataStreamID string    `gorm:"index" json:"data_stream_id"`
+	Title        string    `json:"title"` // e.g., "Guide to the Secure Configuration of Amazon Linux 2023"
+	Description  string    `gorm:"type:text" json:"description"`
+	Version      string    `json:"version"`       // Benchmark version
+	Status       string    `json:"status"`        // draft, accepted, etc.
+	StatusDate   string    `json:"status_date"`   // ISO 8601 date
+	ProfileCount int       `json:"profile_count"` // Number of profiles in benchmark
+	GroupCount   int       `json:"group_count"`   // Number of groups
+	RuleCount    int       `json:"rule_count"`    // Number of rules
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // TableName specifies the table name for SSGBenchmark.
@@ -282,10 +282,10 @@ func (SSGBenchmark) TableName() string {
 type SSGDSProfile struct {
 	ID          string    `gorm:"primaryKey" json:"id"` // e.g., "xccdf_org.ssgproject.content_profile_cis"
 	BenchmarkID string    `gorm:"index" json:"benchmark_id"`
-	Title       string    `json:"title"`                       // e.g., "CIS Amazon Linux 2023 Benchmark for Level 2 - Server"
+	Title       string    `json:"title"` // e.g., "CIS Amazon Linux 2023 Benchmark for Level 2 - Server"
 	Description string    `gorm:"type:text" json:"description"`
-	Version     string    `json:"version"`                     // Profile version (e.g., "1.0.0")
-	RuleCount   int       `json:"rule_count"`                  // Number of selected rules
+	Version     string    `json:"version"`    // Profile version (e.g., "1.0.0")
+	RuleCount   int       `json:"rule_count"` // Number of selected rules
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
@@ -304,7 +304,7 @@ type SSGDSProfileRule struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	ProfileID string    `gorm:"index" json:"profile_id"`
 	RuleID    string    `gorm:"index" json:"rule_id"` // Full XCCDF rule ID
-	Selected  bool      `json:"selected"`              // true if selected, false if deselected
+	Selected  bool      `json:"selected"`             // true if selected, false if deselected
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -321,7 +321,7 @@ type SSGDSGroup struct {
 	ParentID    string    `gorm:"index" json:"parent_id"` // Parent group (empty for top-level)
 	Title       string    `json:"title"`                  // e.g., "System Settings"
 	Description string    `gorm:"type:text" json:"description"`
-	Level       int       `json:"level"`                  // Tree depth (0, 1, 2...)
+	Level       int       `json:"level"` // Tree depth (0, 1, 2...)
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -336,19 +336,19 @@ func (SSGDSGroup) TableName() string {
 type SSGDSRule struct {
 	ID          string    `gorm:"primaryKey" json:"id"` // e.g., "xccdf_org.ssgproject.content_rule_package_aide_installed"
 	BenchmarkID string    `gorm:"index" json:"benchmark_id"`
-	GroupID     string    `gorm:"index" json:"group_id"`       // Parent group
-	Title       string    `json:"title"`                       // e.g., "Install AIDE"
+	GroupID     string    `gorm:"index" json:"group_id"` // Parent group
+	Title       string    `json:"title"`                 // e.g., "Install AIDE"
 	Description string    `gorm:"type:text" json:"description"`
 	Rationale   string    `gorm:"type:text" json:"rationale"`
-	Severity    string    `json:"severity"`                    // low, medium, high, unknown
-	Selected    bool      `json:"selected"`                    // Default selection state
-	Weight      string    `json:"weight"`                      // Rule weight (importance)
-	Version     string    `json:"version"`                     // Rule version
+	Severity    string    `json:"severity"` // low, medium, high, unknown
+	Selected    bool      `json:"selected"` // Default selection state
+	Weight      string    `json:"weight"`   // Rule weight (importance)
+	Version     string    `json:"version"`  // Rule version
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
 	// Relationships
-	References []SSGDSRuleReference `gorm:"foreignKey:RuleID" json:"references,omitempty"`
+	References  []SSGDSRuleReference  `gorm:"foreignKey:RuleID" json:"references,omitempty"`
 	Identifiers []SSGDSRuleIdentifier `gorm:"foreignKey:RuleID" json:"identifiers,omitempty"`
 }
 
@@ -362,8 +362,8 @@ func (SSGDSRule) TableName() string {
 type SSGDSRuleReference struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	RuleID    string    `gorm:"index" json:"rule_id"`
-	Href      string    `json:"href"`      // URL to standard
-	RefID     string    `json:"ref_id"`    // Specific section/control (e.g., "1.3.1", "CM-6(a)")
+	Href      string    `json:"href"`   // URL to standard
+	RefID     string    `json:"ref_id"` // Specific section/control (e.g., "1.3.1", "CM-6(a)")
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -377,7 +377,7 @@ func (SSGDSRuleReference) TableName() string {
 type SSGDSRuleIdentifier struct {
 	ID         uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	RuleID     string    `gorm:"index" json:"rule_id"`
-	System     string    `json:"system"`     // e.g., "http://cce.mitre.org"
+	System     string    `json:"system"`                  // e.g., "http://cce.mitre.org"
 	Identifier string    `gorm:"index" json:"identifier"` // e.g., "CCE-80644-8"
 	CreatedAt  time.Time `json:"created_at"`
 }

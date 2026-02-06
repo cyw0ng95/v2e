@@ -218,12 +218,12 @@ func (p *CAPECProvider) saveCAPEC(ctx context.Context, capecData map[string]inte
 				if err != nil {
 					return fmt.Errorf("failed to update CAPEC: %w", err)
 				}
-				
+
 				// Check for error response
 				if isErr, errMsg := subprocess.IsErrorResponse(updateResp); isErr {
 					return fmt.Errorf("update CAPEC failed: %s", errMsg)
 				}
-				
+
 				return nil
 			}
 		}

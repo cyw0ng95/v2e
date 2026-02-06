@@ -17,9 +17,9 @@ type RevocationThreshold struct {
 // DefaultRevocationThreshold returns recommended threshold values
 func DefaultRevocationThreshold() RevocationThreshold {
 	return RevocationThreshold{
-		P99LatencyMs:     30.0,               // Revoke at 30ms P99
-		BufferSaturation: 80.0,               // Revoke at 80% buffer saturation
-		CheckInterval:    5 * time.Second,    // Check every 5 seconds
+		P99LatencyMs:     30.0,            // Revoke at 30ms P99
+		BufferSaturation: 80.0,            // Revoke at 80% buffer saturation
+		CheckInterval:    5 * time.Second, // Check every 5 seconds
 	}
 }
 
@@ -28,7 +28,7 @@ type PermitIntegration struct {
 	permitManager *permits.PermitManager
 	metrics       *MetricsCollector
 	threshold     RevocationThreshold
-	
+
 	// Event callbacks
 	onQuotaUpdate func(revokedPermits int, reason string, metrics *KernelMetrics)
 }
@@ -178,7 +178,7 @@ func (o *Optimizer) revokePermitsWithReason(kernelMetrics *KernelMetrics, p99Bre
 	// Calculate how many permits to revoke (20% of allocated)
 	stats := o.permitIntegration.permitManager.GetStats()
 	allocatedPermits := stats["allocated_permits"].(int)
-	
+
 	if allocatedPermits == 0 {
 		if o.logger != nil {
 			o.logger.Debug("No permits to revoke (none allocated)")

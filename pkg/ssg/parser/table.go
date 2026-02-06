@@ -112,12 +112,12 @@ func parseTableEntries(doc *goquery.Document, tableID string) ([]ssg.SSGTableEnt
 		// Parse cells - handle both 3 and 4 column tables
 		cells := s.Find("td")
 		numCells := cells.Length()
-		
+
 		// Skip header rows or rows with too few cells
 		if numCells < 2 {
 			return
 		}
-		
+
 		// Check if this is a header row (contains <thead> parent or all cells are bold)
 		if s.Parent().Is("thead") {
 			return

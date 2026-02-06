@@ -170,7 +170,7 @@ func (p *WorkerPool) dispatcher() {
 				if workerIdx < len(p.workers) {
 					worker := p.workers[workerIdx]
 					p.mu.RUnlock()
-					
+
 					// Blocking submit with timeout
 					select {
 					case worker.tasks <- task:

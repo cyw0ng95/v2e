@@ -44,8 +44,8 @@ func (b *Broker) HandleRPCRequestPermits(reqMsg *proc.Message) (*proc.Message, e
 
 	// Build response
 	responseData := map[string]interface{}{
-		"granted":    resp.Granted,
-		"available":  resp.Available,
+		"granted":     resp.Granted,
+		"available":   resp.Available,
 		"provider_id": resp.ProviderID,
 	}
 
@@ -129,14 +129,14 @@ func (b *Broker) HandleRPCGetKernelMetrics(reqMsg *proc.Message) (*proc.Message,
 
 	// Build response with all metrics
 	responseData := map[string]interface{}{
-		"p99_latency_ms":     metrics.P99LatencyMs,
-		"buffer_saturation":  metrics.BufferSaturation,
-		"active_workers":     metrics.ActiveWorkers,
-		"total_permits":      metrics.TotalPermits,
-		"allocated_permits":  metrics.AllocatedPermits,
-		"available_permits":  metrics.AvailablePermits,
-		"message_rate":       metrics.MessageRate,
-		"error_rate":         metrics.ErrorRate,
+		"p99_latency_ms":    metrics.P99LatencyMs,
+		"buffer_saturation": metrics.BufferSaturation,
+		"active_workers":    metrics.ActiveWorkers,
+		"total_permits":     metrics.TotalPermits,
+		"allocated_permits": metrics.AllocatedPermits,
+		"available_permits": metrics.AvailablePermits,
+		"message_rate":      metrics.MessageRate,
+		"error_rate":        metrics.ErrorRate,
 	}
 
 	respMsg, err := proc.NewResponseMessage(reqMsg.ID, responseData)

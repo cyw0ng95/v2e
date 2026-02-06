@@ -56,7 +56,7 @@ func MarshalBinaryWithEncoding(m *Message, encoding EncodingType) ([]byte, error
 		// This avoids GOB's interface{} registration issues
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
-		
+
 		if m.Type == MessageTypeError {
 			// Encode error as JSON then GOB-encode the bytes
 			errJSON, err := jsonutil.Marshal(map[string]interface{}{
@@ -72,7 +72,7 @@ func MarshalBinaryWithEncoding(m *Message, encoding EncodingType) ([]byte, error
 		} else {
 			err = enc.Encode([]byte("{}"))
 		}
-		
+
 		if err == nil {
 			payload = buf.Bytes()
 		}
@@ -163,7 +163,7 @@ func UnmarshalBinary(data []byte) (*Message, error) {
 		// Decode GOB payload (which contains JSON bytes)
 		buf := bytes.NewReader(payload)
 		dec := gob.NewDecoder(buf)
-		
+
 		var jsonBytes []byte
 		if err := dec.Decode(&jsonBytes); err != nil {
 			return nil, fmt.Errorf("failed to decode GOB payload: %w", err)

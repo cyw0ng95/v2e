@@ -13,10 +13,10 @@ import (
 
 // XML namespace constants for SCAP data streams
 const (
-	XMLNS_DS       = "http://scap.nist.gov/schema/scap/source/1.2"
-	XMLNS_XCCDF    = "http://checklists.nist.gov/xccdf/1.2"
-	XMLNS_HTML     = "http://www.w3.org/1999/xhtml"
-	XMLNS_DC       = "http://purl.org/dc/elements/1.1/"
+	XMLNS_DS    = "http://scap.nist.gov/schema/scap/source/1.2"
+	XMLNS_XCCDF = "http://checklists.nist.gov/xccdf/1.2"
+	XMLNS_HTML  = "http://www.w3.org/1999/xhtml"
+	XMLNS_DC    = "http://purl.org/dc/elements/1.1/"
 )
 
 // productPattern extracts product name from filenames like "ssg-al2023-ds.xml"
@@ -41,10 +41,10 @@ type DataStreamCollection struct {
 
 // DataStream represents a single data stream within the collection.
 type DataStream struct {
-	ID          string       `xml:"id,attr"`
-	ScapVersion string       `xml:"scap-version,attr"`
-	Timestamp   string       `xml:"timestamp,attr"`
-	Checklists  Checklists   `xml:"checklists"`
+	ID          string     `xml:"id,attr"`
+	ScapVersion string     `xml:"scap-version,attr"`
+	Timestamp   string     `xml:"timestamp,attr"`
+	Checklists  Checklists `xml:"checklists"`
 }
 
 // Checklists contains references to checklist components (XCCDF files).
@@ -84,11 +84,11 @@ type Status struct {
 
 // Profile represents an XCCDF Profile element.
 type Profile struct {
-	ID          string      `xml:"id,attr"`
-	Title       XMLString   `xml:"title"`
-	Description XMLString   `xml:"description"`
-	Version     string      `xml:"version"`
-	Selects     []Select    `xml:"select"`
+	ID          string    `xml:"id,attr"`
+	Title       XMLString `xml:"title"`
+	Description XMLString `xml:"description"`
+	Version     string    `xml:"version"`
+	Selects     []Select  `xml:"select"`
 }
 
 // Select represents a rule selection in a profile.
@@ -102,8 +102,8 @@ type Group struct {
 	ID          string    `xml:"id,attr"`
 	Title       string    `xml:"title"`
 	Description XMLString `xml:"description"`
-	Groups      []Group   `xml:"Group"`  // Nested groups
-	Rules       []Rule    `xml:"Rule"`   // Rules in this group
+	Groups      []Group   `xml:"Group"` // Nested groups
+	Rules       []Rule    `xml:"Rule"`  // Rules in this group
 }
 
 // Rule represents an XCCDF Rule element.
@@ -171,11 +171,11 @@ func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg
 	}
 
 	decoder := xml.NewDecoder(r)
-	
+
 	// Variables to hold parsed data
 	var dataStreamID, scapVersion, timestamp string
 	var benchmark *Benchmark
-	
+
 	// Stream through the XML using token-based parsing
 	for {
 		token, err := decoder.Token()
@@ -185,7 +185,7 @@ func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg
 		if err != nil {
 			return nil, nil, nil, nil, nil, fmt.Errorf("failed to read XML token: %w", err)
 		}
-		
+
 		// Look for start elements
 		if se, ok := token.(xml.StartElement); ok {
 			switch se.Name.Local {
@@ -215,13 +215,13 @@ func ParseDataStreamFile(r io.Reader, filename string) (*ssg.SSGDataStream, *ssg
 			}
 		}
 	}
-	
+
 done:
 	// Validate that we have required data
 	if dataStreamID == "" {
 		return nil, nil, nil, nil, nil, fmt.Errorf("no data stream found in collection")
 	}
-	
+
 	if benchmark == nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("no XCCDF benchmark found in data stream")
 	}

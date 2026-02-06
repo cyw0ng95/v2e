@@ -93,14 +93,14 @@ func (s *LocalASVSStore) ImportFromCSV(ctx context.Context, url string) error {
 
 	// Find column indices
 	var (
-		reqIDIdx    = -1
-		chapterIdx  = -1
-		sectionIdx  = -1
-		descIdx     = -1
-		level1Idx   = -1
-		level2Idx   = -1
-		level3Idx   = -1
-		cweIdx      = -1
+		reqIDIdx   = -1
+		chapterIdx = -1
+		sectionIdx = -1
+		descIdx    = -1
+		level1Idx  = -1
+		level2Idx  = -1
+		level3Idx  = -1
+		cweIdx     = -1
 	)
 
 	for i, col := range header {

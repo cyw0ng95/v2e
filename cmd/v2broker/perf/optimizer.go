@@ -150,7 +150,7 @@ type Optimizer struct {
 
 	// Permit integration (Phase 2 UEE)
 	permitIntegration *PermitIntegration
-	
+
 	// Analysis optimizer for service-level optimization
 	analysisOptimizer *AnalysisOptimizer
 }
@@ -662,52 +662,52 @@ func (o *Optimizer) Stop() {
 
 // SetAnalysisOptimizer attaches an AnalysisOptimizer to the broker
 func (o *Optimizer) SetAnalysisOptimizer(ao *AnalysisOptimizer) {
-o.analysisOptimizer = ao
-if o.logger != nil {
-o.logger.Info("Analysis optimizer attached to broker")
-}
+	o.analysisOptimizer = ao
+	if o.logger != nil {
+		o.logger.Info("Analysis optimizer attached to broker")
+	}
 }
 
 // GetAnalysisOptimizer returns the analysis optimizer
 func (o *Optimizer) GetAnalysisOptimizer() *AnalysisOptimizer {
-return o.analysisOptimizer
+	return o.analysisOptimizer
 }
 
 // StartConflictMonitor starts monitoring for service conflicts
 func (o *Optimizer) StartConflictMonitor() {
-if o.analysisOptimizer == nil {
-if o.logger != nil {
-o.logger.Warn("Cannot start conflict monitor: AnalysisOptimizer not set")
-}
-return
-}
+	if o.analysisOptimizer == nil {
+		if o.logger != nil {
+			o.logger.Warn("Cannot start conflict monitor: AnalysisOptimizer not set")
+		}
+		return
+	}
 
-if o.logger != nil {
-o.logger.Info("Starting service conflict monitor")
-}
+	if o.logger != nil {
+		o.logger.Info("Starting service conflict monitor")
+	}
 
-go o.conflictMonitorLoop()
+	go o.conflictMonitorLoop()
 }
 
 // conflictMonitorLoop monitors for service conflicts and resolves them
 func (o *Optimizer) conflictMonitorLoop() {
-ticker := time.NewTicker(2 * time.Second) // Check every 2 seconds
-defer ticker.Stop()
+	ticker := time.NewTicker(2 * time.Second) // Check every 2 seconds
+	defer ticker.Stop()
 
-for {
-select {
-case <-ticker.C:
-if hasConflict, conflicts := o.analysisOptimizer.DetectConflict(); hasConflict {
-o.analysisOptimizer.ResolveConflict(conflicts)
-} else {
-// Clear throttles if no conflicts detected
-o.analysisOptimizer.ClearThrottles()
-}
-case <-o.ctx.Done():
-if o.logger != nil {
-o.logger.Info("Conflict monitor stopping")
-}
-return
-}
-}
+	for {
+		select {
+		case <-ticker.C:
+			if hasConflict, conflicts := o.analysisOptimizer.DetectConflict(); hasConflict {
+				o.analysisOptimizer.ResolveConflict(conflicts)
+			} else {
+				// Clear throttles if no conflicts detected
+				o.analysisOptimizer.ClearThrottles()
+			}
+		case <-o.ctx.Done():
+			if o.logger != nil {
+				o.logger.Info("Conflict monitor stopping")
+			}
+			return
+		}
+	}
 }

@@ -31,25 +31,25 @@ type Node struct {
 
 // Edge represents a directed edge between two nodes
 type Edge struct {
-	From *urn.URN
-	To   *urn.URN
-	Type EdgeType
+	From       *urn.URN
+	To         *urn.URN
+	Type       EdgeType
 	Properties map[string]interface{}
 }
 
 // Graph is an in-memory graph database for URN-based relationships
 type Graph struct {
-	mu    sync.RWMutex
-	nodes map[string]*Node // key is URN.Key()
-	edges map[string][]*Edge // key is from URN.Key()
+	mu           sync.RWMutex
+	nodes        map[string]*Node   // key is URN.Key()
+	edges        map[string][]*Edge // key is from URN.Key()
 	reverseEdges map[string][]*Edge // key is to URN.Key(), for reverse lookups
 }
 
 // New creates a new empty graph
 func New() *Graph {
 	return &Graph{
-		nodes: make(map[string]*Node),
-		edges: make(map[string][]*Edge),
+		nodes:        make(map[string]*Node),
+		edges:        make(map[string][]*Edge),
 		reverseEdges: make(map[string][]*Edge),
 	}
 }
@@ -99,9 +99,9 @@ func (g *Graph) AddEdge(from, to *urn.URN, edgeType EdgeType, properties map[str
 	}
 
 	edge := &Edge{
-		From: from,
-		To:   to,
-		Type: edgeType,
+		From:       from,
+		To:         to,
+		Type:       edgeType,
 		Properties: properties,
 	}
 
@@ -172,7 +172,7 @@ func (g *Graph) NodeCount() int {
 func (g *Graph) EdgeCount() int {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	
+
 	count := 0
 	for _, edges := range g.edges {
 		count += len(edges)

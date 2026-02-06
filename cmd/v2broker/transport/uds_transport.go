@@ -28,7 +28,7 @@ type UDSTransport struct {
 	reconnectDelay       time.Duration
 	reconnectCb          func(error)
 	errorHandler         func(error)
-	done                 chan struct{} // Signals acceptLoop to exit
+	done                 chan struct{}  // Signals acceptLoop to exit
 	acceptLoopWg         sync.WaitGroup // Tracks acceptLoop goroutine
 }
 

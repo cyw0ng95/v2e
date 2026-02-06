@@ -83,7 +83,9 @@ func createFetchViewsHandler() subprocess.Handler {
 		req.StartIndex = 0
 		req.ResultsPerPage = 100
 		if msg.Payload != nil {
-			_ = subprocess.UnmarshalPayload(msg, &req)
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			}
 		}
 
 		// Download GitHub zip archive
@@ -221,7 +223,9 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 
 		// Try to parse payload, but it's optional
 		if msg.Payload != nil {
-			_ = subprocess.UnmarshalPayload(msg, &req)
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			}
 		}
 
 		// Fetch CVEs to get the total count
@@ -258,7 +262,9 @@ func createFetchCVEsHandler(fetcher *remote.Fetcher) subprocess.Handler {
 
 		// Try to parse payload
 		if msg.Payload != nil {
-			_ = subprocess.UnmarshalPayload(msg, &req)
+			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
+				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
+			}
 		}
 
 		// Fetch CVEs from NVD

@@ -49,20 +49,20 @@ type JobRun struct {
 
 // JobProgress tracks the progress of an import job
 type JobProgress struct {
-	TotalGuides       int    `json:"total_guides"`
-	ProcessedGuides   int    `json:"processed_guides"`
-	FailedGuides      int    `json:"failed_guides"`
-	TotalTables       int    `json:"total_tables"`
-	ProcessedTables   int    `json:"processed_tables"`
-	FailedTables      int    `json:"failed_tables"`
-	TotalManifests    int    `json:"total_manifests"`
-	ProcessedManifests int   `json:"processed_manifests"`
-	FailedManifests   int    `json:"failed_manifests"`
-	TotalDataStreams    int    `json:"total_data_streams"`
-	ProcessedDataStreams int   `json:"processed_data_streams"`
-	FailedDataStreams   int    `json:"failed_data_streams"`
-	CurrentFile       string `json:"current_file,omitempty"`
-	CurrentPhase      string `json:"current_phase,omitempty"` // "tables", "guides", "manifests", or "datastreams"
+	TotalGuides          int    `json:"total_guides"`
+	ProcessedGuides      int    `json:"processed_guides"`
+	FailedGuides         int    `json:"failed_guides"`
+	TotalTables          int    `json:"total_tables"`
+	ProcessedTables      int    `json:"processed_tables"`
+	FailedTables         int    `json:"failed_tables"`
+	TotalManifests       int    `json:"total_manifests"`
+	ProcessedManifests   int    `json:"processed_manifests"`
+	FailedManifests      int    `json:"failed_manifests"`
+	TotalDataStreams     int    `json:"total_data_streams"`
+	ProcessedDataStreams int    `json:"processed_data_streams"`
+	FailedDataStreams    int    `json:"failed_data_streams"`
+	CurrentFile          string `json:"current_file,omitempty"`
+	CurrentPhase         string `json:"current_phase,omitempty"` // "tables", "guides", "manifests", or "datastreams"
 }
 
 // RPCInvoker is an interface for making RPC calls to other services
@@ -277,7 +277,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 	imp.mu.Unlock()
 
 	// Step 6: Import in tick-tock-tock-tock fashion (alternate between tables, guides, manifests, and data streams)
-	imp.logger.Info("[Step 6/7] Starting tick-tock-tock-tock import: %d tables, %d guides, %d manifests, %d data streams", 
+	imp.logger.Info("[Step 6/7] Starting tick-tock-tock-tock import: %d tables, %d guides, %d manifests, %d data streams",
 		len(tableFiles), len(guideFiles), len(manifestFiles), len(dataStreamFiles))
 	maxLen := max(len(tableFiles), len(guideFiles), len(manifestFiles), len(dataStreamFiles))
 
@@ -428,7 +428,7 @@ func (imp *Importer) executeImport(ctx context.Context, runID string) {
 			imp.activeRun.Progress.ProcessedGuides, imp.activeRun.Progress.TotalGuides,
 			imp.activeRun.Progress.ProcessedManifests, imp.activeRun.Progress.TotalManifests,
 			imp.activeRun.Progress.ProcessedDataStreams, imp.activeRun.Progress.TotalDataStreams,
-			imp.activeRun.Progress.FailedTables, imp.activeRun.Progress.FailedGuides, 
+			imp.activeRun.Progress.FailedTables, imp.activeRun.Progress.FailedGuides,
 			imp.activeRun.Progress.FailedManifests, imp.activeRun.Progress.FailedDataStreams)
 	}
 	imp.mu.Unlock()
@@ -591,7 +591,7 @@ func (imp *Importer) extractCrossReferences(ctx context.Context, runID string) e
 	//
 	// For now, we'll just log that cross-reference extraction would happen here.
 	// The actual extraction can be implemented later or done separately.
-	
+
 	imp.logger.Info("Cross-reference extraction completed (placeholder implementation)")
 	return nil
 }

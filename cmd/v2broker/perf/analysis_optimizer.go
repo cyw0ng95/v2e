@@ -34,36 +34,36 @@ const (
 
 // ServiceMetrics tracks performance metrics for a service
 type ServiceMetrics struct {
-	ServiceID        string
-	ServiceType      ServiceType
-	Priority         ServicePriority
-	RequestCount     int64
-	TotalLatencyMs   int64
-	ActiveRequests   int64
-	DroppedRequests  int64
-	LastRequestTime  time.Time
+	ServiceID       string
+	ServiceType     ServiceType
+	Priority        ServicePriority
+	RequestCount    int64
+	TotalLatencyMs  int64
+	ActiveRequests  int64
+	DroppedRequests int64
+	LastRequestTime time.Time
 }
 
 // AnalysisOptimizer provides specialized optimization for analysis service
 type AnalysisOptimizer struct {
-	mu             sync.RWMutex
-	logger         *common.Logger
-	
+	mu     sync.RWMutex
+	logger *common.Logger
+
 	// Service metrics
-	services       map[string]*ServiceMetrics
-	
+	services map[string]*ServiceMetrics
+
 	// Resource allocation policies
 	maxAnalysisConcurrency int
 	maxFrontendConcurrency int
 	maxETLConcurrency      int
-	
+
 	// Conflict resolution
 	conflictPolicy ConflictPolicy
-	
+
 	// Dynamic throttling
-	analysisThrottle   *ThrottleState
-	frontendThrottle   *ThrottleState
-	etlThrottle        *ThrottleState
+	analysisThrottle *ThrottleState
+	frontendThrottle *ThrottleState
+	etlThrottle      *ThrottleState
 }
 
 // ConflictPolicy defines how to handle resource conflicts
@@ -80,12 +80,12 @@ const (
 
 // ThrottleState tracks throttling state for a service type
 type ThrottleState struct {
-	Enabled          bool
-	CurrentLimit     int
-	BaseLimit        int
-	ThrottleReason   string
-	ThrottleStart    time.Time
-	LastAdjustment   time.Time
+	Enabled        bool
+	CurrentLimit   int
+	BaseLimit      int
+	ThrottleReason string
+	ThrottleStart  time.Time
+	LastAdjustment time.Time
 }
 
 // NewAnalysisOptimizer creates a new analysis-specific optimizer
@@ -119,13 +119,13 @@ func NewAnalysisOptimizer(logger *common.Logger) *AnalysisOptimizer {
 func (ao *AnalysisOptimizer) RegisterService(serviceID string, serviceType ServiceType, priority ServicePriority) {
 	ao.mu.Lock()
 	defer ao.mu.Unlock()
-	
+
 	ao.services[serviceID] = &ServiceMetrics{
 		ServiceID:   serviceID,
 		ServiceType: serviceType,
 		Priority:    priority,
 	}
-	
+
 	if ao.logger != nil {
 		ao.logger.Info("Registered service %s (type: %s, priority: %d)", serviceID, serviceType, priority)
 	}
@@ -135,7 +135,7 @@ func (ao *AnalysisOptimizer) RegisterService(serviceID string, serviceType Servi
 func (ao *AnalysisOptimizer) RecordRequest(serviceID string, latencyMs int64) {
 	ao.mu.Lock()
 	defer ao.mu.Unlock()
-	
+
 	if metrics, exists := ao.services[serviceID]; exists {
 		metrics.RequestCount++
 		metrics.TotalLatencyMs += latencyMs
@@ -147,7 +147,7 @@ func (ao *AnalysisOptimizer) RecordRequest(serviceID string, latencyMs int64) {
 func (ao *AnalysisOptimizer) RecordActiveRequest(serviceID string) {
 	ao.mu.Lock()
 	defer ao.mu.Unlock()
-	
+
 	if metrics, exists := ao.services[serviceID]; exists {
 		metrics.ActiveRequests++
 	}
@@ -157,7 +157,7 @@ func (ao *AnalysisOptimizer) RecordActiveRequest(serviceID string) {
 func (ao *AnalysisOptimizer) RecordCompletedRequest(serviceID string) {
 	ao.mu.Lock()
 	defer ao.mu.Unlock()
-	
+
 	if metrics, exists := ao.services[serviceID]; exists {
 		if metrics.ActiveRequests > 0 {
 			metrics.ActiveRequests--
@@ -169,12 +169,12 @@ func (ao *AnalysisOptimizer) RecordCompletedRequest(serviceID string) {
 func (ao *AnalysisOptimizer) ShouldThrottle(serviceID string) (bool, string) {
 	ao.mu.RLock()
 	defer ao.mu.RUnlock()
-	
+
 	metrics, exists := ao.services[serviceID]
 	if !exists {
 		return false, ""
 	}
-	
+
 	// Get throttle state for service type
 	var throttle *ThrottleState
 	switch metrics.ServiceType {
@@ -187,17 +187,17 @@ func (ao *AnalysisOptimizer) ShouldThrottle(serviceID string) (bool, string) {
 	default:
 		return false, ""
 	}
-	
+
 	// Check if service is over concurrency limit
 	if metrics.ActiveRequests >= int64(throttle.CurrentLimit) {
 		return true, "concurrency limit reached"
 	}
-	
+
 	// Check if throttling is enabled
 	if throttle.Enabled {
 		return true, throttle.ThrottleReason
 	}
-	
+
 	return false, ""
 }
 
@@ -205,12 +205,12 @@ func (ao *AnalysisOptimizer) ShouldThrottle(serviceID string) (bool, string) {
 func (ao *AnalysisOptimizer) DetectConflict() (bool, []string) {
 	ao.mu.RLock()
 	defer ao.mu.RUnlock()
-	
+
 	// Count active services by type
 	activeAnalysis := int64(0)
 	activeFrontend := int64(0)
 	activeETL := int64(0)
-	
+
 	for _, metrics := range ao.services {
 		if metrics.ActiveRequests > 0 {
 			switch metrics.ServiceType {
@@ -223,25 +223,25 @@ func (ao *AnalysisOptimizer) DetectConflict() (bool, []string) {
 			}
 		}
 	}
-	
+
 	// Conflict detection based on policy
 	var conflicts []string
-	
+
 	// High frontend load with active analysis
 	if activeFrontend >= 5 && activeAnalysis > 0 {
 		conflicts = append(conflicts, "frontend_analysis_conflict")
 	}
-	
+
 	// High ETL load with active analysis
 	if activeETL >= 3 && activeAnalysis > 0 {
 		conflicts = append(conflicts, "etl_analysis_conflict")
 	}
-	
+
 	// All services active at high concurrency
 	if activeFrontend >= 3 && activeETL >= 2 && activeAnalysis > 0 {
 		conflicts = append(conflicts, "all_services_conflict")
 	}
-	
+
 	return len(conflicts) > 0, conflicts
 }
 
@@ -249,11 +249,11 @@ func (ao *AnalysisOptimizer) DetectConflict() (bool, []string) {
 func (ao *AnalysisOptimizer) ResolveConflict(conflicts []string) {
 	ao.mu.Lock()
 	defer ao.mu.Unlock()
-	
+
 	if ao.logger != nil {
 		ao.logger.Warn("Resolving resource conflicts: %v (policy: %s)", conflicts, ao.conflictPolicy)
 	}
-	
+
 	switch ao.conflictPolicy {
 	case PolicyFrontendFirst:
 		ao.resolveFrontendFirst(conflicts)
@@ -274,25 +274,25 @@ func (ao *AnalysisOptimizer) resolveFrontendFirst(conflicts []string) {
 			ao.analysisThrottle.CurrentLimit = 1
 			ao.analysisThrottle.ThrottleReason = "frontend priority"
 			ao.analysisThrottle.ThrottleStart = time.Now()
-			
+
 			if ao.logger != nil {
 				ao.logger.Info("Throttling analysis service for frontend priority")
 			}
-			
+
 		case "etl_analysis_conflict":
 			// Throttle analysis when ETL is active
 			ao.analysisThrottle.Enabled = true
 			ao.analysisThrottle.CurrentLimit = 1
 			ao.analysisThrottle.ThrottleReason = "etl priority"
 			ao.analysisThrottle.ThrottleStart = time.Now()
-			
+
 		case "all_services_conflict":
 			// Pause analysis completely
 			ao.analysisThrottle.Enabled = true
 			ao.analysisThrottle.CurrentLimit = 0
 			ao.analysisThrottle.ThrottleReason = "all services active"
 			ao.analysisThrottle.ThrottleStart = time.Now()
-			
+
 			if ao.logger != nil {
 				ao.logger.Warn("Pausing analysis service due to high system load")
 			}
@@ -306,7 +306,7 @@ func (ao *AnalysisOptimizer) resolveFairShare(conflicts []string) {
 	ao.analysisThrottle.CurrentLimit = ao.analysisThrottle.BaseLimit / 3
 	ao.frontendThrottle.CurrentLimit = ao.frontendThrottle.BaseLimit / 3
 	ao.etlThrottle.CurrentLimit = ao.etlThrottle.BaseLimit / 3
-	
+
 	if ao.logger != nil {
 		ao.logger.Info("Applying fair share policy: analysis=%d, frontend=%d, etl=%d",
 			ao.analysisThrottle.CurrentLimit,
@@ -321,11 +321,11 @@ func (ao *AnalysisOptimizer) resolveWeighted(conflicts []string) {
 	ao.analysisThrottle.CurrentLimit = (ao.analysisThrottle.BaseLimit * 20) / 100
 	ao.frontendThrottle.CurrentLimit = (ao.frontendThrottle.BaseLimit * 50) / 100
 	ao.etlThrottle.CurrentLimit = (ao.etlThrottle.BaseLimit * 30) / 100
-	
+
 	if ao.analysisThrottle.CurrentLimit < 1 {
 		ao.analysisThrottle.CurrentLimit = 1
 	}
-	
+
 	if ao.logger != nil {
 		ao.logger.Info("Applying weighted policy: analysis=%d, frontend=%d, etl=%d",
 			ao.analysisThrottle.CurrentLimit,
@@ -338,14 +338,14 @@ func (ao *AnalysisOptimizer) resolveWeighted(conflicts []string) {
 func (ao *AnalysisOptimizer) ClearThrottles() {
 	ao.mu.Lock()
 	defer ao.mu.Unlock()
-	
+
 	ao.analysisThrottle.Enabled = false
 	ao.analysisThrottle.CurrentLimit = ao.analysisThrottle.BaseLimit
 	ao.frontendThrottle.Enabled = false
 	ao.frontendThrottle.CurrentLimit = ao.frontendThrottle.BaseLimit
 	ao.etlThrottle.Enabled = false
 	ao.etlThrottle.CurrentLimit = ao.etlThrottle.BaseLimit
-	
+
 	if ao.logger != nil {
 		ao.logger.Info("Cleared all service throttles")
 	}
@@ -355,7 +355,7 @@ func (ao *AnalysisOptimizer) ClearThrottles() {
 func (ao *AnalysisOptimizer) GetMetrics() map[string]*ServiceMetrics {
 	ao.mu.RLock()
 	defer ao.mu.RUnlock()
-	
+
 	// Return a copy to prevent concurrent modification
 	result := make(map[string]*ServiceMetrics)
 	for k, v := range ao.services {
@@ -369,7 +369,7 @@ func (ao *AnalysisOptimizer) GetMetrics() map[string]*ServiceMetrics {
 func (ao *AnalysisOptimizer) SetConflictPolicy(policy ConflictPolicy) {
 	ao.mu.Lock()
 	defer ao.mu.Unlock()
-	
+
 	ao.conflictPolicy = policy
 	if ao.logger != nil {
 		ao.logger.Info("Conflict policy changed to: %s", policy)

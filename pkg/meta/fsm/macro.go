@@ -10,16 +10,16 @@ import (
 
 // MacroFSMManager implements the MacroFSM interface for high-level orchestration
 type MacroFSMManager struct {
-	mu          sync.RWMutex
-	id          string
-	state       MacroState
-	providers   map[string]ProviderFSM
-	storage     *storage.Store
-	createdAt   time.Time
-	updatedAt   time.Time
-	eventChan   chan *Event
-	stopChan    chan struct{}
-	eventWg     sync.WaitGroup
+	mu        sync.RWMutex
+	id        string
+	state     MacroState
+	providers map[string]ProviderFSM
+	storage   *storage.Store
+	createdAt time.Time
+	updatedAt time.Time
+	eventChan chan *Event
+	stopChan  chan struct{}
+	eventWg   sync.WaitGroup
 }
 
 // NewMacroFSMManager creates a new macro FSM manager
@@ -272,7 +272,7 @@ func (m *MacroFSMManager) loadState() error {
 // Implements Requirement 6: Log FSM Transitions
 func (m *MacroFSMManager) logTransition(oldState, newState MacroState) {
 	providerCount := len(m.providers)
-	
+
 	// Count providers by state
 	stateCounts := make(map[ProviderState]int)
 	for _, provider := range m.providers {
@@ -290,7 +290,6 @@ func (m *MacroFSMManager) logTransition(oldState, newState MacroState) {
 		stateCounts,
 	)
 }
-
 
 // GetStats returns statistics about the macro FSM
 func (m *MacroFSMManager) GetStats() map[string]interface{} {

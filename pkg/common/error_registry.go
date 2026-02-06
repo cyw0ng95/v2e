@@ -17,15 +17,15 @@ const (
 	ErrCodeSystemTimeout           ErrorCode = "SYS_1004"
 
 	// RPC Errors (2xxx)
-	ErrCodeRPCInvalidRequest     ErrorCode = "RPC_2000"
-	ErrCodeRPCInvalidResponse    ErrorCode = "RPC_2001"
-	ErrCodeRPCTargetNotFound     ErrorCode = "RPC_2002"
-	ErrCodeRPCTargetUnavailable  ErrorCode = "RPC_2003"
-	ErrCodeRPCTimeout            ErrorCode = "RPC_2004"
-	ErrCodeRPCMethodNotFound     ErrorCode = "RPC_2005"
-	ErrCodeRPCInvalidParams      ErrorCode = "RPC_2006"
-	ErrCodeRPCCircuitOpen        ErrorCode = "RPC_2007"
-	ErrCodeRPCDeadLettered       ErrorCode = "RPC_2008"
+	ErrCodeRPCInvalidRequest    ErrorCode = "RPC_2000"
+	ErrCodeRPCInvalidResponse   ErrorCode = "RPC_2001"
+	ErrCodeRPCTargetNotFound    ErrorCode = "RPC_2002"
+	ErrCodeRPCTargetUnavailable ErrorCode = "RPC_2003"
+	ErrCodeRPCTimeout           ErrorCode = "RPC_2004"
+	ErrCodeRPCMethodNotFound    ErrorCode = "RPC_2005"
+	ErrCodeRPCInvalidParams     ErrorCode = "RPC_2006"
+	ErrCodeRPCCircuitOpen       ErrorCode = "RPC_2007"
+	ErrCodeRPCDeadLettered      ErrorCode = "RPC_2008"
 
 	// Provider Errors (3xxx)
 	ErrCodeProviderNotFound       ErrorCode = "PROV_3000"
@@ -46,16 +46,16 @@ const (
 	ErrCodeStorageFulled      ErrorCode = "STOR_4004"
 
 	// Permit Errors (5xxx)
-	ErrCodePermitDenied     ErrorCode = "PERM_5000"
-	ErrCodePermitExhausted  ErrorCode = "PERM_5001"
-	ErrCodePermitRevoked    ErrorCode = "PERM_5002"
-	ErrCodePermitInvalid    ErrorCode = "PERM_5003"
+	ErrCodePermitDenied    ErrorCode = "PERM_5000"
+	ErrCodePermitExhausted ErrorCode = "PERM_5001"
+	ErrCodePermitRevoked   ErrorCode = "PERM_5002"
+	ErrCodePermitInvalid   ErrorCode = "PERM_5003"
 
 	// Data Validation Errors (6xxx)
-	ErrCodeValidationFailed      ErrorCode = "VAL_6000"
-	ErrCodeValidationMissingField ErrorCode = "VAL_6001"
+	ErrCodeValidationFailed        ErrorCode = "VAL_6000"
+	ErrCodeValidationMissingField  ErrorCode = "VAL_6001"
 	ErrCodeValidationInvalidFormat ErrorCode = "VAL_6002"
-	ErrCodeValidationOutOfRange   ErrorCode = "VAL_6003"
+	ErrCodeValidationOutOfRange    ErrorCode = "VAL_6003"
 
 	// External API Errors (7xxx)
 	ErrCodeAPIRateLimit    ErrorCode = "API_7000"
@@ -67,11 +67,11 @@ const (
 
 // StandardizedError represents an error with code and user-friendly message
 type StandardizedError struct {
-	Code           ErrorCode `json:"code"`
-	Message        string    `json:"message"`
-	UserMessage    string    `json:"user_message"`
-	InternalError  error     `json:"-"`
-	RetryableFlag  bool      `json:"retryable"`
+	Code          ErrorCode `json:"code"`
+	Message       string    `json:"message"`
+	UserMessage   string    `json:"user_message"`
+	InternalError error     `json:"-"`
+	RetryableFlag bool      `json:"retryable"`
 }
 
 // Error implements the error interface

@@ -7,14 +7,14 @@ import (
 
 // KernelMetrics represents the current kernel performance metrics
 type KernelMetrics struct {
-	P99LatencyMs      float64 `json:"p99_latency_ms"`
-	BufferSaturation  float64 `json:"buffer_saturation"`
-	ActiveWorkers     int     `json:"active_workers"`
-	TotalPermits      int     `json:"total_permits"`
-	AllocatedPermits  int     `json:"allocated_permits"`
-	AvailablePermits  int     `json:"available_permits"`
-	MessageRate       float64 `json:"message_rate"`
-	ErrorRate         float64 `json:"error_rate"`
+	P99LatencyMs     float64 `json:"p99_latency_ms"`
+	BufferSaturation float64 `json:"buffer_saturation"`
+	ActiveWorkers    int     `json:"active_workers"`
+	TotalPermits     int     `json:"total_permits"`
+	AllocatedPermits int     `json:"allocated_permits"`
+	AvailablePermits int     `json:"available_permits"`
+	MessageRate      float64 `json:"message_rate"`
+	ErrorRate        float64 `json:"error_rate"`
 }
 
 // MetricsCollector collects and tracks kernel performance metrics
@@ -22,9 +22,9 @@ type MetricsCollector struct {
 	mu sync.RWMutex
 
 	// Latency tracking (rolling window)
-	latencies     []time.Duration
-	maxLatencies  int
-	latencyIndex  int
+	latencies    []time.Duration
+	maxLatencies int
+	latencyIndex int
 
 	// Buffer saturation
 	bufferCapacity int

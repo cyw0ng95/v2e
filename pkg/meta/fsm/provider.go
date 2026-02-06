@@ -12,19 +12,19 @@ import (
 // BaseProviderFSM provides a base implementation of ProviderFSM
 // Concrete providers (CVE, CWE, etc.) can embed this and override Execute()
 type BaseProviderFSM struct {
-	mu              sync.RWMutex
-	id              string
-	providerType    string
-	state           ProviderState
-	storage         *storage.Store
-	eventHandler    func(*Event) error
-	createdAt       time.Time
-	updatedAt       time.Time
-	lastCheckpoint  string
-	processedCount  int64
-	errorCount      int64
-	permitsHeld     int
-	executor        func() error // Custom execution logic
+	mu             sync.RWMutex
+	id             string
+	providerType   string
+	state          ProviderState
+	storage        *storage.Store
+	eventHandler   func(*Event) error
+	createdAt      time.Time
+	updatedAt      time.Time
+	lastCheckpoint string
+	processedCount int64
+	errorCount     int64
+	permitsHeld    int
+	executor       func() error // Custom execution logic
 }
 
 // ProviderConfig holds configuration for creating a provider FSM
@@ -123,7 +123,7 @@ func (p *BaseProviderFSM) Transition(newState ProviderState) error {
 // Start begins execution (IDLE -> ACQUIRING -> RUNNING)
 func (p *BaseProviderFSM) Start() error {
 	currentState := p.GetState()
-	
+
 	if currentState != ProviderIdle {
 		return fmt.Errorf("cannot start from state %s, must be IDLE", currentState)
 	}
@@ -142,7 +142,7 @@ func (p *BaseProviderFSM) Start() error {
 // Pause pauses execution (RUNNING -> PAUSED)
 func (p *BaseProviderFSM) Pause() error {
 	currentState := p.GetState()
-	
+
 	if currentState != ProviderRunning {
 		return fmt.Errorf("cannot pause from state %s, must be RUNNING", currentState)
 	}
@@ -160,7 +160,7 @@ func (p *BaseProviderFSM) Pause() error {
 // Resume resumes execution (PAUSED -> ACQUIRING -> RUNNING)
 func (p *BaseProviderFSM) Resume() error {
 	currentState := p.GetState()
-	
+
 	if currentState != ProviderPaused {
 		return fmt.Errorf("cannot resume from state %s, must be PAUSED", currentState)
 	}
@@ -198,7 +198,7 @@ func (p *BaseProviderFSM) OnQuotaRevoked(revokedCount int) error {
 	p.mu.Unlock()
 
 	currentState := p.GetState()
-	
+
 	// If running, transition to WAITING_QUOTA
 	if currentState == ProviderRunning {
 		if err := p.Transition(ProviderWaitingQuota); err != nil {
@@ -219,7 +219,7 @@ func (p *BaseProviderFSM) OnQuotaGranted(grantedCount int) error {
 	p.mu.Unlock()
 
 	currentState := p.GetState()
-	
+
 	// If acquiring, transition to RUNNING
 	if currentState == ProviderAcquiring {
 		if err := p.Transition(ProviderRunning); err != nil {
@@ -244,7 +244,7 @@ func (p *BaseProviderFSM) OnQuotaGranted(grantedCount int) error {
 // OnRateLimited handles rate limiting (429 errors)
 func (p *BaseProviderFSM) OnRateLimited(retryAfter time.Duration) error {
 	currentState := p.GetState()
-	
+
 	if currentState == ProviderRunning {
 		if err := p.Transition(ProviderWaitingBackoff); err != nil {
 			return err
@@ -280,7 +280,7 @@ func (p *BaseProviderFSM) executeAsync() {
 		p.mu.Lock()
 		p.errorCount++
 		p.mu.Unlock()
-		
+
 		// Emit failure event
 		p.emitEvent(EventProviderFailed)
 	}
@@ -404,4 +404,3 @@ func (p *BaseProviderFSM) logTransition(oldState, newState ProviderState, trigge
 		p.errorCount,
 	)
 }
-

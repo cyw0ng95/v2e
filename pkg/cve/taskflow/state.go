@@ -4,20 +4,20 @@ package taskflow
 type JobState string
 
 const (
-	StateQueued     JobState = "queued"
-	StateRunning    JobState = "running"
-	StatePaused     JobState = "paused"
-	StateCompleted  JobState = "completed"
-	StateFailed     JobState = "failed"
-	StateStopped    JobState = "stopped"
+	StateQueued    JobState = "queued"
+	StateRunning   JobState = "running"
+	StatePaused    JobState = "paused"
+	StateCompleted JobState = "completed"
+	StateFailed    JobState = "failed"
+	StateStopped   JobState = "stopped"
 	// Intermediate states for granular progress tracking
 	StateInitializing JobState = "initializing"
-	StateFetching    JobState = "fetching"
-	StateProcessing  JobState = "processing"
-	StateSaving      JobState = "saving"
-	StateValidating  JobState = "validating"
-	StateRecovering  JobState = "recovering"
-	StateRollingBack JobState = "rolling_back"
+	StateFetching     JobState = "fetching"
+	StateProcessing   JobState = "processing"
+	StateSaving       JobState = "saving"
+	StateValidating   JobState = "validating"
+	StateRecovering   JobState = "recovering"
+	StateRollingBack  JobState = "rolling_back"
 )
 
 // IsTerminal returns whether this state is a terminal state

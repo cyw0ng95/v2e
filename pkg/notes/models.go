@@ -60,18 +60,18 @@ type NoteModel struct {
 type MemoryCardModel struct {
 	ID         uint       `gorm:"primaryKey" json:"id"`
 	BookmarkID uint       `gorm:"index;not null" json:"bookmark_id"`
-	URN        string     `gorm:"index" json:"urn"` // URN reference from associated bookmark
-	Front      string     `gorm:"type:text;not null" json:"front_content"` // Question/content on front of card
-	Back       string     `gorm:"type:text;not null" json:"back_content"`  // Answer/explanation on back of card
+	URN        string     `gorm:"index" json:"urn"`                               // URN reference from associated bookmark
+	Front      string     `gorm:"type:text;not null" json:"front_content"`        // Question/content on front of card
+	Back       string     `gorm:"type:text;not null" json:"back_content"`         // Answer/explanation on back of card
 	MajorClass string     `gorm:"type:varchar(64);default:''" json:"major_class"` // Major class/category
 	MinorClass string     `gorm:"type:varchar(64);default:''" json:"minor_class"` // Minor class/category
-	Status     string     `gorm:"type:varchar(32);default:''" json:"status"` // Status (e.g., active, archived)
+	Status     string     `gorm:"type:varchar(32);default:''" json:"status"`      // Status (e.g., active, archived)
 	Version    int        `gorm:"default:1" json:"version"`
 	Content    string     `gorm:"type:json;not null" json:"content"` // TipTap JSON content
-	EaseFactor float32    `gorm:"default:2.5" json:"ease_factor"`        // For spaced repetition algorithm
-	Interval   int        `gorm:"default:1" json:"interval"`          // Days until next review
-	Repetition int        `gorm:"default:0" json:"repetition"`          // Number of successful reviews
-	NextReview *time.Time `json:"next_review_at"` // When to review this card next
+	EaseFactor float32    `gorm:"default:2.5" json:"ease_factor"`    // For spaced repetition algorithm
+	Interval   int        `gorm:"default:1" json:"interval"`         // Days until next review
+	Repetition int        `gorm:"default:0" json:"repetition"`       // Number of successful reviews
+	NextReview *time.Time `json:"next_review_at"`                    // When to review this card next
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 }

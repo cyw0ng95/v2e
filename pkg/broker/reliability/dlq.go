@@ -13,9 +13,9 @@ import (
 // DeadLetterQueue handles failed RPC messages
 // Implements Requirement 9: RPC Dead Letter Queue
 type DeadLetterQueue struct {
-	mu       sync.RWMutex
-	db       *bbolt.DB
-	maxSize  int
+	mu         sync.RWMutex
+	db         *bbolt.DB
+	maxSize    int
 	bucketName string
 }
 

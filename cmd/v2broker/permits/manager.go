@@ -16,32 +16,32 @@ type PermitManager struct {
 	availablePermits int
 	allocations      map[string]int // provider_id -> allocated permits
 	logger           *common.Logger
-	
+
 	// Metrics
-	totalRequests  int64
-	totalGrants    int64
-	totalReleases  int64
+	totalRequests    int64
+	totalGrants      int64
+	totalReleases    int64
 	totalRevocations int64
 }
 
 // PermitRequest represents a request for worker permits
 type PermitRequest struct {
-	ProviderID   string
-	PermitCount  int
+	ProviderID  string
+	PermitCount int
 }
 
 // PermitResponse represents the response to a permit request
 type PermitResponse struct {
-	Granted      int
-	Available    int
-	ProviderID   string
+	Granted    int
+	Available  int
+	ProviderID string
 }
 
 // PermitAllocation represents current permit allocation
 type PermitAllocation struct {
-	ProviderID      string
-	AllocatedCount  int
-	AllocatedAt     time.Time
+	ProviderID     string
+	AllocatedCount int
+	AllocatedAt    time.Time
 }
 
 // NewPermitManager creates a new permit manager with the specified total permits
@@ -49,7 +49,7 @@ func NewPermitManager(totalPermits int, logger *common.Logger) *PermitManager {
 	if totalPermits <= 0 {
 		totalPermits = 10 // Default to 10 permits
 	}
-	
+
 	return &PermitManager{
 		totalPermits:     totalPermits,
 		availablePermits: totalPermits,
@@ -83,14 +83,14 @@ func (pm *PermitManager) RequestPermits(req *PermitRequest) (*PermitResponse, er
 		pm.availablePermits -= granted
 		pm.allocations[req.ProviderID] += granted
 		pm.totalGrants++
-		
+
 		if pm.logger != nil {
-			pm.logger.Debug("Granted %d permits to %s (requested: %d, available: %d)", 
+			pm.logger.Debug("Granted %d permits to %s (requested: %d, available: %d)",
 				granted, req.ProviderID, req.PermitCount, pm.availablePermits)
 		}
 	} else {
 		if pm.logger != nil {
-			pm.logger.Debug("No permits available for %s (requested: %d)", 
+			pm.logger.Debug("No permits available for %s (requested: %d)",
 				req.ProviderID, req.PermitCount)
 		}
 	}
@@ -132,7 +132,7 @@ func (pm *PermitManager) ReleasePermits(providerID string, count int) (*PermitRe
 	pm.totalReleases++
 
 	if pm.logger != nil {
-		pm.logger.Debug("Released %d permits from %s (available: %d)", 
+		pm.logger.Debug("Released %d permits from %s (available: %d)",
 			count, providerID, pm.availablePermits)
 	}
 
@@ -190,7 +190,7 @@ func (pm *PermitManager) RevokePermits(count int) map[string]int {
 		pm.totalRevocations++
 
 		if pm.logger != nil {
-			pm.logger.Warn("Revoked %d permits from %s (kernel metrics breach)", 
+			pm.logger.Warn("Revoked %d permits from %s (kernel metrics breach)",
 				toRevoke, providerID)
 		}
 	}
@@ -209,14 +209,14 @@ func (pm *PermitManager) GetStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_permits":      pm.totalPermits,
-		"available_permits":  pm.availablePermits,
-		"allocated_permits":  allocatedCount,
-		"active_providers":   len(pm.allocations),
-		"total_requests":     pm.totalRequests,
-		"total_grants":       pm.totalGrants,
-		"total_releases":     pm.totalReleases,
-		"total_revocations":  pm.totalRevocations,
+		"total_permits":     pm.totalPermits,
+		"available_permits": pm.availablePermits,
+		"allocated_permits": allocatedCount,
+		"active_providers":  len(pm.allocations),
+		"total_requests":    pm.totalRequests,
+		"total_grants":      pm.totalGrants,
+		"total_releases":    pm.totalReleases,
+		"total_revocations": pm.totalRevocations,
 	}
 }
 
@@ -258,7 +258,7 @@ func (pm *PermitManager) SetTotalPermits(total int) error {
 	pm.availablePermits = total - allocatedCount
 
 	if pm.logger != nil {
-		pm.logger.Info("Updated total permits from %d to %d (available: %d)", 
+		pm.logger.Info("Updated total permits from %d to %d (available: %d)",
 			oldTotal, total, pm.availablePermits)
 	}
 

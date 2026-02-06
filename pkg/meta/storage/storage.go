@@ -33,41 +33,41 @@ const (
 type ProviderState string
 
 const (
-	ProviderIdle          ProviderState = "IDLE"
-	ProviderAcquiring     ProviderState = "ACQUIRING"
-	ProviderRunning       ProviderState = "RUNNING"
-	ProviderWaitingQuota  ProviderState = "WAITING_QUOTA"
+	ProviderIdle           ProviderState = "IDLE"
+	ProviderAcquiring      ProviderState = "ACQUIRING"
+	ProviderRunning        ProviderState = "RUNNING"
+	ProviderWaitingQuota   ProviderState = "WAITING_QUOTA"
 	ProviderWaitingBackoff ProviderState = "WAITING_BACKOFF"
-	ProviderPaused        ProviderState = "PAUSED"
-	ProviderTerminated    ProviderState = "TERMINATED"
+	ProviderPaused         ProviderState = "PAUSED"
+	ProviderTerminated     ProviderState = "TERMINATED"
 )
 
 // MacroFSMState represents the persisted state of the macro FSM
 type MacroFSMState struct {
-	ID        string     `json:"id"`
-	State     MacroState `json:"state"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID        string                 `json:"id"`
+	State     MacroState             `json:"state"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // ProviderFSMState represents the persisted state of a provider FSM
 type ProviderFSMState struct {
-	ID            string        `json:"id"`
-	ProviderType  string        `json:"provider_type"` // "cve", "cwe", "capec", "attack"
-	State         ProviderState `json:"state"`
-	LastCheckpoint string       `json:"last_checkpoint,omitempty"` // URN of last processed item
-	ProcessedCount int64        `json:"processed_count"`
-	ErrorCount     int64        `json:"error_count"`
-	CreatedAt      time.Time    `json:"created_at"`
-	UpdatedAt      time.Time    `json:"updated_at"`
+	ID             string                 `json:"id"`
+	ProviderType   string                 `json:"provider_type"` // "cve", "cwe", "capec", "attack"
+	State          ProviderState          `json:"state"`
+	LastCheckpoint string                 `json:"last_checkpoint,omitempty"` // URN of last processed item
+	ProcessedCount int64                  `json:"processed_count"`
+	ErrorCount     int64                  `json:"error_count"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Checkpoint represents a URN-based checkpoint
 type Checkpoint struct {
-	URN          string    `json:"urn"`           // Full URN string
-	ProviderID   string    `json:"provider_id"`   // Provider FSM ID
+	URN          string    `json:"urn"`         // Full URN string
+	ProviderID   string    `json:"provider_id"` // Provider FSM ID
 	ProcessedAt  time.Time `json:"processed_at"`
 	Success      bool      `json:"success"`
 	ErrorMessage string    `json:"error_message,omitempty"`
@@ -75,9 +75,9 @@ type Checkpoint struct {
 
 // PermitAllocation represents a permit allocation to a provider
 type PermitAllocation struct {
-	ProviderID  string    `json:"provider_id"`
-	PermitCount int       `json:"permit_count"`
-	AllocatedAt time.Time `json:"allocated_at"`
+	ProviderID  string     `json:"provider_id"`
+	PermitCount int        `json:"permit_count"`
+	AllocatedAt time.Time  `json:"allocated_at"`
 	ReleasedAt  *time.Time `json:"released_at,omitempty"`
 }
 

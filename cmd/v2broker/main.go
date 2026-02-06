@@ -52,29 +52,19 @@ func main() {
 	// Configuration values come from build-time ldflags set by vconfig
 
 	optConfig := perf.Config{
-		BufferCap:      buildOptimizerBufferValue(),    // Build-time configurable
-		NumWorkers:     buildOptimizerWorkersValue(),   // Build-time configurable
-		StatsInterval:  100 * time.Millisecond, // Default stats interval
-		OfferPolicy:    buildOptimizerPolicyValue(),    // Build-time configurable
-		OfferTimeout:   0,                         // Default offer timeout
-		BatchSize:      buildOptimizerBatchValue(),     // Build-time configurable
-		FlushInterval: buildOptimizerFlushValue(),     // Build-time configurable
-		AdaptationFreq: 10 * time.Second,         // Default adaptation frequency
+		BufferCap:      buildOptimizerBufferValue(),  // Build-time configurable
+		NumWorkers:     buildOptimizerWorkersValue(), // Build-time configurable
+		StatsInterval:  100 * time.Millisecond,       // Default stats interval
+		OfferPolicy:    buildOptimizerPolicyValue(),  // Build-time configurable
+		OfferTimeout:   0,                            // Default offer timeout
+		BatchSize:      buildOptimizerBatchValue(),   // Build-time configurable
+		FlushInterval:  buildOptimizerFlushValue(),   // Build-time configurable
+		AdaptationFreq: 10 * time.Second,             // Default adaptation frequency
 	}
 
 	opt := perf.NewWithConfig(broker, optConfig)
-	opt.SetLogger(logger)
-
-	if false { // Adaptive optimization disabled by default
-		opt.EnableAdaptiveOptimization()
-		logger.Info(LogMsgAdaptiveOptEnabled, optConfig.AdaptationFreq)
-	}
-
 	broker.SetOptimizer(opt)
 
-	// Get actual values from optimizer metrics or use config (config might be 0/empty, handled by defaults)
-	// We can trust NewWithConfig set defaults, but we don't have easy access to the final config struct inside opt
-	// except via side channels. For logging, we'll just log what we have or query metrics.
 	metrics := opt.Metrics()
 	logger.Info(LogMsgOptimizerStarted,
 		metrics["message_channel_buffer"],
