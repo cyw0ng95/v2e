@@ -197,6 +197,8 @@ func (s *BookmarkService) CreateBookmark(ctx context.Context, globalItemID, item
 			EaseFactor: 2.5,
 			Interval:   1,
 			Repetition: 0,
+			// Set initial FSM state to "new"
+			FSMState: "new",
 		}
 		if err := tx.Create(card).Error; err != nil {
 			return fmt.Errorf("failed to create memory card: %w", err)
@@ -429,6 +431,8 @@ func (s *NoteService) AddNote(ctx context.Context, bookmarkID uint, content stri
 		Content:    content,
 		Author:     author,
 		IsPrivate:  isPrivate,
+		// Set initial FSM state to "draft"
+		FSMState: "draft",
 	}
 
 	if err := s.db.WithContext(ctx).Create(note).Error; err != nil {
@@ -689,6 +693,8 @@ func (s *MemoryCardService) CreateMemoryCard(ctx context.Context, bookmarkID uin
 		EaseFactor: 2.5,
 		Interval:   1,
 		Repetition: 0,
+		// Set initial FSM state to "new"
+		FSMState: "new",
 	}
 
 	if err := s.db.WithContext(ctx).Create(card).Error; err != nil {

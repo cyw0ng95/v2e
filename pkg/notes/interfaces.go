@@ -25,6 +25,7 @@ type NoteServiceInterface interface {
 	AddNote(ctx context.Context, bookmarkID uint, content string, author *string, isPrivate bool) (*NoteModel, error)
 	GetNoteByID(ctx context.Context, id uint) (*NoteModel, error)
 	GetNotesByBookmarkID(ctx context.Context, bookmarkID uint) ([]*NoteModel, error)
+	GetByURN(ctx context.Context, urn string) (*NoteModel, error)
 	UpdateNote(ctx context.Context, note *NoteModel) error
 	DeleteNote(ctx context.Context, id uint) error
 }
@@ -34,6 +35,7 @@ type MemoryCardServiceInterface interface {
 	CreateMemoryCard(ctx context.Context, bookmarkID uint, front, back string) (*MemoryCardModel, error)
 	GetMemoryCardByID(ctx context.Context, id uint) (*MemoryCardModel, error)
 	GetMemoryCardsByBookmarkID(ctx context.Context, bookmarkID uint) ([]*MemoryCardModel, error)
+	GetMemoryCardByURN(ctx context.Context, urn string) (*MemoryCardModel, error)
 	GetCardsForReview(ctx context.Context) ([]*MemoryCardModel, error)
 	GetCardsByLearningState(ctx context.Context, state LearningState) ([]*MemoryCardModel, error)
 	UpdateCardAfterReview(ctx context.Context, cardID uint, rating CardRating) error
@@ -65,6 +67,7 @@ type ServiceContainer struct {
 	MemoryCardService     MemoryCardServiceInterface
 	CrossReferenceService CrossReferenceServiceInterface
 	HistoryService        HistoryServiceInterface
+	URNIndex              *URNIndex
 }
 
 // NewServiceContainer creates a new service container with local implementations
@@ -74,6 +77,7 @@ func NewServiceContainer(db *gorm.DB) *ServiceContainer {
 	memoryCardService := NewMemoryCardService(db)
 	crossRefService := NewCrossReferenceService(db)
 	historyService := NewHistoryService(db)
+	urnIndex := NewURNIndex(db)
 
 	return &ServiceContainer{
 		BookmarkService:       bookmarkService,
@@ -81,6 +85,7 @@ func NewServiceContainer(db *gorm.DB) *ServiceContainer {
 		MemoryCardService:     memoryCardService,
 		CrossReferenceService: crossRefService,
 		HistoryService:        historyService,
+		URNIndex:              urnIndex,
 	}
 }
 

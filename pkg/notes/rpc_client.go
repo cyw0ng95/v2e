@@ -538,6 +538,32 @@ func (s *NoteServiceRPCClient) GetNoteByID(ctx context.Context, id uint) (*NoteM
 	return result.Note, nil
 }
 
+// GetByURN retrieves a note by URN via RPC
+func (s *NoteServiceRPCClient) GetByURN(ctx context.Context, urn string) (*NoteModel, error) {
+	params := map[string]interface{}{
+		"urn": urn,
+	}
+
+	var result struct {
+		Note *NoteModel `json:"note"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCGetNoteByURN", params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get note by URN via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return nil, fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return result.Note, nil
+}
+
 // DeleteNote deletes a note via RPC
 func (s *NoteServiceRPCClient) DeleteNote(ctx context.Context, id uint) error {
 	params := map[string]interface{}{
@@ -617,6 +643,32 @@ func (s *MemoryCardServiceRPCClient) GetMemoryCardByID(ctx context.Context, id u
 	response, err := s.Client.InvokeRPC(ctx, "local", "RPCGetMemoryCardByID", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get memory card by ID via RPC: %w", err)
+	}
+
+	if response.Type == subprocess.MessageTypeError {
+		return nil, fmt.Errorf("remote error: %s", response.Error)
+	}
+
+	if err := subprocess.UnmarshalPayload(response, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return result.Card, nil
+}
+
+// GetMemoryCardByURN retrieves a memory card by URN via RPC
+func (s *MemoryCardServiceRPCClient) GetMemoryCardByURN(ctx context.Context, urn string) (*MemoryCardModel, error) {
+	params := map[string]interface{}{
+		"urn": urn,
+	}
+
+	var result struct {
+		Card *MemoryCardModel `json:"card"`
+	}
+
+	response, err := s.Client.InvokeRPC(ctx, "local", "RPCGetMemoryCardByURN", params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get memory card by URN via RPC: %w", err)
 	}
 
 	if response.Type == subprocess.MessageTypeError {
