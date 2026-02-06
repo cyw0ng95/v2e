@@ -361,11 +361,8 @@ Meta Service (Slave)              Broker (Master)
   - Provides health checks and basic service discovery
 
 - **Meta Service** ([cmd/v2meta](cmd/v2meta)): The orchestration layer that:
-  - Manages job scheduling and execution using go-taskflow
-  - Coordinates complex multi-step operations
-  - Handles session management and state persistence
-  - Provides workflow control mechanisms
-  - Orchestrates CVE/CWE data fetching jobs with persistent state management
+  - Coordinates data population operations using the UEE (Unified ETL Engine) framework
+  - Manages ETL providers for CVE, CWE, CAPEC, and ATT&CK data sources
   - Performs automatic CWE and CAPEC imports at startup
   - Provides memory card management (delegates to local service):
     - RPCCreateMemoryCard, RPCGetMemoryCard, RPCUpdateMemoryCard
@@ -484,7 +481,7 @@ The Next.js-based frontend ([website](website)) provides:
 - **REST Gateway Interface**: Access service exposes `/restful/rpc` endpoint for frontend-backend communication
 - **Sophisticated RPC Client**: Handles automatic case conversion (camelCase ↔ snake_case) and comprehensive error handling
 - **Rich Component Architecture**: Tabbed interface supporting CVE, CWE, CAPEC, ATT&CK, OWASP ASVS, and system monitoring data
-- **Real-time Updates**: Session control and live metrics display
+- **Real-time Updates**: Provider status monitoring and live metrics display
 - **Responsive Design**: Adaptable interface for various screen sizes and devices
 - **Modern Tech Stack**: Uses Next.js 16+, React 19+, with TypeScript, Tailwind CSS, and Radix UI components
 - **Data Visualization**: Recharts for performance metrics and data visualization
@@ -496,7 +493,7 @@ The frontend includes dedicated sections for:
 - ATT&CK framework data (techniques, tactics, mitigations, software, groups)
 - OWASP ASVS v5.0.0 security requirements (browsable by chapter and level)
 - System monitoring and performance metrics
-- Session control for data fetching jobs
+- ETL provider status and control
 
 ## Quickstart
 
@@ -568,145 +565,7 @@ On Linux, the containerized environment can be used with the `USE_CONTAINER=true
 ```bash
 USE_CONTAINER=true ./runenv.sh -t  # Run tests in container on Linux
 ```
-## Job Session Management & State Machine
-
-The meta service orchestrates CVE/CWE data fetching jobs using go-taskflow with persistent state management. Job runs are stored in BoltDB and survive service restarts. The system also performs automatic CWE and CAPEC imports at startup.
-
-### Job States
-
-The system supports thirteen job states with strictly defined transitions, including intermediate states for granular progress tracking:
-
-```mermaid
-stateDiagram-v2
-    [*] --> Queued: Create Run
-    Queued --> Initializing: Start
-    Queued --> Stopped: Stop
-    Initializing --> Running: Ready
-    Initializing --> Failed: Setup Error
-    Initializing --> Stopped: Stop
-    Running --> Paused: Pause
-    Running --> Completed: Finish Successfully
-    Running --> Failed: Error
-    Running --> Stopped: Stop
-    Running --> Fetching: API Call
-    Running --> Processing: Transform
-    Running --> Saving: Persist
-    Running --> Validating: Verify
-    Fetching --> Processing: Data Received
-    Fetching --> Running: Batch Complete
-    Fetching --> Failed: API Error
-    Fetching --> Paused: Pause During Fetch
-    Processing --> Saving: Processed
-    Processing --> Running: Batch Complete
-    Processing --> Failed: Transform Error
-    Processing --> Paused: Pause During Process
-    Saving --> Running: Persisted
-    Saving --> Completed: All Saved
-    Saving --> Failed: Storage Error
-    Saving --> Paused: Pause During Save
-    Validating --> Running: Validation Passed
-    Validating --> Failed: Validation Failed
-    Validating --> Paused: Pause During Validate
-    Paused --> Recovering: Resume
-    Paused --> Stopped: Stop
-    Recovering --> Running: Recovery Complete
-    Recovering --> Failed: Recovery Failed
-    Recovering --> Stopped: Stop During Recovery
-    Completed --> [*]
-    Failed --> [*]
-    Stopped --> [*]
-    RollingBack --> Stopped: Rollback Complete
-    RollingBack --> Failed: Rollback Failed
-```
-
-**Primary State Descriptions:**
-
-- **Queued**: Job created but not yet started
-- **Initializing**: Job is being set up, resources allocated
-- **Running**: Job is actively executing
-- **Paused**: Job temporarily paused by user (can be resumed)
-- **Completed**: Job finished successfully (all data fetched)
-- **Failed**: Job encountered fatal error
-- **Stopped**: Job manually stopped by user
-
-**Intermediate Progress States:**
-
-- **Fetching**: Actively fetching data from remote API (NVD, etc.)
-- **Processing**: Transforming and normalizing fetched data
-- **Saving**: Persisting processed data to database
-- **Validating**: Verifying data integrity and consistency
-- **Recovering**: Recovering from pause or failure state
-- **RollingBack**: Rolling back partial changes after error
-
-**Terminal States**: Completed, Failed, Stopped (cannot transition further)
-
-### Session Persistence & Recovery
-
-- **Single Active Run Policy**: Only one job run can be active (running or paused) at time
-- **BoltDB Storage**: Job runs persist in `session.db` (configurable via `SESSION_DB_PATH` env var)
-- **Auto-Recovery**: On service restart:
-  - Running jobs: Automatically resumed
-  - Paused jobs: Remain paused (manual resume required)
-  - Terminal states: No action taken
-
-### RPC API for Job Control
-
-**Start Session:**
-```json
-{
-  "method": "RPCStartSession",
-  "params": {
-    "session_id": "my-job-001",
-    "start_index": 0,
-    "results_per_batch": 100
-  }
-}
-```
-
-**Stop Session:**
-```json
-{
-  "method": "RPCStopSession",
-  "params": {}
-}
-```
-
-**Pause Job:**
-```json
-{
-  "method": "RPCPauseJob",
-  "params": {}
-}
-```
-
-**Resume Job:**
-```json
-{
-  "method": "RPCResumeJob",
-  "params": {}
-}
-```
-
-**Get Status:**
-```json
-{
-  "method": "RPCGetSessionStatus",
-  "params": {}
-}
-```
-
-Response includes: `state`, `session_id`, `fetched_count`, `stored_count`, `error_count`, `error_message`
-
-### Task Orchestration with go-taskflow
-
-The meta service uses go-taskflow to orchestrate multi-step jobs:
-
-1. **Fetch** task: Retrieve CVE batch from remote NVD API
-2. **Store** task: Save CVEs to local database
-
-Tasks are organized in a directed acyclic graph (DAG) with dependency management, retries, and cancellation support.
-
-### Automatic Imports
+## Automatic Data Imports
 
 The meta service performs automatic imports at startup:
 - **CWE Import**: Triggers CWE import from `assets/cwe-raw.json` after 2-second delay
@@ -760,7 +619,7 @@ Build-time configurable via vconfig (`CONFIG_OPTIMIZER_*` options):
 | **Scalable Process Management** | Broker manages dozens of subprocess services with minimal resource impact |
 | **Zero-Copy JSON** | `bytedance/sonic` for JIT-optimized serialization |
 | **Message Pooling** | `sync.Pool` reduces garbage collection pressure |
-| **Concurrent Task Execution** | go-taskflow enables parallel execution with up to 100 concurrent goroutines |
+| **UEE Provider Architecture** | Hierarchical FSM-based orchestration with worker permits and resource-aware execution |
 | **Configurable Buffering** | Tunable buffer capacity for high-volume scenarios |
 | **Worker Pools** | Adjustable worker count for CPU-bound processing |
 | **Message Batching** | Configurable batch size and flush interval for throughput optimization |
@@ -784,12 +643,12 @@ Available metrics include:
   - v2access/ - REST gateway (subprocess)
   - v2local/ - Local data storage service (CVE/CWE/CAPEC/ATT&CK/ASVS)
   - v2remote/ - Remote data fetching service
-  - v2meta/ - Orchestration and job control (with Taskflow)
+  - v2meta/ - UEE orchestration and ETL provider management
   - v2sysmon/ - System monitoring service
 - **pkg/** - Shared packages
   - proc/subprocess - Subprocess framework (stdin/stdout RPC)
   - proc/message - Optimized message handling with pooling
-  - cve/taskflow - Taskflow-based job executor with persistent state
+  - cve/taskflow - ETL executor framework with persistent state
   - cve - CVE domain types and helpers
   - cwe - CWE domain types and helpers
   - capec - CAPEC domain types and helpers
@@ -893,16 +752,17 @@ The broker implements intelligent adaptive tuning that responds to system and ap
 - Configuration (process list, logging) is controlled through `config.json`
 - The authoritative RPC API specification for each subprocess can be found in `cmd/*/service.md`
 - All inter-service communication flows through the broker to maintain architectural integrity
-- Job sessions persist across service restarts; paused jobs remain paused, running jobs auto-resume
-- Only one active job run (running or paused) is allowed at a time
+- ETL providers use the UEE framework with hierarchical FSM-based state management
+- Data imports are managed through the provider system with resource-aware orchestration
 
 ## Where to Look Next
 
 - [cmd/v2broker](cmd/v2broker) — Broker implementation and message routing
 - [pkg/proc/subprocess](pkg/proc/subprocess) — Helper framework for subprocesses
-- [pkg/cve/taskflow](pkg/cve/taskflow) — Taskflow-based job executor
+- [pkg/cve/taskflow](pkg/cve/taskflow) — ETL executor framework
 - [cmd/v2access](cmd/v2access) — REST gateway and example of using the RPC client
-- [cmd/v2meta](cmd/v2meta) — Job orchestration and session management
+- [cmd/v2meta](cmd/v2meta) — UEE orchestration and ETL provider management
+- [cmd/v2meta/providers](cmd/v2meta/providers) — ETL provider implementations
 - [website/](website/) — Next.js frontend implementation
 - [tests/](tests/) — Integration tests demonstrating usage patterns
 
