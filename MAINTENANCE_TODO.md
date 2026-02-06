@@ -17,8 +17,6 @@
 | 046 | cmd/v2broker/perf| Code    | Implement load predictor using historical metrics and current system state                  | 600      | 1        |
 | 047 | cmd/v2broker/perf| Code    | Add elastic scaling logic to add/remove workers dynamically                            | 600      | 1        |
 | 049 | cmd/v2broker/perf| Code    | Add work-stealing algorithm for load balancing across workers                           | 600      | 1        |
-| 072 | pkg/cve/remote   | Code    | Upgrade HTTP clients from HTTP/1.1 to HTTP/2                                      | 600      | 1        |
-| 076 | pkg/cve/remote   | Code    | Implement persistent HTTP/2 connection pools                                          | 600      | 1        |
 | 016 | cmd/v2broker     | Code    | Monitor batch efficiency metrics (throughput vs latency trade-off)                   | 400      | 2        |
 | 021 | cmd/v2broker     | Code    | Add per-method locks for high-frequency RPC handlers                                  | 400      | 2        |
 | 025 | cmd/v2broker     | Code    | Add lock contention metrics to monitoring                                             | 400      | 2        |
@@ -167,4 +165,6 @@
 | 103 | cmd/v2broker/scaling | Test    | Test prediction model with historical data                       | 2026-02-06 |
 | 104 | cmd/v2broker/scaling | Docs    | Document model training process and feature selection              | 2026-02-06 |
 | 105 | cmd/v2broker/scaling | Perf    | Benchmark prediction accuracy and scaling effectiveness            | 2026-02-06 |
-| 141 | General          | Ops     | Optimize website build bundle size, achieve better loading speed      | 2026-02-06 |
+ | 141 | General          | Ops     | Optimize website build bundle size, achieve better loading speed      | 2026-02-06 |
+ | 072 | pkg/cve/remote   | Code    | Upgrade HTTP clients from HTTP/1.1 to HTTP/2                          | 2026-02-06 |
+ | 076 | pkg/cve/remote   | Code    | Implement persistent HTTP/2 connection pools                          | 2026-02-06 |

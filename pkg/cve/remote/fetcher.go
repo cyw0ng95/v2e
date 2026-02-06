@@ -3,6 +3,8 @@ package remote
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/net/http2"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -29,13 +31,26 @@ func NewFetcher(apiKey string) *Fetcher {
 	client := resty.New()
 	client.SetTimeout(30 * time.Second)
 
-	// Enable HTTP/2 and connection pooling for better performance
-	client.SetTransport(&http.Transport{
+	// Configure HTTP/2 transport with connection pooling
+	transport := &http.Transport{
 		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
+		MaxIdleConnsPerHost: 20,
 		IdleConnTimeout:     90 * time.Second,
-		DisableCompression:  false, // Enable compression
-	})
+		MaxConnsPerHost:     50,
+		DisableCompression:  false,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2: true,
+	}
+
+	// Configure HTTP/2 specific settings
+	if err := http2.ConfigureTransport(transport); err != nil {
+		panic(fmt.Sprintf("failed to configure HTTP/2: %v", err))
+	}
+
+	client.SetTransport(transport)
 
 	return &Fetcher{
 		client:  client,
