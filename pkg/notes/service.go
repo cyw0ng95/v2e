@@ -550,29 +550,39 @@ func (s *HistoryService) RevertBookmarkState(ctx context.Context, bookmarkID uin
 	}
 
 	var timestampTime time.Time
-	switch t := timestamp.(type) {
-	case time.Time:
-		timestampTime = t
-	case *time.Time:
-		if t != nil {
-			timestampTime = *t
-		} else {
-			// Get the most recent history entry before current state
-			var history BookmarkHistoryModel
-			err := s.db.WithContext(ctx).Where("bookmark_id = ?", bookmarkID).Order("timestamp DESC").First(&history).Error
-			if err != nil {
-				return fmt.Errorf("failed to get most recent history: %w", err)
-			}
-			timestampTime = history.Timestamp
-		}
-	case string:
-		var err error
-		timestampTime, err = time.Parse(time.RFC3339, t)
+	// Handle nil timestamp - get the most recent history entry
+	if timestamp == nil {
+		var history BookmarkHistoryModel
+		err := s.db.WithContext(ctx).Where("bookmark_id = ?", bookmarkID).Order("timestamp DESC").First(&history).Error
 		if err != nil {
-			return fmt.Errorf("invalid timestamp format: %w", err)
+			return fmt.Errorf("failed to get most recent history: %w", err)
 		}
-	default:
-		return fmt.Errorf("invalid timestamp type")
+		timestampTime = history.Timestamp
+	} else {
+		switch t := timestamp.(type) {
+		case time.Time:
+			timestampTime = t
+		case *time.Time:
+			if t != nil {
+				timestampTime = *t
+			} else {
+				// Get the most recent history entry before current state
+				var history BookmarkHistoryModel
+				err := s.db.WithContext(ctx).Where("bookmark_id = ?", bookmarkID).Order("timestamp DESC").First(&history).Error
+				if err != nil {
+					return fmt.Errorf("failed to get most recent history: %w", err)
+				}
+				timestampTime = history.Timestamp
+			}
+		case string:
+			var err error
+			timestampTime, err = time.Parse(time.RFC3339, t)
+			if err != nil {
+				return fmt.Errorf("invalid timestamp format: %w", err)
+			}
+		default:
+			return fmt.Errorf("invalid timestamp type: %T", timestamp)
+		}
 	}
 
 	// Find the closest history entry before the given timestamp
