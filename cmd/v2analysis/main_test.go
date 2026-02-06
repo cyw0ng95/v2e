@@ -11,7 +11,14 @@ import (
 
 func TestNewAnalysisService(t *testing.T) {
 	logger := common.NewLogger(os.Stdout, "test", common.InfoLevel)
-	service := NewAnalysisService(nil, logger)
+	dbPath := "/tmp/test_analysis_service.db"
+	defer os.Remove(dbPath)
+	
+	service, err := NewAnalysisService(nil, logger, dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+	defer service.Close()
 
 	if service == nil {
 		t.Fatal("Expected service to be created")
@@ -28,7 +35,14 @@ func TestNewAnalysisService(t *testing.T) {
 
 func TestAnalysisServiceGraphOperations(t *testing.T) {
 	logger := common.NewLogger(os.Stdout, "test", common.InfoLevel)
-	service := NewAnalysisService(nil, logger)
+	dbPath := "/tmp/test_graph_ops.db"
+	defer os.Remove(dbPath)
+	
+	service, err := NewAnalysisService(nil, logger, dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+	defer service.Close()
 
 	// Test adding nodes
 	cve, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-1234")
@@ -42,7 +56,7 @@ func TestAnalysisServiceGraphOperations(t *testing.T) {
 	}
 
 	// Test adding edges
-	err := service.graph.AddEdge(cve, cwe, graph.EdgeTypeReferences, nil)
+	err = service.graph.AddEdge(cve, cwe, graph.EdgeTypeReferences, nil)
 	if err != nil {
 		t.Errorf("Failed to add edge: %v", err)
 	}
@@ -66,7 +80,14 @@ func TestAnalysisServiceGraphOperations(t *testing.T) {
 
 func TestAnalysisServiceMultipleEdgeTypes(t *testing.T) {
 	logger := common.NewLogger(os.Stdout, "test", common.InfoLevel)
-	service := NewAnalysisService(nil, logger)
+	dbPath := "/tmp/test_edge_types.db"
+	defer os.Remove(dbPath)
+	
+	service, err := NewAnalysisService(nil, logger, dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+	defer service.Close()
 
 	cve, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-1234")
 	cwe, _ := urn.New(urn.ProviderMITRE, urn.TypeCWE, "CWE-79")
@@ -94,7 +115,14 @@ func TestAnalysisServiceMultipleEdgeTypes(t *testing.T) {
 
 func TestAnalysisServicePathFinding(t *testing.T) {
 	logger := common.NewLogger(os.Stdout, "test", common.InfoLevel)
-	service := NewAnalysisService(nil, logger)
+	dbPath := "/tmp/test_path_finding.db"
+	defer os.Remove(dbPath)
+	
+	service, err := NewAnalysisService(nil, logger, dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+	defer service.Close()
 
 	// Build a chain: CVE -> CWE -> CAPEC -> ATT&CK
 	cve, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-1234")
@@ -131,7 +159,14 @@ func TestAnalysisServicePathFinding(t *testing.T) {
 
 func TestAnalysisServiceGetNodesByType(t *testing.T) {
 	logger := common.NewLogger(os.Stdout, "test", common.InfoLevel)
-	service := NewAnalysisService(nil, logger)
+	dbPath := "/tmp/test_nodes_by_type.db"
+	defer os.Remove(dbPath)
+	
+	service, err := NewAnalysisService(nil, logger, dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+	defer service.Close()
 
 	// Add multiple nodes of different types
 	for i := 0; i < 5; i++ {

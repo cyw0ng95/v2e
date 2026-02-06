@@ -1,17 +1,15 @@
-package routing
+package core
 
 import (
 "gorm.io/gorm"
 "github.com/cyw0ng95/v2e/pkg/testutils"
 	"sync"
 	"testing"
-
-	"github.com/cyw0ng95/v2e/cmd/v2broker/core"
 )
 
 func TestGenerateCorrelationID_Concurrent(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestGenerateCorrelationID_Concurrent", nil, func(t *testing.T, tx *gorm.DB) {
-		b := core.NewBroker()
+		b := NewBroker()
 		defer b.Shutdown()
 
 		const N = 1000
