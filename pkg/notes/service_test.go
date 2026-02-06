@@ -923,12 +923,20 @@ func TestHistoryService(t *testing.T) {
 	})
 
 	t.Run("RevertBookmarkState", func(t *testing.T) {
-		originalState := bookmark.LearningState
-		err := bookmarkService.UpdateLearningState(ctx, bookmark.ID, LearningStateMastered)
+		// Get the current state before update (may have been changed by previous test)
+		currentBookmark, err := bookmarkService.GetBookmarkByID(ctx, bookmark.ID)
+		if err != nil {
+			t.Fatalf("Failed to get current bookmark: %v", err)
+		}
+		previousState := currentBookmark.LearningState
+
+		// Update to a new state
+		err = bookmarkService.UpdateLearningState(ctx, bookmark.ID, LearningStateMastered)
 		if err != nil {
 			t.Fatalf("Failed to update learning state: %v", err)
 		}
 
+		// Revert to the previous state
 		err = historyService.RevertBookmarkState(ctx, bookmark.ID, nil)
 		if err != nil {
 			t.Fatalf("Failed to revert bookmark state: %v", err)
@@ -939,8 +947,8 @@ func TestHistoryService(t *testing.T) {
 			t.Fatalf("Failed to get reverted bookmark: %v", err)
 		}
 
-		if revertedBookmark.LearningState != originalState {
-			t.Errorf("Expected state to revert to '%s', got '%s'", originalState, revertedBookmark.LearningState)
+		if revertedBookmark.LearningState != previousState {
+			t.Errorf("Expected state to revert to '%s', got '%s'", previousState, revertedBookmark.LearningState)
 		}
 	})
 }
