@@ -56,10 +56,12 @@ func (r *Registry) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message
 	defer r.mu.RUnlock()
 
 	result := map[string]interface{}{
-		"total_messages":        r.messageCount,
-		"sent_messages":         r.sentCount,
-		"received_messages":     r.receivedCount,
-		"total_wire_bytes":      r.totalWireSize,
+		"total": map[string]interface{}{
+			"total_sent":     r.sentCount,
+			"total_received": r.receivedCount,
+			"total_messages": r.messageCount,
+			"total_wire_bytes": r.totalWireSize,
+		},
 		"encoding_distribution": r.encodingDistribution,
 	}
 
@@ -67,6 +69,9 @@ func (r *Registry) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message
 	if err != nil {
 		return nil, err
 	}
+	// Set response source and target
+	msg.Source = "broker"
+	msg.Target = reqMsg.Source
 	return msg, nil
 }
 
@@ -83,6 +88,9 @@ func (r *Registry) HandleRPCGetMessageCount(reqMsg *proc.Message) (*proc.Message
 	if err != nil {
 		return nil, err
 	}
+	// Set response source and target
+	msg.Source = "broker"
+	msg.Target = reqMsg.Source
 	return msg, nil
 }
 

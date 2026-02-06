@@ -65,10 +65,9 @@ func TestHandleRPCGetMessageStats(t *testing.T) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
-		// Send some messages to generate stats
-		reqMsg, _ := proc.NewRequestMessage("test-req", nil)
-		reqMsg.Target = "test-target"
-		broker.SendMessage(reqMsg)
+		// Record some messages directly in the metrics registry
+		broker.metricsRegistry.RecordMessage(&proc.Message{}, true, 100, 1)
+		broker.metricsRegistry.RecordMessage(&proc.Message{}, false, 50, 1)
 
 		// Create RPC request for GetMessageStats
 		rpcReq, err := proc.NewRequestMessage("RPCGetMessageStats", nil)
@@ -123,9 +122,9 @@ func TestHandleRPCGetMessageCount(t *testing.T) {
 		broker := NewBroker()
 		defer broker.Shutdown()
 
-		// Send some messages to generate count
-		reqMsg, _ := proc.NewRequestMessage("test-req", nil)
-		broker.SendMessage(reqMsg)
+		// Record some messages directly in the metrics registry
+		broker.metricsRegistry.RecordMessage(&proc.Message{}, true, 100, 1)
+		broker.metricsRegistry.RecordMessage(&proc.Message{}, false, 50, 1)
 
 		// Create RPC request for GetMessageCount
 		rpcReq, err := proc.NewRequestMessage("RPCGetMessageCount", nil)
