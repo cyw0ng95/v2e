@@ -240,8 +240,3 @@
 | 166 | website          | Debt    | Remove or conditionalize console.log statements in production                      | 25       | 5        |         |
 | 167 | website          | Debt    | Extract magic numbers to configuration constants                                   | 25       | 5        |         |
 
----
-
-## DONE
-
-
