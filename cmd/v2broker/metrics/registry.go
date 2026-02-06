@@ -51,27 +51,39 @@ func (r *Registry) RecordMessage(msg *proc.Message, sent bool, wireSize int, enc
 }
 
 // HandleRPCGetMessageStats handles the RPCGetMessageStats RPC call
-func (r *Registry) HandleRPCGetMessageStats(reqMsg *proc.Message) (interface{}, error) {
+func (r *Registry) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"total_messages":       r.messageCount,
 		"sent_messages":        r.sentCount,
 		"received_messages":    r.receivedCount,
 		"total_wire_bytes":     r.totalWireSize,
 		"encoding_distribution": r.encodingDistribution,
-	}, nil
+	}
+
+	msg, err := proc.NewResponseMessage(reqMsg.ID, result)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 // HandleRPCGetMessageCount handles the RPCGetMessageCount RPC call
-func (r *Registry) HandleRPCGetMessageCount(reqMsg *proc.Message) (interface{}, error) {
+func (r *Registry) HandleRPCGetMessageCount(reqMsg *proc.Message) (*proc.Message, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"count": r.messageCount,
-	}, nil
+	}
+
+	msg, err := proc.NewResponseMessage(reqMsg.ID, result)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 // MarshalJSON implements json.Marshaler for Registry (optional)
