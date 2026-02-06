@@ -111,143 +111,64 @@
 | 164 | website           | UX      | Enhance error recovery with retry buttons, context, and suggested actions                 | 100      | 5        |
 | 165 | website           | Debt    | Make RPC timeout configurable per request type                                          | 50       | 5        |
 | 166 | website           | Debt    | Remove or conditionalize console.log statements in production                             | 25       | 5        |
-| 167 | website           | Debt    | Extract magic numbers to configuration constants                                          | 25       | 5        |
+ | 167 | website           | Debt    | Extract magic numbers to configuration constants                                          | 25       | 5        |
+ | 168 | pkg/notes        | Code    | Refactor rpc_handlers.go (1527 lines) into smaller, focused modules                         | 800      | 2        |
+ | 169 | pkg/notes        | Code    | Extract common RPC validation and error handling patterns into helper functions              | 400      | 3        |
+ | 170 | pkg/notes/rpc_client | Code   | Refactor rpc_client.go (1101 lines) into smaller, focused modules                         | 600      | 3        |
+ | 171 | pkg/notes/service | Code    | Refactor service.go (1006 lines) into smaller, focused modules                             | 500      | 3        |
+ | 172 | pkg/ssg/local/store | Code   | Refactor store.go (828 lines) into smaller modules (models, queries, migrations)           | 400      | 3        |
+ | 173 | pkg/cwe/local     | Code    | Refactor local.go (665 lines) into smaller, focused modules                                 | 400      | 3        |
+ | 174 | pkg/cve/taskflow/executor | Code | Refactor executor.go (612 lines) - extract job state management                        | 350      | 3        |
+ | 175 | pkg/ssg/job/importer | Code  | Refactor importer.go (597 lines) - extract parsing logic                                   | 350      | 3        |
+ | 176 | pkg/cve/local/learning | Code | Refactor learning.go (518 lines) - extract pattern analysis                               | 300      | 3        |
+ | 177 | pkg/ssg/parser/guide | Code  | Refactor guide.go (512 lines) - extract parsing helpers                                     | 300      | 3        |
+ | 178 | pkg/cve/remote   | Code    | Replace panic() with error return in fetcher.go:50                                     | 20       | 1        |
+ | 179 | pkg/proc/subprocess | Code   | Replace os.Exit(253) with graceful error handling in subprocess.go:273                   | 30       | 2        |
+ | 180 | pkg/urn           | Code    | Replace panic(err) with error return in urn.go                                         | 40       | 2        |
+ | 181 | pkg/proc/subprocess | Code   | Extract subprocess reconnection logic into dedicated module                                  | 200      | 3        |
+ | 182 | pkg/proc/subprocess | Code   | Add lock contention metrics for handlers map access                                        | 150      | 3        |
+ | 183 | pkg/proc/subprocess | Code   | Evaluate using atomic operations for hot path statistics counters                       | 100      | 3        |
+ | 184 | pkg/proc/subprocess | Code   | Add goroutine leak detection and monitoring                                             | 200      | 3        |
+ | 185 | cmd/v2broker/transport | Code | Add lock contention metrics for transport operations                                      | 150      | 3        |
+ | 186 | pkg/cve/local     | Code    | Replace map[string]interface{} usage with typed structs (542 occurrences)              | 1200     | 2        |
+ | 187 | pkg/notes        | Code    | Replace map[string]interface{} in RPC handlers with typed request/response structs       | 800      | 2        |
+ | 188 | pkg/cve/local     | Code    | Implement batch query patterns for N+1 query prevention                                | 400      | 2        |
+ | 189 | pkg/cve/local     | Code    | Add sync.Pool for frequently allocated database query structures                         | 200      | 3        |
+ | 190 | pkg/proc/subprocess | Code   | Add sync.Pool for frequently allocated message structures                                 | 150      | 3        |
+ | 191 | pkg/cve/local     | Code    | Add database connection pool health checks and metrics                                  | 200      | 2        |
+ | 192 | pkg/cve/local     | Code    | Implement connection leak detection with automatic cleanup                                 | 250      | 3        |
+ | 193 | pkg/cve/local     | Code    | Ensure all database connections are properly closed in defer statements                      | 100      | 2        |
+ | 194 | pkg/cve/local     | Code    | Ensure all file handles are properly closed with defer                                     | 100      | 2        |
+ | 195 | pkg/proc/subprocess | Code   | Ensure all network connections are properly closed in error paths                          | 100      | 2        |
+ | 196 | pkg/notes        | Code    | Add comprehensive input validation for all RPC parameters                               | 400      | 2        |
+ | 197 | pkg/cve/local     | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify)  | 200      | 2        |
+ | 198 | pkg/cve/remote   | Code    | Add input sanitization for external API parameters                                       | 150      | 2        |
+ | 199 | pkg/notes        | Code    | Add rate limiting for RPC endpoints to prevent abuse                                      | 300      | 3        |
+ | 200 | pkg/cve/taskflow/executor | Test | Add comprehensive concurrent execution tests for job executor                                | 400      | 3        |
+ | 201 | pkg/proc/subprocess | Test   | Add concurrent stress tests for message handling                                          | 300      | 3        |
+ | 202 | cmd/v2broker/transport | Test | Add concurrent connection handling stress tests                                         | 300      | 3        |
+ | 203 | pkg/proc/subprocess | Test   | Add benchmark tests for message batching performance                                       | 200      | 4        |
+ | 204 | pkg/cve/local     | Test    | Add benchmark tests for database query patterns                                          | 200      | 4        |
+ | 205 | pkg/cve/remote   | Test    | Add benchmark tests for HTTP client connection pooling                                   | 200      | 4        |
+ | 206 | cmd/v2broker/perf | Test    | Add benchmark tests for optimizer worker pool                                           | 200      | 4        |
+ | 207 | pkg/cwe/local     | Code    | Implement TODO at line 425: parse comma-separated string to []string for Phase field      | 50       | 4        |
+ | 208 | pkg/cwe/local     | Code    | Implement TODO at line 574: parse comma-separated string to []string for Phase field      | 50       | 4        |
+ | 209 | pkg/notes        | Code    | Add structured logging for RPC request/response tracing                                  | 300      | 3        |
+ | 210 | pkg/proc/subprocess | Code   | Add structured logging for message lifecycle events                                       | 200      | 3        |
+ | 211 | pkg/cve/taskflow/executor | Code | Add structured logging for job state transitions                                          | 200      | 3        |
+ | 212 | pkg/cve/local     | Code    | Add context-based timeout for long-running database queries                                | 150      | 2        |
+ | 213 | pkg/cve/remote   | Code    | Add context-based timeout for external API calls                                         | 100      | 2        |
+ | 214 | pkg/proc/subprocess | Code   | Add context-based timeout for message handling                                          | 100      | 2        |
+ | 215 | pkg/notes        | Docs    | Add inline comments for complex business logic in service.go                                | 150      | 4        |
+ | 216 | pkg/notes        | Docs    | Document RPC handler patterns and error handling strategies                               | 200      | 4        |
+ | 217 | pkg/proc/subprocess | Docs   | Document message batching and flush mechanisms                                          | 150      | 4        |
+ | 218 | pkg/cve/local     | Docs    | Document query pattern analysis and caching strategies                                    | 200      | 4        |
+ | 219 | pkg/cve/remote   | Docs    | Document external API retry and fallback strategies                                       | 200      | 4        |
+ | 220 | pkg/cve/taskflow  | Test    | Add integration tests for job workflow with subprocesses                                   | 400      | 3        |
 
 ---
 
-| 168 | pkg/notes        | Code    | Refactor rpc_handlers.go (1527 lines) into smaller, focused modules                         | 800      | 2        |
-| 169 | pkg/notes        | Code    | Extract common RPC validation and error handling patterns into helper functions              | 400      | 3        |
-| 170 | pkg/notes/rpc_client | Code   | Refactor rpc_client.go (1101 lines) into smaller, focused modules                         | 600      | 3        |
-| 171 | pkg/notes/service | Code    | Refactor service.go (1006 lines) into smaller, focused modules                             | 500      | 3        |
-| 172 | pkg/ssg/local/store | Code   | Refactor store.go (828 lines) into smaller modules (models, queries, migrations)           | 400      | 3        |
-| 173 | pkg/cwe/local     | Code    | Refactor local.go (665 lines) into smaller, focused modules                                 | 400      | 3        |
-| 174 | pkg/cve/taskflow/executor | Code | Refactor executor.go (612 lines) - extract job state management                        | 350      | 3        |
-| 175 | pkg/ssg/job/importer | Code  | Refactor importer.go (597 lines) - extract parsing logic                                   | 350      | 3        |
-| 176 | pkg/cve/local/learning | Code | Refactor learning.go (518 lines) - extract pattern analysis                               | 300      | 3        |
-| 177 | pkg/ssg/parser/guide | Code  | Refactor guide.go (512 lines) - extract parsing helpers                                     | 300      | 3        |
-| 178 | pkg/cve/remote   | Code    | Replace panic() with error return in fetcher.go:50                                     | 20       | 1        |
-| 179 | pkg/proc/subprocess | Code   | Replace os.Exit(253) with graceful error handling in subprocess.go:273                   | 30       | 2        |
-| 180 | pkg/urn           | Code    | Replace panic(err) with error return in urn.go                                         | 40       | 2        |
-| 181 | pkg/proc/subprocess | Code   | Extract subprocess reconnection logic into dedicated module                                  | 200      | 3        |
-| 182 | pkg/proc/subprocess | Code   | Add lock contention metrics for handlers map access                                        | 150      | 3        |
-| 183 | pkg/proc/subprocess | Code   | Evaluate using atomic operations for hot path statistics counters                       | 100      | 3        |
-| 184 | pkg/proc/subprocess | Code   | Add goroutine leak detection and monitoring                                             | 200      | 3        |
-| 185 | cmd/v2broker/transport | Code | Add lock contention metrics for transport operations                                      | 150      | 3        |
-| 186 | pkg/cve/local     | Code    | Replace map[string]interface{} usage with typed structs (542 occurrences)              | 1200     | 2        |
-| 187 | pkg/notes        | Code    | Replace map[string]interface{} in RPC handlers with typed request/response structs       | 800      | 2        |
-| 188 | pkg/cve/local     | Code    | Implement batch query patterns for N+1 query prevention                                | 400      | 2        |
-| 189 | pkg/cve/local     | Code    | Add sync.Pool for frequently allocated database query structures                         | 200      | 3        |
-| 190 | pkg/proc/subprocess | Code   | Add sync.Pool for frequently allocated message structures                                 | 150      | 3        |
-| 191 | pkg/cve/local     | Code    | Add database connection pool health checks and metrics                                  | 200      | 2        |
-| 192 | pkg/cve/local     | Code    | Implement connection leak detection with automatic cleanup                                 | 250      | 3        |
-| 193 | pkg/cve/local     | Code    | Ensure all database connections are properly closed in defer statements                      | 100      | 2        |
-| 194 | pkg/cve/local     | Code    | Ensure all file handles are properly closed with defer                                     | 100      | 2        |
-| 195 | pkg/proc/subprocess | Code   | Ensure all network connections are properly closed in error paths                          | 100      | 2        |
-| 196 | pkg/notes        | Code    | Add comprehensive input validation for all RPC parameters                               | 400      | 2        |
-| 197 | pkg/cve/local     | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify)  | 200      | 2        |
-| 198 | pkg/cve/remote   | Code    | Add input sanitization for external API parameters                                       | 150      | 2        |
-| 199 | pkg/notes        | Code    | Add rate limiting for RPC endpoints to prevent abuse                                      | 300      | 3        |
-| 200 | pkg/cve/taskflow/executor | Test | Add comprehensive concurrent execution tests for job executor                                | 400      | 3        |
-| 201 | pkg/proc/subprocess | Test   | Add concurrent stress tests for message handling                                          | 300      | 3        |
-| 202 | cmd/v2broker/transport | Test | Add concurrent connection handling stress tests                                         | 300      | 3        |
-| 203 | pkg/proc/subprocess | Test   | Add benchmark tests for message batching performance                                       | 200      | 4        |
-| 204 | pkg/cve/local     | Test    | Add benchmark tests for database query patterns                                          | 200      | 4        |
-| 205 | pkg/cve/remote   | Test    | Add benchmark tests for HTTP client connection pooling                                   | 200      | 4        |
-| 206 | cmd/v2broker/perf | Test    | Add benchmark tests for optimizer worker pool                                           | 200      | 4        |
-| 207 | pkg/cwe/local     | Code    | Implement TODO at line 425: parse comma-separated string to []string for Phase field      | 50       | 4        |
-| 208 | pkg/cwe/local     | Code    | Implement TODO at line 574: parse comma-separated string to []string for Phase field      | 50       | 4        |
-| 209 | pkg/notes        | Code    | Add structured logging for RPC request/response tracing                                  | 300      | 3        |
-| 210 | pkg/proc/subprocess | Code   | Add structured logging for message lifecycle events                                       | 200      | 3        |
-| 211 | pkg/cve/taskflow/executor | Code | Add structured logging for job state transitions                                          | 200      | 3        |
-| 212 | pkg/cve/local     | Code    | Add context-based timeout for long-running database queries                                | 150      | 2        |
-| 213 | pkg/cve/remote   | Code    | Add context-based timeout for external API calls                                         | 100      | 2        |
-| 214 | pkg/proc/subprocess | Code   | Add context-based timeout for message handling                                          | 100      | 2        |
-| 215 | pkg/notes        | Docs    | Add inline comments for complex business logic in service.go                                | 150      | 4        |
-| 216 | pkg/cve/taskflow/executor | Docs | Add inline comments for job state machine logic                                          | 150      | 4        |
-| 217 | pkg/ssg/parser/guide | Docs  | Add inline comments for guide parsing algorithm                                           | 100      | 4        |
-| 218 | pkg/meta/fsm/provider | Docs  | Add inline comments for provider state transitions                                       | 100      | 4        |
-| 219 | pkg/notes        | Test    | Add integration tests for RPC handler workflows                                         | 400      | 3        |
-| 220 | pkg/cve/local     | Test    | Add integration tests for database migration scenarios                                     | 300      | 3        |
-| 221 | pkg/cve/taskflow  | Test    | Add integration tests for job failure and recovery scenarios                             | 400      | 3        |
-| 222 | pkg/proc/subprocess | Code   | Implement graceful shutdown with context cancellation for all goroutines                    | 300      | 2        |
-| 223 | cmd/v2broker/transport | Code | Implement graceful shutdown for all connection handlers                                   | 250      | 2        |
-| 224 | pkg/cve/local     | Code    | Add database transaction rollback verification in error paths                              | 150      | 2        |
-| 225 | pkg/proc/subprocess | Code   | Add circuit breaker pattern for RPC client calls                                         | 300      | 3        |
-| 226 | pkg/cve/remote   | Code    | Add request deduplication to prevent duplicate API calls                                 | 200      | 3        |
-| 227 | pkg/cve/local     | Code    | Add query result caching for frequently accessed data                                      | 300      | 3        |
-| 228 | pkg/notes        | Code    | Add query result caching for frequently accessed bookmarks/notes                              | 300      | 3        |
-| 229 | pkg/proc/subprocess | Code   | Optimize message serialization by reusing buffers for similar messages                   | 250      | 3        |
-| 230 | pkg/cve/local     | Code    | Optimize JSON unmarshaling by using typed structs instead of map[string]interface{}          | 400      | 2        |
-| 231 | pkg/cve/remote   | Code    | Optimize HTTP client by reusing transport connections efficiently                         | 200      | 3        |
-| 232 | cmd/v2broker/perf | Code    | Add adaptive worker pool scaling based on message queue depth                              | 400      | 2        |
-| 233 | pkg/notes        | Code    | Add database indexes for frequently queried fields (review and optimize)                    | 200      | 3        |
-| 234 | pkg/cve/local     | Code    | Add database indexes for frequently queried fields (review and optimize)                    | 200      | 3        |
-| 235 | pkg/ssg/local     | Code    | Add database indexes for frequently queried fields (review and optimize)                    | 200      | 3        |
-| 236 | pkg/proc/subprocess | Security| Add rate limiting per RPC handler to prevent abuse                                       | 200      | 2        |
-| 237 | pkg/notes        | Security| Add authorization checks for bookmark/note access                                      | 300      | 2        |
-| 238 | pkg/cve/local     | Security| Add input validation for CVE IDs to prevent injection                                   | 150      | 2        |
-| 239 | pkg/cve/remote   | Security| Add rate limiting for external API calls to prevent blocking                             | 200      | 2        |
-| 240 | pkg/notes        | Code    | Reduce interface{} usage in RPC payloads by defining typed structs                         | 600      | 2        |
-| 241 | pkg/ssg/local     | Code    | Reduce interface{} usage in database models by defining typed structs                       | 500      | 2        |
-| 242 | pkg/cve/local     | Code    | Reduce interface{} usage in query results by using typed structs                          | 400      | 2        |
-| 243 | pkg/meta/fsm     | Test    | Add comprehensive tests for FSM state transitions                                        | 400      | 2        |
-| 244 | pkg/cve/taskflow  | Test    | Add comprehensive tests for leak detector                                              | 300      | 3        |
-| 245 | pkg/cve/taskflow  | Test    | Add comprehensive tests for tiered pool                                               | 300      | 3        |
-| 246 | pkg/cve/remote   | Test    | Add comprehensive tests for adaptive retry logic                                         | 300      | 3        |
-| 247 | pkg/cve/remote   | Test    | Add comprehensive tests for circuit breaker                                              | 300      | 3        |
-| 248 | pkg/proc/subprocess | Test   | Add comprehensive tests for message batching                                           | 300      | 3        |
-| 249 | pkg/proc/subprocess | Test   | Add comprehensive tests for reconnection logic                                          | 300      | 3        |
-| 250 | cmd/v2broker/transport | Test | Add comprehensive tests for UDS transport error handling                                   | 400      | 2        |
-| 251 | cmd/v2broker/transport | Test | Add comprehensive tests for shared memory transport                                      | 400      | 2        |
-| 252 | pkg/notes        | Perf    | Benchmark RPC handler performance with typed vs untyped payloads                         | 200      | 4        |
-| 253 | pkg/cve/local     | Perf    | Benchmark database query performance with different indexing strategies                     | 300      | 4        |
-| 254 | pkg/cve/remote   | Perf    | Benchmark HTTP client performance with different connection pool configurations               | 300      | 4        |
-| 255 | pkg/proc/subprocess | Perf   | Benchmark message throughput with different batch sizes                                  | 300      | 4        |
-| 256 | cmd/v2broker/perf | Perf    | Benchmark optimizer performance with different worker counts                                | 300      | 4        |
-| 257 | pkg/notes        | Docs    | Document RPC API contract with request/response examples                                   | 400      | 4        |
-| 258 | pkg/cve/local     | Docs    | Document database schema and indexing strategy                                           | 300      | 4        |
-| 259 | pkg/cve/remote   | Docs    | Document external API integration and retry strategy                                       | 300      | 4        |
-| 260 | pkg/proc/subprocess | Docs   | Document subprocess lifecycle and reconnection behavior                                   | 300      | 4        |
-| 261 | cmd/v2broker/transport | Docs | Document transport layer architecture and configuration options                            | 400      | 4        |
-| 262 | pkg/cve/taskflow  | Docs    | Document job execution flow and error handling                                          | 300      | 4        |
-| 263 | pkg/meta/fsm     | Docs    | Document provider state machine and transitions                                          | 300      | 4        |
-| 264 | pkg/notes        | Code    | Extract mock data generation into separate test utilities package                           | 200      | 4        |
-| 265 | pkg/cve/local     | Code    | Extract database test fixtures into separate package                                    | 200      | 4        |
-| 266 | pkg/cve/remote   | Code    | Extract API mock responses into separate test fixtures package                             | 200      | 4        |
-| 267 | pkg/proc/subprocess | Code   | Add telemetry for message processing latency percentiles                                  | 200      | 3        |
-| 268 | pkg/cve/local     | Code    | Add telemetry for database query latency percentiles                                     | 200      | 3        |
-| 269 | pkg/cve/remote   | Code    | Add telemetry for external API call latency percentiles                                   | 200      | 3        |
-| 270 | pkg/notes        | Code    | Add telemetry for RPC handler latency percentiles                                       | 200      | 3        |
-| 271 | cmd/v2broker/perf | Code    | Add telemetry for optimizer queue depth and processing time                               | 200      | 3        |
-| 272 | pkg/proc/subprocess | Code   | Implement backpressure handling when message queue is full                                 | 300      | 2        |
-| 273 | pkg/cve/local     | Code    | Implement backpressure handling for database connection pool exhaustion                     | 300      | 2        |
-| 274 | pkg/cve/remote   | Code    | Implement backpressure handling for external API rate limiting                                | 300      | 2        |
-| 275 | pkg/notes        | Code    | Implement exponential backoff for transient failures                                      | 200      | 3        |
-| 276 | pkg/cve/local     | Code    | Implement exponential backoff for database lock conflicts                                | 200      | 3        |
-| 277 | pkg/cve/remote   | Code    | Implement exponential backoff for network failures                                       | 200      | 3        |
-| 278 | pkg/notes        | Code    | Add request/response size validation to prevent memory exhaustion                        | 150      | 2        |
-| 279 | pkg/proc/subprocess | Code   | Add message size validation to prevent memory exhaustion                                  | 150      | 2        |
-| 280 | pkg/cve/remote   | Code    | Add response size limits to prevent memory exhaustion from large API responses             | 150      | 2        |
-| 281 | pkg/cve/local     | Code    | Add query result size limits to prevent memory exhaustion                                  | 150      | 2        |
-| 282 | pkg/notes        | Code    | Add pagination for all list endpoints to prevent large result sets                        | 300      | 2        |
-| 283 | pkg/cve/local     | Code    | Add pagination for all list endpoints to prevent large result sets                        | 300      | 2        |
-| 284 | pkg/ssg/local     | Code    | Add pagination for all list endpoints to prevent large result sets                        | 300      | 2        |
-| 285 | pkg/proc/subprocess | Code   | Implement message deduplication to prevent processing duplicate messages                    | 250      | 3        |
-| 286 | pkg/cve/taskflow  | Code    | Implement job deduplication to prevent duplicate job execution                             | 250      | 3        |
-| 287 | pkg/notes        | Code    | Add audit logging for all state-changing operations (create, update, delete)                 | 300      | 3        |
-| 288 | pkg/cve/local     | Code    | Add audit logging for database modifications                                           | 300      | 3        |
-| 289 | pkg/proc/subprocess | Code   | Add audit logging for message routing and delivery                                        | 200      | 3        |
-| 290 | pkg/cve/taskflow  | Code    | Add job progress tracking and reporting                                              | 300      | 3        |
-| 291 | pkg/cve/local     | Code    | Add bulk update operations for efficient data modification                                 | 400      | 3        |
-| 292 | pkg/notes        | Code    | Add bulk update operations for efficient bookmark/note modification                          | 400      | 3        |
-| 293 | pkg/proc/subprocess | Code   | Implement message compression for large payloads                                          | 300      | 4        |
-| 294 | pkg/cve/remote   | Code    | Implement response compression for large API responses                                    | 300      | 4        |
-| 295 | pkg/notes        | Code    | Implement response compression for large data payloads                                     | 300      | 4        |
-| 296 | pkg/cve/taskflow  | Code    | Add job priority queue for critical jobs                                             | 400      | 3        |
-| 297 | pkg/proc/subprocess | Code   | Add message priority queue for critical messages                                         | 300      | 3        |
-| 298 | pkg/cve/remote   | Code    | Add request priority queue for critical API calls                                         | 300      | 3        |
-| 299 | pkg/notes        | Code    | Implement optimistic concurrency control for bookmark/note updates                     | 400      | 3        |
-
+## DONE
 
 | ID  | Package          | Type    | Description                                                                      | Date       |
 |-----|------------------|---------|------------------------------------------------------------------------------------|------------|
@@ -299,137 +220,4 @@
  | 070 | cmd/v2sysmon     | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
  | 071 | cmd/v2meta       | Docs    | Ensure service.md is up to date with current implementation          | 2026-02-06 |
  | 142 | website           | Critical| Fix missing node_modules - all dependencies show as MISSING           | 2026-02-06 |
- | 143 | website           | Critical| Fix TypeScript compiler accessibility - tsc not found                  | 2026-02-06 |
-| 168 | pkg/notes        | Code    | Refactor rpc_handlers.go (1527 lines) into smaller, focused modules                         | 800      | 2        |
-| 169 | pkg/notes        | Code    | Extract common RPC validation and error handling patterns into helper functions              | 400      | 3        |
-| 170 | pkg/notes/rpc_client | Code   | Refactor rpc_client.go (1101 lines) into smaller, focused modules                         | 600      | 3        |
-| 171 | pkg/notes/service | Code    | Refactor service.go (1006 lines) into smaller, focused modules                             | 500      | 3        |
-| 172 | pkg/ssg/local/store | Code   | Refactor store.go (828 lines) into smaller modules (models, queries, migrations)           | 400      | 3        |
-| 173 | pkg/cwe/local     | Code    | Refactor local.go (665 lines) into smaller, focused modules                                 | 400      | 3        |
-| 174 | pkg/cve/taskflow/executor | Code | Refactor executor.go (612 lines) - extract job state management                        | 350      | 3        |
-| 175 | pkg/ssg/job/importer | Code  | Refactor importer.go (597 lines) - extract parsing logic                                   | 350      | 3        |
-| 176 | pkg/cve/local/learning | Code | Refactor learning.go (518 lines) - extract pattern analysis                               | 300      | 3        |
-| 177 | pkg/ssg/parser/guide | Code  | Refactor guide.go (512 lines) - extract parsing helpers                                     | 300      | 3        |
-| 178 | pkg/cve/remote   | Code    | Replace panic() with error return in fetcher.go:50                                     | 20       | 1        |
-| 179 | pkg/proc/subprocess | Code   | Replace os.Exit(253) with graceful error handling in subprocess.go:273                   | 30       | 2        |
-| 180 | pkg/urn           | Code    | Replace panic(err) with error return in urn.go                                         | 40       | 2        |
-| 181 | pkg/proc/subprocess | Code   | Extract subprocess reconnection logic into dedicated module                                  | 200      | 3        |
-| 182 | pkg/proc/subprocess | Code   | Add lock contention metrics for handlers map access                                        | 150      | 3        |
-| 183 | pkg/proc/subprocess | Code   | Evaluate using atomic operations for hot path statistics counters                       | 100      | 3        |
-| 184 | pkg/proc/subprocess | Code   | Add goroutine leak detection and monitoring                                             | 200      | 3        |
-| 185 | cmd/v2broker/transport | Code | Add lock contention metrics for transport operations                                      | 150      | 3        |
-| 186 | pkg/cve/local     | Code    | Replace map[string]interface{} usage with typed structs (542 occurrences)              | 1200     | 2        |
-| 187 | pkg/notes        | Code    | Replace map[string]interface{} in RPC handlers with typed request/response structs       | 800      | 2        |
-| 188 | pkg/cve/local     | Code    | Implement batch query patterns for N+1 query prevention                                | 400      | 2        |
-| 189 | pkg/cve/local     | Code    | Add sync.Pool for frequently allocated database query structures                         | 200      | 3        |
-| 190 | pkg/proc/subprocess | Code   | Add sync.Pool for frequently allocated message structures                                 | 150      | 3        |
-| 191 | pkg/cve/local     | Code    | Add database connection pool health checks and metrics                                  | 200      | 2        |
-| 192 | pkg/cve/local     | Code    | Implement connection leak detection with automatic cleanup                                 | 250      | 3        |
-| 193 | pkg/cve/local     | Code    | Ensure all database connections are properly closed in defer statements                      | 100      | 2        |
-| 194 | pkg/cve/local     | Code    | Ensure all file handles are properly closed with defer                                     | 100      | 2        |
-| 195 | pkg/proc/subprocess | Code   | Ensure all network connections are properly closed in error paths                          | 100      | 2        |
-| 196 | pkg/notes        | Code    | Add comprehensive input validation for all RPC parameters                               | 400      | 2        |
-| 197 | pkg/cve/local     | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify)  | 200      | 2        |
-| 198 | pkg/cve/remote   | Code    | Add input sanitization for external API parameters                                       | 150      | 2        |
-| 199 | pkg/notes        | Code    | Add rate limiting for RPC endpoints to prevent abuse                                      | 300      | 3        |
-| 200 | pkg/cve/taskflow/executor | Test | Add comprehensive concurrent execution tests for job executor                                | 400      | 3        |
-| 201 | pkg/proc/subprocess | Test   | Add concurrent stress tests for message handling                                          | 300      | 3        |
-| 202 | cmd/v2broker/transport | Test | Add concurrent connection handling stress tests                                         | 300      | 3        |
-| 203 | pkg/proc/subprocess | Test   | Add benchmark tests for message batching performance                                       | 200      | 4        |
-| 204 | pkg/cve/local     | Test    | Add benchmark tests for database query patterns                                          | 200      | 4        |
-| 205 | pkg/cve/remote   | Test    | Add benchmark tests for HTTP client connection pooling                                   | 200      | 4        |
-| 206 | cmd/v2broker/perf | Test    | Add benchmark tests for optimizer worker pool                                           | 200      | 4        |
-| 207 | pkg/cwe/local     | Code    | Implement TODO at line 425: parse comma-separated string to []string for Phase field      | 50       | 4        |
-| 208 | pkg/cwe/local     | Code    | Implement TODO at line 574: parse comma-separated string to []string for Phase field      | 50       | 4        |
-| 209 | pkg/notes        | Code    | Add structured logging for RPC request/response tracing                                  | 300      | 3        |
-| 210 | pkg/proc/subprocess | Code   | Add structured logging for message lifecycle events                                       | 200      | 3        |
-| 211 | pkg/cve/taskflow/executor | Code | Add structured logging for job state transitions                                          | 200      | 3        |
-| 212 | pkg/cve/local     | Code    | Add context-based timeout for long-running database queries                                | 150      | 2        |
-| 213 | pkg/cve/remote   | Code    | Add context-based timeout for external API calls                                         | 100      | 2        |
-| 214 | pkg/proc/subprocess | Code   | Add context-based timeout for message handling                                          | 100      | 2        |
-| 215 | pkg/notes        | Docs    | Add inline comments for complex business logic in service.go                                | 150      | 4        |
-| 216 | pkg/cve/taskflow/executor | Docs | Add inline comments for job state machine logic                                          | 150      | 4        |
-| 217 | pkg/ssg/parser/guide | Docs  | Add inline comments for guide parsing algorithm                                           | 100      | 4        |
-| 218 | pkg/meta/fsm/provider | Docs  | Add inline comments for provider state transitions                                       | 100      | 4        |
-| 219 | pkg/notes        | Test    | Add integration tests for RPC handler workflows                                         | 400      | 3        |
-| 220 | pkg/cve/local     | Test    | Add integration tests for database migration scenarios                                     | 300      | 3        |
-| 221 | pkg/cve/taskflow  | Test    | Add integration tests for job failure and recovery scenarios                             | 400      | 3        |
-| 222 | pkg/proc/subprocess | Code   | Implement graceful shutdown with context cancellation for all goroutines                    | 300      | 2        |
-| 223 | cmd/v2broker/transport | Code | Implement graceful shutdown for all connection handlers                                   | 250      | 2        |
-| 224 | pkg/cve/local     | Code    | Add database transaction rollback verification in error paths                              | 150      | 2        |
-| 225 | pkg/proc/subprocess | Code   | Add circuit breaker pattern for RPC client calls                                         | 300      | 3        |
-| 226 | pkg/cve/remote   | Code    | Add request deduplication to prevent duplicate API calls                                 | 200      | 3        |
-| 227 | pkg/cve/local     | Code    | Add query result caching for frequently accessed data                                      | 300      | 3        |
-| 228 | pkg/notes        | Code    | Add query result caching for frequently accessed bookmarks/notes                              | 300      | 3        |
-| 229 | pkg/proc/subprocess | Code   | Optimize message serialization by reusing buffers for similar messages                   | 250      | 3        |
-| 230 | pkg/cve/local     | Code    | Optimize JSON unmarshaling by using typed structs instead of map[string]interface{}          | 400      | 2        |
-| 231 | pkg/cve/remote   | Code    | Optimize HTTP client by reusing transport connections efficiently                         | 200      | 3        |
-| 232 | cmd/v2broker/perf | Code    | Add adaptive worker pool scaling based on message queue depth                              | 400      | 2        |
-| 233 | pkg/notes        | Code    | Add database indexes for frequently queried fields (review and optimize)                    | 200      | 3        |
-| 234 | pkg/cve/local     | Code    | Add database indexes for frequently queried fields (review and optimize)                    | 200      | 3        |
-| 235 | pkg/ssg/local     | Code    | Add database indexes for frequently queried fields (review and optimize)                    | 200      | 3        |
-| 236 | pkg/proc/subprocess | Security| Add rate limiting per RPC handler to prevent abuse                                       | 200      | 2        |
-| 237 | pkg/notes        | Security| Add authorization checks for bookmark/note access                                      | 300      | 2        |
-| 238 | pkg/cve/local     | Security| Add input validation for CVE IDs to prevent injection                                   | 150      | 2        |
-| 239 | pkg/cve/remote   | Security| Add rate limiting for external API calls to prevent blocking                             | 200      | 2        |
-| 240 | pkg/notes        | Code    | Reduce interface{} usage in RPC payloads by defining typed structs                         | 600      | 2        |
-| 241 | pkg/ssg/local     | Code    | Reduce interface{} usage in database models by defining typed structs                       | 500      | 2        |
-| 242 | pkg/cve/local     | Code    | Reduce interface{} usage in query results by using typed structs                          | 400      | 2        |
-| 243 | pkg/meta/fsm     | Test    | Add comprehensive tests for FSM state transitions                                        | 400      | 2        |
-| 244 | pkg/cve/taskflow  | Test    | Add comprehensive tests for leak detector                                              | 300      | 3        |
-| 245 | pkg/cve/taskflow  | Test    | Add comprehensive tests for tiered pool                                               | 300      | 3        |
-| 246 | pkg/cve/remote   | Test    | Add comprehensive tests for adaptive retry logic                                         | 300      | 3        |
-| 247 | pkg/cve/remote   | Test    | Add comprehensive tests for circuit breaker                                              | 300      | 3        |
-| 248 | pkg/proc/subprocess | Test   | Add comprehensive tests for message batching                                           | 300      | 3        |
-| 249 | pkg/proc/subprocess | Test   | Add comprehensive tests for reconnection logic                                          | 300      | 3        |
-| 250 | cmd/v2broker/transport | Test | Add comprehensive tests for UDS transport error handling                                   | 400      | 2        |
-| 251 | cmd/v2broker/transport | Test | Add comprehensive tests for shared memory transport                                      | 400      | 2        |
-| 252 | pkg/notes        | Perf    | Benchmark RPC handler performance with typed vs untyped payloads                         | 200      | 4        |
-| 253 | pkg/cve/local     | Perf    | Benchmark database query performance with different indexing strategies                     | 300      | 4        |
-| 254 | pkg/cve/remote   | Perf    | Benchmark HTTP client performance with different connection pool configurations               | 300      | 4        |
-| 255 | pkg/proc/subprocess | Perf   | Benchmark message throughput with different batch sizes                                  | 300      | 4        |
-| 256 | cmd/v2broker/perf | Perf    | Benchmark optimizer performance with different worker counts                                | 300      | 4        |
-| 257 | pkg/notes        | Docs    | Document RPC API contract with request/response examples                                   | 400      | 4        |
-| 258 | pkg/cve/local     | Docs    | Document database schema and indexing strategy                                           | 300      | 4        |
-| 259 | pkg/cve/remote   | Docs    | Document external API integration and retry strategy                                       | 300      | 4        |
-| 260 | pkg/proc/subprocess | Docs   | Document subprocess lifecycle and reconnection behavior                                   | 300      | 4        |
-| 261 | cmd/v2broker/transport | Docs | Document transport layer architecture and configuration options                            | 400      | 4        |
-| 262 | pkg/cve/taskflow  | Docs    | Document job execution flow and error handling                                          | 300      | 4        |
-| 263 | pkg/meta/fsm     | Docs    | Document provider state machine and transitions                                          | 300      | 4        |
-| 264 | pkg/notes        | Code    | Extract mock data generation into separate test utilities package                           | 200      | 4        |
-| 265 | pkg/cve/local     | Code    | Extract database test fixtures into separate package                                    | 200      | 4        |
-| 266 | pkg/cve/remote   | Code    | Extract API mock responses into separate test fixtures package                             | 200      | 4        |
-| 267 | pkg/proc/subprocess | Code   | Add telemetry for message processing latency percentiles                                  | 200      | 3        |
-| 268 | pkg/cve/local     | Code    | Add telemetry for database query latency percentiles                                     | 200      | 3        |
-| 269 | pkg/cve/remote   | Code    | Add telemetry for external API call latency percentiles                                   | 200      | 3        |
-| 270 | pkg/notes        | Code    | Add telemetry for RPC handler latency percentiles                                       | 200      | 3        |
-| 271 | cmd/v2broker/perf | Code    | Add telemetry for optimizer queue depth and processing time                               | 200      | 3        |
-| 272 | pkg/proc/subprocess | Code   | Implement backpressure handling when message queue is full                                 | 300      | 2        |
-| 273 | pkg/cve/local     | Code    | Implement backpressure handling for database connection pool exhaustion                     | 300      | 2        |
-| 274 | pkg/cve/remote   | Code    | Implement backpressure handling for external API rate limiting                                | 300      | 2        |
-| 275 | pkg/notes        | Code    | Implement exponential backoff for transient failures                                      | 200      | 3        |
-| 276 | pkg/cve/local     | Code    | Implement exponential backoff for database lock conflicts                                | 200      | 3        |
-| 277 | pkg/cve/remote   | Code    | Implement exponential backoff for network failures                                       | 200      | 3        |
-| 278 | pkg/notes        | Code    | Add request/response size validation to prevent memory exhaustion                        | 150      | 2        |
-| 279 | pkg/proc/subprocess | Code   | Add message size validation to prevent memory exhaustion                                  | 150      | 2        |
-| 280 | pkg/cve/remote   | Code    | Add response size limits to prevent memory exhaustion from large API responses             | 150      | 2        |
-| 281 | pkg/cve/local     | Code    | Add query result size limits to prevent memory exhaustion                                  | 150      | 2        |
-| 282 | pkg/notes        | Code    | Add pagination for all list endpoints to prevent large result sets                        | 300      | 2        |
-| 283 | pkg/cve/local     | Code    | Add pagination for all list endpoints to prevent large result sets                        | 300      | 2        |
-| 284 | pkg/ssg/local     | Code    | Add pagination for all list endpoints to prevent large result sets                        | 300      | 2        |
-| 285 | pkg/proc/subprocess | Code   | Implement message deduplication to prevent processing duplicate messages                    | 250      | 3        |
-| 286 | pkg/cve/taskflow  | Code    | Implement job deduplication to prevent duplicate job execution                             | 250      | 3        |
-| 287 | pkg/notes        | Code    | Add audit logging for all state-changing operations (create, update, delete)                 | 300      | 3        |
-| 288 | pkg/cve/local     | Code    | Add audit logging for database modifications                                           | 300      | 3        |
-| 289 | pkg/proc/subprocess | Code   | Add audit logging for message routing and delivery                                        | 200      | 3        |
-| 290 | pkg/cve/taskflow  | Code    | Add job progress tracking and reporting                                              | 300      | 3        |
-| 291 | pkg/cve/local     | Code    | Add bulk update operations for efficient data modification                                 | 400      | 3        |
-| 292 | pkg/notes        | Code    | Add bulk update operations for efficient bookmark/note modification                          | 400      | 3        |
-| 293 | pkg/proc/subprocess | Code   | Implement message compression for large payloads                                          | 300      | 4        |
-| 294 | pkg/cve/remote   | Code    | Implement response compression for large API responses                                    | 300      | 4        |
-| 295 | pkg/notes        | Code    | Implement response compression for large data payloads                                     | 300      | 4        |
-| 296 | pkg/cve/taskflow  | Code    | Add job priority queue for critical jobs                                             | 400      | 3        |
-| 297 | pkg/proc/subprocess | Code   | Add message priority queue for critical messages                                         | 300      | 3        |
-| 298 | pkg/cve/remote   | Code    | Add request priority queue for critical API calls                                         | 300      | 3        |
-| 299 | pkg/notes        | Code    | Implement optimistic concurrency control for bookmark/note updates                     | 400      | 3        |
-| 300 | pkg/cve/local     | Code    | Implement optimistic concurrency control for CVE updates                                  | 400      | 3        |
+  | 143 | website           | Critical| Fix TypeScript compiler accessibility - tsc not found                  | 2026-02-06 |
