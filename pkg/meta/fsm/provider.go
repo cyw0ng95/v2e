@@ -95,6 +95,9 @@ func (p *BaseProviderFSM) Transition(newState ProviderState) error {
 	p.state = newState
 	p.updatedAt = time.Now()
 
+	// Log FSM transition (Requirement 6: Log FSM Transitions)
+	p.logTransition(oldState, newState, "manual")
+
 	// Persist state to storage
 	if p.storage != nil {
 		providerState := &storage.ProviderFSMState{
@@ -376,3 +379,29 @@ func (p *BaseProviderFSM) loadState() error {
 
 	return nil
 }
+
+// logTransition logs an FSM state transition
+// Implements Requirement 6: Log FSM Transitions
+func (p *BaseProviderFSM) logTransition(oldState, newState ProviderState, trigger string) {
+	// Get current checkpoint/URN if available
+	checkpoint := p.lastCheckpoint
+	if checkpoint == "" {
+		checkpoint = "none"
+	}
+
+	// Log structured transition
+	// Note: This uses fmt.Printf for now, but should use common.Logger when available
+	// The logger can be passed via ProviderConfig if needed
+	fmt.Printf("[FSM_TRANSITION] provider_id=%s provider_type=%s old_state=%s new_state=%s trigger=%s urn=%s timestamp=%s processed=%d errors=%d\n",
+		p.id,
+		p.providerType,
+		oldState,
+		newState,
+		trigger,
+		checkpoint,
+		time.Now().Format(time.RFC3339),
+		p.processedCount,
+		p.errorCount,
+	)
+}
+

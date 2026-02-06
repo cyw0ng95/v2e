@@ -75,6 +75,9 @@ func (m *MacroFSMManager) Transition(newState MacroState) error {
 	m.state = newState
 	m.updatedAt = time.Now()
 
+	// Log FSM transition (Requirement 6: Log FSM Transitions)
+	m.logTransition(oldState, newState)
+
 	// Persist state to storage
 	if m.storage != nil {
 		macroState := &storage.MacroFSMState{
@@ -264,6 +267,30 @@ func (m *MacroFSMManager) loadState() error {
 
 	return nil
 }
+
+// logTransition logs a macro FSM state transition
+// Implements Requirement 6: Log FSM Transitions
+func (m *MacroFSMManager) logTransition(oldState, newState MacroState) {
+	providerCount := len(m.providers)
+	
+	// Count providers by state
+	stateCounts := make(map[ProviderState]int)
+	for _, provider := range m.providers {
+		state := provider.GetState()
+		stateCounts[state]++
+	}
+
+	// Log structured transition
+	fmt.Printf("[MACRO_FSM_TRANSITION] macro_id=%s old_state=%s new_state=%s timestamp=%s provider_count=%d provider_states=%+v\n",
+		m.id,
+		oldState,
+		newState,
+		time.Now().Format(time.RFC3339),
+		providerCount,
+		stateCounts,
+	)
+}
+
 
 // GetStats returns statistics about the macro FSM
 func (m *MacroFSMManager) GetStats() map[string]interface{} {
