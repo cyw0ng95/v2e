@@ -1,6 +1,7 @@
 package taskflow
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,9 +38,9 @@ func TestLeakDetector_LeakDetection(t *testing.T) {
 		config.Threshold = 1
 
 		ld := NewLeakDetector(config)
-		leakDetected := false
+		var leakDetected atomic.Bool
 		ld.SetLeakCallback(func(leaked []*ObjectRef) {
-			leakDetected = true
+			leakDetected.Store(true)
 		})
 
 		ld.Track("leak-obj", PoolSmall, 1000)
@@ -50,7 +51,7 @@ func TestLeakDetector_LeakDetection(t *testing.T) {
 		// Wait for leak detection
 		time.Sleep(200 * time.Millisecond)
 
-		if !leakDetected {
+		if !leakDetected.Load() {
 			t.Error("leak was not detected")
 		}
 	})

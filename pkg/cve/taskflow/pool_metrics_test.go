@@ -1,6 +1,7 @@
 package taskflow
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -241,11 +242,15 @@ func TestPoolMetrics_OverallStats(t *testing.T) {
 		if stats.TotalAllocations != 2 {
 			t.Errorf("expected 2 total allocations, got %d", stats.TotalAllocations)
 		}
-		if stats.HitRate != 50.0 {
-			t.Errorf("expected 50%% hit rate, got %f", stats.HitRate)
+		// 2 hits out of 3 total attempts = 66.67% (use tolerance for float comparison)
+		expectedHitRate := 100.0 * 2.0 / 3.0
+		if math.Abs(stats.HitRate-expectedHitRate) > 0.01 {
+			t.Errorf("expected %.2f%% hit rate, got %f", expectedHitRate, stats.HitRate)
 		}
-		if stats.MissRate != 50.0 {
-			t.Errorf("expected 50%% miss rate, got %f", stats.MissRate)
+		// 1 miss out of 3 total attempts = 33.33%
+		expectedMissRate := 100.0 * 1.0 / 3.0
+		if math.Abs(stats.MissRate-expectedMissRate) > 0.01 {
+			t.Errorf("expected %.2f%% miss rate, got %f", expectedMissRate, stats.MissRate)
 		}
 	})
 }

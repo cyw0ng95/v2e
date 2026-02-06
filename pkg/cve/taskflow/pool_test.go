@@ -77,11 +77,12 @@ func TestTieredPool_LargeSizeDirectAlloc(t *testing.T) {
 		tp.Put(buf1)
 		tp.Put(buf2)
 
-		// Stats should show misses for large sizes
+		// Stats should show misses for large sizes (PoolLarge tier for 2000/5000 bytes)
 		stats := tp.GetStats()
 		breakdown := stats["tier_breakdown"].(map[PoolSize]map[string]int64)
-		if breakdown[PoolHuge]["misses"] == 0 {
-			t.Error("expected misses for large sizes")
+		// 2000 and 5000 bytes map to PoolLarge tier (4097-16384 range)
+		if breakdown[PoolLarge]["misses"] == 0 {
+			t.Error("expected misses for large sizes (PoolLarge tier)")
 		}
 	})
 }
@@ -179,6 +180,7 @@ func TestTieredPool_PoolSizeLimit(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "TestTieredPool_PoolSizeLimit", nil, func(t *testing.T, tx *gorm.DB) {
 		config := DefaultTieredPoolConfig()
 		config.MaxPoolSize = 5
+		config.PreAllocCounts = map[PoolSize]int{} // No pre-allocation
 		tp := NewTieredPool(config)
 
 		// Allocate and return many buffers
@@ -191,8 +193,18 @@ func TestTieredPool_PoolSizeLimit(t *testing.T) {
 		stats := tp.GetStats()
 		breakdown := stats["tier_breakdown"].(map[PoolSize]map[string]int64)
 		allocations := breakdown[PoolSmall]["allocations"]
-		if allocations < 100 {
-			t.Errorf("expected at least 100 allocations, got %d", allocations)
+		hits := breakdown[PoolSmall]["hits"]
+
+		// With MaxPoolSize=5 and pool reuse, we should have:
+		// - A few initial allocations to fill the pool (~5-10)
+		// - Many hits from reuse (should be > 80)
+		// This verifies the pool size limit is working
+		// Note: sync.Pool may pre-allocate some buffers, so we allow some flexibility
+		if allocations > 30 {
+			t.Errorf("pool size limit not working: expected <= 30 allocations with MaxPoolSize=5, got %d", allocations)
+		}
+		if hits < 70 {
+			t.Errorf("pool not reusing buffers efficiently: expected >= 70 hits with 100 operations, got %d", hits)
 		}
 	})
 }
