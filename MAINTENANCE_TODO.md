@@ -1,5 +1,54 @@
 # MAINTENANCE TODO
 
+This document tracks maintenance tasks for the v2e project. Tasks are organized by priority and type.
+
+## Maintenance Strategy
+
+### Priority Levels
+
+- **Priority 1 (Critical)**: Core functionality issues, critical bugs, blocking features
+- **Priority 2 (Important)**: Performance improvements, security fixes, important refactoring
+- **Priority 3 (Nice to Have)**: Code quality improvements, documentation, non-critical optimizations
+- **Priority 4 (Low)**: Minor improvements, enhancements, low-impact optimizations
+- **Priority 5 (Deferred)**: Tasks that are out of scope or blocked by dependencies
+
+### Task Types
+
+- **Test**: Unit tests, integration tests, test coverage improvements
+- **Code**: Feature implementation, bug fixes, refactoring
+- **Docs**: Documentation updates, inline comments, architecture docs
+- **Perf**: Performance optimization, benchmarking, profiling
+- **Security**: Security fixes, input validation, vulnerability remediation
+- **Config**: Configuration management, build flags
+- **Refactor**: Code restructuring, reducing technical debt
+- **Types**: TypeScript type safety improvements
+- **Feature**: New feature implementation
+- **UX**: User experience improvements
+- **A11y**: Accessibility improvements
+- **Debt**: Technical debt reduction
+- **Coverage**: Test coverage improvements
+- **Deps**: Dependency updates
+
+### Execution Process
+
+1. **Priority 1 tasks first** - Focus on critical issues that block development
+2. **Evaluate task value** - Assess ROI and impact before starting
+3. **Downgrade if necessary** - Move to lower priority if not critical
+4. **Mark COMPLETED** - Update status when task is done
+5. **Mark WONTFIX** - For tasks that won't be implemented (e.g., not applicable)
+6. **Use build.sh** - All builds and tests must use `./build.sh` wrapper
+7. **Commit frequently** - Make incremental commits at logical milestones
+8. **Keep markdown format** - Maintain table structure and formatting
+
+### Key Principles
+
+- **No force push** - Resolve conflicts manually, keep features functional
+- **Remote API testing** - Tests must NOT access external APIs (use mocks/fixtures)
+- **Fast tests** - Unit tests should run in milliseconds
+- **Document RPC APIs** - Update `service.md` for each service when adding RPC handlers
+- **Broker-first architecture** - Only broker spawns subprocesses, no direct subprocess-to-subprocess communication
+- **Performance focus** - Use lock-free patterns, connection pooling, batch operations
+
 ## TODO
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
