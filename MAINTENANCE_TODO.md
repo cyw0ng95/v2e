@@ -86,7 +86,7 @@
 | 017 | cmd/v2broker     | Config  | Create configuration hooks for batch size tuning                                   | 200      | 3        |         |
 | 048 | cmd/v2broker/perf | Code    | Implement worker affinity to reduce cache misses                                   | 400      | 3        |         |
 | 077 | pkg/cve/remote   | Code    | Maintain backward compatibility with HTTP/1.1                                      | 200      | 3        |         |
-| 111 | pkg/cve/local    | Code    | Integrate with existing GORM configuration                                         | 200      | 3        |         |
+| 111 | pkg/cve/local    | Code    | Integrate with existing GORM configuration                                         | 200      | 3        | DONE    |
 | 112 | pkg/cve/local    | Code    | Add metrics for connection pool efficiency                                         | 200      | 3        |         |
 | 116 | pkg/cve/local    | Code    | Add batch merging strategy to combine small batches                                | 400      | 3        |         |
 | 118 | pkg/cve/local    | Code    | Add batch size metrics and tuning recommendations                                  | 200      | 3        |         |
