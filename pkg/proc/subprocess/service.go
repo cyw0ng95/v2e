@@ -62,7 +62,10 @@ func NewService(defaultID string) (*Service, error) {
 
 	// Create Subprocess with UDS transport
 	socketPath := fmt.Sprintf("%s_%s.sock", DefaultProcUDSBasePath(), flags.ProcessID)
-	sp := NewWithUDS(flags.ProcessID, socketPath)
+	sp, err := NewWithUDS(flags.ProcessID, socketPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subprocess with UDS transport: %w", err)
+	}
 
 	logger.Info(common.LogMsgServiceStarted, flags.ProcessID)
 	logger.Info(common.LogMsgConfigLoaded, "build-time (runtime config disabled)")

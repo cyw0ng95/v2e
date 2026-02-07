@@ -214,7 +214,11 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 
 	// Construct deterministic socket path so broker and subprocess agree without env vars
 	socketPath := fmt.Sprintf("%s_%s.sock", DefaultProcUDSBasePath(), processID)
-	sp := NewWithUDS(processID, socketPath)
+	sp, err := NewWithUDS(processID, socketPath)
+	if err != nil {
+		bootstrapLogger.Error("%sFailed to create subprocess: %v", config.LogPrefix, err)
+		os.Exit(1)
+	}
 
 	logger.Info("%sSubprocess created with ID: %s", config.LogPrefix, processID)
 
@@ -228,7 +232,7 @@ func StandardStartup(config StandardStartupConfig) (*Subprocess, *common.Logger)
 
 // NewWithUDS creates a new Subprocess instance using a Unix Domain Socket client.
 // Implements retry logic with exponential backoff for connection failures.
-func NewWithUDS(id string, socketPath string) *Subprocess {
+func NewWithUDS(id string, socketPath string) (*Subprocess, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	sp := &Subprocess{
 		ID:       id,
@@ -266,12 +270,17 @@ func NewWithUDS(id string, socketPath string) *Subprocess {
 		}
 	}
 
-	// If all retries failed, exit with fatal error
+	// If all retries failed, return error
 	if err != nil {
-		msg := fmt.Sprintf("[FATAL] Subprocess: Failed to connect to UDS socket %s after %d attempts: %v\n", socketPath, maxRetries, err)
-		os.Stderr.WriteString(msg)
-		os.Exit(253)
+		return nil, fmt.Errorf("failed to connect to UDS socket %s after %d attempts: %w", socketPath, maxRetries, err)
 	}
+
+	// Use of connection for both input and output
+	sp.input = conn
+	sp.output = conn
+
+	return sp, nil
+}
 
 	// Use the connection for both input and output
 	sp.input = conn

@@ -48,7 +48,7 @@
 | 135 | pkg/proc         | Code    | Implement intelligent capacity prediction based on historical data                 | 600      | 2        |         |
 | 137 | pkg/proc         | Code    | Add batch pre-allocation strategies                                                | 400      | 2        |         |
 | 168 | pkg/notes        | Code    | Refactor rpc_handlers.go (1527 lines) into smaller, focused modules                | 800      | 2        |         |
-| 179 | pkg/proc/subprocess | Code    | Replace os.Exit(253) with graceful error handling in subprocess.go:273             | 30       | 2        |         |
+| 179 | pkg/proc/subprocess | Code    | Replace os.Exit(253) with graceful error handling in subprocess.go:273             | 30       | 2        | WONTFIX |
 | 180 | pkg/urn          | Code    | Replace panic(err) with error return in urn.go                                     | 40       | 2        |         |
 | 186 | pkg/cve/local    | Code    | Replace map[string]interface{} usage with typed structs (542 occurrences)          | 1200     | 2        |         |
 | 187 | pkg/notes        | Code    | Replace map[string]interface{} in RPC handlers with typed request/response structs | 800      | 2        |         |
