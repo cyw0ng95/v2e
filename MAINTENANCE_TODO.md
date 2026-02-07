@@ -82,7 +82,7 @@
 | 244 | pkg/notes/fsm    | Perf    | Optimize ItemGraph link lookups using index data structure                         | 150      | 3        |         |
 | 246 | pkg/notes/fsm    | Code    | Add user ID/session management for multi-user support                              | 400      | 3        |         |
 | 247 | pkg/notes        | Code    | Add rate limiting for learning operations to prevent abuse                         | 150      | 3        |         |
-| 250 | pkg/notes        | Code    | Add metrics for FSM state transitions and strategy usage                           | 150      | 3        |         |
+| 250 | pkg/notes        | Code    | Add metrics for FSM state transitions and strategy usage                           | 150      | 3        | DONE    |
 | 017 | cmd/v2broker     | Config  | Create configuration hooks for batch size tuning                                   | 200      | 3        |         |
 | 048 | cmd/v2broker/perf | Code    | Implement worker affinity to reduce cache misses                                   | 400      | 3        |         |
 | 077 | pkg/cve/remote   | Code    | Maintain backward compatibility with HTTP/1.1                                      | 200      | 3        |         |
