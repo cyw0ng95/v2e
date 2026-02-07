@@ -107,7 +107,7 @@
 | 184 | pkg/proc/subprocess | Code    | Add goroutine leak detection and monitoring                                        | 200      | 3        |         |
 | 185 | cmd/v2broker/transport | Code    | Add lock contention metrics for transport operations                               | 150      | 3        |         |
 | 189 | pkg/cve/local    | Code    | Add sync.Pool for frequently allocated database query structures                   | 200      | 3        |         |
-| 190 | pkg/proc/subprocess | Code    | Add sync.Pool for frequently allocated message structures                          | 150      | 3        |         |
+| 190 | pkg/proc/subprocess | Code    | Add sync.Pool for frequently allocated message structures                          | 150      | 3        | DONE    |
 | 192 | pkg/cve/local    | Code    | Implement connection leak detection with automatic cleanup                         | 250      | 3        |         |
 | 199 | pkg/notes        | Code    | Add rate limiting for RPC endpoints to prevent abuse                               | 300      | 3        |         |
 | 200 | pkg/cve/taskflow/executor | Test    | Add comprehensive concurrent execution tests for job executor                      | 400      | 3        |         |
