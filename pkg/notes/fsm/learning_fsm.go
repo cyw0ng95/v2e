@@ -360,24 +360,21 @@ func (l *LearningFSM) FollowLink(fromURN, toURN string) error {
 // GoBack navigates to the previous item (DFS backtracking)
 func (l *LearningFSM) GoBack(ctx context.Context) (*LearningItem, error) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	if len(l.pathStack) == 0 {
-		// No more items in stack, switch to BFS
 		l.currentStrategy = "bfs"
 		l.state = LearningStateBrowsing
 		l.currentItemURN = ""
 
-		// Get next BFS item
 		l.mu.Unlock()
 		return l.LoadItem(ctx)
 	}
 
-	// Pop previous item from stack
 	urn := l.pathStack[len(l.pathStack)-1]
 	l.pathStack = l.pathStack[:len(l.pathStack)-1]
 	l.currentItemURN = urn
 	l.lastActivity = time.Now()
+	l.mu.Unlock()
 
 	return l.getItemByURN(urn)
 }
