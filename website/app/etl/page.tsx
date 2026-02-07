@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Activity, Cpu, Database, Gauge } from 'lucide-react';
 import { ETLTopologyViewer } from '@/components/etl-topology-viewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { rpcClient } from '@/lib/rpc-client';
+import type { RPCResponse } from '@/lib/types';
 
 export default function ETLEnginePage() {
   const { data: etlData, isLoading: etlLoading } = useEtlTree(5000);
@@ -20,25 +22,13 @@ export default function ETLEnginePage() {
       let response: RPCResponse<{ success: boolean }>;
       switch (action) {
         case 'start':
-          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
-            'RPCStartProvider',
-            { providerId },
-            'meta'
-          );
+          response = await rpcClient.startProvider(providerId);
           break;
         case 'pause':
-          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
-            'RPCPauseProvider',
-            { providerId },
-            'meta'
-          );
+          response = await rpcClient.pauseProvider(providerId);
           break;
         case 'stop':
-          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
-            'RPCStopProvider',
-            { providerId },
-            'meta'
-          );
+          response = await rpcClient.stopProvider(providerId);
           break;
       }
 
@@ -47,7 +37,7 @@ export default function ETLEnginePage() {
         throw new Error(response.message || 'Provider action failed');
       }
 
-      console.log('Provider action successful:', response.data);
+      console.log('Provider action successful:', response.payload);
       // Refetch ETL tree to update UI
       window.location.reload();
     } catch (error) {
@@ -60,18 +50,14 @@ export default function ETLEnginePage() {
     console.log('Policy update:', providerId, policy);
 
     try {
-      const response = await rpcClient.call<{ providerId: string; policy: any }, { success: boolean }>(
-        'RPCUpdatePerformancePolicy',
-        { providerId, policy },
-        'meta'
-      );
+      const response = await rpcClient.updatePerformancePolicy(providerId, policy);
 
       if (response.retcode !== 0) {
         console.error('Policy update failed:', response.message);
         throw new Error(response.message || 'Policy update failed');
       }
 
-      console.log('Policy updated successfully:', response.data);
+      console.log('Policy updated successfully:', response.payload);
     } catch (error) {
       console.error('Error updating performance policy:', error);
       throw error;

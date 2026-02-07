@@ -17,6 +17,7 @@ import NotesDashboard from '@/components/notes-dashboard';
 import MemoryCardStudy from '@/components/memory-card-study';
 import { ViewLearnToggle } from '@/components/view-learn-toggle';
 import { useViewLearnMode } from '@/contexts/ViewLearnContext';
+import LearningNavigation from '@/components/learning-navigation';
 
 // Lazy-load heavier client components to reduce initial bundle size
 const CVETable = dynamic(() => import('@/components/cve-table').then(mod => mod.CVETable), {
@@ -174,6 +175,10 @@ const RightColumn = memo(function RightColumn({
               ) : (
                 // Learning View Tabs - positioned more to the left
                 <Fragment key="learn-tabs">
+                  <TabsTrigger value="learning-cve">Learn CVE</TabsTrigger>
+                  <TabsTrigger value="learning-cwe">Learn CWE</TabsTrigger>
+                  <TabsTrigger value="learning-capec">Learn CAPEC</TabsTrigger>
+                  <TabsTrigger value="learning-attack">Learn ATT&CK</TabsTrigger>
                   <TabsTrigger value="notes-dashboard">Notes Dashboard</TabsTrigger>
                   <TabsTrigger value="study-cards">Study Cards</TabsTrigger>
                   {/* Also include all operational view tabs in learn mode */}
@@ -315,6 +320,62 @@ const RightColumn = memo(function RightColumn({
                 <CardContent className="flex-1 min-h-0">
                   <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                     <MemoryCardStudy filterState="to_review" />
+                  </Suspense>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="learning-cve" className="h-full">
+              <Card className="h-full flex flex-col">
+                <CardHeader>
+                  <CardTitle>Learn CVE</CardTitle>
+                  <CardDescription>Learn and master CVE vulnerabilities through passive learning</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 overflow-auto">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <LearningNavigation initialItemType="CVE" viewMode="learn" />
+                  </Suspense>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="learning-cwe" className="h-full">
+              <Card className="h-full flex flex-col">
+                <CardHeader>
+                  <CardTitle>Learn CWE</CardTitle>
+                  <CardDescription>Learn and master CWE weaknesses through passive learning</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 overflow-auto">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <LearningNavigation initialItemType="CWE" viewMode="learn" />
+                  </Suspense>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="learning-capec" className="h-full">
+              <Card className="h-full flex flex-col">
+                <CardHeader>
+                  <CardTitle>Learn CAPEC</CardTitle>
+                  <CardDescription>Learn and master CAPEC attack patterns through passive learning</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 overflow-auto">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <LearningNavigation initialItemType="CAPEC" viewMode="learn" />
+                  </Suspense>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="learning-attack" className="h-full">
+              <Card className="h-full flex flex-col">
+                <CardHeader>
+                  <CardTitle>Learn ATT&CK</CardTitle>
+                  <CardDescription>Learn and master ATT&CK techniques through passive learning</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 overflow-auto">
+                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                    <LearningNavigation initialItemType="ATTACK" viewMode="learn" />
                   </Suspense>
                 </CardContent>
               </Card>
