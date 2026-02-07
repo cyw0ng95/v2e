@@ -55,7 +55,7 @@
 | 188 | pkg/cve/local    | Code    | Implement batch query patterns for N+1 query prevention                            | 400      | 2        |         |
 | 191 | pkg/cve/local    | Code    | Add database connection pool health checks and metrics                             | 200      | 2        |         |
 | 193 | pkg/cve/local    | Code    | Ensure all database connections are properly closed in defer statements            | 100      | 2        | WONTFIX |
-| 194 | pkg/cve/local    | Code    | Ensure all file handles are properly closed with defer                             | 100      | 2        |         |
+| 194 | pkg/cve/local    | Code    | Ensure all file handles are properly closed with defer                             | 100      | 2        | WONTFIX |
 | 195 | pkg/proc/subprocess | Code    | Ensure all network connections are properly closed in error paths                  | 100      | 2        |         |
 | 196 | pkg/notes        | Code    | Add comprehensive input validation for all RPC parameters                          | 400      | 2        |         |
 | 197 | pkg/cve/local    | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify) | 200      | 2        |         |
