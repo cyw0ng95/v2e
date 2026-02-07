@@ -130,6 +130,18 @@ import type {
   SaveGraphResponse,
   LoadGraphRequest,
   LoadGraphResponse,
+  // SSG Types
+  CAPECItem,
+  SSGGuide,
+  TreeNode,
+  SSGGetTreeNodeRequest,
+  SSGGetTreeNodeResponse,
+  SSGGetChildGroupsRequest,
+  SSGGetChildGroupsResponse,
+  SSGListGuidesRequest,
+  SSGListGuidesResponse,
+  SSGGetGuideRequest,
+  SSGGetGuideResponse,
 } from './types';
 import { logError, logWarn, logDebug, createLogger } from './logger';
 
@@ -499,7 +511,7 @@ function getMockResponseForCache<TResponse>(
 
     case 'RPCListCAPECs': {
       const lp = params as { offset?: number; limit?: number } | undefined;
-      const sample: any[] = [
+      const sample: CAPECItem[] = [
         { id: 'CAPEC-1', name: 'Example CAPEC One', summary: 'Example attack pattern one', description: 'Detailed description 1' },
         { id: 'CAPEC-2', name: 'Example CAPEC Two', summary: 'Example attack pattern two', description: 'Detailed description 2' },
       ];
@@ -667,7 +679,7 @@ export class RPCClient {
 
       case 'RPCListCAPECs': {
         const lp = params as { offset?: number; limit?: number } | undefined;
-        const sample: any[] = [
+        const sample: CAPECItem[] = [
           { id: 'CAPEC-1', name: 'Example CAPEC One', summary: 'Example attack pattern one', description: 'Detailed description 1' },
           { id: 'CAPEC-2', name: 'Example CAPEC Two', summary: 'Example attack pattern two', description: 'Detailed description 2' },
         ];
@@ -1285,8 +1297,8 @@ export class RPCClient {
     );
   }
 
-  async listCAPECs(offset?: number, limit?: number): Promise<RPCResponse<{ capecs: any[]; offset: number; limit: number; total: number }>> {
-    return this.call<{ offset?: number; limit?: number }, { capecs: any[]; offset: number; limit: number; total: number }>(
+  async listCAPECs(offset?: number, limit?: number): Promise<RPCResponse<{ capecs: CAPECItem[]; offset: number; limit: number; total: number }>> {
+    return this.call<{ offset?: number; limit?: number }, { capecs: CAPECItem[]; offset: number; limit: number; total: number }>(
       'RPCListCAPECs',
       { offset: offset || 0, limit: limit || 50 },
       'local'
@@ -1519,20 +1531,20 @@ export class RPCClient {
   }
 
   // SSG Guide Methods
-  async listSSGGuides(product?: string, profileId?: string): Promise<RPCResponse<{ guides: any[]; count: number }>> {
-    return this.call<{ product?: string; profileId?: string }, { guides: any[]; count: number }>('RPCSSGListGuides', { product, profileId }, 'local');
+  async listSSGGuides(product?: string, profileId?: string): Promise<RPCResponse<{ guides: SSGGuide[]; count: number }>> {
+    return this.call<{ product?: string; profileId?: string }, { guides: SSGGuide[]; count: number }>('RPCSSGListGuides', { product, profileId }, 'local');
   }
 
-  async getSSGGuide(id: string): Promise<RPCResponse<{ guide: any }>> {
-    return this.call<{ id: string }, { guide: any }>('RPCSSGGetGuide', { id }, 'local');
+  async getSSGGuide(id: string): Promise<RPCResponse<{ guide: SSGGuide }>> {
+    return this.call<{ id: string }, { guide: SSGGuide }>('RPCSSGGetGuide', { id }, 'local');
   }
 
   async getSSGTree(guideId: string): Promise<RPCResponse<{ tree: any }>> {
     return this.call<{ guideId: string }, { tree: any }>('RPCSSGGetTree', { guideId }, 'local');
   }
 
-  async getSSGTreeNodes(guideId: string): Promise<RPCResponse<{ nodes: any[]; count: number }>> {
-    return this.call<{ guideId: string }, { nodes: any[]; count: number }>('RPCSSGGetTreeNode', { guideId }, 'local');
+  async getSSGTreeNodes(guideId: string): Promise<RPCResponse<{ nodes: TreeNode[]; count: number }>> {
+    return this.call<{ guideId: string }, { nodes: TreeNode[]; count: number }>('RPCSSGGetTreeNode', { guideId }, 'local');
   }
 
   async getSSGGroup(id: string): Promise<RPCResponse<{ group: any }>> {
