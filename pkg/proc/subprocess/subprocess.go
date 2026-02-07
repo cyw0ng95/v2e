@@ -282,13 +282,6 @@ func NewWithUDS(id string, socketPath string) (*Subprocess, error) {
 	return sp, nil
 }
 
-	// Use the connection for both input and output
-	sp.input = conn
-	sp.output = conn
-
-	return sp
-}
-
 // startAutoExitMonitor is intentionally lightweight and does not rely on
 // runtime environment variables (like BROKER_PID). The preferred mechanism
 // for subprocess shutdown is transport EOF detection (the main Run loop
