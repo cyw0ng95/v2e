@@ -64,7 +64,7 @@
 | 213 | pkg/cve/remote   | Code    | Add context-based timeout for external API calls                                   | 100      | 2        |         |
 | 214 | pkg/proc/subprocess | Code    | Add context-based timeout for message handling                                     | 100      | 2        |         |
 | 251 | website/lib      | Types   | Replace 330+ instances of `any` type with proper TypeScript types in hooks.ts, rpc-client.ts, types.ts | 500      | 2        |         |
-| 260 | website/lib      | Types   | Implement TODO items in lib/types.ts (lines 1004-1070, 1069-1070) - add card_type, author, is_private fields | 100      | 2        |         |
+| 260 | website/lib      | Types   | Implement TODO items in lib/types.ts (lines 1004-1070, 1069-1070) - add card_type, author, is_private fields | 100      | 2        | WONTFIX |
 | 266 | website/components | Test    | Add integration tests for major data tables (CVE, CWE, CAPEC, ATT&CK, ASVS)        | 300      | 2        |         |
 | 267 | website/components | Test    | Add component tests for notes-framework.tsx (724 lines, complex state management)  | 200      | 2        |         |
 | 268 | website/components | Test    | Add tests for graph-analysis-page.tsx and graph-viewer.tsx (interactive visualization) | 200      | 2        |         |

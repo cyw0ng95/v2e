@@ -994,17 +994,17 @@ export interface DeleteNoteResponse {
 export interface MemoryCard {
   id: number;
   bookmark_id: number;
-  urn: string; // URN reference from associated bookmark
-  front_content: string;
-  back_content: string;
+  urn: string;
+  front: string; // Front content (question)
+  back: string; // Back content (answer)
   major_class: string;
   minor_class: string;
   status: string;
   content: any; // TipTap JSON
-  card_type: string; // TODO: Not yet implemented in backend MemoryCardModel
+  card_type: string; // Card type: basic, cloze, reverse
   learning_state: string; // Derived from bookmark.learning_state, not stored on card
-  author?: string; // TODO: Not yet implemented in backend MemoryCardModel
-  is_private: boolean; // TODO: Not yet implemented in backend MemoryCardModel
+  author: string; // Card creator/author
+  is_private: boolean; // Whether card is private
   interval: number; // Days until next review
   ease_factor: number; // SM-2 algorithm factor
   repetitions: number; // Number of times reviewed
@@ -1022,9 +1022,9 @@ export interface CreateMemoryCardRequest {
   minor_class?: string;
   status?: string;
   content?: any; // TipTap JSON
-  card_type?: string; // TODO: Not yet implemented in backend
-  author?: string; // TODO: Not yet implemented in backend
-  is_private?: boolean; // TODO: Not yet implemented in backend
+  card_type?: string; // Card type: basic, cloze, reverse
+  author?: string; // Card creator/author
+  is_private?: boolean; // Whether card is private
   metadata?: Record<string, unknown>;
 }
 
@@ -1066,8 +1066,8 @@ export interface UpdateMemoryCardRequest {
   status?: string;
   content?: any; // TipTap JSON
   learning_state?: string; // Derived from bookmark, use bookmark RPC to update
-  author?: string; // TODO: Not yet implemented in backend
-  is_private?: boolean; // TODO: Not yet implemented in backend
+  author?: string; // Card creator/author
+  is_private?: boolean; // Whether card is private
   interval?: number;
   ease_factor?: number;
   repetitions?: number;
