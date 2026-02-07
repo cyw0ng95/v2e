@@ -6,6 +6,34 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
+| 300 | website/lib/types | Types   | Fix MemoryCard type - add missing front_content and back_content properties (10+ components fail to build) | 20       | 1        |         |
+| 301 | website/         | Build   | Fix frontend build failures due to MemoryCard type errors (blocks production deployment) | 20       | 1        |         |
+| 302 | cmd/v2meta       | Build   | Fix missing package imports (attack/job, capec/job, strategy, subprocess)               | 50       | 1        |         |
+| 303 | cmd/v2meta       | Build   | Resolve package conflict - main and meta packages in same directory                    | 10       | 1        |         |
+| 304 | website/         | Deps    | Install ESLint binary to fix lint command failure                                    | 5        | 1        |         |
+| 305 | website/         | Security | Fix high severity security vulnerability in dependencies (run npm audit fix)            | 10       | 1        |         |
+| 306 | pkg/cve/provider  | Code    | Implement store logic using RPC calls to local service (TODO in cve_provider.go)      | 200      | 2        |         |
+| 307 | pkg/ssg/provider  | Code    | Implement store logic using RPC calls to ssg service (TODO in git_provider.go)       | 200      | 2        |         |
+| 308 | pkg/ssg/parser    | Code    | Implement references parsing (TODO in guide.go)                                      | 150      | 2        |         |
+| 309 | pkg/attack/provider | Code    | Use RPCStoreAttack to store each item (TODO in attack_provider.go)                    | 100      | 2        |         |
+| 310 | website/         | Deps    | Update outdated packages (@types/node 20.19→25.2, eslint 9.39→10.0, recharts 2.15→3.7) | 20       | 2        |         |
+| 311 | pkg/             | Refactor | Split pkg/notes/rpc_handlers.go (1527 lines) into smaller modules                  | 600      | 2        |         |
+| 312 | pkg/notes        | Refactor | Split pkg/notes/rpc_client.go (1153 lines) into smaller modules                     | 500      | 2        |         |
+| 313 | pkg/notes        | Refactor | Split pkg/notes/service.go (1105 lines) into smaller modules                        | 500      | 2        |         |
+| 314 | pkg/ssg/local     | Refactor | Split pkg/ssg/local/store.go (828 lines) into smaller modules (models, queries, migrations) | 400      | 2        |         |
+| 315 | pkg/cwe          | Refactor | Split pkg/cwe/local.go (673 lines) into smaller, focused modules                       | 400      | 2        |         |
+| 316 | website/lib       | Refactor | Split website/lib/hooks.ts (2439 lines) into separate modules by domain              | 300      | 2        |         |
+| 317 | website/lib       | Refactor | Split website/lib/rpc-client.ts (1991 lines) - separate mock data, client logic, types | 250      | 2        |         |
+| 318 | website/lib       | Refactor | Split website/lib/types.ts (1954 lines) into separate type definition files          | 200      | 2        |         |
+| 319 | website/components | Refactor | Split website/components/ssg-views.tsx (939 lines) into separate components         | 150      | 2        |         |
+| 320 | website/components | Refactor | Split website/components/ui/sidebar.tsx (726 lines) - extract subcomponents         | 150      | 2        |         |
+| 321 | website/components | Refactor | Split website/components/notes-framework.tsx (724 lines) - extract logic into hooks | 200      | 2        |         |
+| 322 | pkg/             | Code    | Review and replace panic() usage with proper error handling (3 instances found)       | 50       | 2        |         |
+| 323 | website/components | Code    | Review and remove 29 console statements for production (console.log/warn/error)         | 30       | 2        |         |
+| 324 | website/components | A11y    | Add accessibility attributes (aria-label, role) to 47/58 components lacking them        | 200      | 2        |         |
+| 325 | website/         | Code    | Review and optimize 26 components using React hooks for performance and dependency correctness | 300      | 2        |         |
+| 326 | pkg/             | Code    | Add goroutine leak detection and monitoring (no leak handling found)                   | 200      | 2        |         |
+| 327 | website/         | Code    | Add environment variable validation with zod (only .env.local.example exists)         | 50       | 2        |         |
 | 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                      | 600      | 2        |         |
 | 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
