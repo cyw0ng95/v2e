@@ -39,6 +39,7 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 6. **Use build.sh** - All builds and tests must use `./build.sh` wrapper
 7. **Commit frequently** - Make incremental commits at logical milestones
 8. **Keep markdown format** - Maintain table structure and formatting
+9. **Don't break table structure** - When updating TODO list, preserve markdown table formatting (column alignment, pipe separators)
 
 ### Key Principles
 
