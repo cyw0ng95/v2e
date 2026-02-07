@@ -259,7 +259,7 @@ const NotesDashboard: React.FC = () => {
           <div className="space-y-4">
             {recentItems.length > 0 ? (
               recentItems.map((item, index) => (
-                <div key={index} className="flex items-start">
+                <div key={`${item.type}-${item.urn}-${index}`} className="flex items-start">
                   <div className="shrink-0">
                     {item.type === 'bookmark' && (
                       <div className="bg-blue-100 rounded-full p-2">
