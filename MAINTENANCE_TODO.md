@@ -51,6 +51,39 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 - **Duplicate tasks**: Consolidate or remove duplicate entries
 - Reason: Keep TODO list focused on actionable work
 
+### Markdown Table Syntax Requirements
+
+**CRITICAL: Always maintain proper Markdown table format**
+
+- **Column alignment**: Keep `|-----|` separator line with proper dashes for each column
+- **Pipe separators**: Every row must start and end with `|`, including header and separator rows
+- **Empty cells**: Use spaces between pipes for empty cells, never omit pipes
+- **No trailing spaces**: Remove unnecessary whitespace after row endings
+- **Table structure example**:
+
+```markdown
+| ID  | Package | Type | Description | Est LoC | Priority | WONTFIX |
+|-----|---------|------|-------------|---------|----------|---------|
+| 001 | pkg/foo | Code | Fix bug     | 100     | 1        |         |
+```
+
+**Common mistakes to avoid**:
+
+❌ Missing pipe at end of row: `| 001 | pkg/foo | Code | Fix bug | 100 | 1`
+✅ Correct: `| 001 | pkg/foo | Code | Fix bug | 100 | 1 |`
+
+❌ Incorrect separator line: `|--|--|--|--|--|--|--|` or `|---|---|---|---|---|---|`
+✅ Correct: `|-----|---------|------|-------------|---------|----------|---------|`
+
+❌ Inconsistent spacing: `|001|pkg/foo|Code|Fix bug|100|1|`
+✅ Correct: `| 001 | pkg/foo | Code | Fix bug | 100 | 1 |`
+
+**When editing the table**:
+1. Preserve the exact column structure
+2. Count pipes to ensure correct number of columns (7 columns total)
+3. Match column widths with header alignment
+4. After edits, verify table renders correctly in Markdown preview
+
 ### Execution Process
 
 1. **Priority 1 tasks first** - Focus on critical issues that block development
