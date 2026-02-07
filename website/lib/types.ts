@@ -997,6 +997,8 @@ export interface MemoryCard {
   urn: string;
   front: string; // Front content (question)
   back: string; // Back content (answer)
+  front_content: string; // Front content (question) - alias for frontend compatibility
+  back_content: string; // Back content (answer) - alias for frontend compatibility
   major_class: string;
   minor_class: string;
   status: string;

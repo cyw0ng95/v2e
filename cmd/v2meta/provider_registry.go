@@ -1,8 +1,81 @@
-package provider
+package main
 
 import (
 	"context"
 	"fmt"
+	"sync"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/meta/provider"
+)
+
+// ProviderRegistry manages all data source providers
+type ProviderRegistry struct {
+	providers map[string]provider.DataSourceProvider
+	logger    *common.Logger
+	mu        sync.RWMutex
+}
+
+// NewProviderRegistry creates a new provider registry
+func NewProviderRegistry(logger *common.Logger) *ProviderRegistry {
+	return &ProviderRegistry{
+		providers: make(map[string]provider.DataSourceProvider),
+		logger:    logger,
+	}
+}
+
+// RegisterProvider registers a data source provider
+func (r *ProviderRegistry) RegisterProvider(p provider.DataSourceProvider) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	id := p.GetID()
+	r.logger.Info("Registering provider: %s", id)
+	r.providers[id] = p
+	r.logger.Info("Provider registered successfully: %s", id)
+
+	return nil
+}
+
+// GetProvider returns a provider by ID
+func (r *ProviderRegistry) GetProvider(id string) (provider.DataSourceProvider, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	p, ok := r.providers[id]
+	return p, ok
+}
+
+// GetAllProviders returns all registered providers
+func (r *ProviderRegistry) GetAllProviders() []provider.DataSourceProvider {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	providers := make([]provider.DataSourceProvider, 0, len(r.providers))
+	for _, p := range r.providers {
+		providers = append(providers, p)
+	}
+
+	return providers
+}
+
+// GetProviderStatus returns status of a provider
+func (r *ProviderRegistry) GetProviderStatus(id string) (map[string]interface{}, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	p, ok := r.providers[id]
+	if !ok {
+		return nil, fmt.Errorf("provider not found: %s", id)
+	}
+
+	return map[string]interface{}{
+		"id":       p.GetID(),
+		"type":     p.GetType(),
+		"state":    p.GetState(),
+		"progress": p.GetProgress(),
+	}, nil
+}
 
 	"github.com/cyw0ng95/v2e/pkg/cwe/provider"
 	"github.com/cyw0ng95/v2e/pkg/capec/provider"

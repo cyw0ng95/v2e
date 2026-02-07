@@ -11,7 +11,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
-	"github.com/cyw0ng95/v2e/pkg/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
 
 // ATTACKProvider implements DataSourceProvider for ATT&CK data

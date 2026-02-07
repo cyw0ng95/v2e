@@ -29,12 +29,10 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	"github.com/cyw0ng95/v2e/pkg/strategy"
+	"github.com/cyw0ng95/v2e/pkg/notes/strategy"
 	"github.com/cyw0ng95/v2e/pkg/cwe/job"
-	"github.com/cyw0ng95/v2e/pkg/capec/job"
-	"github.com/cyw0ng95/v2e/pkg/attack/job"
 	"github.com/cyw0ng95/v2e/pkg/ssg/job"
-)
+ )
 
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 )
