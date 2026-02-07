@@ -173,7 +173,7 @@
 | 283 | website/         | Docs    | Add component documentation (JSDoc comments) for all 55 components                 | 300      | 4        |         |
 | 286 | website/         | Debt    | Standardize export patterns - choose between default and named exports (32 use default, 23 use named) | 100      | 4        |         |
 | 293 | website/         | Types   | Create proper interface for memoized component props (RightColumn in page.tsx uses complex props object) | 50       | 4        |         |
-| 026 | pkg/notes        | Coverage | Dramatically improve coverage from 14.0% to at least 60%                           | 800      | 5        |         |
+| 026 | pkg/notes        | Coverage | Dramatically improve coverage from 14.0% to at least 60%                           | 800      | 5        | DONE    |
 | 027 | pkg/ssg          | Test    | Add comprehensive test suite for local package (currently 33.4%)                   | 600      | 5        |         |
 | 028 | pkg/ssg          | Test    | Add comprehensive test suite for parser package (currently 42.9%)                  | 600      | 5        |         |
 | 029 | pkg/ssg          | Coverage | Improve coverage for remote package (currently 26.0%)                              | 400      | 5        |         |
