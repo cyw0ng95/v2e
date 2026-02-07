@@ -6,6 +6,8 @@ import { Activity, Cpu, Database, Gauge } from 'lucide-react';
 import { ETLTopologyViewer } from '@/components/etl-topology-viewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { logInfo, logError } from '@/lib/logger';
+import { rpcClient } from '@/lib/rpc-client';
+import type { RPCResponse } from '@/lib/types';
 
 export default function ETLEnginePage() {
   const { data: etlData, isLoading: etlLoading } = useEtlTree(5000);
@@ -21,25 +23,13 @@ export default function ETLEnginePage() {
       let response: RPCResponse<{ success: boolean }>;
       switch (action) {
         case 'start':
-          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
-            'RPCStartProvider',
-            { providerId },
-            'meta'
-          );
+          response = await rpcClient.startProvider(providerId);
           break;
         case 'pause':
-          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
-            'RPCPauseProvider',
-            { providerId },
-            'meta'
-          );
+          response = await rpcClient.pauseProvider(providerId);
           break;
         case 'stop':
-          response = await rpcClient.call<{ providerId: string }, { success: boolean }>(
-            'RPCStopProvider',
-            { providerId },
-            'meta'
-          );
+          response = await rpcClient.stopProvider(providerId);
           break;
       }
 
@@ -48,7 +38,7 @@ export default function ETLEnginePage() {
         throw new Error(response.message || 'Provider action failed');
       }
 
-      logInfo('ETLEnginePage', 'Provider action successful', { success: response.data.success });
+      logInfo('ETLEnginePage', 'Provider action successful', { success: response.payload?.success });
       // Refetch ETL tree to update UI
       window.location.reload();
     } catch (error) {
@@ -61,18 +51,14 @@ export default function ETLEnginePage() {
     logInfo('ETLEnginePage', `Policy update: ${providerId}`, { policy });
 
     try {
-      const response = await rpcClient.call<{ providerId: string; policy: any }, { success: boolean }>(
-        'RPCUpdatePerformancePolicy',
-        { providerId, policy },
-        'meta'
-      );
+      const response = await rpcClient.updatePerformancePolicy(providerId, policy);
 
       if (response.retcode !== 0) {
         logError('ETLEnginePage', 'Policy update failed', response.message);
         throw new Error(response.message || 'Policy update failed');
       }
 
-      logInfo('ETLEnginePage', 'Policy updated successfully', { success: response.data.success });
+      logInfo('ETLEnginePage', 'Policy updated successfully', { success: response.payload?.success });
     } catch (error) {
       logError('ETLEnginePage', 'Error updating performance policy', error);
       throw error;

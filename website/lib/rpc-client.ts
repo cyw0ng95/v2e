@@ -1639,6 +1639,22 @@ export class RPCClient {
   // UEE (Unified ETL Engine) Methods
   // ============================================================================
 
+  async startProvider(providerId: string): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{ providerId: string }, { success: boolean }>('RPCStartProvider', { providerId }, 'meta');
+  }
+
+  async pauseProvider(providerId: string): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{ providerId: string }, { success: boolean }>('RPCPauseProvider', { providerId }, 'meta');
+  }
+
+  async stopProvider(providerId: string): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{ providerId: string }, { success: boolean }>('RPCStopProvider', { providerId }, 'meta');
+  }
+
+  async updatePerformancePolicy(providerId: string, policy: any): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{ providerId: string; policy: any }, { success: boolean }>('RPCUpdatePerformancePolicy', { providerId, policy }, 'meta');
+  }
+
   /**
    * Get the ETL tree showing macro FSM and all providers
    */
