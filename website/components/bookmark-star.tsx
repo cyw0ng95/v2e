@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { rpcClient } from '@/lib/rpc-client';
 import { Bookmark } from '@/lib/types';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('bookmark-star');
 
 interface BookmarkStarProps {
   itemId: string;
@@ -51,7 +54,7 @@ const BookmarkStar: React.FC<BookmarkStarProps> = ({
         }
       } catch (err) {
         setError('Failed to check bookmark status');
-        console.error('Error checking bookmark status:', err);
+        logger.error('Error checking bookmark status', err);
       } finally {
         setLoading(false);
       }
@@ -101,7 +104,7 @@ const BookmarkStar: React.FC<BookmarkStarProps> = ({
       }
     } catch (err) {
       setError('Failed to toggle bookmark');
-      console.error('Error toggling bookmark:', err);
+      logger.error('Error toggling bookmark', err);
     } finally {
       setLoading(false);
     }
@@ -112,6 +115,8 @@ const BookmarkStar: React.FC<BookmarkStarProps> = ({
       <button
         onClick={handleBookmarkToggle}
         disabled={loading}
+        aria-label={`${isBookmarked ? 'Remove' : 'Add'} bookmark for ${itemTitle}`}
+        aria-pressed={isBookmarked}
         className={`
           p-1 rounded-full transition-colors duration-200
           ${isBookmarked 
@@ -120,7 +125,6 @@ const BookmarkStar: React.FC<BookmarkStarProps> = ({
           }
           ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
-        title={isBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks'}
       >
         <Star 
           size={20} 

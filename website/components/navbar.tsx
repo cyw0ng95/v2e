@@ -35,6 +35,7 @@ export function Navbar() {
               type="search"
               placeholder="Search CVEs, CWEs, CAPECs..."
               className="h-9 w-full rounded-md border border-input bg-background pl-10 pr-4 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 input-enhanced"
+              aria-label="Search CVEs, CWEs, CAPECs"
             />
           </div>
         </div>
@@ -48,6 +49,7 @@ export function Navbar() {
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="h-9 w-9"
+              aria-label="Toggle theme between light and dark mode"
             >
               {theme === 'dark' ? (
                 <Sun className="h-4 w-4" />
@@ -59,7 +61,7 @@ export function Navbar() {
           )}
 
           {/* Settings */}
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Open settings">
             <Settings className="h-4 w-4" />
             <span className="sr-only">Settings</span>
           </Button>
