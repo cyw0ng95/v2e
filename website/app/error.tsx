@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('error-page');
 
 export default function Error({
   error,
@@ -10,12 +13,11 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error with full details for debugging
     const timestamp = new Date().toISOString();
-    console.error(`[${timestamp}] [ERROR] [GlobalError] Next.js global error\n` +
-      `Message: ${error.message}\n` +
-      `Digest: ${error.digest || 'N/A'}\n` +
-      `Stack: ${error.stack}`);
+    logger.error(`Next.js global error`, error, {
+      digest: error.digest || 'N/A',
+      stack: error.stack
+    });
   }, [error]);
 
   return (
