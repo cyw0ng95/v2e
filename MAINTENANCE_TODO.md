@@ -176,7 +176,7 @@
 | 026 | pkg/notes        | Coverage | Dramatically improve coverage from 14.0% to at least 60%                           | 800      | 5        | DONE    |
 | 027 | pkg/ssg          | Test    | Add comprehensive test suite for local package (currently 33.4%)                   | 600      | 5        | DONE    |
 | 028 | pkg/ssg          | Test    | Add comprehensive test suite for parser package (currently 42.9%)                  | 600      | 5        | DONE    |
-| 029 | pkg/ssg          | Coverage | Improve coverage for remote package (currently 26.0%)                              | 400      | 5        |         |
+| 029 | pkg/ssg          | Coverage | Improve coverage for remote package (currently 26.0%)                              | 400      | 5        | DONE    |
 | 030 | cmd/v2analysis   | Test    | Add test level definitions (currently 0 occurrences)                               | 400      | 5        |         |
 | 031 | cmd/v2analysis   | Coverage | Improve coverage from 6.8% to at least 50%                                         | 600      | 5        |         |
 | 032 | cmd/v2access     | Coverage | Improve coverage from 9.4% to at least 50%                                         | 400      | 5        |         |
