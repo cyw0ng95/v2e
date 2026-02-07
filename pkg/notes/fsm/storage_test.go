@@ -869,3 +869,78 @@ func TestBoltDBStorage_StateHistoryOrder(t *testing.T) {
 		t.Errorf("expected no validation error, got: %v", err)
 	}
 }
+
+// ============================================================================
+// BoltDB Storage Failure Scenario Tests
+// ============================================================================
+
+func TestBoltDBStorage_CorruptDatabase(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "fsm-corrupt-*.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	err = os.WriteFile(tmpFile.Name(), []byte("corrupt data"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = NewBoltDBStorage(tmpFile.Name())
+	if err == nil {
+		t.Error("expected error when opening corrupt database")
+	}
+}
+
+func TestBoltDBStorage_ConcurrentAccess(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "fsm-concurrent-*.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	storage, err := NewBoltDBStorage(tmpFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer storage.Close()
+
+	urns := []string{
+		"v2e::card::1",
+		"v2e::card::2",
+		"v2e::card::3",
+	}
+
+	errChan := make(chan error, len(urns))
+
+	for _, urn := range urns {
+		go func(u string) {
+			state := &MemoryFSMState{
+				URN:   u,
+				State: MemoryStateNew,
+				StateHistory: []StateHistory{
+					{
+						FromState: MemoryStateNew,
+						ToState:   MemoryStateNew,
+						Timestamp: time.Now(),
+						Reason:    "test",
+					},
+				},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			errChan <- storage.SaveMemoryFSMState(u, state)
+		}(urn)
+	}
+
+	for i := 0; i < len(urns); i++ {
+		select {
+		case err := <-errChan:
+			if err != nil {
+				t.Errorf("concurrent write failed: %v", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("concurrent operation timeout")
+		}
+	}
+}
