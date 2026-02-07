@@ -103,7 +103,7 @@
 | 177 | pkg/ssg/parser/guide | Code    | Refactor guide.go (512 lines) - extract parsing helpers                            | 300      | 3        |         |
 | 181 | pkg/proc/subprocess | Code    | Extract subprocess reconnection logic into dedicated module                        | 200      | 3        |         |
 | 182 | pkg/proc/subprocess | Code    | Add lock contention metrics for handlers map access                                | 150      | 3        |         |
-| 183 | pkg/proc/subprocess | Code    | Evaluate using atomic operations for hot path statistics counters                  | 100      | 3        |         |
+| 183 | pkg/proc/subprocess | Code    | Evaluate using atomic operations for hot path statistics counters                  | 100      | 3        | DONE    |
 | 184 | pkg/proc/subprocess | Code    | Add goroutine leak detection and monitoring                                        | 200      | 3        |         |
 | 185 | cmd/v2broker/transport | Code    | Add lock contention metrics for transport operations                               | 150      | 3        |         |
 | 189 | pkg/cve/local    | Code    | Add sync.Pool for frequently allocated database query structures                   | 200      | 3        |         |

@@ -3,6 +3,7 @@ package strategy
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
 
 // BaseStrategy provides common functionality for navigation strategies
@@ -10,7 +11,7 @@ type BaseStrategy struct {
 	mu          sync.RWMutex
 	items       []SecurityItem
 	viewed      map[string]bool
-	viewedCount int
+	viewedCount atomic.Int32
 }
 
 // NewBaseStrategy creates a new base strategy
@@ -23,7 +24,7 @@ func NewBaseStrategy(items []SecurityItem) *BaseStrategy {
 	return &BaseStrategy{
 		items:       items,
 		viewed:      viewed,
-		viewedCount: 0,
+		viewedCount: atomic.Int32{},
 	}
 }
 
@@ -37,7 +38,7 @@ func (s *BaseStrategy) SetItems(items []SecurityItem) {
 	for _, item := range items {
 		s.viewed[item.URN] = false
 	}
-	s.viewedCount = 0
+	s.viewedCount.Store(0)
 }
 
 // GetItems returns the current items
@@ -57,7 +58,7 @@ func (s *BaseStrategy) MarkViewed(urn string) error {
 
 	if !s.viewed[urn] {
 		s.viewed[urn] = true
-		s.viewedCount++
+		s.viewedCount.Add(1)
 	}
 
 	return nil
@@ -72,9 +73,7 @@ func (s *BaseStrategy) IsViewed(urn string) bool {
 
 // GetViewedCount returns the number of viewed items
 func (s *BaseStrategy) GetViewedCount() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.viewedCount
+	return int(s.viewedCount.Load())
 }
 
 // GetTotalCount returns the total number of items
@@ -93,7 +92,8 @@ func (s *BaseStrategy) GetProgress() float64 {
 		return 0
 	}
 
-	return float64(s.viewedCount) / float64(len(s.items)) * 100
+	viewedCount := int(s.viewedCount.Load())
+	return float64(viewedCount) / float64(len(s.items)) * 100
 }
 
 // Reset clears all viewed state
@@ -104,7 +104,7 @@ func (s *BaseStrategy) Reset() error {
 	for urn := range s.viewed {
 		s.viewed[urn] = false
 	}
-	s.viewedCount = 0
+	s.viewedCount.Store(0)
 
 	return nil
 }
