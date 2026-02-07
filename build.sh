@@ -144,6 +144,7 @@ Options:
     -m          Run performance benchmarks and generate report
     -p          Build and package binaries with assets
     -r          Run Node.js process and broker (for development)
+    -T          Run integration tests against packaged binary (<2min target)
     -v          Enable verbose output
     -h          Show this help message
 
@@ -898,6 +899,65 @@ run_benchmarks() {
     fi
 }
 
+# Run integration tests
+run_integration_tests() {
+    log_info "Running integration tests..."
+
+    # Step 1: Build and package
+    build_and_package
+    if [ $? -ne 0 ]; then
+        log_error "Build failed, cannot run integration tests"
+        return 1
+    fi
+
+    # Step 2: Check Node.js
+    if ! command -v node &> /dev/null; then
+        log_error "Node.js is required for integration tests"
+        log_error "Install Node.js 20+ from https://nodejs.org/"
+        return 1
+    fi
+
+    local NODE_VERSION=$(node --version | sed 's/v//')
+    log_info "Node version: $NODE_VERSION"
+
+    # Step 3: Install test dependencies if needed
+    local TEST_DIR="tests"
+    if [ ! -d "$TEST_DIR/node_modules" ]; then
+        log_info "Installing test dependencies..."
+        cd "$TEST_DIR"
+        npm install
+        cd "$SCRIPT_DIR"
+    fi
+
+    # Step 4: Create reports directory
+    mkdir -p "$PACKAGE_DIR/reports"
+
+    # Step 5: Run tests
+    log_info "Launching integration tests..."
+    local TEST_START=$(date +%s)
+
+    cd "$TEST_DIR"
+    npm test -- --reporter=verbose
+    TEST_EXIT_CODE=$?
+    cd "$SCRIPT_DIR"
+
+    local TEST_END=$(date +%s)
+    local TEST_DURATION=$((TEST_END - TEST_START))
+
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+        log_info "Integration tests passed! (Duration: ${TEST_DURATION}s)"
+    else
+        log_error "Integration tests failed! (Duration: ${TEST_DURATION}s)"
+    fi
+
+    # Check 2-minute target
+    if [ $TEST_DURATION -gt 120 ]; then
+        log_warn "Tests exceeded 2 minute target: ${TEST_DURATION}s"
+    fi
+
+    return $TEST_EXIT_CODE
+}
+
 # Main script
 main() {
     cd "$SCRIPT_DIR"
@@ -909,14 +969,16 @@ main() {
     BUILD_PACKAGE=false
     RUN_NODE_AND_BROKER=false
     RUN_VCONFIG_TUI=false
+    RUN_INTEGRATION_TESTS=false
 
-    while getopts "ctfmphrv" opt; do
+    while getopts "ctfmphvTr" opt; do
         case "$opt" in
             c) RUN_VCONFIG_TUI=true ;;
             t) RUN_TESTS=true ;;
             f) RUN_FUZZ_TESTS=true ;;
             m) RUN_BENCHMARKS=true ;;
             p) BUILD_PACKAGE=true ;;
+            T) RUN_INTEGRATION_TESTS=true ;;
             h) show_help; exit 0 ;;
             r) RUN_NODE_AND_BROKER=true ;;
             v) VERBOSE=true ;;
@@ -949,6 +1011,9 @@ main() {
         exit_code=$?
     elif [ "$RUN_NODE_AND_BROKER" = true ]; then
         run_node_and_broker_once
+        exit_code=$?
+    elif [ "$RUN_INTEGRATION_TESTS" = true ]; then
+        run_integration_tests
         exit_code=$?
     else
         build_project
