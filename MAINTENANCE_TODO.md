@@ -29,17 +29,40 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 - **Coverage**: Test coverage improvements
 - **Deps**: Dependency updates
 
+### Task Status Management
+
+**COMPLETED Status**
+- Use to mark tasks that have been completed
+- Task remains in the table with COMPLETED status for tracking
+- Allows maintainers to see what has been done
+
+**WONTFIX Column Purpose**
+- **Only for AI guidance**: Mark tasks that AI should NOT implement
+- Use cases:
+  - Tasks that are out of scope for this project
+  - Tasks that require different approach/tools
+  - Tasks blocked by architectural decisions
+- **NOT for completed tasks**: When a task is done, remove it from the list entirely
+- **NOT for deprecated tasks**: When a task becomes obsolete, remove it from the list
+
+**Removing Tasks from TODO**
+- **Completed tasks**: Delete the entire row when task is fully completed
+- **Deprecated tasks**: Delete the entire row when task is no longer relevant
+- **Duplicate tasks**: Consolidate or remove duplicate entries
+- Reason: Keep TODO list focused on actionable work
+
 ### Execution Process
 
 1. **Priority 1 tasks first** - Focus on critical issues that block development
 2. **Evaluate task value** - Assess ROI and impact before starting
 3. **Downgrade if necessary** - Move to lower priority if not critical
 4. **Mark COMPLETED** - Update status when task is done
-5. **Mark WONTFIX** - For tasks that won't be implemented (e.g., not applicable)
-6. **Use build.sh** - All builds and tests must use `./build.sh` wrapper
-7. **Commit frequently** - Make incremental commits at logical milestones
-8. **Keep markdown format** - Maintain table structure and formatting
-9. **Don't break table structure** - When updating TODO list, preserve markdown table formatting (column alignment, pipe separators)
+5. **Remove completed/deprecated tasks** - Delete tasks from TODO list when done (don't use WONTFIX)
+6. **Use WONTFIX only for AI guidance** - Mark tasks as WONTFIX to inform AI they should not be implemented
+7. **Use build.sh** - All builds and tests must use `./build.sh` wrapper
+8. **Commit frequently** - Make incremental commits at logical milestones
+9. **Keep markdown format** - Maintain table structure and formatting
+10. **Don't break table structure** - When updating TODO list, preserve markdown table formatting (column alignment, pipe separators)
 
 ### Key Principles
 
