@@ -2,118 +2,10 @@
 
 This document tracks maintenance tasks for the v2e project. Tasks are organized by priority and type.
 
-## Maintenance Strategy
-
-### Priority Levels
-
-- **Priority 1 (Critical)**: Core functionality issues, critical bugs, blocking features
-- **Priority 2 (Important)**: Performance improvements, security fixes, important refactoring
-- **Priority 3 (Nice to Have)**: Code quality improvements, documentation, non-critical optimizations
-- **Priority 4 (Low)**: Minor improvements, enhancements, low-impact optimizations
-- **Priority 5 (Deferred)**: Tasks that are out of scope or blocked by dependencies
-
-### Task Types
-
-- **Test**: Unit tests, integration tests, test coverage improvements
-- **Code**: Feature implementation, bug fixes, refactoring
-- **Docs**: Documentation updates, inline comments, architecture docs
-- **Perf**: Performance optimization, benchmarking, profiling
-- **Security**: Security fixes, input validation, vulnerability remediation
-- **Config**: Configuration management, build flags
-- **Refactor**: Code restructuring, reducing technical debt
-- **Types**: TypeScript type safety improvements
-- **Feature**: New feature implementation
-- **UX**: User experience improvements
-- **A11y**: Accessibility improvements
-- **Debt**: Technical debt reduction
-- **Coverage**: Test coverage improvements
-- **Deps**: Dependency updates
-
-### Task Status Management
-
-**COMPLETED Status**
-- Use to mark tasks that have been completed
-- Task remains in the table with COMPLETED status for tracking
-- Allows maintainers to see what has been done
-
-**WONTFIX Column Purpose**
-- **Only for AI guidance**: Mark tasks that AI should NOT implement
-- Use cases:
-  - Tasks that are out of scope for this project
-  - Tasks that require different approach/tools
-  - Tasks blocked by architectural decisions
-- **NOT for completed tasks**: When a task is done, remove it from the list entirely
-- **NOT for deprecated tasks**: When a task becomes obsolete, remove it from the list
-
-**Removing Tasks from TODO**
-- **Completed tasks**: Delete the entire row when task is fully completed
-- **Deprecated tasks**: Delete the entire row when task is no longer relevant
-- **Duplicate tasks**: Consolidate or remove duplicate entries
-- Reason: Keep TODO list focused on actionable work
-
-### Markdown Table Syntax Requirements
-
-**CRITICAL: Always maintain proper Markdown table format**
-
-- **Column alignment**: Keep `|-----|` separator line with proper dashes for each column
-- **Pipe separators**: Every row must start and end with `|`, including header and separator rows
-- **Empty cells**: Use spaces between pipes for empty cells, never omit pipes
-- **No trailing spaces**: Remove unnecessary whitespace after row endings
-- **Table structure example**:
-
-```markdown
-| ID  | Package | Type | Description | Est LoC | Priority | WONTFIX |
-|-----|---------|------|-------------|---------|----------|---------|
-| 001 | pkg/foo | Code | Fix bug     | 100     | 1        |         |
-```
-
-**Common mistakes to avoid**:
-
-❌ Missing pipe at end of row: `| 001 | pkg/foo | Code | Fix bug | 100 | 1`
-✅ Correct: `| 001 | pkg/foo | Code | Fix bug | 100 | 1 |`
-
-❌ Incorrect separator line: `|--|--|--|--|--|--|--|` or `|---|---|---|---|---|---|`
-✅ Correct: `|-----|---------|------|-------------|---------|----------|---------|`
-
-❌ Inconsistent spacing: `|001|pkg/foo|Code|Fix bug|100|1|`
-✅ Correct: `| 001 | pkg/foo | Code | Fix bug | 100 | 1 |`
-
-**When editing the table**:
-1. Preserve the exact column structure
-2. Count pipes to ensure correct number of columns (7 columns total)
-3. Match column widths with header alignment
-4. After edits, verify table renders correctly in Markdown preview
-
-### Execution Process
-
-1. **Priority 1 tasks first** - Focus on critical issues that block development
-2. **Evaluate task value** - Assess ROI and impact before starting
-3. **Downgrade if necessary** - Move to lower priority if not critical
-4. **Mark COMPLETED** - Update status when task is done
-5. **Remove completed/deprecated tasks** - Delete tasks from TODO list when done (don't use WONTFIX)
-6. **Use WONTFIX only for AI guidance** - Mark tasks as WONTFIX to inform AI they should not be implemented
-7. **Use build.sh** - All builds and tests must use `./build.sh` wrapper
-8. **Commit frequently** - Make incremental commits at logical milestones
-9. **Keep markdown format** - Maintain table structure and formatting
-10. **Don't break table structure** - When updating TODO list, preserve markdown table formatting (column alignment, pipe separators)
-
-### Key Principles
-
-- **No force push** - Resolve conflicts manually, keep features functional
-- **Remote API testing** - Tests must NOT access external APIs (use mocks/fixtures)
-- **Fast tests** - Unit tests should run in milliseconds
-- **Document RPC APIs** - Update `service.md` for each service when adding RPC handlers
-- **Broker-first architecture** - Only broker spawns subprocesses, no direct subprocess-to-subprocess communication
-- **Performance focus** - Use lock-free patterns, connection pooling, batch operations
-
 ## TODO
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
-
-| 263 | website/         | Test    | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files) - too large, downgraded | 2000     | 3        |         |
-| 264 | website/         | Test    | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks) - frontend testing, downgraded | 400      | 3        |         |
-| 265 | website/         | Test    | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods) - frontend testing, downgraded | 500      | 3        |         |
 | 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                      | 600      | 2        |         |
 | 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
@@ -149,6 +41,9 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 289 | website/         | Code    | Add TypeScript strict mode compliance - fix implicit any types                     | 300      | 2        |         |
 | 290 | website/         | Feature | Implement proper error toast notifications using Sonner for all user-facing errors | 150      | 2        |         |
 | 291 | website/         | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
+| 263 | website/         | Test    | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files) - too large, downgraded | 2000     | 3        |         |
+| 264 | website/         | Test    | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks) - frontend testing, downgraded | 400      | 3        |         |
+| 265 | website/         | Test    | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods) - frontend testing, downgraded | 500      | 3        |         |
 | 243 | pkg/notes/service | Refactor | Refactor service.go (1063 lines) - split into bookmark, note, memory modules       | 400      | 3        |         |
 | 244 | pkg/notes/fsm    | Perf    | Optimize ItemGraph link lookups using index data structure                         | 150      | 3        |         |
 | 246 | pkg/notes/fsm    | Code    | Add user ID/session management for multi-user support                              | 400      | 3        |         |
@@ -288,3 +183,107 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 165 | website          | Debt    | Make RPC timeout configurable per request type                                     | 50       | 5        |         |
 | 166 | website          | Debt    | Remove or conditionalize console.log statements in production                      | 25       | 5        |         |
 | 167 | website          | Debt    | Extract magic numbers to configuration constants                                   | 25       | 5        |         |
+
+## Maintenance Strategy
+
+### Priority Levels
+
+- **Priority 1 (Critical)**: Core functionality issues, critical bugs, blocking features
+- **Priority 2 (Important)**: Performance improvements, security fixes, important refactoring
+- **Priority 3 (Nice to Have)**: Code quality improvements, documentation, non-critical optimizations
+- **Priority 4 (Low)**: Minor improvements, enhancements, low-impact optimizations
+- **Priority 5 (Deferred)**: Tasks that are out of scope or blocked by dependencies
+
+### Task Types
+
+- **Test**: Unit tests, integration tests, test coverage improvements
+- **Code**: Feature implementation, bug fixes, refactoring
+- **Docs**: Documentation updates, inline comments, architecture docs
+- **Perf**: Performance optimization, benchmarking, profiling
+- **Security**: Security fixes, input validation, vulnerability remediation
+- **Config**: Configuration management, build flags
+- **Refactor**: Code restructuring, reducing technical debt
+- **Types**: TypeScript type safety improvements
+- **Feature**: New feature implementation
+- **UX**: User experience improvements
+- **A11y**: Accessibility improvements
+- **Debt**: Technical debt reduction
+- **Coverage**: Test coverage improvements
+- **Deps**: Dependency updates
+
+### Task Status Management
+
+**COMPLETED Status**
+- Use to mark tasks that have been completed
+- Task remains in the table with COMPLETED status for tracking
+- Allows maintainers to see what has been done
+
+**WONTFIX Column Purpose**
+- **Only for AI guidance**: Mark tasks that AI should NOT implement
+- Use cases:
+  - Tasks that are out of scope for this project
+  - Tasks that require different approach/tools
+  - Tasks blocked by architectural decisions
+- **NOT for completed tasks**: When a task is done, remove it from the list entirely
+- **NOT for deprecated tasks**: When a task becomes obsolete, remove it from the list
+
+**Removing Tasks from TODO**
+- **Completed tasks**: Delete the entire row when task is fully completed
+- **Deprecated tasks**: Delete the entire row when task is no longer relevant
+- **Duplicate tasks**: Consolidate or remove duplicate entries
+- Reason: Keep TODO list focused on actionable work
+
+### Markdown Table Syntax Requirements
+
+**CRITICAL: Always maintain proper Markdown table format**
+
+- **Column alignment**: Keep `|-----|` separator line with proper dashes for each column
+- **Pipe separators**: Every row must start and end with `|`, including header and separator rows
+- **Empty cells**: Use spaces between pipes for empty cells, never omit pipes
+- **No trailing spaces**: Remove unnecessary whitespace after row endings
+- **Table structure example**:
+
+```markdown
+| ID  | Package | Type | Description | Est LoC | Priority | WONTFIX |
+|-----|---------|------|-------------|---------|----------|---------|
+| 001 | pkg/foo | Code | Fix bug     | 100     | 1        |         |
+```
+
+**Common mistakes to avoid**:
+
+❌ Missing pipe at end of row: `| 001 | pkg/foo | Code | Fix bug | 100 | 1`
+✅ Correct: `| 001 | pkg/foo | Code | Fix bug | 100 | 1 |`
+
+❌ Incorrect separator line: `|--|--|--|--|--|--|--|` or `|---|---|---|---|---|---|`
+✅ Correct: `|-----|---------|------|-------------|---------|----------|---------|`
+
+❌ Inconsistent spacing: `|001|pkg/foo|Code|Fix bug|100|1|`
+✅ Correct: `| 001 | pkg/foo | Code | Fix bug | 100 | 1 |`
+
+**When editing the table**:
+1. Preserve the exact column structure
+2. Count pipes to ensure correct number of columns (7 columns total)
+3. Match column widths with header alignment
+4. After edits, verify table renders correctly in Markdown preview
+
+### Execution Process
+
+1. **Priority 1 tasks first** - Focus on critical issues that block development
+2. **Evaluate task value** - Assess ROI and impact before starting
+3. **Downgrade if necessary** - Move to lower priority if not critical
+4. **Mark COMPLETED** - Update status when task is done
+5. **Remove completed/deprecated tasks** - Delete tasks from TODO list when done (don't use WONTFIX)
+6. **Use WONTFIX only for AI guidance** - Mark tasks as WONTFIX to inform AI they should not be implemented
+7. **Use build.sh** - All builds and tests must use `./build.sh` wrapper
+8. **Commit frequently** - Make incremental commits at logical milestones
+9. **Keep markdown format** - Maintain table structure and formatting
+10. **Don't break table structure** - When updating TODO list, preserve markdown table formatting (column alignment, pipe separators)
+
+### Key Principles
+
+- **No force push** - Resolve conflicts manually, keep features functional
+- **Remote API testing** - Tests must NOT access external APIs (use mocks/fixtures)
+- **Fast tests** - Unit tests should run in milliseconds
+- **Document RPC APIs** - Update `service.md` for each service when adding RPC handlers
+- **Broker-first architecture** - Only broker spawns subprocesses, no direct subprocess-to-subprocess communication
+- **Performance focus** - Use lock-free patterns, connection pooling, batch operations
