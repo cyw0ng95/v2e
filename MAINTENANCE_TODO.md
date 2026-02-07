@@ -92,6 +92,15 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 274 | website/         | A11y    | Add proper role attributes to interactive elements (currently only 12 instances with role=) | 80       | 3        |         |
 | 275 | website/components | Code    | Fix array index keys in components (notes-framework.tsx:570, notes-dashboard.tsx:259) | 20       | 3        |         |
 | 279 | website/         | Perf    | Implement React.memo for 64 components (currently only 24 use useMemo/useCallback) | 300      | 3        |         |
+| 328 | pkg/             | Code    | Review and replace 3 panic() usage with proper error handling                    | 50       | 2        |         |
+| 329 | pkg/cve/provider  | Code    | Implement store logic using RPC calls to local service (TODO in cve_provider.go)      | 200      | 2        |         |
+| 330 | pkg/ssg/provider  | Code    | Implement store logic using RPC calls to ssg service (TODO in git_provider.go)       | 200      | 2        |         |
+| 331 | pkg/ssg/parser    | Code    | Parse SSG references (TODO in guide.go)                                      | 150      | 2        |         |
+| 332 | pkg/attack/provider | Code    | Use RPCStoreAttack to store each item (TODO in attack_provider.go)                    | 100      | 2        |         |
+| 333 | website/components | A11y    | Add accessibility attributes to 12 components lacking aria-label/role           | 200      | 2        |         |
+| 334 | website/components | Code    | Fix 18 components using array index as key (React warning)                    | 100      | 2        |         |
+| 335 | website/lib       | Types   | Replace 42 `any[]` type usages with proper TypeScript array types              | 150      | 2        |         |
+| 336 | website/         | Code    | Fix 2 wildcard React imports (import * as React) - use named imports         | 50       | 2        |         |
 | 281 | website/         | Perf    | Add virtualization for large tables (CVE, CWE, CAPEC lists can be thousands of rows) | 200      | 3        |         |
 | 282 | website/lib      | Perf    | Optimize data fetching - implement request deduplication and caching for repeated calls | 150      | 3        |         |
 | 284 | website/lib      | Docs    | Document RPC API methods in lib/rpc-client.ts (60+ methods need documentation)     | 200      | 3        |         |
