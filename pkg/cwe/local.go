@@ -420,9 +420,13 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	var mts []MitigationModel
 	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&mts)
 	for _, mt := range mts {
+		phase := []string{}
+		if mt.Phase != "" {
+			phase = strings.Split(strings.TrimSpace(mt.Phase), ",")
+		}
 		item.PotentialMitigations = append(item.PotentialMitigations, Mitigation{
 			MitigationID:       mt.MitigationID,
-			Phase:              nil, // TODO: parse comma-separated string to []string if needed
+			Phase:              phase,
 			Strategy:           mt.Strategy,
 			Description:        mt.Description,
 			Effectiveness:      mt.Effectiveness,
@@ -569,9 +573,13 @@ func (s *LocalCWEStore) ListCWEsPaginated(ctx context.Context, offset, limit int
 		var mts []MitigationModel
 		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&mts)
 		for _, mt := range mts {
+			phase := []string{}
+			if mt.Phase != "" {
+				phase = strings.Split(strings.TrimSpace(mt.Phase), ",")
+			}
 			item.PotentialMitigations = append(item.PotentialMitigations, Mitigation{
 				MitigationID:       mt.MitigationID,
-				Phase:              nil, // TODO: parse comma-separated string to []string if needed
+				Phase:              phase,
 				Strategy:           mt.Strategy,
 				Description:        mt.Description,
 				Effectiveness:      mt.Effectiveness,

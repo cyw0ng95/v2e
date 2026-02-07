@@ -161,8 +161,8 @@
 | 204 | pkg/cve/local    | Test    | Add benchmark tests for database query patterns                                    | 200      | 4        |         |
 | 205 | pkg/cve/remote   | Test    | Add benchmark tests for HTTP client connection pooling                             | 200      | 4        |         |
 | 206 | cmd/v2broker/perf | Test    | Add benchmark tests for optimizer worker pool                                      | 200      | 4        |         |
-| 207 | pkg/cwe/local    | Code    | Implement TODO at line 425: parse comma-separated string to []string for Phase field | 50       | 4        |         |
-| 208 | pkg/cwe/local    | Code    | Implement TODO at line 574: parse comma-separated string to []string for Phase field | 50       | 4        |         |
+| 207 | pkg/cwe/local    | Code    | Implement TODO at line 425: parse comma-separated string to []string for Phase field | 50       | 4        | X       |
+| 208 | pkg/cwe/local    | Code    | Implement TODO at line 574: parse comma-separated string to []string for Phase field | 50       | 4        | X       |
 | 215 | pkg/notes        | Docs    | Add inline comments for complex business logic in service.go                       | 150      | 4        |         |
 | 216 | pkg/notes        | Docs    | Document RPC handler patterns and error handling strategies                        | 200      | 4        |         |
 | 217 | pkg/proc/subprocess | Docs    | Document message batching and flush mechanisms                                     | 150      | 4        |         |
