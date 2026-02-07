@@ -9,9 +9,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "types": ["node"],
-    "outDir": "./dist",
-    "rootDir": "."
+    "outDir": "./dist"
   },
-  "include": ["src/**/*", "basic/**/*", "etl/**/*", "helpers/**/*"],
+  "include": ["src/**/*", "basic/**/*", "etl/**/*", "helpers/**/*", "../../website/lib/types.ts"],
   "exclude": ["node_modules", "dist"]
 }
