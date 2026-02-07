@@ -84,19 +84,82 @@ IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → 
 - Message pooling with sync.Pool
 - Adaptive worker pools and batching
 
+### Notes - Learning Strategy System
+
+**Purpose**: Intelligent learning session management with adaptive navigation strategies for security knowledge acquisition.
+
+**Why Notes?**
+- Provides structured learning workflows for security practitioners
+- Implements FSM-based session state management
+- Supports multiple navigation strategies (BFS/DFS) for different learning styles
+- Enables progress tracking and review scheduling
+
+**Core Components**:
+
+**FSM (Finite State Machine)** - `pkg/notes/fsm/`
+- Manages learning session states: idle, browsing, deep_dive, reviewing, paused
+- Tracks user progress with viewed/completed items
+- Maintains item relationship graph for DFS navigation
+- Supports session persistence with BoltDB storage
+
+**Strategy Pattern** - `pkg/notes/strategy/`
+- **BFS Strategy**: Sequential browsing through available items
+- **DFS Strategy**: Deep dive into related concepts via links
+- Dynamic strategy switching based on user behavior
+- Path stack management for navigation history
+
+**Learning States**:
+```
+IDLE → BROWSING → DEEP_DIVE → REVIEWING → PAUSED
+         ↓            ↓            ↓
+       (BFS)       (DFS)      (Review)
+```
+
+**Key Features**:
+- ItemGraph: Bidirectional link graph for DFS traversal
+- Path stack: Navigate back through learning history
+- Context tracking: Viewed items, completed items, available items
+- Session metrics: Start time, last activity, strategy usage
+
+**Architecture**:
+```
+LearningFSM (State Machine)
+    ├── Storage (BoltDB persistence)
+    ├── ItemGraph (Link relationships)
+    ├── Strategy (Navigation logic)
+    │   ├── BFS Strategy (Sequential browsing)
+    │   └── DFS Strategy (Deep dive exploration)
+    └── Context (Learning progress tracking)
+        ├── ViewedItems
+        ├── CompletedItems
+        ├── AvailableItems
+        └── PathStack
+```
+
+**RPC Integration**:
+- `RPCLearningStart`: Initialize learning session with available items
+- `RPCLearningNextItem`: Get next item based on current strategy
+- `RPCLearningViewItem`: Mark item as viewed and update context
+- `RPCLearningFollowLink`: Follow related link (DFS mode)
+- `RPCLearningGoBack`: Navigate back in path history
+- `RPCLearningSwitchStrategy`: Switch between BFS and DFS modes
+- `RPCLearningCompleteItem`: Mark item as learned
+- `RPCLearningPauseResume`: Pause or resume learning session
+
 ---
 
 ## Service-Framework Matrix
 
-| Service | UEE | UDA | UME | Key Responsibilities |
-|---------|:---:|:---:|:---:|----------------------|
-| **v2broker** | - | - | X | Central orchestrator, process management, message routing, permit management |
-| **v2access** | - | - | X | REST gateway, frontend communication, HTTP to RPC translation |
-| **v2local** | X | X | - | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS), CRUD operations, caching |
-| **v2remote** | X | - | - | External API integration (NVD, MITRE), rate limiting, retry mechanisms |
-| **v2meta** | X | - | X | ETL orchestration, provider management, URN checkpointing, state machines |
-| **v2sysmon** | - | - | X | System metrics collection, health monitoring, performance reporting |
-| **v2analysis** | - | X | X | Graph database management, relationship analysis, attack path discovery |
+| Service | UEE | UDA | UME | Notes | Key Responsibilities |
+|---------|:---:|:---:|:---:|:-----:|----------------------|
+| **v2broker** | - | - | X | - | Central orchestrator, process management, message routing, permit management |
+| **v2access** | - | - | X | - | REST gateway, frontend communication, HTTP to RPC translation |
+| **v2local** | X | X | - | - | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS), CRUD operations, caching |
+| **v2remote** | X | - | - | - | External API integration (NVD, MITRE), rate limiting, retry mechanisms |
+| **v2meta** | X | - | X | - | ETL orchestration, provider management, URN checkpointing, state machines |
+| **v2sysmon** | - | - | X | - | System metrics collection, health monitoring, performance reporting |
+| **v2analysis** | - | X | X | - | Graph database management, relationship analysis, attack path discovery |
+| **v2notes** | - | - | X | X | Learning session management, bookmark/note/memory card storage, strategy-based navigation |
 
 ### Framework Distribution
 
@@ -105,6 +168,7 @@ IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → 
 | **UEE** (Unified ETL Engine) | v2meta | v2local, v2remote | URN (checkpointing), RPC (coordination) |
 | **UDA** (Unified Data Analysis) | v2analysis | v2local (data source) | URN (node IDs), RPC (queries) |
 | **UME** (Unified Message Exchanging) | v2broker | All services | RPC (message protocol), Binary Protocol |
+| **Notes** (Learning Strategy System) | v2notes | v2local (bookmark storage), v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (BoltDB) |
 
 ---
 
@@ -114,21 +178,28 @@ IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → 
 +----------------+      +-------------+      +---------+
 | Next.js Frontend|----->| Access Svc  |----->| Broker  |
 +----------------+      +-------------+      +---------+
-                                                       |
-               +----------------------------------------+
-               |                                        |
-               v                                        v
-    +----------+----------+          +----------+------------------+
-    |   v2local          |          |   v2meta                   |
-    |   (Data Storage)   |          |   (UEE Framework)          |
-    +--------------------+          +----------------------------+
-               +----------+------------------+
-               |          |                |
-               v          v                v
-    +----------+   +-----+-----+   +-------+------+
-    | v2remote |   |v2sysmon |   |v2analysis    |
-    | (APIs)   |   | (Monitor)|   | (UDA Graph)  |
-    +----------+   +---------+   +--------------+
+                                                        |
+                +----------------------------------------+
+                |                                        |
+                v                                        v
+     +----------+----------+          +----------+------------------+
+     |   v2local          |          |   v2meta                   |
+     |   (Data Storage)   |          |   (UEE Framework)          |
+     +--------------------+          +----------------------------+
+                +----------+------------------+
+                |          |                |
+                v          v                v
+     +----------+   +-----+-----+   +-------+------+
+     | v2remote |   |v2sysmon |   |v2analysis    |
+     | (APIs)   |   | (Monitor)|   | (UDA Graph)  |
+     +----------+   +---------+   +--------------+
+                |
+                v
+          +------------+
+          | v2notes    |
+          | (Learning  |
+          |  Sessions) |
+          +------------+
 ```
 
 ---
@@ -247,6 +318,7 @@ pkg/
   rpc/                # RPC client helpers
   graph/              # In-memory graph database
   analysis/           # FSM and storage for UDA
+  notes/              # Learning strategy system (FSM, strategy pattern, BoltDB storage)
   cve/taskflow/       # ETL executor framework
 website/              # Next.js frontend
 assets/               # Data assets (CWE, CAPEC, ATT&CK)
@@ -261,6 +333,7 @@ assets/               # Data assets (CWE, CAPEC, ATT&CK)
 - [cmd/v2broker](cmd/v2broker) - Broker implementation
 - [pkg/urn](pkg/urn) - URN identifier implementation
 - [cmd/v2meta/providers](cmd/v2meta/providers) - ETL provider implementations
+- [pkg/notes](pkg/notes) - Learning strategy system documentation
 
 ---
 
