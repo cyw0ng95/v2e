@@ -21,6 +21,9 @@ type RPCClient struct {
 
 // NewRPCClient creates a new RPC client for broker communication
 func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
+	// Create a dummy logger for the common RPC client
+	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
+
 	// Use deterministic UDS path based on build-time base path and process ID
 	socketPath := fmt.Sprintf("%s_%s.sock", subprocess.DefaultProcUDSBasePath(), processID)
 	var sp *subprocess.Subprocess
@@ -28,14 +31,16 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 	// Only attempt to create a UDS-backed subprocess if the socket exists
 	// to avoid forcing process exit when no broker listener is present
 	if _, err := os.Stat(socketPath); err == nil {
-		sp = subprocess.NewWithUDS(processID, socketPath)
+		var err error
+		sp, err = subprocess.NewWithUDS(processID, socketPath)
+		if err != nil {
+			logger.Warn("Failed to create UDS subprocess, falling back to stdio:", err)
+			sp = subprocess.New(processID)
+		}
 	} else {
 		// Fallback to stdio subprocess (useful for tests that don't set up a socket)
 		sp = subprocess.New(processID)
 	}
-
-	// Create a dummy logger for the common RPC client
-	logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
 
 	client := &RPCClient{
 		sp:         sp,

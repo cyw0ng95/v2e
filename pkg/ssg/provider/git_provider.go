@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
@@ -68,7 +70,7 @@ func (p *SSGProvider) GetState() string {
 }
 
 // Start begins provider execution
-func (p *SSG Provider) Start() error {
+func (p *SSGProvider) Start() error {
 	return nil
 }
 
@@ -125,13 +127,6 @@ func (p *SSGProvider) Fetch(ctx context.Context) error {
 		atomic.AddInt64(&p.progress.Failed, 1)
 		return fmt.Errorf("failed to list guide files: %w", err)
 	}
-
-	count := len(guideFiles)
-	atomic.StoreInt64(&p.progress.Fetched, int64(count))
-	p.progress.LastFetchAt = time.Now()
-
-	return nil
-}
 
 	count := len(guideFiles)
 	atomic.StoreInt64(&p.progress.Fetched, int64(count))

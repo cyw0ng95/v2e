@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -167,12 +168,6 @@ func (p *ATTACKProvider) Store(ctx context.Context) error {
 			time.Sleep(1 * time.Second)
 		}
 
-		atomic.StoreInt64(&p.progress.Stored, int64(stored))
-
-		if err := p.rateLimiter.Wait(ctx); err != nil {
-			return err
-		}
-
 		attackItemJSON, err := json.Marshal(attackItem)
 		if err != nil {
 			atomic.AddInt64(&p.progress.Failed, 1)
@@ -180,7 +175,9 @@ func (p *ATTACKProvider) Store(ctx context.Context) error {
 		}
 
 		// TODO: Use RPCStoreAttack to store each item
+		stored++
 		atomic.StoreInt64(&p.progress.Stored, int64(stored))
+	}
 
 	p.progress.LastStoreAt = time.Now()
 	p.progress.StoreRate = float64(stored) / time.Since(p.progress.LastFetchAt).Seconds()

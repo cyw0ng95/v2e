@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"gorm.io/driver/sqlite"
