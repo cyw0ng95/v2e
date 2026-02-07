@@ -2,10 +2,8 @@
 
 ## TODO
 
-  | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
-  |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
-
-
+| ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
+|-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
 | 221 | pkg/notes/fsm    | Test    | Add comprehensive unit tests for learning_fsm.go (444 lines)                       | 400      | 1        |         |
 | 222 | pkg/notes/fsm    | Test    | Add unit tests for memory_fsm.go (146 lines)                                       | 150      | 1        |         |
 | 223 | pkg/notes/fsm    | Test    | Add unit tests for storage.go (228 lines)                                          | 200      | 1        |         |
@@ -15,20 +13,14 @@
 | 227 | pkg/notes        | Test    | Add unit tests for tiptap.go (261 lines)                                           | 200      | 1        |         |
 | 228 | pkg/notes        | Test    | Add integration tests for FSM state transitions                                    | 300      | 1        |         |
 | 229 | pkg/notes/fsm    | Test    | Add concurrent access tests for LearningFSM (lines 54-67)                          | 200      | 1        |         |
-
 | 263 | website/         | Test    | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files) | 2000     | 1        |         |
 | 264 | website/         | Test    | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks)                      | 400      | 1        |         |
 | 265 | website/         | Test    | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods)                 | 500      | 1        |         |
-
 | 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                      | 600      | 2        |         |
 | 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
-
-
-
 | 238 | pkg/notes        | Docs    | Document FSM state machine transitions with state diagrams                         | 200      | 2        |         |
 | 248 | pkg/notes        | Code    | Add input validation for all learning RPC parameters                               | 200      | 2        |         |
-
 | 020 | cmd/v2broker     | Code    | Implement segmented locks (sharded locks) for large maps                           | 600      | 2        |         |
 | 022 | cmd/v2broker     | Code    | Introduce Optimistic Concurrency Control (OCC) for read-heavy scenarios            | 600      | 2        |         |
 | 038 | cmd/v2broker     | Code    | Research and select lock-free hash map implementation (Cuckoo Filter or SwissMap)  | 600      | 2        |         |
@@ -73,7 +65,6 @@
 | 214 | pkg/proc/subprocess | Code    | Add context-based timeout for message handling                                     | 100      | 2        |         |
 | 251 | website/lib      | Types   | Replace 330+ instances of `any` type with proper TypeScript types in hooks.ts, rpc-client.ts, types.ts | 500      | 2        |         |
 | 260 | website/lib      | Types   | Implement TODO items in lib/types.ts (lines 1004-1070, 1069-1070) - add card_type, author, is_private fields | 100      | 2        |         |
-
 | 266 | website/components | Test    | Add integration tests for major data tables (CVE, CWE, CAPEC, ATT&CK, ASVS)        | 300      | 2        |         |
 | 267 | website/components | Test    | Add component tests for notes-framework.tsx (724 lines, complex state management)  | 200      | 2        |         |
 | 268 | website/components | Test    | Add tests for graph-analysis-page.tsx and graph-viewer.tsx (interactive visualization) | 200      | 2        |         |
@@ -237,4 +228,3 @@
 | 165 | website          | Debt    | Make RPC timeout configurable per request type                                     | 50       | 5        |         |
 | 166 | website          | Debt    | Remove or conditionalize console.log statements in production                      | 25       | 5        |         |
 | 167 | website          | Debt    | Extract magic numbers to configuration constants                                   | 25       | 5        |         |
-
