@@ -268,6 +268,11 @@ func NewWithUDS(id string, socketPath string) (*Subprocess, error) {
 			os.Stderr.WriteString(msg)
 			time.Sleep(retryDelays[attempt])
 		}
+
+		// Close failed connection to prevent resource leak
+		if conn != nil {
+			conn.Close()
+		}
 	}
 
 	// If all retries failed, return error
