@@ -104,24 +104,6 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 050 | cmd/v2broker/perf | Code    | Integrate with existing Optimizer architecture                                     | 400      | 2        |         |
 | 051 | cmd/v2broker/perf | Code    | Add metrics for worker utilization and scaling events                              | 400      | 2        |         |
 | 073 | pkg/cve/remote   | Code    | Implement request prioritization logic                                             | 400      | 2        |         |
-| 074 | pkg/cve/remote   | Code    | Add server push support for relevant endpoints                                     | 400      | 2        |         |
-| 075 | pkg/cve/remote   | Code    | Create connection prewarming mechanism                                             | 400      | 2        |         |
-| 078 | pkg/cve/remote   | Code    | Add connection multiplexing metrics                                                | 400      | 2        |         |
-| 106 | pkg/cve/local    | Code    | Design SmartConnectionPool with query pattern awareness                            | 600      | 2        |         |
-| 107 | pkg/cve/local    | Code    | Implement QueryPatternAnalyzer for detecting frequently used queries               | 600      | 2        |         |
-| 108 | pkg/cve/local    | Code    | Add prepared statement caching based on query patterns                             | 400      | 2        |         |
-| 110 | pkg/cve/local    | Code    | Add read/write separation connection pools                                         | 400      | 2        |         |
-| 115 | pkg/cve/local    | Code    | Implement intelligent batch sizing based on data characteristics                   | 600      | 2        |         |
-| 117 | pkg/cve/local    | Code    | Implement parallel batch operations using worker pools                             | 600      | 2        |         |
-| 135 | pkg/proc         | Code    | Implement intelligent capacity prediction based on historical data                 | 600      | 2        |         |
-| 137 | pkg/proc         | Code    | Add batch pre-allocation strategies                                                | 400      | 2        |         |
-| 168 | pkg/notes        | Code    | Refactor rpc_handlers.go (1527 lines) into smaller, focused modules                | 800      | 2        |         |
-| 186 | pkg/cve/local    | Code    | Replace map[string]interface{} usage with typed structs (542 occurrences)          | 1200     | 2        |         |
-| 187 | pkg/notes        | Code    | Replace map[string]interface{} in RPC handlers with typed request/response structs | 800      | 2        |         |
-| 188 | pkg/cve/local    | Code    | Implement batch query patterns for N+1 query prevention                            | 400      | 2        |         |
-| 191 | pkg/cve/local    | Code    | Add database connection pool health checks and metrics                             | 200      | 2        |         |
-| 195 | pkg/proc/subprocess | Code    | Ensure all network connections are properly closed in error paths                  | 100      | 2        |         |
-| 196 | pkg/notes        | Code    | Add comprehensive input validation for all RPC parameters                          | 400      | 2        |         |
 | 197 | pkg/cve/local    | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify) | 200      | 2        |         |
 | 198 | pkg/cve/remote   | Code    | Add input sanitization for external API parameters                                 | 150      | 2        |         |
 | 212 | pkg/cve/local    | Code    | Add context-based timeout for long-running database queries                        | 150      | 2        |         |
