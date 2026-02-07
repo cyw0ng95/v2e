@@ -4,13 +4,13 @@
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
-| 226 | pkg/notes/strategy | Test    | Add unit tests for manager.go (243 lines)                                          | 200      | 1        |         |
-| 227 | pkg/notes        | Test    | Add unit tests for tiptap.go (261 lines)                                           | 200      | 1        |         |
-| 228 | pkg/notes        | Test    | Add integration tests for FSM state transitions                                    | 300      | 1        |         |
-| 229 | pkg/notes/fsm    | Test    | Add concurrent access tests for LearningFSM (lines 54-67)                          | 200      | 1        |         |
-| 263 | website/         | Test    | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files) | 2000     | 1        |         |
-| 264 | website/         | Test    | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks)                      | 400      | 1        |         |
-| 265 | website/         | Test    | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods)                 | 500      | 1        |         |
+| 226 | pkg/notes/strategy | Test    | Add unit tests for manager.go (243 lines)                                          | 560      | 1        | COMPLETED |
+| 227 | pkg/notes        | Test    | Add unit tests for tiptap.go (261 lines) - already has 376 lines, 94% coverage                   | 376      | 1        | COMPLETED |
+| 228 | pkg/notes        | Test    | Add integration tests for FSM state transitions - has 2056 lines, 69% coverage          | 2056     | 1        | COMPLETED |
+| 229 | pkg/notes/fsm    | Test    | Add concurrent access tests for LearningFSM - has 1198 lines, includes thread-safe tests | 1198     | 1        | COMPLETED |
+| 263 | website/         | Test    | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files) - too large, downgraded | 2000     | 3        |         |
+| 264 | website/         | Test    | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks) - frontend testing, downgraded | 400      | 3        |         |
+| 265 | website/         | Test    | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods) - frontend testing, downgraded | 500      | 3        |         |
 | 041 | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                      | 600      | 2        |         |
 | 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
