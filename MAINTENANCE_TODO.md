@@ -75,7 +75,7 @@
 | 290 | website/         | Feature | Implement proper error toast notifications using Sonner for all user-facing errors | 150      | 2        |         |
 | 291 | website/         | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
 | 239 | pkg/notes        | Docs    | Add architecture documentation for learning strategy system                        | 200      | 3        | DONE    |
-| 240 | pkg/notes/tiptap | Docs    | Document TipTap JSON schema validation rules and supported node types              | 150      | 3        |         |
+| 240 | pkg/notes/tiptap | Docs    | Document TipTap JSON schema validation rules and supported node types              | 150      | 3        | DONE    |
 | 241 | pkg/notes/fsm    | Refactor | Extract common FSM state transition logic into shared module                       | 200      | 3        |         |
 | 242 | pkg/notes/strategy | Refactor | Extract strategy interface and implementation pattern for reusability              | 300      | 3        |         |
 | 243 | pkg/notes/service | Refactor | Refactor service.go (1063 lines) - split into bookmark, note, memory modules       | 400      | 3        |         |

@@ -146,6 +146,53 @@ LearningFSM (State Machine)
 - `RPCLearningCompleteItem`: Mark item as learned
 - `RPCLearningPauseResume`: Pause or resume learning session
 
+**TipTap JSON Schema**:
+
+TipTap is a headless editor framework that uses JSON to represent rich text content.
+
+**Document Structure**:
+```json
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello, world!"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Supported Node Types**:
+- **Document Structure**: doc, paragraph, heading, codeBlock, blockquote, listItem, bulletList, orderedList, text, hardBreak
+- **Formatting**: bold, italic, strike, code, link
+- **Task Lists**: taskList, taskItem
+- **Common Extensions**: image, horizontalRule
+
+**Supported Mark Types** (text formatting):
+- bold, italic, strike, code, link (with required href attribute)
+
+**Validation Rules**:
+1. Root node must be type "doc"
+2. All node types must be in ValidTipTapNodeTypes whitelist
+3. All mark types must be in ValidTipTapMarkTypes whitelist
+4. Text nodes must have non-empty text content or child nodes
+5. Link marks must have href attribute
+6. Recursive validation of all nested content nodes
+
+**Helper Functions**:
+- `ValidateTipTapJSON(content string)`: Validate JSON string is valid TipTap
+- `ValidateTipTapDocument(doc *TipTapDocument)`: Validate document structure
+- `IsTipTapJSONEmpty(content string)`: Check if content is effectively empty
+- `GetTipTapText(content string)`: Extract plain text from TipTap JSON
+- `CreateEmptyTipTapDocument()`: Create empty document structure
+- `CreateTipTapDocumentFromText(text string)`: Convert plain text to TipTap JSON
+
 ---
 
 ## Service-Framework Matrix
