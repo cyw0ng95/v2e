@@ -7,7 +7,7 @@
  | 221 | pkg/notes/fsm    | Test    | Add comprehensive unit tests for learning_fsm.go (444 lines)                       | 400      | 1        | X       |
  | 222 | pkg/notes/fsm    | Test    | Add unit tests for memory_fsm.go (146 lines)                                       | 150      | 1        | X       |
  | 223 | pkg/notes/fsm    | Test    | Add unit tests for storage.go (228 lines)                                          | 200      | 1        | X       |
-| 224 | pkg/notes/strategy | Test    | Add unit tests for bfs.go (142 lines)                                              | 150      | 1        |         |
+ | 224 | pkg/notes/strategy | Test    | Add unit tests for bfs.go (142 lines)                                              | 150      | 1        | X       |
 | 225 | pkg/notes/strategy | Test    | Add unit tests for dfs.go (190 lines)                                              | 200      | 1        |         |
 | 226 | pkg/notes/strategy | Test    | Add unit tests for manager.go (243 lines)                                          | 200      | 1        |         |
 | 227 | pkg/notes        | Test    | Add unit tests for tiptap.go (261 lines)                                           | 200      | 1        |         |
