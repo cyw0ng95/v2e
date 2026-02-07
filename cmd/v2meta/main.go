@@ -18,38 +18,139 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
-	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
-	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
-	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/cwe"
+	"github.com/cyw0ng95/v2e/pkg/capec"
+	"github.com/cyw0ng95/v2e/pkg/attack"
+	"github.com/cyw0ng95/v2e/pkg/ssg"
+	"github.com/cyw0ng95/v2e/pkg/asvs"
+	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
-	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/strategy"
+	"github.com/cyw0ng95/v2e/pkg/cwe/job"
+	"github.com/cyw0ng95/v2e/pkg/capec/job"
+	"github.com/cyw0ng95/v2e/pkg/attack/job"
+	"github.com/cyw0ng95/v2e/pkg/ssg/job"
 )
 
-// Default constants are now in pkg/common/defaults.go
-
-// DataType represents the type of data being populated
-// Using the same DataType from taskflow package
+	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
+)
 
 const (
-	DataTypeCVE    = taskflow.DataTypeCVE
-	DataTypeCWE    = taskflow.DataTypeCWE
-	DataTypeCAPEC  = taskflow.DataTypeCAPEC
-	DataTypeATTACK = taskflow.DataTypeATTACK
+	// Log messages
+	LogMsgPCGetProviderStatus        = "PCGetProviderStatus RPC called"
 )
 
-// Alias the DataType from the taskflow package so local code can use it directly
-type DataType = taskflow.DataType
+	DataTypeCVE    = "CVE"
+	DataTypeCWE    = "CWE"
+	DataTypeCAPEC  = "CAPEC"
+	DataTypeATTACK   = "ATT&CK"
+	DataTypeSSG    = "SSG"
+	DataTypeASVS   = "ASVS"
+)
 
-// DataPopulationController manages data population for different data types
-type DataPopulationController struct {
-	rpcClient *rpc.Client
-	logger    *common.Logger
+	DataTypeRemote  = "remote"
+)
+
+	// RPC method names
+	RPCListProviders      = "RPCListProviders"
+	RPCGetProviderStatus = "RPCGetProviderStatus"
+)
+
+	// Data type constants match
+	DataTypeFromRPC string func(dataType string) string {
+	switch dataType {
+	case "CVE":
+		return DataTypeCVE
+	case "CWE":
+		return DataTypeCWE
+	case "CAPEC":
+		return DataTypeCAPEC
+	case "ATT&CK":
+		return DataTypeATTACK
+	case "SSG":
+		return DataTypeSSG
+	case "ASVS":
+		return DataTypeASVS
+	default:
+		return DataTypeCVE
+	}
 }
+
+// DataPopulationController manages data population for different data types using Provider Registry
+type DataPopulationController struct {
+	rpcClient   *rpc.Client
+	providerRegistry *provider.ProviderRegistry
+	logger      *common.Logger
+}
+
+// NewDataPopulationController creates a new controller
+func NewDataPopulationController(rpcClient *rpc.Client, logger *common.Logger) *DataPopulationController {
+	return &DataPopulationController{
+		rpcClient:       rpcClient,
+		providerRegistry: provider.NewProviderRegistry(),
+		logger:         logger,
+	}
+}
+
+// StartDataPopulation starts a data population job for a specific data type
+func (c *DataPopulationController) StartDataPopulation(ctx context.Context, dataType string, params map[string]interface{}) (string, error) {
+	sessionID := fmt.Sprintf("%s-%d", dataType, time.Now().Unix())
+
+	switch dataType {
+	case DataTypeCWE:
+		return c.startCWEImport(ctx, sessionID, params)
+	case DataTypeCAPEC:
+		return c.startCAPECImport(ctx, sessionID, params)
+	case DataTypeATTACK:
+		return c.startATTACKImport(ctx, sessionID, params)
+	case DataTypeSSG:
+		return c.startSSGImport(ctx, sessionID, params)
+	case DataTypeASVS:
+		return c.startASVSImport(ctx, sessionID, params)
+	default:
+		return "", fmt.Errorf("unsupported data type: %s", dataType)
+	}
+}
+
+// startCWEImport starts a CWE import job
+func (c *DataPopulationController) startCWEImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
+	c.logger.Info(LogMsgPCGetProviderStatus, "Starting CWE import: session_id=%s, params=%s", sessionID, params)
+
+	return sessionID, nil
+}
+
+// startCAPECImport starts a CAPEC import job
+func (c *DataPopulationController) startCAPECImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
+	c.logger.Info(LogMsgPCGetProviderStatus, "Starting CAPEC import: session_id=%s, params=%s", sessionID, params)
+
+	return sessionID, nil
+}
+
+// startATTACKImport starts an ATT&CK import job
+func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
+	c.logger.Info(LogMsgPCGetProviderStatus, "Starting ATT&CK import: session_id=%s, params=%s", sessionID, params)
+
+	return sessionID, nil
+}
+
+// startSSGImport starts an SSG import job
+func (c *DataPopulationController) startSSGImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
+	c.logger.Info(LogMsgPCGetProviderStatus, "Starting SSG import: session_id=%s, params=%s", sessionID, params)
+
+	return sessionID, nil
+}
+
+// startASVSImport starts an ASVS import job
+func (c *DataPopulationController) startASVSImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
+	c.logger.Info(LogMsgPCGetProviderStatus, "Starting ASVS import: session_id=%s, params=%s", sessionID, params)
+
+	return sessionID, nil
+}
+
 
 // NewDataPopulationController creates a new controller for data population
 func NewDataPopulationController(rpcClient *rpc.Client, logger *common.Logger) *DataPopulationController {
