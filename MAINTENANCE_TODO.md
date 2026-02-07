@@ -125,7 +125,7 @@
 | 257 | website/components | Refactor | Split components/ui/sidebar.tsx (726 lines) - extract sidebar subcomponents        | 150      | 3        |         |
 | 258 | website/app      | Refactor | Split app/page.tsx (468 lines) - extract RightColumn component and lazy-loaded imports to separate file | 150      | 3        |         |
 | 259 | website/components | Refactor | Split components/etl-topology-viewer.tsx (409 lines) into smaller focused components | 150      | 3        |         |
-| 269 | website/         | DX      | Remove 29 console.log statements - use proper logger throughout                    | 50       | 3        |         |
+| 269 | website/         | DX      | Remove 29 console.log statements - use proper logger throughout                    | 50       | 3        | DONE    |
 | 272 | website/         | A11y    | Add aria-label to all buttons without text content (only 19 aria-label attributes found in 55 components) | 100      | 3        |         |
 | 273 | website/         | A11y    | Add keyboard navigation support for interactive components (graphs, modals, tables) | 200      | 3        |         |
 | 274 | website/         | A11y    | Add proper role attributes to interactive elements (currently only 12 instances with role=) | 80       | 3        |         |

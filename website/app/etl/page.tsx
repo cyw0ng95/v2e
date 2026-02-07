@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Activity, Cpu, Database, Gauge } from 'lucide-react';
 import { ETLTopologyViewer } from '@/components/etl-topology-viewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { logInfo, logError } from '@/lib/logger';
 
 export default function ETLEnginePage() {
   const { data: etlData, isLoading: etlLoading } = useEtlTree(5000);
@@ -14,7 +15,7 @@ export default function ETLEnginePage() {
   const metrics = metricsData?.metrics;
 
   const handleProviderAction = async (providerId: string, action: 'start' | 'pause' | 'stop') => {
-    console.log('Provider action:', providerId, action);
+    logInfo('ETLEnginePage', `Provider action: ${providerId} ${action}`);
 
     try {
       let response: RPCResponse<{ success: boolean }>;
@@ -43,21 +44,21 @@ export default function ETLEnginePage() {
       }
 
       if (response.retcode !== 0) {
-        console.error('Provider action failed:', response.message);
+        logError('ETLEnginePage', 'Provider action failed', response.message);
         throw new Error(response.message || 'Provider action failed');
       }
 
-      console.log('Provider action successful:', response.data);
+      logInfo('ETLEnginePage', 'Provider action successful', { success: response.data.success });
       // Refetch ETL tree to update UI
       window.location.reload();
     } catch (error) {
-      console.error('Error executing provider action:', error);
+      logError('ETLEnginePage', 'Error executing provider action', error);
       throw error;
     }
   };
 
   const handlePolicyUpdate = async (providerId: string, policy: any) => {
-    console.log('Policy update:', providerId, policy);
+    logInfo('ETLEnginePage', `Policy update: ${providerId}`, { policy });
 
     try {
       const response = await rpcClient.call<{ providerId: string; policy: any }, { success: boolean }>(
@@ -67,13 +68,13 @@ export default function ETLEnginePage() {
       );
 
       if (response.retcode !== 0) {
-        console.error('Policy update failed:', response.message);
+        logError('ETLEnginePage', 'Policy update failed', response.message);
         throw new Error(response.message || 'Policy update failed');
       }
 
-      console.log('Policy updated successfully:', response.data);
+      logInfo('ETLEnginePage', 'Policy updated successfully', { success: response.data.success });
     } catch (error) {
-      console.error('Error updating performance policy:', error);
+      logError('ETLEnginePage', 'Error updating performance policy', error);
       throw error;
     }
   };
