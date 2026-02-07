@@ -4,11 +4,6 @@
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |-----|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
- | 221 | pkg/notes/fsm    | Test    | Add comprehensive unit tests for learning_fsm.go (444 lines)                       | 400      | 1        | X       |
- | 222 | pkg/notes/fsm    | Test    | Add unit tests for memory_fsm.go (146 lines)                                       | 150      | 1        | X       |
- | 223 | pkg/notes/fsm    | Test    | Add unit tests for storage.go (228 lines)                                          | 200      | 1        | X       |
- | 224 | pkg/notes/strategy | Test    | Add unit tests for bfs.go (142 lines)                                              | 150      | 1        | X       |
- | 225 | pkg/notes/strategy | Test    | Add unit tests for dfs.go (190 lines)                                              | 200      | 1        | X       |
 | 226 | pkg/notes/strategy | Test    | Add unit tests for manager.go (243 lines)                                          | 200      | 1        |         |
 | 227 | pkg/notes        | Test    | Add unit tests for tiptap.go (261 lines)                                           | 200      | 1        |         |
 | 228 | pkg/notes        | Test    | Add integration tests for FSM state transitions                                    | 300      | 1        |         |
@@ -48,14 +43,10 @@
 | 135 | pkg/proc         | Code    | Implement intelligent capacity prediction based on historical data                 | 600      | 2        |         |
 | 137 | pkg/proc         | Code    | Add batch pre-allocation strategies                                                | 400      | 2        |         |
 | 168 | pkg/notes        | Code    | Refactor rpc_handlers.go (1527 lines) into smaller, focused modules                | 800      | 2        |         |
-| 179 | pkg/proc/subprocess | Code    | Replace os.Exit(253) with graceful error handling in subprocess.go:273             | 30       | 2        | WONTFIX |
-| 180 | pkg/urn          | Code    | Replace panic(err) with error return in urn.go                                     | 40       | 2        | WONTFIX |
 | 186 | pkg/cve/local    | Code    | Replace map[string]interface{} usage with typed structs (542 occurrences)          | 1200     | 2        |         |
 | 187 | pkg/notes        | Code    | Replace map[string]interface{} in RPC handlers with typed request/response structs | 800      | 2        |         |
 | 188 | pkg/cve/local    | Code    | Implement batch query patterns for N+1 query prevention                            | 400      | 2        |         |
 | 191 | pkg/cve/local    | Code    | Add database connection pool health checks and metrics                             | 200      | 2        |         |
-| 193 | pkg/cve/local    | Code    | Ensure all database connections are properly closed in defer statements            | 100      | 2        | WONTFIX |
-| 194 | pkg/cve/local    | Code    | Ensure all file handles are properly closed with defer                             | 100      | 2        | WONTFIX |
 | 195 | pkg/proc/subprocess | Code    | Ensure all network connections are properly closed in error paths                  | 100      | 2        |         |
 | 196 | pkg/notes        | Code    | Add comprehensive input validation for all RPC parameters                          | 400      | 2        |         |
 | 197 | pkg/cve/local    | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify) | 200      | 2        |         |
@@ -64,7 +55,6 @@
 | 213 | pkg/cve/remote   | Code    | Add context-based timeout for external API calls                                   | 100      | 2        |         |
 | 214 | pkg/proc/subprocess | Code    | Add context-based timeout for message handling                                     | 100      | 2        |         |
 | 251 | website/lib      | Types   | Replace 330+ instances of `any` type with proper TypeScript types in hooks.ts, rpc-client.ts, types.ts | 500      | 2        |         |
-| 260 | website/lib      | Types   | Implement TODO items in lib/types.ts (lines 1004-1070, 1069-1070) - add card_type, author, is_private fields | 100      | 2        | WONTFIX |
 | 266 | website/components | Test    | Add integration tests for major data tables (CVE, CWE, CAPEC, ATT&CK, ASVS)        | 300      | 2        |         |
 | 267 | website/components | Test    | Add component tests for notes-framework.tsx (724 lines, complex state management)  | 200      | 2        |         |
 | 268 | website/components | Test    | Add tests for graph-analysis-page.tsx and graph-viewer.tsx (interactive visualization) | 200      | 2        |         |
@@ -74,19 +64,13 @@
 | 289 | website/         | Code    | Add TypeScript strict mode compliance - fix implicit any types                     | 300      | 2        |         |
 | 290 | website/         | Feature | Implement proper error toast notifications using Sonner for all user-facing errors | 150      | 2        |         |
 | 291 | website/         | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
-| 239 | pkg/notes        | Docs    | Add architecture documentation for learning strategy system                        | 200      | 3        | DONE    |
-| 240 | pkg/notes/tiptap | Docs    | Document TipTap JSON schema validation rules and supported node types              | 150      | 3        | DONE    |
-| 241 | pkg/notes/fsm    | Refactor | Extract common FSM state transition logic into shared module                       | 200      | 3        | DONE    |
-| 242 | pkg/notes/strategy | Refactor | Extract strategy interface and implementation pattern for reusability              | 300      | 3        | DONE    |
 | 243 | pkg/notes/service | Refactor | Refactor service.go (1063 lines) - split into bookmark, note, memory modules       | 400      | 3        |         |
 | 244 | pkg/notes/fsm    | Perf    | Optimize ItemGraph link lookups using index data structure                         | 150      | 3        |         |
 | 246 | pkg/notes/fsm    | Code    | Add user ID/session management for multi-user support                              | 400      | 3        |         |
 | 247 | pkg/notes        | Code    | Add rate limiting for learning operations to prevent abuse                         | 150      | 3        |         |
-| 250 | pkg/notes        | Code    | Add metrics for FSM state transitions and strategy usage                           | 150      | 3        | DONE    |
 | 017 | cmd/v2broker     | Config  | Create configuration hooks for batch size tuning                                   | 200      | 3        |         |
 | 048 | cmd/v2broker/perf | Code    | Implement worker affinity to reduce cache misses                                   | 400      | 3        |         |
 | 077 | pkg/cve/remote   | Code    | Maintain backward compatibility with HTTP/1.1                                      | 200      | 3        |         |
-| 111 | pkg/cve/local    | Code    | Integrate with existing GORM configuration                                         | 200      | 3        | DONE    |
 | 112 | pkg/cve/local    | Code    | Add metrics for connection pool efficiency                                         | 200      | 3        |         |
 | 116 | pkg/cve/local    | Code    | Add batch merging strategy to combine small batches                                | 400      | 3        |         |
 | 118 | pkg/cve/local    | Code    | Add batch size metrics and tuning recommendations                                  | 200      | 3        |         |
@@ -103,11 +87,9 @@
 | 177 | pkg/ssg/parser/guide | Code    | Refactor guide.go (512 lines) - extract parsing helpers                            | 300      | 3        |         |
 | 181 | pkg/proc/subprocess | Code    | Extract subprocess reconnection logic into dedicated module                        | 200      | 3        |         |
 | 182 | pkg/proc/subprocess | Code    | Add lock contention metrics for handlers map access                                | 150      | 3        |         |
-| 183 | pkg/proc/subprocess | Code    | Evaluate using atomic operations for hot path statistics counters                  | 100      | 3        | DONE    |
 | 184 | pkg/proc/subprocess | Code    | Add goroutine leak detection and monitoring                                        | 200      | 3        |         |
 | 185 | cmd/v2broker/transport | Code    | Add lock contention metrics for transport operations                               | 150      | 3        |         |
 | 189 | pkg/cve/local    | Code    | Add sync.Pool for frequently allocated database query structures                   | 200      | 3        |         |
-| 190 | pkg/proc/subprocess | Code    | Add sync.Pool for frequently allocated message structures                          | 150      | 3        | DONE    |
 | 192 | pkg/cve/local    | Code    | Implement connection leak detection with automatic cleanup                         | 250      | 3        |         |
 | 199 | pkg/notes        | Code    | Add rate limiting for RPC endpoints to prevent abuse                               | 300      | 3        |         |
 | 200 | pkg/cve/taskflow/executor | Test    | Add comprehensive concurrent execution tests for job executor                      | 400      | 3        |         |
@@ -125,11 +107,10 @@
 | 257 | website/components | Refactor | Split components/ui/sidebar.tsx (726 lines) - extract sidebar subcomponents        | 150      | 3        |         |
 | 258 | website/app      | Refactor | Split app/page.tsx (468 lines) - extract RightColumn component and lazy-loaded imports to separate file | 150      | 3        |         |
 | 259 | website/components | Refactor | Split components/etl-topology-viewer.tsx (409 lines) into smaller focused components | 150      | 3        |         |
-| 269 | website/         | DX      | Remove 29 console.log statements - use proper logger throughout                    | 50       | 3        | DONE    |
 | 272 | website/         | A11y    | Add aria-label to all buttons without text content (only 19 aria-label attributes found in 55 components) | 100      | 3        |         |
 | 273 | website/         | A11y    | Add keyboard navigation support for interactive components (graphs, modals, tables) | 200      | 3        |         |
 | 274 | website/         | A11y    | Add proper role attributes to interactive elements (currently only 12 instances with role=) | 80       | 3        |         |
-| 275 | website/         | Code    | Fix array index keys in components (notes-framework.tsx:570, notes-dashboard.tsx:259) | 20       | 3        |         |
+| 275 | website/components | Code    | Fix array index keys in components (notes-framework.tsx:570, notes-dashboard.tsx:259) | 20       | 3        |         |
 | 279 | website/         | Perf    | Implement React.memo for 64 components (currently only 24 use useMemo/useCallback) | 300      | 3        |         |
 | 281 | website/         | Perf    | Add virtualization for large tables (CVE, CWE, CAPEC lists can be thousands of rows) | 200      | 3        |         |
 | 282 | website/lib      | Perf    | Optimize data fetching - implement request deduplication and caching for repeated calls | 150      | 3        |         |
@@ -161,8 +142,6 @@
 | 204 | pkg/cve/local    | Test    | Add benchmark tests for database query patterns                                    | 200      | 4        |         |
 | 205 | pkg/cve/remote   | Test    | Add benchmark tests for HTTP client connection pooling                             | 200      | 4        |         |
 | 206 | cmd/v2broker/perf | Test    | Add benchmark tests for optimizer worker pool                                      | 200      | 4        |         |
-| 207 | pkg/cwe/local    | Code    | Implement TODO at line 425: parse comma-separated string to []string for Phase field | 50       | 4        | X       |
-| 208 | pkg/cwe/local    | Code    | Implement TODO at line 574: parse comma-separated string to []string for Phase field | 50       | 4        | X       |
 | 215 | pkg/notes        | Docs    | Add inline comments for complex business logic in service.go                       | 150      | 4        |         |
 | 216 | pkg/notes        | Docs    | Document RPC handler patterns and error handling strategies                        | 200      | 4        |         |
 | 217 | pkg/proc/subprocess | Docs    | Document message batching and flush mechanisms                                     | 150      | 4        |         |
@@ -173,10 +152,6 @@
 | 283 | website/         | Docs    | Add component documentation (JSDoc comments) for all 55 components                 | 300      | 4        |         |
 | 286 | website/         | Debt    | Standardize export patterns - choose between default and named exports (32 use default, 23 use named) | 100      | 4        |         |
 | 293 | website/         | Types   | Create proper interface for memoized component props (RightColumn in page.tsx uses complex props object) | 50       | 4        |         |
-| 026 | pkg/notes        | Coverage | Dramatically improve coverage from 14.0% to at least 60%                           | 800      | 5        | DONE    |
-| 027 | pkg/ssg          | Test    | Add comprehensive test suite for local package (currently 33.4%)                   | 600      | 5        | DONE    |
-| 028 | pkg/ssg          | Test    | Add comprehensive test suite for parser package (currently 42.9%)                  | 600      | 5        | DONE    |
-| 029 | pkg/ssg          | Coverage | Improve coverage for remote package (currently 26.0%)                              | 400      | 5        | DONE    |
 | 030 | cmd/v2analysis   | Test    | Add test level definitions (currently 0 occurrences)                               | 400      | 5        |         |
 | 031 | cmd/v2analysis   | Coverage | Improve coverage from 6.8% to at least 50%                                         | 600      | 5        |         |
 | 032 | cmd/v2access     | Coverage | Improve coverage from 9.4% to at least 50%                                         | 400      | 5        |         |
