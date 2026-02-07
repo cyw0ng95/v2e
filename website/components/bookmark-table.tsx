@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { rpcClient } from '@/lib/rpc-client';
 import { Bookmark, NoteModel as Note, MemoryCard } from '@/lib/types';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('bookmark-table');
 
 interface BookmarkTableProps {
   initialBookmarks?: Bookmark[];
@@ -61,7 +64,7 @@ const BookmarkTable: React.FC<BookmarkTableProps> = ({ initialBookmarks = [] }) 
       }
     } catch (err) {
       setError('Error loading bookmarks');
-      console.error('Error loading bookmarks:', err);
+      logger.error('Error loading bookmarks', err);
     } finally {
       setLoading(false);
     }

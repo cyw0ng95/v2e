@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { rpcClient } from '@/lib/rpc-client';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('notes-dashboard');
 
 const NotesDashboard: React.FC = () => {
   const [stats, setStats] = useState({
@@ -113,7 +116,7 @@ const NotesDashboard: React.FC = () => {
       setRecentItems(recentItemsData);
     } catch (err) {
       setError('Failed to load dashboard data');
-      console.error('Error loading dashboard data:', err);
+      logger.error('Error loading dashboard data', err);
     } finally {
       setLoading(false);
     }

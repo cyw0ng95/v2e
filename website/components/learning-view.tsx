@@ -19,6 +19,9 @@ import {
   ChevronRightIcon as ChevronRight,
   CheckCircleIcon as CheckCircle
 } from '@/components/icons';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('learning-view');
 
 interface LearningViewProps {
   urn: string;
@@ -140,7 +143,7 @@ const LearningView: React.FC<LearningViewProps> = ({ urn, onClose }) => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load object');
-      console.error('Error loading object data:', err);
+      logger.error('Error loading object data', err);
     } finally {
       setLoading(false);
     }
@@ -173,7 +176,7 @@ const LearningView: React.FC<LearningViewProps> = ({ urn, onClose }) => {
         }
       }
     } catch (err) {
-      console.error('Error checking bookmark status:', err);
+      logger.error('Error checking bookmark status', err);
     }
   };
 
@@ -205,7 +208,7 @@ const LearningView: React.FC<LearningViewProps> = ({ urn, onClose }) => {
         }
       }
     } catch (err) {
-      console.error('Error toggling bookmark:', err);
+      logger.error('Error toggling bookmark', err);
       setError('Failed to bookmark item');
     }
   };
@@ -236,7 +239,7 @@ const LearningView: React.FC<LearningViewProps> = ({ urn, onClose }) => {
         }
       }
     } catch (err) {
-      console.error('Error adding note:', err);
+      logger.error('Error adding note', err);
       setError('Failed to add note');
     }
   };
@@ -270,7 +273,7 @@ const LearningView: React.FC<LearningViewProps> = ({ urn, onClose }) => {
         }
       }
     } catch (err) {
-      console.error('Error creating card:', err);
+      logger.error('Error creating card', err);
       setError('Failed to create card');
     }
   };

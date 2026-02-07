@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { rpcClient } from '@/lib/rpc-client';
 import { MemoryCard } from '@/lib/types';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('memory-card-study');
 
 interface MemoryCardStudyProps {
   bookmarkId?: number;
@@ -18,7 +21,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
 }) => {
   // Validate props early
   if (!isValidFilterState(filterState)) {
-    console.warn(`Invalid filterState: ${filterState}. Using 'to_review' instead.`);
+    logger.warn(`Invalid filterState: ${filterState}. Using 'to_review' instead.`);
     filterState = 'to_review';
   }
   const [cards, setCards] = useState<MemoryCard[]>([]);
@@ -33,7 +36,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
   // Debounced loadCards function to prevent rapid successive calls
   const debouncedLoadCards = useCallback(() => {
     if (isLoadingRef.current) {
-      console.debug('[memory-card-study] Skipping loadCards - already loading');
+      logger.debug('Skipping loadCards - already loading');
       return;
     }
     
@@ -62,7 +65,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
   }, [filterState]); // Remove cards.length dependency to prevent circular triggers
 
   const loadCards = async () => {
-    console.debug('[memory-card-study] Loading cards with params:', { bookmarkId, filterState });
+    logger.debug('Loading cards with params', { bookmarkId, filterState });
     setLoading(true);
     setError(null);
     
@@ -90,7 +93,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
           remaining: response.payload.total || 0
         });
         
-        console.debug('[memory-card-study] Loaded', memoryCards.length, 'cards');
+        logger.debug('Loaded', { count: memoryCards.length, type: 'cards' });
       } else {
         setError('Failed to load memory cards');
         setCards([]);
@@ -100,7 +103,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
       setError('Error loading memory cards');
       setCards([]);
       setCurrentCardIndex(0);
-      console.error('[memory-card-study] Error loading memory cards:', err);
+      logger.error('Error loading memory cards', err);
     } finally {
       setLoading(false);
     }
@@ -147,7 +150,7 @@ const MemoryCardStudy: React.FC<MemoryCardStudyProps> = ({
       }
     } catch (err) {
       setError('Error rating memory card');
-      console.error('Error rating memory card:', err);
+      logger.error('Error rating memory card', err);
     }
   };
 
