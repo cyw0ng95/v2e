@@ -42,6 +42,7 @@ type BaseProviderFSM struct {
 	errorCount     int64
 	permitsHeld    int32
 	executor       func() error
+	eventQueue     chan *Event
 }
 
 // ProviderConfig holds configuration for creating a provider FSM
