@@ -20,6 +20,9 @@ import {
 } from "@/lib/hooks";
 import { PlayIcon as Play, SquareIcon as Square, PauseIcon as Pause, RotateCwIcon as RotateCw } from '@/components/icons';
 import { toast } from "sonner";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger('session-control');
 
 // Helper function to capitalize data type for display
 function formatDataType(dataType: string): string {
@@ -74,9 +77,8 @@ export function SessionControl() {
   };
 
   const handleStopSession = () => {
-    // Prevent multiple simultaneous stop requests
     if (stopSession.isPending || isStopping) {
-      console.warn('Stop session request already pending or in progress');
+      logger.warn('Stop session request already pending or in progress');
       return;
     }
     

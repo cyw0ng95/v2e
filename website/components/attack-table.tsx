@@ -23,6 +23,9 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('attack-table');
 
 interface AttackTableProps {
   type?: 'techniques' | 'tactics' | 'mitigations' | 'software' | 'groups'; // Default to techniques
@@ -127,7 +130,7 @@ export function AttackTable({ type = 'techniques', onViewDetail }: AttackTablePr
       return;
     }
 
-    console.warn('AttackTable: onViewDetail not provided; no action taken.');
+    logger.warn('onViewDetail not provided; no action taken.');
   };
 
   // Determine table headers based on type
