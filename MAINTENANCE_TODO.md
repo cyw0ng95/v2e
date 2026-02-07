@@ -77,7 +77,7 @@
 | 239 | pkg/notes        | Docs    | Add architecture documentation for learning strategy system                        | 200      | 3        | DONE    |
 | 240 | pkg/notes/tiptap | Docs    | Document TipTap JSON schema validation rules and supported node types              | 150      | 3        | DONE    |
 | 241 | pkg/notes/fsm    | Refactor | Extract common FSM state transition logic into shared module                       | 200      | 3        | DONE    |
-| 242 | pkg/notes/strategy | Refactor | Extract strategy interface and implementation pattern for reusability              | 300      | 3        |         |
+| 242 | pkg/notes/strategy | Refactor | Extract strategy interface and implementation pattern for reusability              | 300      | 3        | DONE    |
 | 243 | pkg/notes/service | Refactor | Refactor service.go (1063 lines) - split into bookmark, note, memory modules       | 400      | 3        |         |
 | 244 | pkg/notes/fsm    | Perf    | Optimize ItemGraph link lookups using index data structure                         | 150      | 3        |         |
 | 246 | pkg/notes/fsm    | Code    | Add user ID/session management for multi-user support                              | 400      | 3        |         |
