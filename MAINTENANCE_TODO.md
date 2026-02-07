@@ -92,7 +92,6 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 274 | website/         | A11y    | Add proper role attributes to interactive elements (currently only 12 instances with role=) | 80       | 3        |         |
 | 275 | website/components | Code    | Fix array index keys in components (notes-framework.tsx:570, notes-dashboard.tsx:259) | 20       | 3        |         |
 | 279 | website/         | Perf    | Implement React.memo for 64 components (currently only 24 use useMemo/useCallback) | 300      | 3        |         |
-| 328 | pkg/             | Code    | Review and replace 3 panic() usage with proper error handling                    | 50       | 2        |         |
 | 329 | pkg/cve/provider  | Code    | Implement store logic using RPC calls to local service (TODO in cve_provider.go)      | 200      | 2        |         |
 | 330 | pkg/ssg/provider  | Code    | Implement store logic using RPC calls to ssg service (TODO in git_provider.go)       | 200      | 2        |         |
 | 331 | pkg/ssg/parser    | Code    | Parse SSG references (TODO in guide.go)                                      | 150      | 2        |         |
