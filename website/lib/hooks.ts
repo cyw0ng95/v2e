@@ -307,16 +307,10 @@ export function useStartCWEImport() {
     try {
       setIsPending(true);
       setError(null);
-      
-      const response = await rpcClient.startCWEImport(params);
-      
-      if (response.retcode !== 0) {
-        throw new Error(response.message || 'Failed to start CWE import');
-      }
-      
-      if (options?.onSuccess) {
-        options.onSuccess(response.payload);
-      }
+
+      // TODO: Implement CWE import RPC method
+      throw new Error('CWE import not yet implemented');
+
     } catch (err: any) {
       setError(err);
       logger.error('Error starting CWE import', err);
@@ -339,16 +333,10 @@ export function useStartCAPECImport() {
     try {
       setIsPending(true);
       setError(null);
-      
-      const response = await rpcClient.startCAPECImport(params);
-      
-      if (response.retcode !== 0) {
-        throw new Error(response.message || 'Failed to start CAPEC import');
-      }
-      
-      if (options?.onSuccess) {
-        options.onSuccess(response.payload);
-      }
+
+      // TODO: Implement CAPEC import RPC method
+      throw new Error('CAPEC import not yet implemented');
+
     } catch (err: any) {
       setError(err);
       logger.error('Error starting CAPEC import', err);
@@ -371,16 +359,10 @@ export function useStartATTACKImport() {
     try {
       setIsPending(true);
       setError(null);
-      
-      const response = await rpcClient.startATTACKImport(params);
-      
-      if (response.retcode !== 0) {
-        throw new Error(response.message || 'Failed to start ATT&CK import');
-      }
-      
-      if (options?.onSuccess) {
-        options.onSuccess(response.payload);
-      }
+
+      // TODO: Implement ATT&CK import RPC method
+      throw new Error('ATT&CK import not yet implemented');
+
     } catch (err: any) {
       setError(err);
       logger.error('Error starting ATT&CK import', err);
