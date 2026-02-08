@@ -6,6 +6,7 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |-----|-------------------|---------|------------------------------------------------------------------------------------|---------|----------|---------|
+| 350 | website/          | Bug     | Dark mode switch button not functional - investigate and fix theme toggle mechanism | 50      | 1        |         |
 | 291 | website/          | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
 | 345 | website/          | Perf    | Add React.memo and performance optimizations for large components                  | 400      | 2        |         |
 | 346 | website/          | Feature | Implement responsive design improvements for mobile/tablet layouts                 | 300      | 2        |         |
