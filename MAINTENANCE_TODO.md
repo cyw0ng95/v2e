@@ -28,6 +28,18 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 073 | pkg/cve/remote   | Code    | Implement request prioritization logic                                             | 400      | 2        |         |
 | 197 | pkg/cve/local    | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify) | 200      | 2        |         |
 | 198 | pkg/cve/remote   | Code    | Add input sanitization for external API parameters                                 | 150      | 2        |         |
+| 337 | cmd/v2access     | Security | Add request rate limiting to prevent DoS attacks (e.g., 100 req/min per IP)       | 100      | 1        |         |
+| 338 | cmd/v2access     | Security | Add request body size limits to prevent memory exhaustion attacks                   | 100      | 1        |         |
+| 339 | pkg/proc/subprocess | Security | Add input length validation for all string parameters (CVE ID max 50 chars, CWE ID max 20) | 150      | 2        |         |
+| 340 | cmd/v2access     | Security | Implement proper path validation to ensure file access is restricted to safe directories (server.go:57-74) | 200      | 2        |         |
+| 341 | cmd/v2access     | Security | Prevent following symbolic links when serving static files                    | 150      | 2        |         |
+| 342 | pkg/notes        | Security | Implement audit logging for sensitive operations (delete, create, modify)              | 200      | 3        |         |
+| 343 | pkg/notes        | Security | Add input sanitization for user-generated content (notes, memory cards) to prevent stored XSS | 200      | 3        |         |
+| 344 | cmd/v2local      | Security | Validate and restrict XML import file paths to allowed directories (capec_handlers.go:49) | 150      | 3        |         |
+| 345 | cmd/v2access     | Security | Add timeout configuration for static file requests                           | 100      | 3        |         |
+| 346 | pkg/proc/subprocess | Security | Implement request context validation to prevent malicious payload injection              | 200      | 3        |         |
+| 347 | cmd/v2access     | Security | Add file type validation when serving static files (server.go:65)                | 100      | 3        |         |
+| 348 | cmd/*             | Security | Regular security audits and dependency vulnerability scanning                       | 100      | 3        |         |
 | 212 | pkg/cve/local    | Code    | Add context-based timeout for long-running database queries                        | 150      | 2        |         |
 | 213 | pkg/cve/remote   | Code    | Add context-based timeout for external API calls                                   | 100      | 2        |         |
 | 214 | pkg/proc/subprocess | Code    | Add context-based timeout for message handling                                     | 100      | 2        |         |
