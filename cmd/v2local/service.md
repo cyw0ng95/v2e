@@ -782,6 +782,7 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, 
   - `major_class` (string, optional): Filter by major class
   - `minor_class` (string, optional): Filter by minor class
   - `status` (string, optional): Filter by status
+  - `learning_state` (string, optional): Filter by FSM state - "new", "learning", "reviewed", "mastered", "archived"
   - `author` (string, optional): Filter by author
   - `is_private` (bool, optional): Filter by privacy
   - `offset` (int, optional): Pagination offset
