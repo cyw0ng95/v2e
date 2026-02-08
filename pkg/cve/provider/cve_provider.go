@@ -141,24 +141,6 @@ func (p *CVEProvider) Store(ctx context.Context) error {
 	return p.Execute()
 }
 
-// GetProgress returns provider progress
-func (p *CVEProvider) GetProgress() *fsm.ProviderProgress {
-	return &fsm.ProviderProgress{
-		Fetched: 0,
-		Stored:  0,
-		Failed:  0,
-	}
-}
-
-// GetConfig returns provider configuration
-func (p *CVEProvider) GetConfig() *fsm.ProviderConfig {
-	// Return a minimal config since storage is private
-	return &fsm.ProviderConfig{
-		ID:       p.GetID(),
-		Executor: p.execute,
-	}
-}
-
 // GetStats returns provider statistics
 func (p *CVEProvider) GetStats() map[string]interface{} {
 	p.mu.RLock()

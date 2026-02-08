@@ -4,206 +4,146 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
-	"github.com/cyw0ng95/v2e/pkg/meta/provider"
+	"github.com/cyw0ng95/v2e/pkg/meta/storage"
 	"github.com/cyw0ng95/v2e/pkg/ssg/remote"
 )
 
-// SSGProvider implements DataSourceProvider for SSG data
+// SSGProvider implements ProviderFSM for SSG data
 type SSGProvider struct {
-	config       *provider.ProviderConfig
-	rateLimiter  *provider.RateLimiter
-	progress     *provider.ProviderProgress
-	cancelFunc   context.CancelFunc
-	mu           sync.RWMutex
-	ctx          context.Context
-	gitClient    *remote.GitClient
-	eventHandler func(*fsm.Event) error
+	*fsm.BaseProviderFSM
+	repoURL    string
+	batchSize  int
+	maxRetries int
+	retryDelay time.Duration
+	mu         sync.RWMutex
+	gitClient  *remote.GitClient
 }
 
-// NewSSGProvider creates a new SSG provider
+// NewSSGProvider creates a new SSG provider with FSM support
 // repoURL is the Git repository URL
-func NewSSGProvider(repoURL string) (*SSGProvider, error) {
-	baseConfig := provider.DefaultProviderConfig()
-	baseConfig.Name = "SSG"
-	baseConfig.DataType = "SSG"
-	baseConfig.BatchSize = 10
-	baseConfig.MaxRetries = 3
-	baseConfig.RetryDelay = 10 * time.Second
-	baseConfig.RateLimitPermits = 5
-
+func NewSSGProvider(repoURL string, store *storage.Store) (*SSGProvider, error) {
 	if repoURL == "" {
 		repoURL = "https://github.com/OWASP/wg-ssg"
 	}
 
-	return &SSGProvider{
-		config:      baseConfig,
-		rateLimiter: provider.NewRateLimiter(baseConfig.RateLimitPermits),
-		progress:    &provider.ProviderProgress{},
-		gitClient:   remote.NewGitClient(repoURL, ""),
-	}, nil
+	provider := &SSGProvider{
+		repoURL:    repoURL,
+		batchSize:  10,
+		maxRetries: 3,
+		retryDelay: 10 * time.Second,
+		gitClient:  remote.NewGitClient(repoURL, ""),
+	}
+
+	// Create base FSM with custom executor
+	base, err := fsm.NewBaseProviderFSM(fsm.ProviderConfig{
+		ID:           "ssg",
+		ProviderType: "ssg",
+		Storage:      store,
+		Executor:     provider.execute,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	provider.BaseProviderFSM = base
+	return provider, nil
 }
 
 // Initialize sets up the SSG provider context
 func (p *SSGProvider) Initialize(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.ctx, p.cancelFunc = context.WithCancel(ctx)
 	return nil
 }
 
-// GetID returns the provider ID
-func (p *SSGProvider) GetID() string {
-	return p.config.DataType
-}
+// execute performs SSG fetch and store operations
+func (p *SSGProvider) execute() error {
+	currentState := p.GetState()
 
-// GetType returns the provider type
-func (p *SSGProvider) GetType() string {
-	return p.config.DataType
-}
-
-// GetState returns the current state as a string
-func (p *SSGProvider) GetState() fsm.ProviderState {
-	return fsm.ProviderIdle
-}
-
-// Start begins provider execution
-func (p *SSGProvider) Start() error {
-	return nil
-}
-
-// Pause pauses provider execution
-func (p *SSGProvider) Pause() error {
-	return nil
-}
-
-// Resume resumes provider execution
-func (p *SSGProvider) Resume() error {
-	return nil
-}
-
-// SetEventHandler sets the callback for event bubbling to MacroFSM
-func (p *SSGProvider) SetEventHandler(handler func(*fsm.Event) error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.eventHandler = handler
-}
-
-// Transition attempts to transition to a new state
-func (p *SSGProvider) Transition(newState fsm.ProviderState) error {
-	// State transition validation not yet implemented
-	// SSG provider uses a simplified state model (always IDLE)
-	return nil
-}
-
-// Stop terminates provider execution
-func (p *SSGProvider) Stop() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cancelFunc != nil {
-		p.cancelFunc()
+	// Check if we should be running
+	if currentState != fsm.ProviderRunning {
+		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
 	}
 
-	return nil
-}
+	p.mu.RLock()
+	gitClient := p.gitClient
+	p.mu.RUnlock()
 
-// OnQuotaRevoked handles quota revocation
-func (p *SSGProvider) OnQuotaRevoked(revokedCount int) error {
-	return nil
-}
-
-// OnQuotaGranted handles quota grant
-func (p *SSGProvider) OnQuotaGranted(grantedCount int) error {
-	return nil
-}
-
-// OnRateLimited handles rate limiting
-func (p *SSGProvider) OnRateLimited(retryAfter time.Duration) error {
-	return nil
-}
-
-// Execute performs the fetch operation
-func (p *SSGProvider) Execute() error {
-	return p.Fetch(p.ctx)
-}
-
-// Fetch performs a Git pull to get latest SSG data
-func (p *SSGProvider) Fetch(ctx context.Context) error {
-	// Reset counter
-	atomic.StoreInt64(&p.progress.Fetched, 0)
-
-	err := p.gitClient.Pull()
+	// Fetch latest SSG data from Git
+	err := gitClient.Pull()
 	if err != nil {
-		atomic.AddInt64(&p.progress.Failed, 1)
 		return fmt.Errorf("failed to pull SSG repository: %w", err)
 	}
 
-	guideFiles, err := p.gitClient.ListGuideFiles()
+	guideFiles, err := gitClient.ListGuideFiles()
 	if err != nil {
-		atomic.AddInt64(&p.progress.Failed, 1)
 		return fmt.Errorf("failed to list guide files: %w", err)
 	}
 
-	count := len(guideFiles)
-	atomic.StoreInt64(&p.progress.Fetched, int64(count))
-	p.progress.LastFetchAt = time.Now()
+	if len(guideFiles) == 0 {
+		return fmt.Errorf("no guide files found in SSG repository")
+	}
+
+	// TODO: Import each guide via RPC to v2local service
+	// The v2local service provides RPCSSGImportGuide for SSG storage
+	// For each guideFile in guideFiles:
+	//   - Call RPCSSGImportGuide with the guide path
 
 	return nil
 }
 
-// Store stores fetched SSG data using local service RPC
-// Note: The v2local service provides RPCSSGImportGuide for SSG storage
-// Store method requires RPC client integration to call v2local service
-func (p *SSGProvider) Store(ctx context.Context) error {
-	return fmt.Errorf("SSG store not yet implemented - requires RPC client integration with v2local service")
-}
-
-// GetProgress returns a copy of current progress metrics
-func (p *SSGProvider) GetProgress() *provider.ProviderProgress {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	return &provider.ProviderProgress{
-		Fetched:     atomic.LoadInt64(&p.progress.Fetched),
-		Stored:      atomic.LoadInt64(&p.progress.Stored),
-		Failed:      atomic.LoadInt64(&p.progress.Failed),
-		LastFetchAt: p.progress.LastFetchAt,
-		LastStoreAt: p.progress.LastStoreAt,
-		FetchRate:   p.progress.FetchRate,
-		StoreRate:   p.progress.StoreRate,
-	}
-}
-
-// GetConfig returns the provider configuration
-func (p *SSGProvider) GetConfig() *provider.ProviderConfig {
-	return p.config
-}
-
-// Cleanup releases resources held by the SSG provider
+// Cleanup releases any resources held by the provider
 func (p *SSGProvider) Cleanup(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cancelFunc != nil {
-		p.cancelFunc()
-	}
-
 	return nil
+}
+
+// Fetch performs the fetch operation
+func (p *SSGProvider) Fetch(ctx context.Context) error {
+	return p.Execute()
+}
+
+// Store performs the store operation
+func (p *SSGProvider) Store(ctx context.Context) error {
+	return p.Execute()
 }
 
 // GetStats returns provider statistics
 func (p *SSGProvider) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return map[string]interface{}{
+		"batch_size": p.batchSize,
+		"repo_url":   p.repoURL,
+	}
+}
+
+// SetBatchSize sets the batch size
+func (p *SSGProvider) SetBatchSize(size int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.batchSize = size
+}
 
-	return map[string]interface{}{
-		"fetched": atomic.LoadInt64(&p.progress.Fetched),
-		"stored":  atomic.LoadInt64(&p.progress.Stored),
-		"failed":  atomic.LoadInt64(&p.progress.Failed),
-	}
+// GetBatchSize returns the batch size
+func (p *SSGProvider) GetBatchSize() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.batchSize
+}
+
+// GetRepoURL returns the repository URL
+func (p *SSGProvider) GetRepoURL() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.repoURL
+}
+
+// SetRepoURL sets the repository URL
+func (p *SSGProvider) SetRepoURL(url string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.repoURL = url
+	// Also update the git client
+	p.gitClient = remote.NewGitClient(url, "")
 }

@@ -1,6 +1,7 @@
 package fsm
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -285,6 +286,7 @@ func TestProviderFSM_CheckpointPersistence(t *testing.T) {
 	}
 
 	// Test failed checkpoint
+	itemURN := urn.MustParse("v2e::nvd::cve::CVE-2024-12999")
 	err = provider.SaveCheckpoint(itemURN, false, "Test error")
 	if err != nil {
 		t.Fatalf("SaveCheckpoint with error failed: %v", err)
