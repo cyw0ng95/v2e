@@ -74,7 +74,6 @@ export function RatingButtons({ onRate, intervals, disabled = false }: RatingBut
   return (
     <div className="flex items-center justify-center gap-3 flex-wrap">
       <RatingButton
-        rating="again"
         label="Again"
         interval={intervals.again}
         icon={<RotateCcw className="w-6 h-6" />}
@@ -84,7 +83,6 @@ export function RatingButtons({ onRate, intervals, disabled = false }: RatingBut
         disabled={disabled}
       />
       <RatingButton
-        rating="hard"
         label="Hard"
         interval={intervals.hard}
         icon={<Zap className="w-6 h-6" />}
@@ -94,7 +92,6 @@ export function RatingButtons({ onRate, intervals, disabled = false }: RatingBut
         disabled={disabled}
       />
       <RatingButton
-        rating="good"
         label="Good"
         interval={intervals.good}
         icon={<ThumbsUp className="w-6 h-6" />}
@@ -104,7 +101,6 @@ export function RatingButtons({ onRate, intervals, disabled = false }: RatingBut
         disabled={disabled}
       />
       <RatingButton
-        rating="easy"
         label="Easy"
         interval={intervals.easy}
         icon={<Sparkles className="w-6 h-6" />}

@@ -103,7 +103,12 @@ export function McardsStudy() {
   // Fetch cards with learning_state filter
   const { data: cardsData, isLoading } = useMemoryCards({});
 
-  const cards = useMemo(() => cardsData?.memory_cards || [], [cardsData]);
+  const cards = useMemo(() => {
+    if (!cardsData) return [];
+    // Handle RPCResponse structure
+    const response = cardsData as unknown as { payload?: { memory_cards?: any[] } };
+    return response.payload?.memory_cards || [];
+  }, [cardsData]);
 
   // Study session state
   const [currentIndex, setCurrentIndex] = useState(0);
