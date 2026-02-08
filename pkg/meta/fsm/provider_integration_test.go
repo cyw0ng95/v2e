@@ -245,10 +245,10 @@ func TestProviderFSM_CheckpointPersistence(t *testing.T) {
 		t.Fatalf("Failed to create provider FSM: %v", err)
 	}
 
-	// Save multiple checkpoints
-	itemURN := urn.MustParse("v2e::nvd::cve::CVE-2024-12233")
+	// Save multiple checkpoints with unique URNs
 	for i := 0; i < 5; i++ {
-		err := provider.SaveCheckpoint(itemURN, true, "")
+		checkpointURN := urn.MustParse(fmt.Sprintf("v2e::nvd::cve::CVE-2024-1223%d", i))
+		err := provider.SaveCheckpoint(checkpointURN, true, "")
 		if err != nil {
 			t.Fatalf("SaveCheckpoint failed: %v", err)
 		}
@@ -272,8 +272,9 @@ func TestProviderFSM_CheckpointPersistence(t *testing.T) {
 
 	// Verify checkpoint data
 	for i, checkpoint := range checkpoints {
-		if checkpoint.URN != itemURN.Key() {
-			t.Errorf("Checkpoint %d URN = %v, want %v", i, checkpoint.URN, itemURN.Key())
+		expectedURN := urn.MustParse(fmt.Sprintf("v2e::nvd::cve::CVE-2024-1223%d", i))
+		if checkpoint.URN != expectedURN.Key() {
+			t.Errorf("Checkpoint %d URN = %v, want %v", i, checkpoint.URN, expectedURN.Key())
 		}
 		if checkpoint.ProviderID != provider.GetID() {
 			t.Errorf("Checkpoint %d ProviderID = %v, want %v", i, checkpoint.ProviderID, provider.GetID())
