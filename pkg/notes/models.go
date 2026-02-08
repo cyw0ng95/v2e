@@ -83,10 +83,10 @@ type MemoryCardModel struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 
 	// Additional fields for card metadata
-	CardType  string         `gorm:"type:varchar(32);default:'basic'" json:"card_type"` // Card type: basic, cloze, reverse
-	Author    string         `gorm:"type:varchar(128);default:''" json:"author"`        // Card creator/author
-	IsPrivate bool           `gorm:"default:false" json:"is_private"`                   // Whether card is private
-	Metadata  map[string]any `gorm:"type:json" json:"metadata,omitempty"`               // Additional metadata
+	CardType  string                 `gorm:"type:varchar(32);default:'basic'" json:"card_type"` // Card type: basic, cloze, reverse
+	Author    string                 `gorm:"type:varchar(128);default:''" json:"author"`        // Card creator/author
+	IsPrivate bool                   `gorm:"default:false" json:"is_private"`                   // Whether card is private
+	Metadata  map[string]interface{} `gorm:"serializer:json" json:"metadata,omitempty"`         // Additional metadata
 
 	// MemoryFSM state fields (embedded for GORM)
 	FSMState        string `gorm:"column:fsm_state;default:'new'"`
