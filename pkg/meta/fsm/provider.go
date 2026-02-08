@@ -401,24 +401,6 @@ func (p *BaseProviderFSM) SaveCheckpoint(itemURN *urn.URN, success bool, errorMs
 	return nil
 }
 
-// GetStats returns provider statistics
-func (p *BaseProviderFSM) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	return map[string]interface{}{
-		"id":              p.id,
-		"provider_type":   p.providerType,
-		"state":           string(p.state),
-		"last_checkpoint": p.lastCheckpoint,
-		"processed_count": p.processedCount,
-		"error_count":     p.errorCount,
-		"permits_held":    p.permitsHeld,
-		"created_at":      p.createdAt.Format(time.RFC3339),
-		"updated_at":      p.updatedAt.Format(time.RFC3339),
-	}
-}
-
 // loadState attempts to load persisted state from storage
 func (p *BaseProviderFSM) loadState() error {
 	if p.storage == nil {
