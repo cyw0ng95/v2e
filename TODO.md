@@ -5,49 +5,23 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 ## TODO
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
-|------|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
-| 041  | cmd/v2broker     | Code    | Migrate existing map-based router to lock-free implementation                      | 600      | 2        |         |
-| 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
-| 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
-| 238 | pkg/notes        | Docs    | Document FSM state machine transitions with state diagrams                         | 200      | 2        |         |
-| 248 | pkg/notes        | Code    | Add input validation for all learning RPC parameters                               | 200      | 2        |         |
-| 020 | cmd/v2broker     | Code    | Implement segmented locks (sharded locks) for large maps                           | 600      | 2        |         |
-| 022 | cmd/v2broker     | Code    | Introduce Optimistic Concurrency Control (OCC) for read-heavy scenarios            | 600      | 2        |         |
-| 038 | cmd/v2broker     | Code    | Research and select lock-free hash map implementation (Cuckoo Filter or SwissMap)  | 600      | 2        |         |
-| 039 | cmd/v2broker     | Code    | Implement lock-free routing table with type-based fast indexing                    | 600      | 2        |         |
-| 045 | cmd/v2broker/perf | Code    | Design AdaptiveWorkerPool struct with load prediction capabilities                 | 600      | 2        |         |
-| 046 | cmd/v2broker/perf | Code    | Implement load predictor using historical metrics and current system state         | 600      | 2        |         |
-| 047 | cmd/v2broker/perf | Code    | Add elastic scaling logic to add/remove workers dynamically                        | 600      | 2        |         |
-| 049 | cmd/v2broker/perf | Code    | Add work-stealing algorithm for load balancing across workers                      | 600      | 2        |         |
-| 016 | cmd/v2broker     | Code    | Monitor batch efficiency metrics (throughput vs latency trade-off)                 | 400      | 2        |         |
-| 021 | cmd/v2broker     | Code    | Add per-method locks for high-frequency RPC handlers                               | 400      | 2        |         |
-| 025 | cmd/v2broker     | Code    | Add lock contention metrics to monitoring                                          | 400      | 2        |         |
-| 040 | cmd/v2broker     | Code    | Add routing cache layer to avoid repeated lookups                                  | 400      | 2        |         |
-| 050 | cmd/v2broker/perf | Code    | Integrate with existing Optimizer architecture                                     | 400      | 2        |         |
-| 051 | cmd/v2broker/perf | Code    | Add metrics for worker utilization and scaling events                              | 400      | 2        |         |
-| 073 | pkg/cve/remote   | Code    | Implement request prioritization logic                                             | 400      | 2        |         |
-| 197 | pkg/cve/local    | Code    | Audit database queries for SQL injection vulnerabilities (GORM should prevent but verify) | 200      | 2        |         |
-| 198 | pkg/cve/remote   | Code    | Add input sanitization for external API parameters                                 | 150      | 2        |         |
-| 212 | pkg/cve/local    | Code    | Add context-based timeout for long-running database queries                        | 150      | 2        |         |
-| 213 | pkg/cve/remote   | Code    | Add context-based timeout for external API calls                                   | 100      | 2        |         |
-| 214 | pkg/proc/subprocess | Code    | Add context-based timeout for message handling                                     | 100      | 2        |         |
-| 251 | website/lib      | Types   | Replace 330+ instances of `any` type with proper TypeScript types in hooks.ts, rpc-client.ts, types.ts | 500      | 2        |         |
-| 266 | website/components | Test    | Add integration tests for major data tables (CVE, CWE, CAPEC, ATT&CK, ASVS)        | 300      | 2        |         |
-| 267 | website/components | Test    | Add component tests for notes-framework.tsx (724 lines, complex state management)  | 200      | 2        |         |
-| 268 | website/components | Test    | Add tests for graph-analysis-page.tsx and graph-viewer.tsx (interactive visualization) | 200      | 2        |         |
-| 271 | website/         | Security | Review and sanitize all user inputs in RPC client (lib/rpc-client.ts)              | 150      | 2        |         |
-| 277 | website/         | Code    | Add error boundaries for client-side error handling                                | 100      | 2        |         |
-| 278 | website/components | Code    | Add loading states and error handling to all async data fetching (incomplete in several components) | 150      | 2        |         |
-| 289 | website/         | Code    | Add TypeScript strict mode compliance - fix implicit any types                     | 300      | 2        |         |
-| 290 | website/         | Feature | Implement proper error toast notifications using Sonner for all user-facing errors | 150      | 2        |         |
-| 291 | website/         | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
-| 263 | website/         | Test    | Add comprehensive test coverage - website/ has 0 test files (55 components, 70 source files) - too large, downgraded | 2000     | 3        |         |
-| 264 | website/         | Test    | Add unit tests for lib/hooks.ts (2439 lines, 16 custom hooks) - frontend testing, downgraded | 400      | 3        |         |
-| 265 | website/         | Test    | Add unit tests for lib/rpc-client.ts (1975 lines, 60+ RPC methods) - frontend testing, downgraded | 500      | 3        |         |
-| 243 | pkg/notes/service | Refactor | Refactor service.go (1063 lines) - split into bookmark, note, memory modules       | 400      | 3        |         |
-| 244 | pkg/notes/fsm    | Perf    | Optimize ItemGraph link lookups using index data structure                         | 150      | 3        |         |
-| 246 | pkg/notes/fsm    | Code    | Add user ID/session management for multi-user support                              | 400      | 3        |         |
-| 247 | pkg/notes        | Code    | Add rate limiting for learning operations to prevent abuse                         | 150      | 3        |         |
+|-----|-------------------|---------|------------------------------------------------------------------------------------|---------|----------|---------|
+| 251 | website/lib       | Types   | Replace 330+ instances of `any` type with proper TypeScript types in hooks.ts, rpc-client.ts, types.ts | 500      | 2        | ✅ DONE |
+| 277 | website/          | Code    | Add error boundaries for client-side error handling                                | 100      | 2        | ✅ DONE |
+| 278 | website/components| Code    | Add loading states and error handling to all async data fetching (incomplete in several components) | 150      | 2        | ✅ DONE |
+| 289 | website/          | Code    | Add TypeScript strict mode compliance - fix implicit any types                     | 300      | 2        | ✅ DONE |
+| 290 | website/          | Feature | Implement proper error toast notifications using Sonner for all user-facing errors | 150      | 2        | ✅ DONE |
+| 291 | website/          | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
+| 340 | website/lib       | Feature | Create design system foundation with spacing, typography, and color tokens         | 300      | 1        | ✅ DONE |
+| 341 | website/components| Feature | Standardize button component with variants, sizes, and loading states              | 250      | 1        | ✅ DONE |
+| 342 | website/components| Feature | Create grouped navigation sidebar with breadcrumb navigation                       | 400      | 1        | ✅ DONE |
+| 343 | website/components| Feature | Create empty state and loading state components with skeletons                     | 200      | 1        | ✅ DONE |
+| 344 | website/components| A11y    | Add accessibility improvements (aria-label, role, keyboard navigation)             | 300      | 1        | ✅ DONE |
+| 345 | website/          | Perf    | Add React.memo and performance optimizations for large components                  | 400      | 2        |         |
+| 346 | website/          | Feature | Implement responsive design improvements for mobile/tablet layouts                 | 300      | 2        |         |
+| 347 | website/components| Feature | Add virtualization for large tables (>100 rows)                                    | 200      | 2        |         |
+| 348 | website/components| Feature | Create onboarding tour and help system components                                  | 350      | 3        |         |
+| 349 | website/          | Docs    | Add JSDoc comments and component documentation                                     | 500      | 3        |         |
 | 017 | cmd/v2broker     | Config  | Create configuration hooks for batch size tuning                                   | 200      | 3        |         |
 | 048 | cmd/v2broker/perf | Code    | Implement worker affinity to reduce cache misses                                   | 400      | 3        |         |
 | 077 | pkg/cve/remote   | Code    | Maintain backward compatibility with HTTP/1.1                                      | 200      | 3        |         |
