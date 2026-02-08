@@ -37,7 +37,7 @@ type SpawnResult struct {
 
 // Broker manages subprocesses and message passing.
 type Broker struct {
-	processes map[string]*Process
+	processes *sync.Map
 	messages  chan *proc.Message
 	mu        sync.RWMutex
 	ctx       context.Context
@@ -46,10 +46,10 @@ type Broker struct {
 	logger    *common.Logger
 
 	bus             *mq.Bus
-	metricsRegistry *metrics.Registry // New metrics tracking system
+	metricsRegistry *metrics.Registry
 	rpcEndpoints    map[string][]string
 	endpointsMu     sync.RWMutex
-	pendingRequests map[string]*PendingRequest
+	pendingRequests *sync.Map
 	pendingMu       sync.RWMutex
 	correlationSeq  uint64
 	spawner         Spawner
@@ -66,7 +66,7 @@ func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := mq.NewBus(ctx, 100)
 	b := &Broker{
-		processes:        make(map[string]*Process),
+		processes:        &sync.Map{},
 		messages:         bus.Channel(),
 		ctx:              ctx,
 		cancel:           cancel,
@@ -74,7 +74,7 @@ func NewBroker() *Broker {
 		bus:              bus,
 		metricsRegistry:  metrics.NewRegistry(),
 		rpcEndpoints:     make(map[string][]string),
-		pendingRequests:  make(map[string]*PendingRequest),
+		pendingRequests:  &sync.Map{},
 		correlationSeq:   0,
 		transportManager: transport.NewTransportManager(),
 	}
@@ -96,30 +96,32 @@ func NewBroker() *Broker {
 
 // InsertProcessForTest inserts a pre-constructed process into the broker (testing only).
 func (b *Broker) InsertProcessForTest(p *Process) {
-	b.mu.Lock()
-	b.processes[p.info.ID] = p
-	b.mu.Unlock()
+	b.processes.Store(p.info.ID, p)
 }
 
 // ProcessCount returns the number of tracked processes.
 func (b *Broker) ProcessCount() int {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return len(b.processes)
+	count := 0
+	b.processes.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	return count
 }
 
 // PendingRequestCount returns the number of pending request entries.
 func (b *Broker) PendingRequestCount() int {
-	b.pendingMu.RLock()
-	defer b.pendingMu.RUnlock()
-	return len(b.pendingRequests)
+	count := 0
+	b.pendingRequests.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	return count
 }
 
 // AddPendingRequest registers a pending request entry. Intended for tests and benchmarks.
 func (b *Broker) AddPendingRequest(correlationID string, pending *PendingRequest) {
-	b.pendingMu.Lock()
-	b.pendingRequests[correlationID] = pending
-	b.pendingMu.Unlock()
+	b.pendingRequests.Store(correlationID, pending)
 }
 
 // SetLogger sets the logger for the broker.

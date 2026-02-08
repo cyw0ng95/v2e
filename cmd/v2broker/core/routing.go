@@ -39,14 +39,9 @@ func (b *Broker) RouteMessage(msg *proc.Message, sourceProcess string) error {
 	if msg.Type == proc.MessageTypeResponse && msg.CorrelationID != "" {
 		b.logger.Debug("Received response message: id=%s correlation_id=%s from=%s", msg.ID, msg.CorrelationID, msg.Source)
 		// Use atomic load-and-delete operation to reduce lock contention
-		b.pendingMu.Lock()
-		pending, exists := b.pendingRequests[msg.CorrelationID]
-		if exists {
-			delete(b.pendingRequests, msg.CorrelationID)
-		}
-		b.pendingMu.Unlock()
-
-		if exists {
+		value, loaded := b.pendingRequests.LoadAndDelete(msg.CorrelationID)
+		if loaded {
+			pending := value.(*PendingRequest)
 			b.logger.Debug("Routing response to pending request: correlation_id=%s", msg.CorrelationID)
 			select {
 			case pending.ResponseChan <- msg:

@@ -113,9 +113,7 @@ func (b *Broker) restartProcess(p *Process) {
 	b.logger.Info("Restarting process %s: attempt %d/%d", processID, restartCount, maxRestarts)
 
 	// Delete old process from map
-	b.mu.Lock()
-	delete(b.processes, processID)
-	b.mu.Unlock()
+	b.processes.Delete(processID)
 
 	// Delay before restart
 	time.Sleep(1 * time.Second)
@@ -134,26 +132,24 @@ func (b *Broker) restartProcess(p *Process) {
 	}
 
 	// Copy restart count to new process
-	b.mu.RLock()
-	if newProc, exists := b.processes[processID]; exists {
+	value, exists := b.processes.Load(processID)
+	if exists {
+		newProc := value.(*Process)
 		newProc.mu.Lock()
 		if newProc.restartConfig != nil {
 			newProc.restartConfig.RestartCount = restartCount
 		}
 		newProc.mu.Unlock()
 	}
-	b.mu.RUnlock()
 }
 
 // Kill terminates a process by ID.
 func (b *Broker) Kill(id string) error {
-	b.mu.RLock()
-	proc, exists := b.processes[id]
-	b.mu.RUnlock()
-
+	value, exists := b.processes.Load(id)
 	if !exists {
 		return fmt.Errorf("process with id '%s' not found", id)
 	}
+	proc := value.(*Process)
 
 	proc.mu.RLock()
 	status := proc.info.Status
@@ -199,13 +195,11 @@ func (b *Broker) Kill(id string) error {
 
 // GetProcess returns information about a process by ID.
 func (b *Broker) GetProcess(id string) (*ProcessInfo, error) {
-	b.mu.RLock()
-	proc, exists := b.processes[id]
-	b.mu.RUnlock()
-
+	value, exists := b.processes.Load(id)
 	if !exists {
 		return nil, fmt.Errorf("process with id '%s' not found", id)
 	}
+	proc := value.(*Process)
 
 	proc.mu.RLock()
 	defer proc.mu.RUnlock()
@@ -216,17 +210,15 @@ func (b *Broker) GetProcess(id string) (*ProcessInfo, error) {
 
 // ListProcesses returns information about all managed processes.
 func (b *Broker) ListProcesses() []*ProcessInfo {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	result := make([]*ProcessInfo, 0, len(b.processes))
-	for _, proc := range b.processes {
+	result := make([]*ProcessInfo, 0)
+	b.processes.Range(func(key, value interface{}) bool {
+		proc := value.(*Process)
 		proc.mu.RLock()
 		info := *proc.info
 		proc.mu.RUnlock()
 		result = append(result, &info)
-	}
-
+		return true
+	})
 	return result
 }
 
@@ -236,17 +228,16 @@ func (b *Broker) Shutdown() error {
 
 	b.cancel()
 
-	b.mu.RLock()
-	processIDs := make([]string, 0, len(b.processes))
-	for id := range b.processes {
-		processIDs = append(processIDs, id)
-	}
-	b.mu.RUnlock()
+	processIDs := make([]string, 0)
+	b.processes.Range(func(key, value interface{}) bool {
+		processIDs = append(processIDs, key.(string))
+		return true
+	})
 
 	for _, id := range processIDs {
-		proc, exists := b.processes[id]
+		value, exists := b.processes.Load(id)
 		if exists {
-			proc.mu.RLock()
+			proc := value.(*Process)
 			status := proc.info.Status
 			proc.mu.RUnlock()
 

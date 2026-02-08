@@ -46,11 +46,14 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 
 	for {
 		// Check if process still exists and is running
-		b.mu.RLock()
-		p, exists := b.processes[processID]
-		b.mu.RUnlock()
+		value, exists := b.processes.Load(processID)
+		if !exists {
+			b.logger.Debug("Process %s no longer running, stopping UDS message reading", processID)
+			return
+		}
+		p := value.(*Process)
 
-		if !exists || p.info.Status != ProcessStatusRunning {
+		if p.info.Status != ProcessStatusRunning {
 			b.logger.Debug("Process %s no longer running, stopping UDS message reading", processID)
 			return
 		}
@@ -59,11 +62,14 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 		msg, err := transport.Receive()
 		if err != nil {
 			// Check if process exited
-			b.mu.RLock()
-			p, exists = b.processes[processID]
-			b.mu.RUnlock()
+			value, exists := b.processes.Load(processID)
+			if !exists {
+				b.logger.Debug("Process %s exited, stopping UDS message reading", processID)
+				return
+			}
+			p := value.(*Process)
 
-			if !exists || p.info.Status != ProcessStatusRunning {
+			if p.info.Status != ProcessStatusRunning {
 				b.logger.Debug("Process %s exited, stopping UDS message reading", processID)
 				return
 			}
@@ -111,23 +117,23 @@ func (b *Broker) readUDSMessages(processID string, transport transport.Transport
 		// Handle subprocess_ready event - close the ready channel to signal
 		// that the subprocess has initialized and registered its handlers
 		if msg.Type == proc.MessageTypeEvent && msg.ID == "subprocess_ready" {
-			b.mu.RLock()
-			p, exists := b.processes[processID]
-			b.mu.RUnlock()
-
-			if exists {
-				p.mu.Lock()
-				if p.ready != nil {
-					select {
-					case <-p.ready:
-						// Already closed
-					default:
-						close(p.ready)
-						b.logger.Debug("Process %s signaled ready", processID)
-					}
-				}
-				p.mu.Unlock()
+			value, exists := b.processes.Load(processID)
+			if !exists {
+				return
 			}
+			p := value.(*Process)
+
+			p.mu.Lock()
+			if p.ready != nil {
+				select {
+				case <-p.ready:
+					// Already closed
+				default:
+					close(p.ready)
+					b.logger.Debug("Process %s signaled ready", processID)
+				}
+			}
+			p.mu.Unlock()
 		}
 
 		// Route the message through the broker's router

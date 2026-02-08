@@ -29,15 +29,11 @@ func (b *Broker) InvokeRPC(sourceProcess, targetProcess, rpcMethod string, paylo
 	correlationID := b.GenerateCorrelationID()
 
 	responseChan := make(chan *proc.Message, 1)
-
-	b.pendingMu.Lock()
-	b.pendingRequests[correlationID] = &PendingRequest{SourceProcess: sourceProcess, ResponseChan: responseChan, Timestamp: time.Now()}
-	b.pendingMu.Unlock()
+	pending := &PendingRequest{SourceProcess: sourceProcess, ResponseChan: responseChan, Timestamp: time.Now()}
+	b.pendingRequests.Store(correlationID, pending)
 
 	defer func() {
-		b.pendingMu.Lock()
-		delete(b.pendingRequests, correlationID)
-		b.pendingMu.Unlock()
+		b.pendingRequests.Delete(correlationID)
 		close(responseChan)
 	}()
 

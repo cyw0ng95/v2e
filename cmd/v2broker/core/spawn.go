@@ -74,10 +74,7 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 
 // spawnInternal handles the common logic for spawning processes.
 func (b *Broker) spawnInternal(id, command string, args []string, restartConfig *RestartConfig) (*ProcessInfo, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if _, exists := b.processes[id]; exists {
+	if _, exists := b.processes.Load(id); exists {
 		return nil, fmt.Errorf("process with id '%s' already exists", id)
 	}
 
@@ -145,7 +142,7 @@ func (b *Broker) spawnInternal(id, command string, args []string, restartConfig 
 	}
 
 	info.PID = cmd.Process.Pid
-	b.processes[id] = proc
+	b.processes.Store(id, proc)
 
 	// Create a copy of the process info to return, before starting goroutines that might modify it
 	infoCopy := *info
@@ -230,11 +227,11 @@ func (b *Broker) loadDetectedBinaries() error {
 
 	// Predefined list of expected service names (v2* prefixed)
 	expectedServices := map[string]bool{
-		"v2access":  true,
-		"v2remote":  true,
-		"v2local":   true,
-		"v2meta":    true,
-		"v2sysmon":  true,
+		"v2access":   true,
+		"v2remote":   true,
+		"v2local":    true,
+		"v2meta":     true,
+		"v2sysmon":   true,
 		"v2analysis": true,
 	}
 
@@ -327,13 +324,10 @@ func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
 			// The subprocess uses this normalized ID for its internal ProcessID
 			processID := normalizeServiceName(s.name)
 
-			b.mu.Lock()
-			if _, exists := b.processes[processID]; exists {
-				b.mu.Unlock()
+			if _, exists := b.processes.Load(processID); exists {
 				resultChan <- spawnResult{name: processID, err: fmt.Errorf("process with id '%s' already exists", processID)}
 				return
 			}
-			b.mu.Unlock()
 
 			ctx, cancel := context.WithCancel(b.ctx)
 			cmd := exec.CommandContext(ctx, "./"+s.name)
@@ -370,9 +364,7 @@ func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
 			}
 
 			info.PID = cmd.Process.Pid
-			b.mu.Lock()
-			b.processes[processID] = proc
-			b.mu.Unlock()
+			b.processes.Store(processID, proc)
 
 			// Start UDS message reading goroutine
 			if b.transportManager != nil {
