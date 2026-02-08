@@ -129,8 +129,55 @@ func (p *CWEProvider) execute() error {
 			return fmt.Errorf("failed to save checkpoint for %s: %w", cweItem.ID, err)
 		}
 	}
-
 	return nil
+}
+
+// Cleanup releases any resources held by the provider
+func (p *CWEProvider) Cleanup(ctx context.Context) error {
+	return nil
+}
+
+// Fetch performs the fetch operation
+func (p *CWEProvider) Fetch(ctx context.Context) error {
+	return p.Execute()
+}
+
+// Store performs the store operation
+func (p *CWEProvider) Store(ctx context.Context) error {
+	return p.Execute()
+}
+
+// GetStats returns provider statistics
+func (p *CWEProvider) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return map[string]interface{}{
+		"batch_size": p.batchSize,
+	}
+}
+
+// GetConfig returns provider configuration
+func (p *CWEProvider) GetConfig() *provider.ProviderConfig {
+	return p.BaseProviderFSM.GetConfig()
+}
+
+// Fetch performs the fetch operation (delegates to FSM Execute)
+func (p *CWEProvider) Fetch(ctx context.Context) error {
+	return p.Execute()
+}
+
+// Store performs the store operation (delegates to FSM Execute)
+func (p *CWEProvider) Store(ctx context.Context) error {
+	return p.Execute()
+}
+
+// GetStats returns provider statistics
+func (p *CWEProvider) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return map[string]interface{}{
+		"batch_size": p.batchSize,
+	}
 }
 
 // SetBatchSize sets the batch size
@@ -159,11 +206,4 @@ func (p *CWEProvider) GetBatchSize() int {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.batchSize
-}
-
-// SetBatchSize sets the batch size
-func (p *CWEProvider) SetBatchSize(size int) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.batchSize = size
 }

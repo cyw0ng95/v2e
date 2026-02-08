@@ -11,6 +11,7 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
+	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
@@ -54,7 +55,7 @@ func NewCAPECProvider(localPath string, store *storage.Store) (*CAPECProvider, e
 	return provider, nil
 }
 
-// Initialize sets up the CAPEC provider context
+// Initialize sets up to CAPEC provider context
 func (p *CAPECProvider) Initialize(ctx context.Context) error {
 	return nil
 }
@@ -98,7 +99,7 @@ func (p *CAPECProvider) execute() error {
 
 		// Create URN for checkpointing
 		capecID := attackPattern.ID
-		itemURN := urn.MustParse(fmt.Sprintf("v2e::mitre::capec::%s", capecID))
+		itemURN := urn.MustParse(fmt.Sprintf("v2e::mitre::capec::%d", capecID))
 
 		// Store CAPEC (TODO: implement actual storage via RPC)
 		_, err := json.Marshal(attackPattern)
@@ -113,41 +114,76 @@ func (p *CAPECProvider) execute() error {
 
 		success := true
 		errorMsg := ""
-		// TODO: Use RPCStoreCAPEC to store each item
 
 		// Save checkpoint
 		if err := p.SaveCheckpoint(itemURN, success, errorMsg); err != nil {
-			return fmt.Errorf("failed to save checkpoint for %s: %w", capecID, err)
+			return fmt.Errorf("failed to save checkpoint for %d: %w", capecID, err)
 		}
 	}
 
 	return nil
 }
 
-// GetLocalPath returns the local file path
+// GetLocalPath returns to local file path
 func (p *CAPECProvider) GetLocalPath() string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.localPath
 }
 
-// SetLocalPath sets the local file path
+// SetLocalPath sets to local file path
 func (p *CAPECProvider) SetLocalPath(path string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.localPath = path
 }
 
-// GetBatchSize returns the batch size
+// GetBatchSize returns to batch size
 func (p *CAPECProvider) GetBatchSize() int {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.batchSize
 }
 
-// SetBatchSize sets the batch size
+// SetBatchSize sets to batch size
 func (p *CAPECProvider) SetBatchSize(size int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.batchSize = size
+}
+
+// Cleanup releases any resources held by the provider
+func (p *CAPECProvider) Cleanup(ctx context.Context) error {
+	return nil
+}
+
+// Fetch performs the fetch operation
+func (p *CAPECProvider) Fetch(ctx context.Context) error {
+	return p.Execute()
+}
+
+// Store performs the store operation
+func (p *CAPECProvider) Store(ctx context.Context) error {
+	return p.Execute()
+}
+
+// GetStats returns provider statistics
+func (p *CAPECProvider) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return map[string]interface{}{
+		"batch_size": p.batchSize,
+	}
+}
+
+// GetConfig returns provider configuration
+func (p *CAPECProvider) GetConfig() *provider.ProviderConfig {
+	cfg := provider.DefaultProviderConfig()
+	cfg.Name = p.GetID()
+	cfg.DataType = p.GetType()
+	cfg.LocalPath = p.localPath
+	cfg.BatchSize = p.batchSize
+	cfg.MaxRetries = p.maxRetries
+	cfg.RetryDelay = p.retryDelay
+	return cfg
 }

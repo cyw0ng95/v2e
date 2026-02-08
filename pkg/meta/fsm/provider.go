@@ -93,6 +93,24 @@ func (p *BaseProviderFSM) GetType() string {
 	return p.providerType
 }
 
+// GetProgress returns to provider progress metrics
+func (p *BaseProviderFSM) GetProgress() interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	return map[string]interface{}{
+		"processedCount": p.processedCount,
+		"errorCount":     p.errorCount,
+	}
+}
+
+// GetStorage returns the storage instance
+func (p *BaseProviderFSM) GetStorage() *storage.Store {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.storage
+}
+
 // GetState returns the current provider state
 func (p *BaseProviderFSM) GetState() ProviderState {
 	p.mu.RLock()

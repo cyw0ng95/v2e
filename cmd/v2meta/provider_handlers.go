@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	asvsprovider "github.com/cyw0ng95/v2e/pkg/asvs/provider"
+	attackprovider "github.com/cyw0ng95/v2e/pkg/attack/provider"
+	capecprovider "github.com/cyw0ng95/v2e/pkg/capec/provider"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	cveprovider "github.com/cyw0ng95/v2e/pkg/cve/provider"
 	cweprovider "github.com/cyw0ng95/v2e/pkg/cwe/provider"
-	capecprovider "github.com/cyw0ng95/v2e/pkg/capec/provider"
-	attackprovider "github.com/cyw0ng95/v2e/pkg/attack/provider"
-	ssgprovider "github.com/cyw0ng95/v2e/pkg/ssg/provider"
-	asvsprovider "github.com/cyw0ng95/v2e/pkg/asvs/provider"
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	ssgprovider "github.com/cyw0ng95/v2e/pkg/ssg/provider"
 )
 
 // Global registry of data source providers
@@ -22,29 +22,35 @@ var providers []provider.DataSourceProvider
 func initProviders(logger *common.Logger) error {
 	var providerList []provider.DataSourceProvider
 
+	// Get storage DB from FSM infrastructure
+	storageDB := GetFSMStorageDB()
+	if storageDB == nil {
+		return fmt.Errorf("storage DB not initialized")
+	}
+
 	// CVE Provider
-	cveProv, err := cveprovider.NewCVEProvider("")
+	cveProv, err := cveprovider.NewCVEProvider("", storageDB)
 	if err != nil {
 		return fmt.Errorf("failed to create CVE provider: %w", err)
 	}
 	providerList = append(providerList, cveProv)
 
 	// CWE Provider
-	cweProv, err := cweprovider.NewCWEProvider("")
+	cweProv, err := cweprovider.NewCWEProvider("", storageDB)
 	if err != nil {
 		return fmt.Errorf("failed to create CWE provider: %w", err)
 	}
 	providerList = append(providerList, cweProv)
 
 	// CAPEC Provider
-	capecProv, err := capecprovider.NewCAPECProvider("")
+	capecProv, err := capecprovider.NewCAPECProvider("", storageDB)
 	if err != nil {
 		return fmt.Errorf("failed to create CAPEC provider: %w", err)
 	}
 	providerList = append(providerList, capecProv)
 
 	// ATT&CK Provider
-	attackProv, err := attackprovider.NewATTACKProvider("")
+	attackProv, err := attackprovider.NewATTACKProvider("", storageDB)
 	if err != nil {
 		return fmt.Errorf("failed to create ATT&CK provider: %w", err)
 	}
@@ -94,8 +100,8 @@ func GetProviders() []provider.DataSourceProvider {
 
 // ProviderStatus represents the status of all providers
 type ProviderStatus struct {
-	TotalProviders int                      `json:"totalProviders"`
-	AllProviders   []ProviderStatusItem     `json:"providers"`
+	TotalProviders int                  `json:"totalProviders"`
+	AllProviders   []ProviderStatusItem `json:"providers"`
 }
 
 // GetStatus returns the status of all providers
@@ -118,10 +124,10 @@ func GetStatus() *ProviderStatus {
 
 // ProviderStatusItem represents the status of a single provider
 type ProviderStatusItem struct {
-	ID       string                      `json:"id"`
-	Type     string                      `json:"type"`
-	State    string                      `json:"state"`
-	Progress *provider.ProviderProgress  `json:"progress"`
+	ID       string                     `json:"id"`
+	Type     string                     `json:"type"`
+	State    string                     `json:"state"`
+	Progress *provider.ProviderProgress `json:"progress"`
 }
 
 // RPCGetProviderList returns a list of all providers

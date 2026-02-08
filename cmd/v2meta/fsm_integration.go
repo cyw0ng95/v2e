@@ -209,22 +209,22 @@ func CreateFSMRPCHandlers(logger *common.Logger) map[string]subprocess.Handler {
 func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params map[string]interface{}
-		if err := msg.UnmarshalParams(&params); err != nil {
-			return subprocess.NewErrorResponse(msg, err.Error())
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			return subprocess.NewErrorResponse(msg, err.Error()), nil
 		}
 
 		providerID, ok := params["provider_id"].(string)
 		if !ok {
-			return subprocess.NewErrorResponse(msg, "provider_id parameter required")
+			return subprocess.NewErrorResponse(msg, "provider_id parameter required"), nil
 		}
 
 		provider := GetFSMProvider(providerID)
 		if provider == nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID)), nil
 		}
 
 		if err := provider.Start(); err != nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to start provider: %v", err))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to start provider: %v", err)), nil
 		}
 
 		logger.Info("Started provider: %s", providerID)
@@ -238,22 +238,22 @@ func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 func createFSMStopProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params map[string]interface{}
-		if err := msg.UnmarshalParams(&params); err != nil {
-			return subprocess.NewErrorResponse(msg, err.Error())
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			return subprocess.NewErrorResponse(msg, err.Error()), nil
 		}
 
 		providerID, ok := params["provider_id"].(string)
 		if !ok {
-			return subprocess.NewErrorResponse(msg, "provider_id parameter required")
+			return subprocess.NewErrorResponse(msg, "provider_id parameter required"), nil
 		}
 
 		provider := GetFSMProvider(providerID)
 		if provider == nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID)), nil
 		}
 
 		if err := provider.Stop(); err != nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to stop provider: %v", err))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to stop provider: %v", err)), nil
 		}
 
 		logger.Info("Stopped provider: %s", providerID)
@@ -267,22 +267,22 @@ func createFSMStopProviderHandler(logger *common.Logger) subprocess.Handler {
 func createFSMPauseProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params map[string]interface{}
-		if err := msg.UnmarshalParams(&params); err != nil {
-			return subprocess.NewErrorResponse(msg, err.Error())
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			return subprocess.NewErrorResponse(msg, err.Error()), nil
 		}
 
 		providerID, ok := params["provider_id"].(string)
 		if !ok {
-			return subprocess.NewErrorResponse(msg, "provider_id parameter required")
+			return subprocess.NewErrorResponse(msg, "provider_id parameter required"), nil
 		}
 
 		provider := GetFSMProvider(providerID)
 		if provider == nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID)), nil
 		}
 
 		if err := provider.Pause(); err != nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to pause provider: %v", err))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to pause provider: %v", err)), nil
 		}
 
 		logger.Info("Paused provider: %s", providerID)
@@ -296,22 +296,22 @@ func createFSMPauseProviderHandler(logger *common.Logger) subprocess.Handler {
 func createFSMResumeProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params map[string]interface{}
-		if err := msg.UnmarshalParams(&params); err != nil {
-			return subprocess.NewErrorResponse(msg, err.Error())
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			return subprocess.NewErrorResponse(msg, err.Error()), nil
 		}
 
 		providerID, ok := params["provider_id"].(string)
 		if !ok {
-			return subprocess.NewErrorResponse(msg, "provider_id parameter required")
+			return subprocess.NewErrorResponse(msg, "provider_id parameter required"), nil
 		}
 
 		provider := GetFSMProvider(providerID)
 		if provider == nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID)), nil
 		}
 
 		if err := provider.Resume(); err != nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to resume provider: %v", err))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to resume provider: %v", err)), nil
 		}
 
 		logger.Info("Resumed provider: %s", providerID)
@@ -344,13 +344,13 @@ func createFSMGetProviderListHandler(logger *common.Logger) subprocess.Handler {
 func createFSMGetProviderCheckpointsHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params map[string]interface{}
-		if err := msg.UnmarshalParams(&params); err != nil {
-			return subprocess.NewErrorResponse(msg, err.Error())
+		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
+			return subprocess.NewErrorResponse(msg, err.Error()), nil
 		}
 
 		providerID, ok := params["provider_id"].(string)
 		if !ok {
-			return subprocess.NewErrorResponse(msg, "provider_id parameter required")
+			return subprocess.NewErrorResponse(msg, "provider_id parameter required"), nil
 		}
 
 		limit := 100
@@ -365,7 +365,7 @@ func createFSMGetProviderCheckpointsHandler(logger *common.Logger) subprocess.Ha
 
 		checkpoints, err := storageDB.ListCheckpointsByProvider(providerID)
 		if err != nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get checkpoints: %v", err))
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to get checkpoints: %v", err)), nil
 		}
 
 		result := make([]map[string]interface{}, 0, len(checkpoints))

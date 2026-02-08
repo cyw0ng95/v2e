@@ -152,3 +152,51 @@ func (p *ATTACKProvider) SetBatchSize(size int) {
 	defer p.mu.Unlock()
 	p.batchSize = size
 }
+
+// Cleanup releases any resources held by the provider
+func (p *ATTACKProvider) Cleanup(ctx context.Context) error {
+	return nil
+}
+
+// Fetch performs the fetch operation
+func (p *ATTACKProvider) Fetch(ctx context.Context) error {
+	return p.Execute()
+}
+
+// Store performs the store operation
+func (p *ATTACKProvider) Store(ctx context.Context) error {
+	return p.Execute()
+}
+
+// GetStats returns provider statistics
+func (p *ATTACKProvider) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return map[string]interface{}{
+		"batch_size": p.batchSize,
+	}
+}
+
+// GetConfig returns provider configuration
+func (p *ATTACKProvider) GetConfig() *provider.ProviderConfig {
+	return p.BaseProviderFSM.GetConfig()
+}
+
+// Fetch performs the fetch operation (delegates to FSM Execute)
+func (p *ATTACKProvider) Fetch(ctx context.Context) error {
+	return p.Execute()
+}
+
+// Store performs the store operation (delegates to FSM Execute)
+func (p *ATTACKProvider) Store(ctx context.Context) error {
+	return p.Execute()
+}
+
+// GetStats returns provider statistics
+func (p *ATTACKProvider) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return map[string]interface{}{
+		"batch_size": p.batchSize,
+	}
+}

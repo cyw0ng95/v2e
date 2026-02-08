@@ -42,8 +42,8 @@ func NewSSGProvider(repoURL string) (*SSGProvider, error) {
 	return &SSGProvider{
 		config:      baseConfig,
 		rateLimiter: provider.NewRateLimiter(baseConfig.RateLimitPermits),
-		progress:     &provider.ProviderProgress{},
-		gitClient:    remote.NewGitClient(repoURL, ""),
+		progress:    &provider.ProviderProgress{},
+		gitClient:   remote.NewGitClient(repoURL, ""),
 	}, nil
 }
 
@@ -167,13 +167,13 @@ func (p *SSGProvider) GetProgress() *provider.ProviderProgress {
 	defer p.mu.RUnlock()
 
 	return &provider.ProviderProgress{
-		Fetched:      atomic.LoadInt64(&p.progress.Fetched),
-			Stored:       atomic.LoadInt64(&p.progress.Stored),
-		Failed:       atomic.LoadInt64(&p.progress.Failed),
-		LastFetchAt:  p.progress.LastFetchAt,
-		LastStoreAt:  p.progress.LastStoreAt,
-		FetchRate:    p.progress.FetchRate,
-		StoreRate:    p.progress.StoreRate,
+		Fetched:     atomic.LoadInt64(&p.progress.Fetched),
+		Stored:      atomic.LoadInt64(&p.progress.Stored),
+		Failed:      atomic.LoadInt64(&p.progress.Failed),
+		LastFetchAt: p.progress.LastFetchAt,
+		LastStoreAt: p.progress.LastStoreAt,
+		FetchRate:   p.progress.FetchRate,
+		StoreRate:   p.progress.StoreRate,
 	}
 }
 
@@ -192,4 +192,16 @@ func (p *SSGProvider) Cleanup(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// GetStats returns provider statistics
+func (p *SSGProvider) GetStats() map[string]interface{} {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return map[string]interface{}{
+		"fetched": atomic.LoadInt64(&p.progress.Fetched),
+		"stored":  atomic.LoadInt64(&p.progress.Stored),
+		"failed":  atomic.LoadInt64(&p.progress.Failed),
+	}
 }

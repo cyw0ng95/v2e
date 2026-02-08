@@ -34,7 +34,7 @@ func NewRPCClient(processID string, rpcTimeout time.Duration) *RPCClient {
 		var err error
 		sp, err = subprocess.NewWithUDS(processID, socketPath)
 		if err != nil {
-			logger.Warn("Failed to create UDS subprocess, falling back to stdio:", err)
+			logger.Warn("Failed to create UDS subprocess, falling back to stdio: %v", err)
 			sp = subprocess.New(processID)
 		}
 	} else {

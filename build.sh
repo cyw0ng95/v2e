@@ -580,7 +580,7 @@ build_and_package() {
     fi
 }
 
-# Run unit tests
+# Run unit tests with parallel execution and build caching
 run_tests() {
     log_info "Running unit tests for GitHub CI..."
     # Check Go version
@@ -591,24 +591,38 @@ run_tests() {
     ensure_vconfig_and_config
     build_tags=$(get_config_build_tags)
     ldflags=$(get_config_ldflags)
+
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
+        # Count CPU cores for parallel test execution
+        # Use GOMAXPROCS if set, otherwise use available cores
+        PARALLEL_JOBS=${GOMAXPROCS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)}
+        # Limit parallel jobs to avoid resource exhaustion on small systems
+        if [ "$PARALLEL_JOBS" -gt 4 ]; then
+            PARALLEL_JOBS=4
+        fi
+        if [ "$VERBOSE" = true ]; then
+            log_info "Running tests with $PARALLEL_JOBS parallel jobs..."
+        fi
+
+        # Build test arguments - optimized for speed with coverage
+        TEST_ARGS="-tags \"$build_tags\" -parallel=$PARALLEL_JOBS -race -run='^Test' -count=1 -timeout=30m -coverprofile=\"$BUILD_DIR/coverage.out\" -covermode=atomic"
+        if [ -n "$ldflags" ]; then
+            TEST_ARGS="-ldflags \"$ldflags\" $TEST_ARGS"
+        fi
+        if [ "$VERBOSE" = true ]; then
+            TEST_ARGS="-v $TEST_ARGS"
+        fi
+
         if [ "$VERBOSE" = true ]; then
             log_info "Running go test with verbose output..."
-            if [ -n "$ldflags" ]; then
-                go test -tags "$build_tags" -ldflags "$ldflags" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
-            else
-                go test -tags "$build_tags" -v -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
-            fi
+            eval "go test $TEST_ARGS ./..."
         else
             log_info "Running go test..."
-            if [ -n "$ldflags" ]; then
-                go test -tags "$build_tags" -ldflags "$ldflags" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
-            else
-                go test -tags "$build_tags" -race -run='^Test' -coverprofile="$BUILD_DIR/coverage.out" ./...
-            fi
+            eval "go test $TEST_ARGS ./..."
         fi
         TEST_EXIT_CODE=$?
+
         if [ -f "$BUILD_DIR/coverage.out" ]; then
             go tool cover -html="$BUILD_DIR/coverage.out" -o "$BUILD_DIR/coverage.html"
             if [ "$VERBOSE" = true ]; then

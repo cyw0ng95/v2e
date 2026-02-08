@@ -199,3 +199,15 @@ func (p *ASVSProvider) Cleanup(ctx context.Context) error {
 
 	return nil
 }
+
+// GetStats returns provider statistics
+func (p *ASVSProvider) GetStats() map[string]interface{} {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return map[string]interface{}{
+		"fetched": atomic.LoadInt64(&p.progress.Fetched),
+		"stored":  atomic.LoadInt64(&p.progress.Stored),
+		"failed":  atomic.LoadInt64(&p.progress.Failed),
+	}
+}

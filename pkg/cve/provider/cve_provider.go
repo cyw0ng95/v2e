@@ -8,6 +8,7 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
+	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
@@ -54,13 +55,13 @@ func NewCVEProvider(apiKey string, store *storage.Store) (*CVEProvider, error) {
 	return provider, nil
 }
 
-// Initialize sets up the CVE provider context
+// Initialize sets up to CVE provider context
 func (p *CVEProvider) Initialize(ctx context.Context) error {
 	// BaseProviderFSM doesn't need explicit initialization
 	return nil
 }
 
-// execute performs the CVE fetch and store operations
+// execute performs CVE fetch and store operations
 func (p *CVEProvider) execute() error {
 	currentState := p.GetState()
 
@@ -129,11 +130,46 @@ func (p *CVEProvider) execute() error {
 	return nil
 }
 
-// GetBatchSize returns the batch size for fetching
-func (p *CVEProvider) GetBatchSize() int {
+// Fetch performs fetch operation
+func (p *CVEProvider) Fetch(ctx context.Context) error {
+	return p.Execute()
+}
+
+// Store performs store operation
+func (p *CVEProvider) Store(ctx context.Context) error {
+	return p.Execute()
+}
+
+// GetProgress returns provider progress
+func (p *CVEProvider) GetProgress() *provider.ProviderProgress {
+	return &provider.ProviderProgress{
+		Fetched: 0,
+		Stored:  0,
+		Failed:  0,
+	}
+}
+
+// GetConfig returns provider configuration
+func (p *CVEProvider) GetConfig() *fsm.ProviderConfig {
+	// Return a minimal config since storage is private
+	return &fsm.ProviderConfig{
+		ID:       p.GetID(),
+		Executor: p.execute,
+	}
+}
+
+// GetStats returns provider statistics
+func (p *CVEProvider) GetStats() map[string]interface{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.batchSize
+	return map[string]interface{}{
+		"batch_size": p.batchSize,
+	}
+}
+
+// Cleanup releases any resources held by the provider
+func (p *CVEProvider) Cleanup(ctx context.Context) error {
+	return nil
 }
 
 // SetBatchSize sets the batch size for fetching
@@ -148,13 +184,6 @@ func (p *CVEProvider) GetAPIKey() string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.apiKey
-}
-
-// SetBatchSize sets the batch size for fetching
-func (p *CVEProvider) SetBatchSize(size int) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.batchSize = size
 }
 
 // GetFetcher returns the NVD fetcher
