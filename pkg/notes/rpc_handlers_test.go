@@ -586,7 +586,7 @@ func TestRPCHandlersHandleGetCardsForReview(t *testing.T) {
 		require.NoError(t, err)
 		// Set card to "due" status so it appears in review queue
 		card1.Status = string(StatusDue)
-		require.NoError(t, db.Save(card1))
+		require.NoError(t, db.Save(card1).Error)
 
 		sp := subprocess.New("test-notes-rpc")
 		handlers := NewRPCHandlers(container, sp, logger)
@@ -628,19 +628,16 @@ func TestRPCHandlersHandleCreateCrossReference(t *testing.T) {
 		container := NewServiceContainer(db)
 		ctx := context.Background()
 
-		bookmark1, _, err := container.BookmarkService.CreateBookmark(ctx, "CVE-2023-8888", "cve", "CVE-2023-8888", "Bookmark 1", "")
-		require.NoError(t, err)
-
-		bookmark2, _, err := container.BookmarkService.CreateBookmark(ctx, "CVE-2023-9999", "cve", "CVE-2023-9999", "Bookmark 2", "")
-		require.NoError(t, err)
-
 		sp := subprocess.New("test-notes-rpc")
 		handlers := NewRPCHandlers(container, sp, logger)
 
 		params := map[string]interface{}{
-			"source_id": float64(bookmark1.ID),
-			"target_id": float64(bookmark2.ID),
-			"type":      "related",
+			"source_item_id":     "CVE-2023-8888",
+			"target_item_id":     "CVE-2023-9999",
+			"source_type":        "cve",
+			"target_type":        "cve",
+			"relationship_type":  "related-to",
+			"strength":           float64(1.0),
 		}
 		payload, err := subprocess.MarshalFast(params)
 		require.NoError(t, err)
@@ -659,9 +656,9 @@ func TestRPCHandlersHandleCreateCrossReference(t *testing.T) {
 		}{}
 		require.NoError(t, subprocess.UnmarshalPayload(resp, &result))
 		assert.NotNil(t, result.Ref)
-		assert.Equal(t, bookmark1.ID, result.Ref.SourceID)
-		assert.Equal(t, bookmark2.ID, result.Ref.TargetID)
-		assert.Equal(t, "related", result.Ref.Type)
+		assert.Equal(t, "CVE-2023-8888", result.Ref.SourceItemID)
+		assert.Equal(t, "CVE-2023-9999", result.Ref.TargetItemID)
+		assert.Equal(t, "related-to", result.Ref.RelationshipType)
 	})
 }
 
@@ -701,10 +698,11 @@ func TestRPCHandlersHandleGetBookmarkStats(t *testing.T) {
 		require.NoError(t, err)
 
 		result := struct {
-			Stats *BookmarkStats `json:"stats"`
+			Stats map[string]interface{} `json:"stats"`
 		}{}
 		require.NoError(t, subprocess.UnmarshalPayload(resp, &result))
 		assert.NotNil(t, result.Stats)
-		assert.Equal(t, bookmark.ID, result.Stats.BookmarkID)
+		// Stats should contain bookmark_id
+		assert.Equal(t, float64(bookmark.ID), result.Stats["bookmark_id"])
 	})
 }
