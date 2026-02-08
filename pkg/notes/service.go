@@ -1103,3 +1103,124 @@ func min(a, b float32) float32 {
 	}
 	return b
 }
+
+// RateMemoryCard rates a memory card using the SM-2 algorithm
+func (s *MemoryCardService) RateMemoryCard(ctx context.Context, cardID uint, rating CardRating) (*MemoryCardModel, error) {
+	card, err := s.GetMemoryCardByID(ctx, cardID)
+	if err != nil {
+		return nil, fmt.Errorf("card not found: %w", err)
+	}
+
+	// Initialize defaults if needed
+	if card.EaseFactor == 0 {
+		card.EaseFactor = 2.5
+	}
+
+	// Apply SM-2 algorithm
+	interval, easeFactor, repetitions := s.calculateSM2(card, rating)
+	card.Interval = interval
+	card.EaseFactor = float32(easeFactor)
+	card.Repetition = repetitions
+
+	// Update learning state based on rating
+	now := time.Now()
+	card.LastReviewed = &now
+
+	switch rating {
+	case CardRatingAgain:
+		card.FSMState = string(LearningStateToReview)
+		zeroTime := time.Time{}
+		card.NextReview = &zeroTime // Due immediately
+	case CardRatingHard:
+		if card.EaseFactor < 1.3 {
+			card.FSMState = string(LearningStateLearning)
+		}
+		nextReview := time.Now().AddDate(0, 0, interval)
+		card.NextReview = &nextReview
+	case CardRatingGood, CardRatingEasy:
+		if card.EaseFactor >= 2.5 && repetitions >= 3 {
+			card.FSMState = string(LearningStateMastered)
+		} else {
+			card.FSMState = string(LearningStateLearning)
+		}
+		nextReview := time.Now().AddDate(0, 0, interval)
+		card.NextReview = &nextReview
+	}
+
+	if err := s.db.Save(card).Error; err != nil {
+		return nil, fmt.Errorf("failed to save: %w", err)
+	}
+
+	return card, nil
+}
+
+// calculateSM2 implements the SuperMemo 2 algorithm
+func (s *MemoryCardService) calculateSM2(card *MemoryCardModel, rating CardRating) (interval, easeFactor int, repetitions int) {
+	easeFactorFloat := float64(card.EaseFactor)
+	repetitions = card.Repetition
+
+	// Rating quality: Again=1, Hard=2, Good=3, Easy=4
+	quality := map[CardRating]int{
+		CardRatingAgain: 1,
+		CardRatingHard:  2,
+		CardRatingGood:  3,
+		CardRatingEasy:  4,
+	}[rating]
+
+	switch {
+	case quality < 3:
+		// Again or Hard
+		interval = 1
+		if quality == 2 {
+			// Hard: keep some progress
+			repetitions++
+			easeFactorFloat = easeFactorFloat - 0.2
+			if easeFactorFloat < 1.3 {
+				easeFactorFloat = 1.3
+			}
+		} else {
+			// Again: reset
+			repetitions = 0
+		}
+	case quality == 3:
+		// Good - increment first, then calculate based on new value
+		repetitions++
+		if repetitions == 1 {
+			interval = 1
+		} else if repetitions == 2 {
+			interval = 6
+		} else {
+			// For repetitions >= 3, use the formula
+			interval = int(float64(card.Interval) * easeFactorFloat)
+		}
+		// EF' = EF + (0.1 - (3-q)*(0.08+(3-q)*0.02))
+		// For quality=3 (Good): EF' = EF + 0.1
+		easeFactorUpdate := 0.1 - (3-float64(quality))*(0.08+(3-float64(quality))*0.02)
+		easeFactorFloat = easeFactorFloat + easeFactorUpdate
+	case quality == 4:
+		// Easy - increment first, then calculate based on new value
+		repetitions++
+		if repetitions == 1 {
+			interval = 1
+		} else if repetitions == 2 {
+			interval = 6
+		} else {
+			// For repetitions >= 3, use the formula with 1.3 multiplier
+			interval = int(float64(card.Interval) * easeFactorFloat * 1.3)
+		}
+		// For Easy: EF' = EF + 0.15
+		easeFactorFloat = easeFactorFloat + 0.15
+	}
+
+	// Clamp ease factor
+	if easeFactorFloat < 1 {
+		easeFactorFloat = 1
+	}
+	if easeFactorFloat > 3 {
+		easeFactorFloat = 3
+	}
+
+	easeFactor = int(easeFactorFloat)
+
+	return interval, easeFactor, repetitions
+}

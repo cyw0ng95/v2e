@@ -78,6 +78,7 @@ type MemoryCardModel struct {
 	EaseFactor float32    `gorm:"default:2.5" json:"ease_factor"`    // For spaced repetition algorithm
 	Interval   int        `gorm:"default:1" json:"interval"`         // Days until next review
 	Repetition int        `gorm:"default:0" json:"repetition"`       // Number of successful reviews
+	LastReviewed *time.Time `json:"last_reviewed_at"`                // When this card was last reviewed
 	NextReview *time.Time `json:"next_review_at"`                    // When to review this card next
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
