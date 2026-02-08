@@ -1,6 +1,7 @@
 package fsm
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -97,6 +98,34 @@ func (p *BaseProviderFSM) GetState() ProviderState {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.state
+}
+
+// Initialize sets up provider context before starting
+func (p *BaseProviderFSM) Initialize(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// BaseProviderFSM doesn't need context storage
+	// Context management is handled by individual providers
+	return nil
+}
+
+// GetStats returns provider statistics for monitoring
+func (p *BaseProviderFSM) GetStats() map[string]interface{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	return map[string]interface{}{
+		"id":              p.id,
+		"provider_type":   p.providerType,
+		"state":           string(p.state),
+		"last_checkpoint": p.lastCheckpoint,
+		"processed_count": p.processedCount,
+		"error_count":     p.errorCount,
+		"permits_held":    p.permitsHeld,
+		"created_at":      p.createdAt.Format(time.RFC3339),
+		"updated_at":      p.updatedAt.Format(time.RFC3339),
+	}
 }
 
 // Transition attempts to transition to a new state

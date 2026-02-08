@@ -142,6 +142,12 @@ type ProviderFSM interface {
 
 	// SetEventHandler sets the callback for event bubbling to MacroFSM
 	SetEventHandler(handler func(*Event) error)
+
+	// Initialize sets up provider context before starting
+	Initialize(ctx context.Context) error
+
+	// GetStats returns provider statistics for monitoring
+	GetStats() map[string]interface{}
 }
 
 // StateTransition represents a valid state transition
