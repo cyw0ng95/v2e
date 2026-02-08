@@ -146,16 +146,16 @@ const RightColumn = memo(function RightColumn({
   isLoadingList: boolean;
 }) {
   // Dynamic class for tab positioning - more left in Learn mode
-  const tabListClass = useMemo(() => 
-    viewMode === 'learn' 
-      ? "mb-4 justify-start"  // More left-aligned in Learn mode
-      : "mb-4"               // Default center alignment in View mode
+  const tabListClass = useMemo(() =>
+    viewMode === 'learn'
+      ? "mb-5 justify-start"
+      : "mb-5"
   , [viewMode]);
 
   return (
-    <main className="w-full md:flex-1 h-screen flex flex-col px-10 py-8">
+    <main className="w-full md:flex-1 h-screen flex flex-col px-8 py-6">
       <div className="flex-1 flex flex-col h-full">
-        <div className="space-y-8 flex-1 flex flex-col h-full page-transition">
+        <div className="space-y-6 flex-1 flex flex-col h-full page-transition">
           <Tabs value={tab} onValueChange={setTab} className="w-full h-full flex flex-col">
             <TabsList className={tabListClass}>
               {viewMode === 'view' ? (
