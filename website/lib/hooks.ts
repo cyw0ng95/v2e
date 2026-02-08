@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { rpcClient } from './rpc-client';
 import { createLogger } from './logger';
+import { AttackListResponse, AttackTechnique } from './types';
 
 // Create logger for hooks
 const logger = createLogger('hooks');
@@ -12,7 +13,7 @@ interface AttackQueryParams {
 }
 
 export function useAttackTechniques(params: AttackQueryParams = {}) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AttackListResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -30,8 +31,8 @@ export function useAttackTechniques(params: AttackQueryParams = {}) {
         
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err : new Error(String(err)));
         logger.error('Error fetching ATT&CK techniques', err, { offset, limit });
       } finally {
         setIsLoading(false);
