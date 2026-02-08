@@ -1137,14 +1137,92 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, 
   - `count` (int): Number of related objects returned
 - **Errors**:
   - Missing object_type or object_id
-  - Database error
+   - Database error
 
-## Configuration
-- **CVE Database Path**: Configurable via `CVE_DB_PATH` environment variable (default: "cve.db")
-- **CWE Database Path**: Configurable via `CWE_DB_PATH` environment variable (default: "cwe.db")
-- **CAPEC Database Path**: Configurable via `CAPEC_DB_PATH` environment variable (default: "capec.db")
-- **ATT&CK Database Path**: Configurable via `ATTACK_DB_PATH` environment variable (default: "attack.db")
-- **ASVS Database Path**: Configurable via `ASVS_DB_PATH` environment variable (default: "asvs.db")
+ #### 94. RPCGetCCEByID
+ - **Description**: Retrieves a CCE entry by ID
+ - **Request Parameters**:
+   - `cce_id` (string, required): CCE identifier (e.g., "CCE-00000-0")
+ - **Response**:
+   - `cce` (object): The CCE object with fields: id, title, description, owner, status, type, reference, metadata
+ - **Errors**:
+   - Missing cce_id
+   - CCE not found
+   - Database error
+
+ #### 95. RPCListCCEs
+ - **Description**: Lists CCE entries with pagination and optional search
+ - **Request Parameters**:
+   - `offset` (int, optional): Pagination offset (default: 0)
+   - `limit` (int, optional): Maximum number of results (default: 100, max: 1000)
+   - `search` (string, optional): Search term for filtering by ID or title
+ - **Response**:
+   - `cces` (array): Array of CCE objects
+   - `offset` (int): Current pagination offset
+   - `limit` (int): Current pagination limit
+   - `total` (int): Total number of CCE entries matching the query
+ - **Errors**:
+   - Database error
+
+ #### 96. RPCImportCCEs
+ - **Description**: Imports CCE entries from an Excel file
+ - **Request Parameters**:
+   - `path` (string, required): Path to Excel file containing CCE data
+ - **Response**:
+   - `success` (boolean): True if import succeeded
+ - **Errors**:
+   - Missing path
+   - File not found
+   - Parse error
+   - Database error
+
+ #### 97. RPCImportCCE
+ - **Description**: Imports a single CCE entry
+ - **Request Parameters**:
+   - `cceData` (object, required): CCE data object to import
+ - **Response**:
+   - `success` (boolean): True if import succeeded
+ - **Errors**:
+   - Missing cceData
+   - Parse error
+   - Database error
+
+ #### 98. RPCCountCCEs
+ - **Description**: Returns total count of CCE entries
+ - **Request Parameters**: None
+ - **Response**:
+   - `count` (int): Total number of CCE entries
+ - **Errors**:
+   - Database error
+
+ #### 99. RPCDeleteCCE
+ - **Description**: Deletes a CCE entry by ID
+ - **Request Parameters**:
+   - `cce_id` (string, required): CCE identifier
+ - **Response**:
+   - `success` (boolean): True if deletion succeeded
+ - **Errors**:
+   - Missing cce_id
+   - Database error
+
+ #### 100. RPCUpdateCCE
+ - **Description**: Updates an existing CCE entry
+ - **Request Parameters**:
+   - `cceData` (object, required): CCE data object to update (must include id field)
+ - **Response**:
+   - `success` (boolean): True if update succeeded
+ - **Errors**:
+   - Missing cceData
+   - Missing CCE ID
+   - Database error
+
+ ## Configuration
+ - **CVE Database Path**: Configurable via `CVE_DB_PATH` environment variable (default: "cve.db")
+ - **CWE Database Path**: Configurable via `CWE_DB_PATH` environment variable (default: "cwe.db")
+ - **CAPEC Database Path**: Configurable via `CAPEC_DB_PATH` environment variable (default: "capec.db")
+ - **ATT&CK Database Path**: Configurable via `ATTACK_DB_PATH` environment variable (default: "attack.db")
+ - **CCE Database Path**: Configurable via `CCE_DB_PATH` environment variable (default: "cce.db")
+ - **ASVS Database Path**: Configurable via `ASVS_DB_PATH` environment variable (default: "asvs.db")
 - **CAPEC Strict XSD Validation**: Enabled via `CAPEC_STRICT_XSD` environment variable (default: disabled)
 - **SSG Database Path**: Configurable via `SSG_DB_PATH` environment variable (default: "ssg.db")
 

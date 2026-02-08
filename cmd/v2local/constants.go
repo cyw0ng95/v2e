@@ -17,16 +17,19 @@ const (
 	LogMsgCWEDatabasePathConfigured    = "CWE database path configured: %s"
 	LogMsgCAPECDatabasePathConfigured  = "CAPEC database path configured: %s"
 	LogMsgATTACKDatabasePathConfigured = "ATT&CK database path configured: %s"
+	LogMsgCCEDatabasePathConfigured    = "CCE database path configured: %s"
 
 	// Database Operations Log Messages
 	LogMsgFailedOpenDB         = "Failed to open database: %v"
 	LogMsgFailedOpenCWEDB      = "Failed to open CWE database: %v"
 	LogMsgFailedOpenCAPECDB    = "Failed to open CAPEC database: %v"
 	LogMsgFailedOpenATTACKDB   = "Failed to open ATT&CK database: %v"
+	LogMsgFailedOpenCCEDB      = "Failed to open CCE database: %v"
 	LogMsgDatabaseOpened       = "Database opened successfully: %s"
 	LogMsgCWEDatabaseOpened    = "CWE database opened successfully: %s"
 	LogMsgCAPECDatabaseOpened  = "CAPEC database opened successfully: %s"
 	LogMsgATTACKDatabaseOpened = "ATT&CK database opened successfully: %s"
+	LogMsgCCEDatabaseOpened    = "CCE database opened successfully: %s"
 	LogMsgDatabaseClosing      = "Closing database connection: %s"
 
 	// RPC Operations Log Messages
@@ -72,6 +75,10 @@ const (
 	LogMsgListCWEsCompleted  = "ListCWEs operation completed, returned: %d records"
 	LogMsgStartingImportCWE  = "Starting ImportCWEs operation from path: %s"
 	LogMsgImportCWECompleted = "ImportCWEs operation completed from path: %s"
+
+	// CCE Operations Log Messages
+	LogMsgStartingImportCCE  = "Starting ImportCCEs operation from path: %s"
+	LogMsgImportCCECompleted = "ImportCCEs operation completed from path: %s"
 
 	// CAPEC Operations Log Messages
 	LogMsgStartingImportCAPEC       = "Starting ImportCAPECs operation from path: %s"

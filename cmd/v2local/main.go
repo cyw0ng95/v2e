@@ -20,6 +20,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/asvs"
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/capec"
+	"github.com/cyw0ng95/v2e/pkg/cce"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
@@ -167,6 +168,19 @@ func main() {
 	}
 	logger.Info(LogMsgATTACKDatabaseOpened, attackDBPath)
 
+	// Initialize CCE store (using CCE_DB_PATH env var)
+	cceDBPath := os.Getenv("CCE_DB_PATH")
+	if cceDBPath == "" {
+		cceDBPath = "cce.db"
+	}
+	logger.Info(LogMsgCCEDatabasePathConfigured, cceDBPath)
+	cceStore, err := cce.NewLocalCCEStore(cceDBPath, logger)
+	if err != nil {
+		logger.Error(LogMsgFailedOpenCCEDB, err)
+		os.Exit(1)
+	}
+	logger.Info(LogMsgCCEDatabaseOpened, cceDBPath)
+
 	// Initialize ASVS store (using ASVS_DB_PATH env var)
 	asvsDBPath := os.Getenv("ASVS_DB_PATH")
 	if asvsDBPath == "" {
@@ -259,6 +273,24 @@ func main() {
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCListCWEs")
 	sp.RegisterHandler("RPCImportCWEs", createImportCWEsHandler(cweStore, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCImportCWEs")
+
+	// Register CCE handlers
+	sp.RegisterHandler("RPCGetCCEByID", createGetCCEByIDHandler(cceStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetCCEByID")
+	sp.RegisterHandler("RPCListCCEs", createListCCEsHandler(cceStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCListCCEs")
+	sp.RegisterHandler("RPCImportCCEs", createImportCCEsHandler(cceStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCImportCCEs")
+	sp.RegisterHandler("RPCImportCCE", createImportCCEHandler(cceStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCImportCCE")
+	sp.RegisterHandler("RPCCountCCEs", createCountCCEsHandler(cceStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCCountCCEs")
+	sp.RegisterHandler("RPCDeleteCCE", createDeleteCCEHandler(cceStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCDeleteCCE")
+	sp.RegisterHandler("RPCUpdateCCE", createUpdateCCEHandler(cceStore, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCUpdateCCE")
+
+	// Register CAPEC handlers
 	sp.RegisterHandler("RPCImportCAPECs", createImportCAPECsHandler(capecStore, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCImportCAPECs")
 	sp.RegisterHandler("RPCForceImportCAPECs", createForceImportCAPECsHandler(capecStore, logger))
@@ -321,7 +353,6 @@ func main() {
 	// Register Notes service handlers
 	notes.NewRPCHandlers(notesServiceContainer, sp, logger)
 	logger.Info("Notes service handlers registered")
-
 
 	// Register Memory Card handlers
 	sp.RegisterHandler("RPCCreateMemoryCard", createMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))

@@ -56,6 +56,15 @@ const CAPECTable = dynamic(() => import('@/components/capec-table').then(mod => 
   ),
 });
 
+const CCETable = dynamic(() => import('@/components/cce-table').then(mod => mod.CCETable), {
+  ssr: false,
+  loading: () => (
+    <div className="p-4">
+      <Skeleton className="h-32 w-full" />
+    </div>
+  ),
+});
+
 const CWEViews = dynamic(() => import('@/components/cwe-views').then(mod => mod.CWEViews), {
   ssr: false,
   loading: () => (
@@ -164,6 +173,7 @@ const RightColumn = memo(function RightColumn({
                   <TabsTrigger value="graph">Graph Analysis</TabsTrigger>
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
                   <TabsTrigger value="capec">CAPEC</TabsTrigger>
+                  <TabsTrigger value="cce">CCE</TabsTrigger>
                   <TabsTrigger value="attack">ATT&CK</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="ssg">SSG Guides</TabsTrigger>
@@ -185,6 +195,7 @@ const RightColumn = memo(function RightColumn({
                   <TabsTrigger value="graph">Graph Analysis</TabsTrigger>
                   <TabsTrigger value="cwe">CWE Database</TabsTrigger>
                   <TabsTrigger value="capec">CAPEC</TabsTrigger>
+                  <TabsTrigger value="cce">CCE</TabsTrigger>
                   <TabsTrigger value="attack">ATT&CK</TabsTrigger>
                   <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
                   <TabsTrigger value="ssg">SSG Guides</TabsTrigger>
@@ -216,6 +227,14 @@ const RightColumn = memo(function RightColumn({
               <div className="h-full flex flex-col">
                 <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
                   <CAPECTable />
+                </Suspense>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="cce" className="h-full">
+              <div className="h-full flex flex-col">
+                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
+                  <CCETable />
                 </Suspense>
               </div>
             </TabsContent>

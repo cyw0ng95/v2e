@@ -26,6 +26,7 @@ const navigation: NavGroup[] = [
       { id: 'cwe', label: 'CWE', icon: Shield },
       { id: 'capec', label: 'CAPEC', icon: AlertTriangle },
       { id: 'attack', label: 'ATT&CK', icon: Zap },
+      { id: 'cce', label: 'CCE', icon: CheckCircle },
     ],
   },
   {

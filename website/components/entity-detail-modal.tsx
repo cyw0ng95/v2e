@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useViewLearnMode } from '@/contexts/ViewLearnContext';
 import BookmarkStar from '@/components/bookmark-star';
 
-export type EntityType = 'CVE' | 'CWE' | 'CAPEC' | 'ATTACK' | 'ASVS' | 'SSG';
+export type EntityType = 'CVE' | 'CWE' | 'CAPEC' | 'ATTACK' | 'ASVS' | 'SSG' | 'CCE';
 
 interface EntityDetailModalProps {
   open: boolean;

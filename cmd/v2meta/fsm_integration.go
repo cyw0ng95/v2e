@@ -7,6 +7,7 @@ import (
 
 	attackprovider "github.com/cyw0ng95/v2e/pkg/attack/provider"
 	capecprovider "github.com/cyw0ng95/v2e/pkg/capec/provider"
+	cceprovider "github.com/cyw0ng95/v2e/pkg/cce/provider"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve/provider"
 	cweprovider "github.com/cyw0ng95/v2e/pkg/cwe/provider"
@@ -97,6 +98,17 @@ func initFSMProviders(logger *common.Logger) error {
 		fsmProviders["attack"] = attackProv
 		if err := macroFSM.AddProvider(attackProv); err != nil {
 			logger.Error("Failed to add ATT&CK provider to macro FSM: %v", err)
+		}
+	}
+
+	// CCE Provider
+	cceProv, err := cceprovider.NewCCEProvider("", storageDB)
+	if err != nil {
+		logger.Warn("Failed to create CCE provider (skipping): %v", err)
+	} else {
+		fsmProviders["cce"] = cceProv
+		if err := macroFSM.AddProvider(cceProv); err != nil {
+			logger.Error("Failed to add CCE provider to macro FSM: %v", err)
 		}
 	}
 
