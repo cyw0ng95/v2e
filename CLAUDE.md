@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-v2e (Vulnerabilities Viewer Engine) is a broker-first microservices system for managing CVE, CWE, CAPEC, and ATT&CK security data. The architecture enforces a central broker pattern where `cmd/broker` is the sole process manager and message router - no subprocess-to-subprocess communication is allowed.
+v2e (Vulnerabilities Viewer Engine) is a broker-first microservices system for managing CVE, CWE, CAPEC, and ATT&CK security data. The architecture enforces a central broker pattern where `cmd/v2broker` is the sole process manager and message router - no subprocess-to-subprocess communication is allowed.
 
 ## Build & Development Commands
 
@@ -21,7 +21,7 @@ v2e (Vulnerabilities Viewer Engine) is a broker-first microservices system for m
 
 # Development and testing with ./build.sh -r
 # This command starts:
-#   - Broker with all subprocesses (access, local, meta, remote, sysmon)
+#   - Broker with all subprocesses (v2access, v2local, v2meta, v2remote, v2sysmon)
 #   - Frontend dev server (npm run dev in website/)
 #   - All services run together for integration testing and log analysis
 # Press Ctrl+C to stop all services cleanly
@@ -43,7 +43,7 @@ npm run lint      # ESLint
 
 ## Architecture: Broker-First Pattern
 
-The broker is the central orchestrator. All subprocess services (`cmd/access`, `cmd/local`, `cmd/remote`, `cmd/meta`, `cmd/sysmon`) communicate exclusively via stdin/stdout RPC messages routed through the broker.
+The broker is the central orchestrator. All subprocess services (`cmd/v2access`, `cmd/v2local`, `cmd/v2remote`, `cmd/v2meta`, `cmd/v2sysmon`) communicate exclusively via stdin/stdout RPC messages routed through the broker.
 
 ### Communication Flow
 ```
@@ -128,7 +128,7 @@ func main() {
 
 ### Running Full System for Testing
 Use `./build.sh -r` to run the complete system for integration testing and log analysis:
-- Broker spawns all subprocesses (access, local, meta, remote, sysmon)
+- Broker spawns all subprocesses (v2access, v2local, v2meta, v2remote, v2sysmon)
 - Frontend dev server runs on http://localhost:3000
 - Logs are written to `.build/package/logs/` for analysis
 - Press Ctrl+C to stop all services cleanly
@@ -231,12 +231,12 @@ When testing the website frontend, use the Playwright MCP tools available in Cla
 **CRITICAL: All RPC APIs MUST be documented in `service.md` inside each `cmd/*/` directory.**
 
 Every service must have a `service.md` file that documents its complete RPC API specification:
-- `cmd/broker/service.md` - Broker process management and routing
-- `cmd/access/service.md` - REST gateway endpoints
-- `cmd/local/service.md` - CVE/CWE/CAPEC/ATT&CK data storage
-- `cmd/remote/service.md` - External API fetching
-- `cmd/meta/service.md` - Job orchestration with go-taskflow
-- `cmd/sysmon/service.md` - System monitoring
+- `cmd/v2broker/service.md` - Broker process management and routing
+- `cmd/v2access/service.md` - REST gateway endpoints
+- `cmd/v2local/service.md` - CVE/CWE/CAPEC/ATT&CK data storage
+- `cmd/v2remote/service.md` - External API fetching
+- `cmd/v2meta/service.md` - Job orchestration with go-taskflow
+- `cmd/v2sysmon/service.md` - System monitoring
 
 **RPC API Documentation Requirements:**
 1. **Mandatory for all RPC methods** - Every `RPC*` handler must be documented
