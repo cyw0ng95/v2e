@@ -50,9 +50,10 @@ interface McardsNavigationProps {
   onViewChange: (view: 'cards' | 'dashboard' | 'study') => void;
   cardCount?: number;
   dueCount?: number;
+  onCreateCard?: () => void;
 }
 
-export function McardsNavigation({ currentView, onViewChange, cardCount, dueCount }: McardsNavigationProps) {
+export function McardsNavigation({ currentView, onViewChange, cardCount, dueCount, onCreateCard }: McardsNavigationProps) {
   return (
     <nav className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -97,7 +98,7 @@ export function McardsNavigation({ currentView, onViewChange, cardCount, dueCoun
 
           {/* Actions */}
           <button
-            onClick={() => {/* TODO: open create modal */}}
+            onClick={onCreateCard}
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors duration-200 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             <Plus className="w-4 h-4" />
