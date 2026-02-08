@@ -30,115 +30,6 @@ import (
 	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 )
 
-const (
-	// Log messages
-	LogMsgPCGetProviderStatus = "PCGetProviderStatus RPC called"
-
-	// Data type constants
-	DataTypeCVE    = "CVE"
-	DataTypeCWE    = "CWE"
-	DataTypeCAPEC  = "CAPEC"
-	DataTypeATTACK = "ATT&CK"
-	DataTypeSSG    = "SSG"
-	DataTypeASVS   = "ASVS"
-	DataTypeRemote = "remote"
-
-	// RPC method names
-	RPCListProviders     = "RPCListProviders"
-	RPCGetProviderStatus = "RPCGetProviderStatus"
-)
-
-// DataTypeFromRPC maps RPC data type string to constant
-func DataTypeFromRPC(dataType string) string {
-	switch dataType {
-	case "CVE":
-		return DataTypeCVE
-	case "CWE":
-		return DataTypeCWE
-	case "CAPEC":
-		return DataTypeCAPEC
-	case "ATT&CK":
-		return DataTypeATTACK
-	case "SSG":
-		return DataTypeSSG
-	case "ASVS":
-		return DataTypeASVS
-	default:
-		return DataTypeCVE
-	}
-}
-
-// DataPopulationController manages data population for different data types using Provider Registry
-type DataPopulationController struct {
-	rpcClient        *rpc.Client
-	providerRegistry *ProviderRegistry
-	logger           *common.Logger
-}
-
-// NewDataPopulationController creates a new controller
-func NewDataPopulationController(rpcClient *rpc.Client, logger *common.Logger) *DataPopulationController {
-	return &DataPopulationController{
-		rpcClient:        rpcClient,
-		providerRegistry: NewProviderRegistry(logger),
-		logger:           logger,
-	}
-}
-
-// StartDataPopulation starts a data population job for a specific data type
-func (c *DataPopulationController) StartDataPopulation(ctx context.Context, dataType string, params map[string]interface{}) (string, error) {
-	sessionID := fmt.Sprintf("%s-%d", dataType, time.Now().Unix())
-
-	switch dataType {
-	case DataTypeCWE:
-		return c.startCWEImport(ctx, sessionID, params)
-	case DataTypeCAPEC:
-		return c.startCAPECImport(ctx, sessionID, params)
-	case DataTypeATTACK:
-		return c.startATTACKImport(ctx, sessionID, params)
-	case DataTypeSSG:
-		return c.startSSGImport(ctx, sessionID, params)
-	case DataTypeASVS:
-		return c.startASVSImport(ctx, sessionID, params)
-	default:
-		return "", fmt.Errorf("unsupported data type: %s", dataType)
-	}
-}
-
-// startCWEImport starts a CWE import job
-func (c *DataPopulationController) startCWEImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	c.logger.Info(LogMsgPCGetProviderStatus, "Starting CWE import: session_id=%s, params=%s", sessionID, params)
-
-	return sessionID, nil
-}
-
-// startCAPECImport starts a CAPEC import job
-func (c *DataPopulationController) startCAPECImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	c.logger.Info(LogMsgPCGetProviderStatus, "Starting CAPEC import: session_id=%s, params=%s", sessionID, params)
-
-	return sessionID, nil
-}
-
-// startATTACKImport starts an ATT&CK import job
-func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	c.logger.Info(LogMsgPCGetProviderStatus, "Starting ATT&CK import: session_id=%s, params=%s", sessionID, params)
-
-	return sessionID, nil
-}
-
-// startSSGImport starts an SSG import job
-func (c *DataPopulationController) startSSGImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	c.logger.Info(LogMsgPCGetProviderStatus, "Starting SSG import: session_id=%s, params=%s", sessionID, params)
-
-	return sessionID, nil
-}
-
-// startASVSImport starts an ASVS import job
-func (c *DataPopulationController) startASVSImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	c.logger.Info(LogMsgPCGetProviderStatus, "Starting ASVS import: session_id=%s, params=%s", sessionID, params)
-
-	return sessionID, nil
-}
-
 // RPCClientAdapter adapts rpc.Client to job.RPCInvoker interface
 type RPCClientAdapter struct {
 	client *rpc.Client
@@ -221,10 +112,6 @@ func main() {
 	logger.Info("SSG import job orchestrator created")
 	ssgImporter := ssgjob.NewImporter(rpcAdapter, logger)
 
-	// Create data population controller for all data types
-	logger.Info(LogMsgDataPopControllerCreated)
-	dataPopController := NewDataPopulationController(rpcClient, logger)
-
 	// Recover runs if needed after restart
 	// This ensures job consistency when the service restarts
 	logger.Info(LogMsgRunRecoveryStarted)
@@ -294,17 +181,6 @@ func main() {
 	sp.RegisterHandler("RPCStopCWEViewJob", createStopCWEViewJobHandler(cweJobController, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopCWEViewJob")
 	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStopCWEViewJob")
-
-	// Register data population RPC handlers
-	sp.RegisterHandler("RPCStartCWEImport", createStartCWEImportHandler(dataPopController, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCWEImport")
-	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartCWEImport")
-	sp.RegisterHandler("RPCStartCAPECImport", createStartCAPECImportHandler(dataPopController, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartCAPECImport")
-	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartCAPECImport")
-	sp.RegisterHandler("RPCStartATTACKImport", createStartATTACKImportHandler(dataPopController, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCStartATTACKImport")
-	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCStartATTACKImport")
 
 	// Register SSG import job RPC handlers
 	RegisterSSGJobHandlers(sp, ssgImporter, logger)
@@ -391,114 +267,6 @@ func main() {
 	logger.Debug(LogMsgSubprocessRunCompleted)
 	logger.Info(LogMsgServiceShutdownStarting)
 	logger.Info(LogMsgServiceShutdownComplete)
-}
-
-// createStartCWEImportHandler creates a handler for starting CWE import
-func createStartCWEImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info(LogMsgRPCStartCWEImport)
-
-		var req map[string]interface{}
-		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedToParseRequest, err)
-				return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to parse request"), nil
-			}
-		}
-
-		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCWE, req)
-		if err != nil {
-			logger.Error(LogMsgFailedToStartCWEImport, err)
-			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start CWE import: %v", err)), nil
-		}
-
-		result := map[string]interface{}{
-			"success":    true,
-			"session_id": sessionID,
-			"data_type":  string(DataTypeCWE),
-		}
-
-		respMsg, err := subprocess.NewSuccessResponse(msg, result)
-		if err != nil {
-			logger.Error(LogMsgFailedToMarshalResponse, err)
-			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to marshal response"), nil
-		}
-
-		logger.Info(LogMsgSuccessStartCWEImport, sessionID)
-		return respMsg, nil
-	}
-}
-
-// createStartCAPECImportHandler creates a handler for starting CAPEC import
-func createStartCAPECImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info(LogMsgRPCStartCAPECImport)
-
-		var req map[string]interface{}
-		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedToParseRequest, err)
-				return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to parse request"), nil
-			}
-		}
-
-		sessionID, err := controller.StartDataPopulation(ctx, DataTypeCAPEC, req)
-		if err != nil {
-			logger.Warn(LogMsgFailedToStartCAPECImport, err)
-			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start CAPEC import: %v", err)), nil
-		}
-
-		result := map[string]interface{}{
-			"success":    true,
-			"session_id": sessionID,
-			"data_type":  string(DataTypeCAPEC),
-		}
-
-		respMsg, err := subprocess.NewSuccessResponse(msg, result)
-		if err != nil {
-			logger.Warn(LogMsgFailedToMarshalResponse, err)
-			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to marshal response"), nil
-		}
-
-		logger.Info(LogMsgSuccessStartCAPECImport, sessionID)
-		return respMsg, nil
-	}
-}
-
-// createStartATTACKImportHandler creates a handler for starting ATT&CK import
-func createStartATTACKImportHandler(controller *DataPopulationController, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Info(LogMsgRPCStartATTACKImport)
-
-		var req map[string]interface{}
-		if msg.Payload != nil {
-			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
-				logger.Warn(LogMsgFailedToParseRequest, err)
-				return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to parse request"), nil
-			}
-		}
-
-		sessionID, err := controller.StartDataPopulation(ctx, DataTypeATTACK, req)
-		if err != nil {
-			logger.Warn(LogMsgFailedToStartATTACKImport, err)
-			return subprocess.NewErrorResponseWithPrefix(msg, "meta", fmt.Sprintf("failed to start ATT&CK import: %v", err)), nil
-		}
-
-		result := map[string]interface{}{
-			"success":    true,
-			"session_id": sessionID,
-			"data_type":  string(DataTypeATTACK),
-		}
-
-		respMsg, err := subprocess.NewSuccessResponse(msg, result)
-		if err != nil {
-			logger.Warn(LogMsgFailedToMarshalResponse, err)
-			return subprocess.NewErrorResponseWithPrefix(msg, "meta", "failed to marshal response"), nil
-		}
-
-		logger.Info(LogMsgSuccessStartATTACKImport, sessionID)
-		return respMsg, nil
-	}
 }
 
 // createGetCVEHandler creates a handler that retrieves CVE data

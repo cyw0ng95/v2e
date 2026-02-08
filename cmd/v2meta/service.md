@@ -204,41 +204,7 @@ Orchestrates CVE fetching and storage operations by coordinating between local a
   - No running job: No job is currently running
   - RPC error: Failed to communicate with backend services
 
-#### 15. RPCStartCWEImport
-- **Description**: Starts a CWE data import job
-- **Request Parameters**:
-  - `path` (string, optional): Path to the CWE JSON file (default: "assets/cwe-raw.json")
-- **Response**:
-  - `success` (bool): true if job started successfully
-  - `session_id` (string): ID of the started job session
-- **Errors**:
-  - RPC error: Failed to communicate with backend services
-  - Import error: Failed to start the import process
-
-#### 16. RPCStartCAPECImport
-- **Description**: Starts a CAPEC data import job
-- **Request Parameters**:
-  - `path` (string, optional): Path to the CAPEC XML file (default: "assets/capec_contents_latest.xml")
-  - `xsd` (string, optional): Path to XSD schema file (default: "assets/capec_schema_latest.xsd")
-- **Response**:
-  - `success` (bool): true if job started successfully
-  - `session_id` (string): ID of the started job session
-- **Errors**:
-  - RPC error: Failed to communicate with backend services
-  - Import error: Failed to start the import process
-
-#### 17. RPCStartATTACKImport
-- **Description**: Starts an ATT&CK data import job
-- **Request Parameters**:
-  - `path` (string, optional): Path to the ATT&CK XLSX file (default: "assets/attack-enterprise-v15.1.xlsx")
-- **Response**:
-  - `success` (bool): true if job started successfully
-  - `session_id` (string): ID of the started job session
-- **Errors**:
-  - RPC error: Failed to communicate with backend services
-  - Import error: Failed to start the import process
-
-#### 18. RPCStartCCEImport
+#### 15. RPCStartCCEImport
 - **Description**: Starts a CCE data import job
 - **Request Parameters**:
   - `path` (string, optional): Path to the CCE JSON file (default: "assets/cce-5.0-2023-06-08.json")
@@ -444,6 +410,196 @@ Provides observability into the Unified ETL Engine's hierarchical FSM structure 
   - `total` (int): Total number of checkpoints for this provider
 - **Errors**:
   - Provider not found: No provider with the given ID exists
+
+### FSM Provider Control
+
+#### 31. RPCStartProvider
+- **Description**: Starts or resumes a paused provider FSM
+- **Request Parameters**:
+  - `providerId` (string, required): Provider FSM identifier to start
+- **Response**:
+  - `success` (bool): true if provider started successfully
+  - `providerId` (string): ID of the started provider
+- **Errors**:
+  - No active run: No active run found for the provider
+  - Provider not active: The requested provider is not the currently active run
+  - Failed to start: Failed to resume the provider execution
+- **Example Request**:
+  ```json
+  {
+    "providerId": "cve-1234567890"
+  }
+  ```
+- **Example Response**:
+  ```json
+  {
+    "success": true,
+    "providerId": "cve-1234567890"
+  }
+  ```
+
+#### 32. RPCPauseProvider
+- **Description**: Pauses a running provider FSM
+- **Request Parameters**:
+  - `providerId` (string, required): Provider FSM identifier to pause
+- **Response**:
+  - `success` (bool): true if provider paused successfully
+  - `providerId` (string): ID of the paused provider
+- **Errors**:
+  - No active run: No active run found for the provider
+  - Provider not active: The requested provider is not the currently active run
+  - Failed to pause: Failed to pause the provider execution
+- **Example Request**:
+  ```json
+  {
+    "providerId": "cve-1234567890"
+  }
+  ```
+- **Example Response**:
+  ```json
+  {
+    "success": true,
+    "providerId": "cve-1234567890"
+  }
+  ```
+
+#### 33. RPCStopProvider
+- **Description**: Stops a running or paused provider FSM
+- **Request Parameters**:
+  - `providerId` (string, required): Provider FSM identifier to stop
+- **Response**:
+  - `success` (bool): true if provider stopped successfully
+  - `providerId` (string): ID of the stopped provider
+- **Errors**:
+  - No active run: No active run found for the provider
+  - Provider not active: The requested provider is not the currently active run
+  - Failed to stop: Failed to stop the provider execution
+- **Example Request**:
+  ```json
+  {
+    "providerId": "cve-1234567890"
+  }
+  ```
+- **Example Response**:
+  ```json
+  {
+    "success": true,
+    "providerId": "cve-1234567890"
+  }
+  ```
+
+#### 34. RPCUpdatePerformancePolicy
+- **Description**: Updates the performance policy for a provider FSM
+- **Request Parameters**:
+  - `providerId` (string, required): Provider FSM identifier to update
+  - `policy` (object, required): Performance policy configuration
+    - Any policy-specific key-value pairs for provider tuning
+- **Response**:
+  - `success` (bool): true if policy updated successfully
+  - `providerId` (string): ID of the provider with updated policy
+- **Errors**:
+  - Invalid params: Failed to parse request parameters
+- **Notes**:
+  - Policy updates are logged but not currently enforced (reserved for future implementation)
+  - Example policy fields might include: batch_size, max_concurrency, rate_limit, etc.
+- **Example Request**:
+  ```json
+  {
+    "providerId": "cve-1234567890",
+    "policy": {
+      "batch_size": 100,
+      "max_concurrency": 10,
+      "rate_limit": 50
+    }
+  }
+  ```
+- **Example Response**:
+  ```json
+  {
+    "success": true,
+    "providerId": "cve-1234567890"
+  }
+  ```
+
+### FSM Monitoring and Metrics
+
+#### 35. RPCGetEtlTree
+- **Description**: Retrieves the hierarchical ETL tree showing Macro FSM and all Provider FSMs
+- **Request Parameters**: None
+- **Response**:
+  - `tree` (object): Complete ETL tree structure
+    - `macro` (object): Macro FSM state
+      - `id` (string): Macro FSM identifier ("main-orchestrator")
+      - `state` (string): Current macro state ("BOOTSTRAPPING", "ORCHESTRATING", "STABILIZING", "DRAINING", "IDLE")
+      - `providers` (array): List of provider nodes
+      - `createdAt` (string): Creation timestamp (RFC3339)
+      - `updatedAt` (string): Last update timestamp (RFC3339)
+    - `totalProviders` (int): Total number of providers
+    - `activeProviders` (int): Number of active (running) providers
+- **Errors**: None (returns empty tree if no active ETL session)
+- **Notes**:
+  - Maps job executor run states to FSM states
+  - Queued → BOOTSTRAPPING (macro) / ACQUIRING (provider)
+  - Running → ORCHESTRATING (macro) / RUNNING (provider)
+  - Paused → STABILIZING (macro) / WAITING_QUOTA (provider)
+  - Completed/Stopped → DRAINING (macro) / TERMINATED/PAUSED (provider)
+- **Example Response**:
+  ```json
+  {
+    "tree": {
+      "macro": {
+        "id": "main-orchestrator",
+        "state": "ORCHESTRATING",
+        "providers": [
+          {
+            "id": "cve-1234567890",
+            "providerType": "cve",
+            "state": "RUNNING",
+            "processedCount": 1500,
+            "errorCount": 3,
+            "permitsHeld": 0,
+            "createdAt": "2026-02-09T12:00:00Z",
+            "updatedAt": "2026-02-09T12:30:00Z"
+          }
+        ],
+        "createdAt": "2026-02-08T12:00:00Z",
+        "updatedAt": "2026-02-09T12:30:00Z"
+      },
+      "totalProviders": 1,
+      "activeProviders": 1
+    }
+  }
+  ```
+
+#### 36. RPCGetKernelMetrics
+- **Description**: Retrieves kernel performance metrics from the broker
+- **Request Parameters**: None
+- **Response**:
+  - `metrics` (object): Performance metrics
+    - `p99Latency` (float): P99 latency in milliseconds
+    - `bufferSaturation` (float): Buffer saturation percentage (0-100)
+    - `messageRate` (float): Messages per second
+    - `errorRate` (float): Error rate percentage
+    - `timestamp` (string): Metrics timestamp (RFC3339)
+- **Errors**:
+  - Failed to get metrics: Unable to query broker for message statistics
+  - Failed to parse metrics: Invalid response format from broker
+- **Notes**:
+  - Queries broker via RPCGetMessageStats
+  - Calculates message rate from total sent/received messages
+  - Uses default values for P99 latency (10ms), buffer saturation (25%), error rate (0%)
+- **Example Response**:
+  ```json
+  {
+    "metrics": {
+      "p99Latency": 10.0,
+      "bufferSaturation": 25.0,
+      "messageRate": 150.5,
+      "errorRate": 0.0,
+      "timestamp": "2026-02-09T12:30:00Z"
+    }
+  }
+  ```
 
 ---
 

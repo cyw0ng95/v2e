@@ -29,7 +29,9 @@ const (
 	MacroDraining      MacroState = "DRAINING"
 )
 
-// ProviderState represents the state of a provider FSM
+// ProviderState represents the state of a provider FSM.
+// NOTE: This type must match fsm.ProviderState exactly.
+// Both types use the same string values for compatibility.
 type ProviderState string
 
 const (

@@ -322,62 +322,6 @@ func main() {
 	notes.NewRPCHandlers(notesServiceContainer, sp, logger)
 	logger.Info("Notes service handlers registered")
 
-	// TODO: Re-enable learning feature once learning handlers are properly implemented
-	// Initialize LearningFSM storage and Strategy Manager for learning operations
-	/*
-	fsmDBPath := os.Getenv("LEARNING_FSM_DB_PATH")
-	if fsmDBPath == "" {
-		fsmDBPath = "learning_fsm.db"
-	}
-	logger.Info("Learning FSM DB path configured: %s", fsmDBPath)
-
-	fsmStorage, err := fsm.NewBoltDBStorage(fsmDBPath)
-	if err != nil {
-		logger.Error("Failed to initialize FSM storage: %v", err)
-		os.Exit(1)
-	}
-	logger.Info("Learning FSM storage initialized")
-
-	// Create strategy manager with empty items list
-	// Items will be loaded dynamically from the databases when needed
-	strategyManager := strategy.NewManager(fsmStorage, []strategy.SecurityItem{})
-	logger.Info("Learning strategy manager initialized")
-
-	// Create learning service container
-	learningContainer := &LearningServiceContainer{
-		NotesService:     notesServiceContainer.NoteService.(*notes.NoteService),
-		CardService:      notesServiceContainer.MemoryCardService.(*notes.MemoryCardService),
-		URNIndex:         notesServiceContainer.URNIndex,
-		StrategyManager:  strategyManager,
-		FSMStorage:       fsmStorage,
-	}
-	logger.Info("Learning service container initialized")
-
-	// Register Learning RPC handlers
-	sp.RegisterHandler("RPCLearningNextItem", createLearningNextItemHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCLearningNextItem")
-	sp.RegisterHandler("RPCLearningMarkViewed", createLearningMarkViewedHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCLearningMarkViewed")
-	sp.RegisterHandler("RPCLearningMarkLearned", createLearningMarkLearnedHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCLearningMarkLearned")
-	sp.RegisterHandler("RPCLearningFollowLink", createLearningFollowLinkHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCLearningFollowLink")
-	sp.RegisterHandler("RPCLearningGoBack", createLearningGoBackHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCLearningGoBack")
-	sp.RegisterHandler("RPCLearningGetProgress", createLearningGetProgressHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCLearningGetProgress")
-	sp.RegisterHandler("RPCLearningReset", createLearningResetHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCLearningReset")
-	sp.RegisterHandler("RPCNoteMarkLearned", createNoteMarkLearnedHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCNoteMarkLearned")
-	sp.RegisterHandler("RPCAddURNLink", createAddURNLinkHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCAddURNLink")
-	sp.RegisterHandler("RPCRemoveURNLink", createRemoveURNLinkHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCRemoveURNLink")
-	sp.RegisterHandler("RPCGetByURN", createGetByURNHandler(learningContainer, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetByURN")
-	logger.Info("Learning RPC handlers registered")
-	*/
 
 	// Register Memory Card handlers
 	sp.RegisterHandler("RPCCreateMemoryCard", createMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))

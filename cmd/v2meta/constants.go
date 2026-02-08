@@ -29,13 +29,12 @@ const (
 	LogMsgRunStoreClosing        = "[meta] Closing run store"
 
 	// Component Initialization Log Messages
-	LogMsgSubprocessCreated        = "[meta] Subprocess created with ID: %s"
-	LogMsgRPCClientCreated         = "[meta] RPC client created"
-	LogMsgRPCAdapterCreated        = "[meta] RPC adapter created"
-	LogMsgJobExecutorCreated       = "[meta] Job executor created with concurrency: %d"
-	LogMsgCWEJobControllerCreated  = "[meta] CWE job controller created"
-	LogMsgDataPopControllerCreated = "[meta] Data population controller created"
-	LogMsgRPCHandlerRegistered     = "[meta] RPC handler registered: %s"
+	LogMsgSubprocessCreated       = "[meta] Subprocess created with ID: %s"
+	LogMsgRPCClientCreated        = "[meta] RPC client created"
+	LogMsgRPCAdapterCreated       = "[meta] RPC adapter created"
+	LogMsgJobExecutorCreated      = "[meta] Job executor created with concurrency: %d"
+	LogMsgCWEJobControllerCreated = "[meta] CWE job controller created"
+	LogMsgRPCHandlerRegistered    = "[meta] RPC handler registered: %s"
 
 	// Import Operations Log Messages
 	LogMsgFailedToImportCWELocal    = "Failed to import CWE on local: %v"
@@ -50,19 +49,8 @@ const (
 	LogMsgATTACKImportProcessFailed = "ATT&CK import process failed: %v"
 
 	// RPC Handler Log Messages
-	LogMsgRPCStartCWEImport         = "RPCStartCWEImport: Starting CWE import job"
-	LogMsgFailedToParseRequest      = "Failed to parse request: %v"
-	LogMsgFailedToStartCWEImport    = "Failed to start CWE import: %v"
-	LogMsgFailedToMarshalResponse   = "Failed to marshal response: %v"
-	LogMsgSuccessStartCWEImport     = "RPCStartCWEImport: Successfully started CWE import job: %s"
-	LogMsgRPCStartCAPECImport       = "RPCStartCAPECImport: Starting CAPEC import job"
-	LogMsgFailedToStartCAPECImport  = "Failed to start CAPEC import: %v"
-	LogMsgSuccessStartCAPECImport   = "RPCStartCAPECImport: Successfully started CAPEC import job: %s"
-	LogMsgRPCStartATTACKImport      = "RPCStartATTACKImport: Starting ATT&CK import job"
-	LogMsgFailedToStartATTACKImport = "Failed to start ATT&CK import: %v"
-	LogMsgSuccessStartATTACKImport  = "RPCStartATTACKImport: Successfully started ATT&CK import job: %s"
-	LogMsgProcessingGetCVEFailed    = "Processing GetCVE request failed due to malformed payload: %s"
-	LogMsgCVEIDRequired             = "cve_id is required but was empty or missing"
+	LogMsgProcessingGetCVEFailed = "Processing GetCVE request failed due to malformed payload: %s"
+	LogMsgCVEIDRequired          = "cve_id is required but was empty or missing"
 
 	// Job Management Log Messages
 	LogMsgRunRecoveryStarted    = "[meta] Run recovery started"
