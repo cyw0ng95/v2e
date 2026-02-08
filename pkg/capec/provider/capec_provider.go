@@ -7,164 +7,74 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
-	"github.com/cyw0ng95/v2e/pkg/meta/provider"
+	"github.com/cyw0ng95/v2e/pkg/meta/storage"
+	"github.com/cyw0ng95/v2e/pkg/urn"
 )
 
-// CAPECProvider implements DataSourceProvider for CAPEC data
+// CAPECProvider implements ProviderFSM for CAPEC data
 type CAPECProvider struct {
-	config       *provider.ProviderConfig
-	rateLimiter  *provider.RateLimiter
-	progress     *provider.ProviderProgress
-	cancelFunc   context.CancelFunc
-	mu           sync.RWMutex
-	ctx          context.Context
-	localPath    string
-	eventHandler func(*fsm.Event) error
+	*fsm.BaseProviderFSM
+	localPath  string
+	batchSize  int
+	maxRetries int
+	retryDelay time.Duration
+	mu         sync.RWMutex
 }
 
-// NewCAPECProvider creates a new CAPEC provider
+// NewCAPECProvider creates a new CAPEC provider with FSM support
 // localPath is the path to CAPEC XML file
-func NewCAPECProvider(localPath string) (*CAPECProvider, error) {
-	baseConfig := provider.DefaultProviderConfig()
-	baseConfig.Name = "CAPEC"
-	baseConfig.DataType = "CAPEC"
-	baseConfig.LocalPath = localPath
-	baseConfig.BatchSize = 50
-	baseConfig.MaxRetries = 3
-	baseConfig.RetryDelay = 5 * time.Second
-	baseConfig.RateLimitPermits = 10
-
+func NewCAPECProvider(localPath string, store *storage.Store) (*CAPECProvider, error) {
 	if localPath == "" {
 		localPath = "assets/capec_contents_latest.xml"
 	}
 
-	return &CAPECProvider{
-		config:      baseConfig,
-		rateLimiter: provider.NewRateLimiter(baseConfig.RateLimitPermits),
-		progress:    &provider.ProviderProgress{},
-		localPath:   localPath,
-	}, nil
+	provider := &CAPECProvider{
+		localPath:  localPath,
+		batchSize:  50,
+		maxRetries: 3,
+		retryDelay: 5 * time.Second,
+	}
+
+	// Create base FSM with custom executor
+	base, err := fsm.NewBaseProviderFSM(fsm.ProviderConfig{
+		ID:           "capec",
+		ProviderType: "capec",
+		Storage:      store,
+		Executor:     provider.execute,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	provider.BaseProviderFSM = base
+	return provider, nil
 }
 
 // Initialize sets up the CAPEC provider context
 func (p *CAPECProvider) Initialize(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.ctx, p.cancelFunc = context.WithCancel(ctx)
 	return nil
 }
 
-// GetID returns provider ID
-func (p *CAPECProvider) GetID() string {
-	return p.config.DataType
-}
+// execute performs CAPEC fetch and store operations
+func (p *CAPECProvider) execute() error {
+	currentState := p.GetState()
 
-// GetType returns provider type
-func (p *CAPECProvider) GetType() string {
-	return p.config.DataType
-}
-
-// GetState returns the current state as a string
-func (p *CAPECProvider) GetState() fsm.ProviderState {
-	return fsm.ProviderIdle
-}
-
-// Start begins provider execution
-func (p *CAPECProvider) Start() error {
-	return nil
-}
-
-// Pause pauses provider execution
-func (p *CAPECProvider) Pause() error {
-	return nil
-}
-
-// Resume resumes provider execution
-func (p *CAPECProvider) Resume() error {
-	return nil
-}
-
-// SetEventHandler sets the callback for event bubbling to MacroFSM
-func (p *CAPECProvider) SetEventHandler(handler func(*fsm.Event) error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.eventHandler = handler
-}
-
-// Transition attempts to transition to a new state
-func (p *CAPECProvider) Transition(newState fsm.ProviderState) error {
-	// TODO: Implement state transition logic with validation
-	return nil
-}
-
-// Stop terminates provider execution
-func (p *CAPECProvider) Stop() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cancelFunc != nil {
-		p.cancelFunc()
+	// Check if we should be running
+	if currentState != fsm.ProviderRunning {
+		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
 	}
 
-	return nil
-}
+	p.mu.RLock()
+	localPath := p.localPath
+	batchSize := p.batchSize
+	p.mu.RUnlock()
 
-// OnQuotaRevoked handles quota revocation
-func (p *CAPECProvider) OnQuotaRevoked(revokedCount int) error {
-	return nil
-}
-
-// OnQuotaGranted handles quota grant
-func (p *CAPECProvider) OnQuotaGranted(grantedCount int) error {
-	return nil
-}
-
-// OnRateLimited handles rate limiting
-func (p *CAPECProvider) OnRateLimited(retryAfter time.Duration) error {
-	return nil
-}
-
-// Execute performs the fetch operation
-func (p *CAPECProvider) Execute() error {
-	return p.Fetch(p.ctx)
-}
-
-// Fetch reads and parses CAPEC data from local XML file
-func (p *CAPECProvider) Fetch(ctx context.Context) error {
-	atomic.StoreInt64(&p.progress.Fetched, 0)
-
-	data, err := os.ReadFile(p.localPath)
-	if err != nil {
-		atomic.AddInt64(&p.progress.Failed, 1)
-		return fmt.Errorf("failed to read CAPEC file: %w", err)
-	}
-
-	capecData := capec.Root{}
-	if err := xml.Unmarshal(data, &capecData); err != nil {
-		atomic.AddInt64(&p.progress.Failed, 1)
-		return fmt.Errorf("failed to unmarshal CAPEC data: %w", err)
-	}
-
-	// Count attack patterns
-	count := len(capecData.AttackPatterns.AttackPattern)
-	atomic.StoreInt64(&p.progress.Fetched, int64(count))
-	p.progress.LastFetchAt = time.Now()
-
-	return nil
-}
-
-// Store stores fetched CAPEC data using local service RPC
-func (p *CAPECProvider) Store(ctx context.Context) error {
-	atomic.StoreInt64(&p.progress.Stored, 0)
-	atomic.StoreInt64(&p.progress.Failed, 0)
-
-	data, err := os.ReadFile(p.localPath)
+	// Read and parse CAPEC data
+	data, err := os.ReadFile(localPath)
 	if err != nil {
 		return fmt.Errorf("failed to read CAPEC file: %w", err)
 	}
@@ -174,68 +84,70 @@ func (p *CAPECProvider) Store(ctx context.Context) error {
 		return fmt.Errorf("failed to unmarshal CAPEC data: %w", err)
 	}
 
-	stored := 0
-	for i, attackPattern := range capecData.AttackPatterns.AttackPattern {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+	attackPatterns := capecData.AttackPatterns.AttackPattern
+	totalCount := len(attackPatterns)
+
+	// Process attack patterns in batches
+	for i := 0; i < totalCount; i++ {
+		// Check for cancellation or state change
+		if p.GetState() != fsm.ProviderRunning {
+			break
 		}
 
-		if i > 0 && i%p.config.BatchSize == 0 {
+		attackPattern := attackPatterns[i]
+
+		// Create URN for checkpointing
+		capecID := attackPattern.ID
+		itemURN := urn.MustParse(fmt.Sprintf("v2e::mitre::capec::%s", capecID))
+
+		// Store CAPEC (TODO: implement actual storage via RPC)
+		_, err := json.Marshal(attackPattern)
+		if err != nil {
+			return fmt.Errorf("failed to marshal CAPEC item: %w", err)
+		}
+
+		// Simulate batch delay
+		if i > 0 && i%batchSize == 0 {
 			time.Sleep(1 * time.Second)
 		}
 
+		success := true
+		errorMsg := ""
 		// TODO: Use RPCStoreCAPEC to store each item
-		_, err := json.Marshal(attackPattern)
-		if err != nil {
-			atomic.AddInt64(&p.progress.Failed, 1)
-			continue
-		}
 
-		if err := p.rateLimiter.Wait(ctx); err != nil {
-			return err
+		// Save checkpoint
+		if err := p.SaveCheckpoint(itemURN, success, errorMsg); err != nil {
+			return fmt.Errorf("failed to save checkpoint for %s: %w", capecID, err)
 		}
-
-		stored++
-		atomic.StoreInt64(&p.progress.Stored, int64(stored))
 	}
-
-	p.progress.LastStoreAt = time.Now()
-	p.progress.StoreRate = float64(stored) / time.Since(p.progress.LastFetchAt).Seconds()
 
 	return nil
 }
 
-// GetProgress returns a copy of current progress metrics
-func (p *CAPECProvider) GetProgress() *provider.ProviderProgress {
+// GetLocalPath returns the local file path
+func (p *CAPECProvider) GetLocalPath() string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-
-	return &provider.ProviderProgress{
-		Fetched:     atomic.LoadInt64(&p.progress.Fetched),
-		Stored:      atomic.LoadInt64(&p.progress.Stored),
-		Failed:      atomic.LoadInt64(&p.progress.Failed),
-		LastFetchAt: p.progress.LastFetchAt,
-		LastStoreAt: p.progress.LastStoreAt,
-		FetchRate:   p.progress.FetchRate,
-		StoreRate:   p.progress.StoreRate,
-	}
+	return p.localPath
 }
 
-// GetConfig returns the provider configuration
-func (p *CAPECProvider) GetConfig() *provider.ProviderConfig {
-	return p.config
-}
-
-// Cleanup releases resources held by the CAPEC provider
-func (p *CAPECProvider) Cleanup(ctx context.Context) error {
+// SetLocalPath sets the local file path
+func (p *CAPECProvider) SetLocalPath(path string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.localPath = path
+}
 
-	if p.cancelFunc != nil {
-		p.cancelFunc()
-	}
+// GetBatchSize returns the batch size
+func (p *CAPECProvider) GetBatchSize() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.batchSize
+}
 
-	return nil
+// SetBatchSize sets the batch size
+func (p *CAPECProvider) SetBatchSize(size int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.batchSize = size
 }
