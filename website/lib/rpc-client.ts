@@ -394,15 +394,32 @@ const cachedCall = React.cache(async function (
       }
 
       // Log failed RPC calls for debugging/bugfix purposes
+      // Don't log certain expected "error" states as errors
+      const acceptableErrors = [
+        'no active import job',
+        'not found',
+        'does not exist',
+      ];
+      const isAcceptableError = rpcResponse.message && acceptableErrors.some(msg =>
+        rpcResponse.message.toLowerCase().includes(msg)
+      );
+
       if (rpcResponse.retcode !== 0) {
-        logger.error(`RPC call failed with retcode=${rpcResponse.retcode}`, new Error(rpcResponse.message || 'Unknown RPC error'), {
-          request: { method, params, target },
-          response: {
-            retcode: rpcResponse.retcode,
-            message: rpcResponse.message,
-            payload: rpcResponse.payload,
-          },
-        });
+        if (isAcceptableError) {
+          // Expected state, not an actual error - log at debug level
+          logger.debug(`RPC call returned non-zero retcode=${rpcResponse.retcode}: ${rpcResponse.message}`, {
+            request: { method, target },
+          });
+        } else {
+          logger.warn(`RPC call failed with retcode=${rpcResponse.retcode}: ${rpcResponse.message}`, {
+            request: { method, params, target },
+            response: {
+              retcode: rpcResponse.retcode,
+              message: rpcResponse.message,
+              payload: rpcResponse.payload,
+            },
+          });
+        }
       }
 
       logger.debug('RPC request completed', { method, retcode: rpcResponse.retcode });

@@ -58,14 +58,22 @@ const LearningView: React.FC<LearningViewProps> = ({ urn, onClose }) => {
   }, [urn]);
 
   const loadObjectData = async () => {
+    // Don't attempt to load if URN is empty or invalid
+    if (!urn || urn.trim() === '') {
+      setLoading(false);
+      return;
+    }
+
+    const parts = urn.split('::');
+    if (parts.length < 4) {
+      setLoading(false);
+      return; // Silently return for invalid URN instead of throwing error
+    }
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      const parts = urn.split('::');
-      if (parts.length < 4) {
-        throw new Error('Invalid URN format');
-      }
       
       const [, provider, type, itemId] = parts;
       const itemType = type.toUpperCase();
