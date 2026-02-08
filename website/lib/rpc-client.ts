@@ -1191,18 +1191,6 @@ export class RPCClient {
     );
   }
 
-  async startCWEImport(params?: Record<string, unknown>): Promise<RPCResponse<any>> {
-    return this.call<any, any>('RPCStartCWEImport', params);
-  }
-
-  async startCAPECImport(params?: Record<string, unknown>): Promise<RPCResponse<any>> {
-    return this.call<any, any>('RPCStartCAPECImport', params);
-  }
-
-  async startATTACKImport(params?: Record<string, unknown>): Promise<RPCResponse<any>> {
-    return this.call<any, any>('RPCStartATTACKImport', params);
-  }
-
   async stopSession(): Promise<RPCResponse<StopSessionResponse>> {
     return this.call<undefined, StopSessionResponse>('RPCStopSession');
   }
