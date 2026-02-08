@@ -355,6 +355,7 @@ func TestSeqLock(t *testing.T) {
 	sl := &SeqLock{}
 
 	seq1 := sl.ReadLock()
+
 	seq2 := sl.ReadLock()
 
 	if seq1 != seq2 {
@@ -365,6 +366,7 @@ func TestSeqLock(t *testing.T) {
 	sl.WriteUnlock()
 
 	seq3 := sl.ReadLock()
+
 	if seq3 <= seq2 {
 		t.Error("Sequence should increase after write")
 	}

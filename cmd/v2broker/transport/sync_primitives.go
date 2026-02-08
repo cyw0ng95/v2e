@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -12,6 +13,7 @@ type SpinLock struct {
 
 func (sl *SpinLock) Lock() {
 	for !sl.flag.CompareAndSwap(0, 1) {
+		runtime.Gosched()
 	}
 }
 
@@ -33,6 +35,7 @@ func (sl *SeqLock) ReadLock() uint64 {
 		if seq&1 == 0 {
 			return seq
 		}
+		runtime.Gosched()
 	}
 }
 
@@ -48,11 +51,12 @@ func (sl *SeqLock) WriteLock() {
 				return
 			}
 		}
+		runtime.Gosched()
 	}
 }
 
 func (sl *SeqLock) WriteUnlock() {
-	sl.sequence.Add(2)
+	sl.sequence.Add(1)
 }
 
 type ShardedMutex struct {
@@ -93,56 +97,36 @@ func (sm *ShardedMutex) RUnlock(key uintptr) {
 }
 
 type Semaphore struct {
-	count   atomic.Int32
-	waiters atomic.Int32
-	cond    *sync.Cond
-	mu      sync.Mutex
+	ch       chan struct{}
+	capacity int32
 }
 
 func NewSemaphore(initial int32) *Semaphore {
-	s := &Semaphore{
-		cond: sync.NewCond(&sync.Mutex{}),
+	return &Semaphore{
+		ch:       make(chan struct{}, initial),
+		capacity: initial,
 	}
-	s.count.Store(initial)
-	return s
 }
 
 func (s *Semaphore) Acquire() {
-	if s.count.Add(-1) >= 0 {
-		return
-	}
-
-	s.waiters.Add(1)
-	s.mu.Lock()
-	for s.count.Load() < 0 {
-		s.cond.Wait()
-	}
-	s.mu.Unlock()
-	s.waiters.Add(-1)
+	s.ch <- struct{}{}
 }
 
 func (s *Semaphore) TryAcquire() bool {
-	for {
-		count := s.count.Load()
-		if count <= 0 {
-			return false
-		}
-		if s.count.CompareAndSwap(count, count-1) {
-			return true
-		}
+	select {
+	case s.ch <- struct{}{}:
+		return true
+	default:
+		return false
 	}
 }
 
 func (s *Semaphore) Release() {
-	if s.count.Add(1) > 0 {
-		if s.waiters.Load() > 0 {
-			s.cond.Signal()
-		}
-	}
+	<-s.ch
 }
 
 func (s *Semaphore) Count() int32 {
-	return s.count.Load()
+	return s.capacity - int32(len(s.ch))
 }
 
 type ReadWriteCounter struct {
