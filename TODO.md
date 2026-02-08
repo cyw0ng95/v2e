@@ -6,17 +6,7 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |-----|-------------------|---------|------------------------------------------------------------------------------------|---------|----------|---------|
-| 251 | website/lib       | Types   | Replace 330+ instances of `any` type with proper TypeScript types in hooks.ts, rpc-client.ts, types.ts | 500      | 2        | ✅ DONE |
-| 277 | website/          | Code    | Add error boundaries for client-side error handling                                | 100      | 2        | ✅ DONE |
-| 278 | website/components| Code    | Add loading states and error handling to all async data fetching (incomplete in several components) | 150      | 2        | ✅ DONE |
-| 289 | website/          | Code    | Add TypeScript strict mode compliance - fix implicit any types                     | 300      | 2        | ✅ DONE |
-| 290 | website/          | Feature | Implement proper error toast notifications using Sonner for all user-facing errors | 150      | 2        | ✅ DONE |
 | 291 | website/          | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
-| 340 | website/lib       | Feature | Create design system foundation with spacing, typography, and color tokens         | 300      | 1        | ✅ DONE |
-| 341 | website/components| Feature | Standardize button component with variants, sizes, and loading states              | 250      | 1        | ✅ DONE |
-| 342 | website/components| Feature | Create grouped navigation sidebar with breadcrumb navigation                       | 400      | 1        | ✅ DONE |
-| 343 | website/components| Feature | Create empty state and loading state components with skeletons                     | 200      | 1        | ✅ DONE |
-| 344 | website/components| A11y    | Add accessibility improvements (aria-label, role, keyboard navigation)             | 300      | 1        | ✅ DONE |
 | 345 | website/          | Perf    | Add React.memo and performance optimizations for large components                  | 400      | 2        |         |
 | 346 | website/          | Feature | Implement responsive design improvements for mobile/tablet layouts                 | 300      | 2        |         |
 | 347 | website/components| Feature | Add virtualization for large tables (>100 rows)                                    | 200      | 2        |         |
@@ -127,7 +117,6 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 056 | pkg/cwe          | Test    | Add test level definitions to all tests (currently 20 occurrences)                 | 400      | 5        |         |
 | 057 | pkg/common       | Coverage | Improve coverage for procfs package (currently 0.0%)                               | 400      | 5        |         |
 | 058 | pkg/attack       | Coverage | Improve ImportFromXLSX coverage (currently 2.2%)                                   | 400      | 5        |         |
-| 059 | pkg/attack       | Coverage | Improve ImportFromXLSX coverage (currently 2.2%)                                   | 400      | 5        |         |
 | 060 | pkg/proc         | Coverage | Improve coverage for subprocess package (currently 52.9%)                          | 600      | 5        |         |
 | 061 | pkg/asvs         | Test    | Add test for ImportFromCSV method (currently 0% coverage)                          | 400      | 5        |         |
 | 062 | pkg/asvs         | Coverage | Increase overall test coverage from 38.2% to at least 60%                          | 600      | 5        |         |
@@ -150,16 +139,8 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 150 | website          | Perf    | Review and optimize component memoization usage                                    | 75       | 5        |         |
 | 151 | website          | Deps    | Update packages to latest stable versions                                          | 25       | 5        |         |
 | 152 | website          | Security | Add runtime validation for environment variables using zod                         | 25       | 5        |         |
-| 153 | website          | Test    | Set up Jest + React Testing Library and write unit tests                           | 600      | 5        | WONTFIX |
-| 154 | website          | Test    | Set up Playwright or Cypress for E2E testing                                       | 400      | 5        | WONTFIX |
-| 155 | website          | Docs    | Add JSDoc comments to all components                                               | 150      | 5        | WONTFIX |
-| 156 | website          | Docs    | Add advanced usage examples to README                                              | 75       | 5        | WONTFIX |
-| 157 | website          | A11y    | Audit with axe DevTools and fix ARIA label issues                                  | 75       | 5        | WONTFIX |
-| 158 | website          | A11y    | Ensure full keyboard navigation for custom components                              | 50       | 5        | WONTFIX |
-| 159 | website          | DX      | Set up Husky for pre-commit hooks                                                  | 50       | 5        | WONTFIX |
 | 160 | website          | DX      | Add Prettier configuration and integrate with linting                              | 25       | 5        |         |
 | 161 | website          | Perf    | Benchmark build times and consider Turbopack or incremental builds                 | 100      | 5        |         |
-| 162 | website          | Feature | Implement server-side search for CVE database                                      | 150      | 5        | WONTFIX |
 | 163 | website          | UX      | Improve loading states with sophisticated animations                               | 75       | 5        |         |
 | 164 | website          | UX      | Enhance error recovery with retry buttons, context, and suggested actions          | 100      | 5        |         |
 | 165 | website          | Debt    | Make RPC timeout configurable per request type                                     | 50       | 5        |         |
