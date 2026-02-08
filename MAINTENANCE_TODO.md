@@ -30,6 +30,13 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 198 | pkg/cve/remote   | Code    | Add input sanitization for external API parameters                                 | 150      | 2        |         |
 | 337 | cmd/v2access     | Security | Add request rate limiting to prevent DoS attacks (e.g., 100 req/min per IP)       | 100      | 1        |         |
 | 338 | cmd/v2access     | Security | Add request body size limits to prevent memory exhaustion attacks                   | 100      | 1        |         |
+| 401 | website/lib      | UX      | Create unified design system with design tokens for spacing, typography, colors, effects | 300      | 1        |         |
+| 402 | website/lib      | UX      | Redesign color palette with modern, accessible colors and proper semantic mapping      | 200      | 1        |         |
+| 403 | website/lib      | UX      | Create comprehensive typography system with font weights, sizes, line heights          | 150      | 1        |         |
+| 404 | website/components/ui | UX      | Standardize button variants, sizes, and states with proper accessibility         | 250      | 1        |         |
+| 405 | website/components | UX      | Simplify navigation by consolidating tabs and adding breadcrumb navigation         | 400      | 1        |         |
+| 406 | website/lib      | UX      | Implement error boundary and consistent toast notifications using Sonner             | 200      | 1        |         |
+| 407 | website/components | UX      | Add ARIA labels, roles, and keyboard navigation to all interactive components | 400      | 1        |         |
 | 339 | pkg/proc/subprocess | Security | Add input length validation for all string parameters (CVE ID max 50 chars, CWE ID max 20) | 150      | 2        |         |
 | 340 | cmd/v2access     | Security | Implement proper path validation to ensure file access is restricted to safe directories (server.go:57-74) | 200      | 2        |         |
 | 341 | cmd/v2access     | Security | Prevent following symbolic links when serving static files                    | 150      | 2        |         |
@@ -112,6 +119,15 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 334 | website/components | Code    | Fix 18 components using array index as key (React warning)                    | 100      | 2        |         |
 | 335 | website/lib       | Types   | Replace 42 `any[]` type usages with proper TypeScript array types              | 150      | 2        |         |
 | 336 | website/         | Code    | Fix 2 wildcard React imports (import * as React) - use named imports         | 50       | 2        |         |
+| 408 | website/components | UX      | Create consistent icon system with standardized sizes and stroke widths          | 150      | 2        |         |
+| 409 | website/components/ui | UX      | Standardize form inputs, selects, and checkboxes with consistent styling and states | 300      | 2        |         |
+| 410 | website/components/ui | UX      | Enhance card component with variants, elevation, and interactive states     | 200      | 2        |         |
+| 411 | website/components | UX      | Create reusable empty state and loading state components                    | 250      | 2        |         |
+| 412 | website/app      | UX      | Improve dark mode colors, contrast, and transitions                      | 150      | 2        |         |
+| 413 | website/app      | UX      | Improve mobile and tablet layouts with proper breakpoints                    | 300      | 2        |         |
+| 414 | website/components | UX      | Optimize component rendering with memo, lazy loading, and virtualization    | 400      | 2        |         |
+| 415 | website/components | UX      | Add onboarding tour, tooltips, and help documentation                    | 350      | 3        |         |
+| 416 | website/components | UX      | Add JSDoc comments and create component documentation                     | 500      | 3        |         |
 | 281 | website/         | Perf    | Add virtualization for large tables (CVE, CWE, CAPEC lists can be thousands of rows) | 200      | 3        |         |
 | 282 | website/lib      | Perf    | Optimize data fetching - implement request deduplication and caching for repeated calls | 150      | 3        |         |
 | 284 | website/lib      | Docs    | Document RPC API methods in lib/rpc-client.ts (60+ methods need documentation)     | 200      | 3        |         |
