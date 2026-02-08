@@ -123,14 +123,15 @@ func deleteMemoryCardHandler(service *notes.MemoryCardService, logger *common.Lo
 func listMemoryCardsHandler(service *notes.MemoryCardService, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params struct {
-			BookmarkID *uint   `json:"bookmark_id"`
-			MajorClass *string `json:"major_class"`
-			MinorClass *string `json:"minor_class"`
-			Status     *string `json:"status"`
-			Author     *string `json:"author"`
-			IsPrivate  *bool   `json:"is_private"`
-			Offset     int     `json:"offset"`
-			Limit      int     `json:"limit"`
+			BookmarkID    *uint   `json:"bookmark_id"`
+			MajorClass    *string `json:"major_class"`
+			MinorClass    *string `json:"minor_class"`
+			Status        *string `json:"status"`
+			LearningState *string `json:"learning_state"`
+			Author        *string `json:"author"`
+			IsPrivate     *bool   `json:"is_private"`
+			Offset        int     `json:"offset"`
+			Limit         int     `json:"limit"`
 		}
 		if msg.Payload != nil {
 			if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
@@ -145,7 +146,7 @@ func listMemoryCardsHandler(service *notes.MemoryCardService, logger *common.Log
 		if params.Offset < 0 {
 			params.Offset = 0
 		}
-		cards, total, err := service.ListMemoryCardsFull(ctx, params.BookmarkID, params.MajorClass, params.MinorClass, params.Status, params.Author, params.IsPrivate, params.Offset, params.Limit)
+		cards, total, err := service.ListMemoryCardsFull(ctx, params.BookmarkID, params.MajorClass, params.MinorClass, params.Status, params.LearningState, params.Author, params.IsPrivate, params.Offset, params.Limit)
 		if err != nil {
 			logger.Warn("Failed to list memory cards: %v", err)
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to list memory cards: %v", err)), nil

@@ -104,7 +104,7 @@ func (s *MemoryCardService) DeleteMemoryCard(ctx context.Context, id uint) error
 }
 
 // ListMemoryCardsFull lists memory cards with new filters
-func (s *MemoryCardService) ListMemoryCardsFull(ctx context.Context, bookmarkID *uint, majorClass, minorClass, status, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error) {
+func (s *MemoryCardService) ListMemoryCardsFull(ctx context.Context, bookmarkID *uint, majorClass, minorClass, status, learningState, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error) {
 	var cards []*MemoryCardModel
 	query := s.db.WithContext(ctx).Model(&MemoryCardModel{})
 	if bookmarkID != nil {
@@ -118,6 +118,9 @@ func (s *MemoryCardService) ListMemoryCardsFull(ctx context.Context, bookmarkID 
 	}
 	if status != nil && *status != "" {
 		query = query.Where("status = ?", *status)
+	}
+	if learningState != nil && *learningState != "" {
+		query = query.Where("fsm_state = ?", *learningState)
 	}
 	if author != nil && *author != "" {
 		query = query.Where("author = ?", *author)
