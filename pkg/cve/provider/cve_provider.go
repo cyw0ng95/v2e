@@ -150,6 +150,13 @@ func (p *CVEProvider) GetAPIKey() string {
 	return p.apiKey
 }
 
+// SetBatchSize sets the batch size for fetching
+func (p *CVEProvider) SetBatchSize(size int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.batchSize = size
+}
+
 // GetFetcher returns the NVD fetcher
 func (p *CVEProvider) GetFetcher() *remote.Fetcher {
 	p.mu.RLock()

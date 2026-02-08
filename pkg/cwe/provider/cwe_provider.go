@@ -133,6 +133,13 @@ func (p *CWEProvider) execute() error {
 	return nil
 }
 
+// SetBatchSize sets the batch size
+func (p *CWEProvider) SetBatchSize(size int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.batchSize = size
+}
+
 // GetLocalPath returns the local file path
 func (p *CWEProvider) GetLocalPath() string {
 	p.mu.RLock()
