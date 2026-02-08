@@ -261,7 +261,7 @@ func TestParseDataStreamFile(t *testing.T) {
 // TestParseDataStreamFile_RealFile tests parsing a real SSG data stream file from submodule.
 // This test validates parsing against actual production data.
 func TestParseDataStreamFile_RealFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseDataStreamFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseDataStreamFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Path to real SSG data stream file in submodule
 		dsPath := filepath.Join("..", "..", "..", "assets", "ssg-static", "ssg-al2023-ds.xml")
 

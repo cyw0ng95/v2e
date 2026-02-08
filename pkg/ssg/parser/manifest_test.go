@@ -108,7 +108,7 @@ func TestParseManifestFile(t *testing.T) {
 }
 
 func TestParseManifestFile_RealFile(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestParseManifestFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level2, "TestParseManifestFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with a real manifest file from submodule if available
 		manifestPath := filepath.Join("..", "..", "..", "assets", "ssg-static", "manifests", "manifest-al2023.json")
 	
