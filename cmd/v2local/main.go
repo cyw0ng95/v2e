@@ -360,6 +360,7 @@ func main() {
 	sp.RegisterHandler("RPCUpdateMemoryCard", updateMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
 	sp.RegisterHandler("RPCDeleteMemoryCard", deleteMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
 	sp.RegisterHandler("RPCListMemoryCards", listMemoryCardsHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
+	sp.RegisterHandler("RPCRateMemoryCard", rateMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))
 	logger.Info("Memory Card handlers registered")
 
 	// Register SSG handlers

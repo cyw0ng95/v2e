@@ -154,3 +154,45 @@ func listMemoryCardsHandler(service *notes.MemoryCardService, logger *common.Log
 		return subprocess.NewSuccessResponse(msg, resp)
 	}
 }
+
+// Handler for RPCRateMemoryCard
+func rateMemoryCardHandler(service *notes.MemoryCardService, logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		var params struct {
+			CardID uint            `json:"card_id"`
+			Rating notes.CardRating `json:"rating"`
+		}
+		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
+			logger.Warn("Failed to parse request: %v", errResp.Error)
+			return errResp, nil
+		}
+		if params.CardID == 0 {
+			logger.Warn("card_id is required")
+			return subprocess.NewErrorResponse(msg, "card_id is required"), nil
+		}
+		if params.Rating == "" {
+			logger.Warn("rating is required")
+			return subprocess.NewErrorResponse(msg, "rating is required"), nil
+		}
+
+		// Validate rating value
+		validRatings := map[notes.CardRating]bool{
+			notes.CardRatingAgain: true,
+			notes.CardRatingHard:  true,
+			notes.CardRatingGood:  true,
+			notes.CardRatingEasy:  true,
+		}
+		if !validRatings[params.Rating] {
+			logger.Warn("invalid rating: %s", params.Rating)
+			return subprocess.NewErrorResponse(msg, "invalid rating: must be 'again', 'hard', 'good', or 'easy'"), nil
+		}
+
+		card, err := service.RateMemoryCard(ctx, params.CardID, params.Rating)
+		if err != nil {
+			logger.Warn("Failed to rate memory card: %v", err)
+			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to rate memory card: %v", err)), nil
+		}
+		resp := map[string]any{"success": true, "memory_card": card}
+		return subprocess.NewSuccessResponse(msg, resp)
+	}
+}

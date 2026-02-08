@@ -794,6 +794,20 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, 
 - **Errors**:
   - Database error
 
+#### 63. RPCRateMemoryCard
+- **Description**: Rates a memory card and updates SM-2 parameters
+- **Request Parameters**:
+  - `card_id` (int, required): Memory card ID
+  - `rating` (string, required): Rating - "again", "hard", "good", or "easy"
+- **Response**:
+  - `success` (bool): true if rated
+  - `memory_card` (object): Updated memory card with new SM-2 values
+- **Errors**:
+  - Missing card_id
+  - Invalid rating
+  - Card not found
+  - Database error
+
 ### SSG Operations
 
 #### 63. RPCSSGImportGuide
