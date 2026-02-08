@@ -20,7 +20,7 @@ import (
 // newTestFetcher returns a fetcher configured to talk to serverURL by rewriting
 // the internal resty client and baseURL via reflection (test-only shim).
 func newTestFetcher(serverURL string) *remote.Fetcher {
-	f := remote.NewFetcher("")
+	f, _ := remote.NewFetcher("")
 	if serverURL == "" {
 		return f
 	}

@@ -24,8 +24,6 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/notes"
-	"github.com/cyw0ng95/v2e/pkg/notes/fsm"
-	"github.com/cyw0ng95/v2e/pkg/notes/strategy"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	ssglocal "github.com/cyw0ng95/v2e/pkg/ssg/local"
 )
@@ -324,7 +322,9 @@ func main() {
 	notes.NewRPCHandlers(notesServiceContainer, sp, logger)
 	logger.Info("Notes service handlers registered")
 
+	// TODO: Re-enable learning feature once learning handlers are properly implemented
 	// Initialize LearningFSM storage and Strategy Manager for learning operations
+	/*
 	fsmDBPath := os.Getenv("LEARNING_FSM_DB_PATH")
 	if fsmDBPath == "" {
 		fsmDBPath = "learning_fsm.db"
@@ -340,7 +340,7 @@ func main() {
 
 	// Create strategy manager with empty items list
 	// Items will be loaded dynamically from the databases when needed
-	strategyManager := strategy.NewManager([]strategy.SecurityItem{})
+	strategyManager := strategy.NewManager(fsmStorage, []strategy.SecurityItem{})
 	logger.Info("Learning strategy manager initialized")
 
 	// Create learning service container
@@ -377,6 +377,7 @@ func main() {
 	sp.RegisterHandler("RPCGetByURN", createGetByURNHandler(learningContainer, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetByURN")
 	logger.Info("Learning RPC handlers registered")
+	*/
 
 	// Register Memory Card handlers
 	sp.RegisterHandler("RPCCreateMemoryCard", createMemoryCardHandler(notesServiceContainer.MemoryCardService.(*notes.MemoryCardService), logger))

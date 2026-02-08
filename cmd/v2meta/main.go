@@ -18,48 +18,38 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
-	"github.com/cyw0ng95/v2e/pkg/cwe"
-	"github.com/cyw0ng95/v2e/pkg/capec"
-	"github.com/cyw0ng95/v2e/pkg/attack"
-	"github.com/cyw0ng95/v2e/pkg/ssg"
-	"github.com/cyw0ng95/v2e/pkg/asvs"
-	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	"github.com/cyw0ng95/v2e/pkg/notes/strategy"
-	"github.com/cyw0ng95/v2e/pkg/cwe/job"
-	"github.com/cyw0ng95/v2e/pkg/ssg/job"
- )
-
+	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
+	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 )
 
 const (
 	// Log messages
-	LogMsgPCGetProviderStatus        = "PCGetProviderStatus RPC called"
-)
+	LogMsgPCGetProviderStatus = "PCGetProviderStatus RPC called"
 
+	// Data type constants
 	DataTypeCVE    = "CVE"
 	DataTypeCWE    = "CWE"
 	DataTypeCAPEC  = "CAPEC"
-	DataTypeATTACK   = "ATT&CK"
+	DataTypeATTACK = "ATT&CK"
 	DataTypeSSG    = "SSG"
 	DataTypeASVS   = "ASVS"
-)
-
-	DataTypeRemote  = "remote"
-)
+	DataTypeRemote = "remote"
 
 	// RPC method names
 	RPCListProviders      = "RPCListProviders"
 	RPCGetProviderStatus = "RPCGetProviderStatus"
 )
 
-	// Data type constants match
-	DataTypeFromRPC string func(dataType string) string {
+// DataTypeFromRPC maps RPC data type string to constant
+func DataTypeFromRPC(dataType string) string {
 	switch dataType {
 	case "CVE":
 		return DataTypeCVE
@@ -80,17 +70,17 @@ const (
 
 // DataPopulationController manages data population for different data types using Provider Registry
 type DataPopulationController struct {
-	rpcClient   *rpc.Client
-	providerRegistry *provider.ProviderRegistry
-	logger      *common.Logger
+	rpcClient        *rpc.Client
+	providerRegistry *ProviderRegistry
+	logger           *common.Logger
 }
 
 // NewDataPopulationController creates a new controller
 func NewDataPopulationController(rpcClient *rpc.Client, logger *common.Logger) *DataPopulationController {
 	return &DataPopulationController{
-		rpcClient:       rpcClient,
-		providerRegistry: provider.NewProviderRegistry(),
-		logger:         logger,
+		rpcClient:        rpcClient,
+		providerRegistry: NewProviderRegistry(logger),
+		logger:           logger,
 	}
 }
 
@@ -146,122 +136,6 @@ func (c *DataPopulationController) startSSGImport(ctx context.Context, sessionID
 func (c *DataPopulationController) startASVSImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
 	c.logger.Info(LogMsgPCGetProviderStatus, "Starting ASVS import: session_id=%s, params=%s", sessionID, params)
 
-	return sessionID, nil
-}
-
-
-// NewDataPopulationController creates a new controller for data population
-func NewDataPopulationController(rpcClient *rpc.Client, logger *common.Logger) *DataPopulationController {
-	return &DataPopulationController{
-		rpcClient: rpcClient,
-		logger:    logger,
-	}
-}
-
-// StartDataPopulation starts a data population job for a specific data type
-func (c *DataPopulationController) StartDataPopulation(ctx context.Context, dataType DataType, params map[string]interface{}) (string, error) {
-	sessionID := fmt.Sprintf("%s-%d", dataType, time.Now().Unix())
-
-	switch dataType {
-	case DataTypeCWE:
-		return c.startCWEImport(ctx, sessionID, params)
-	case DataTypeCAPEC:
-		return c.startCAPECImport(ctx, sessionID, params)
-	case DataTypeATTACK:
-		return c.startATTACKImport(ctx, sessionID, params)
-	default:
-		return "", fmt.Errorf("unsupported data type: %s", dataType)
-	}
-}
-
-// startCWEImport starts a CWE import job
-func (c *DataPopulationController) startCWEImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	path, ok := params["path"].(string)
-	if !ok {
-		path = "assets/cwe-raw.json" // default path
-	}
-
-	c.logger.Info("Starting CWE import: session_id=%s, path=%s", sessionID, path)
-
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
-	defer cancel()
-
-	paramsObj := &rpc.ImportParams{Path: path}
-	c.logger.Debug("About to invoke RPCImportCWEs on local service")
-	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", paramsObj)
-	if err != nil {
-		c.logger.Error("Failed to start CWE import: %v", err)
-		return "", fmt.Errorf("failed to start CWE import: %w", err)
-	}
-
-	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
-		c.logger.Error("CWE import returned error: %s", errMsg)
-		return "", fmt.Errorf("CWE import failed: %s", errMsg)
-	}
-
-	c.logger.Info("CWE import started successfully: session_id=%s", sessionID)
-	return sessionID, nil
-}
-
-// startCAPECImport starts a CAPEC import job
-func (c *DataPopulationController) startCAPECImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	path, ok := params["path"].(string)
-	if !ok {
-		path = "assets/capec_contents_latest.xml" // default path
-	}
-
-	force, _ := params["force"].(bool)
-
-	c.logger.Info("Starting CAPEC import: session_id=%s, path=%s, force=%t", sessionID, path, force)
-
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
-	defer cancel()
-
-	paramsObj := &rpc.ImportParams{Path: path, Force: force}
-	c.logger.Debug("About to invoke RPCImportCAPECs on local service")
-	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", paramsObj)
-	if err != nil {
-		c.logger.Error("Failed to start CAPEC import: %v", err)
-		return "", fmt.Errorf("failed to start CAPEC import: %w", err)
-	}
-
-	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
-		c.logger.Error("CAPEC import returned error: %s", errMsg)
-		return "", fmt.Errorf("CAPEC import failed: %s", errMsg)
-	}
-
-	c.logger.Info("CAPEC import started successfully: session_id=%s", sessionID)
-	return sessionID, nil
-}
-
-// startATTACKImport starts an ATT&CK import job
-func (c *DataPopulationController) startATTACKImport(ctx context.Context, sessionID string, params map[string]interface{}) (string, error) {
-	path, ok := params["path"].(string)
-	if !ok {
-		path = "assets/enterprise-attack.xlsx" // default path
-	}
-
-	force, _ := params["force"].(bool)
-
-	c.logger.Info("Starting ATT&CK import: session_id=%s, path=%s, force=%t", sessionID, path, force)
-
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
-	defer cancel()
-
-	paramsObj := &rpc.ImportParams{Path: path, Force: force}
-	c.logger.Debug("About to invoke RPCImportATTACKs on local service")
-	resp, err := c.rpcClient.InvokeRPC(ctx, "local", "RPCImportATTACKs", paramsObj)
-	if err != nil {
-		c.logger.Error("Failed to start ATT&CK import: %v", err)
-		return "", fmt.Errorf("failed to start ATT&CK import: %w", err)
-	}
-
-	if isErr, errMsg := subprocess.IsErrorResponse(resp); isErr {
-		c.logger.Error("ATT&CK import returned error: %s", errMsg)
-		return "", fmt.Errorf("ATT&CK import failed: %s", errMsg)
-	}
-
-	c.logger.Info("ATT&CK import started successfully: session_id=%s", sessionID)
 	return sessionID, nil
 }
 

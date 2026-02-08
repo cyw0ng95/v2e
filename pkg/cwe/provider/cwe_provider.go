@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cwe"
+	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	proc "github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
@@ -17,14 +18,15 @@ import (
 
 // CWEProvider implements DataSourceProvider for CWE data
 type CWEProvider struct {
-	config      *provider.ProviderConfig
-	rateLimiter *provider.RateLimiter
-	progress    *provider.ProviderProgress
-	cancelFunc  context.CancelFunc
-	mu          sync.RWMutex
-	ctx         context.Context
-	localPath   string
-	rpcClient   *rpc.Client
+	config       *provider.ProviderConfig
+	rateLimiter  *provider.RateLimiter
+	progress     *provider.ProviderProgress
+	cancelFunc   context.CancelFunc
+	mu           sync.RWMutex
+	ctx          context.Context
+	localPath    string
+	rpcClient    *rpc.Client
+	eventHandler func(*fsm.Event) error
 }
 
 // NewCWEProvider creates a new CWE provider
@@ -72,8 +74,8 @@ func (p *CWEProvider) GetType() string {
 }
 
 // GetState returns the current state as a string
-func (p *CWEProvider) GetState() string {
-	return "IDLE"
+func (p *CWEProvider) GetState() fsm.ProviderState {
+	return fsm.ProviderIdle
 }
 
 // Start begins provider execution
@@ -83,6 +85,24 @@ func (p *CWEProvider) Start() error {
 
 // Pause pauses provider execution
 func (p *CWEProvider) Pause() error {
+	return nil
+}
+
+// Resume resumes provider execution
+func (p *CWEProvider) Resume() error {
+	return nil
+}
+
+// SetEventHandler sets the callback for event bubbling to MacroFSM
+func (p *CWEProvider) SetEventHandler(handler func(*fsm.Event) error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.eventHandler = handler
+}
+
+// Transition attempts to transition to a new state
+func (p *CWEProvider) Transition(newState fsm.ProviderState) error {
+	// TODO: Implement state transition logic with validation
 	return nil
 }
 

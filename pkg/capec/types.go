@@ -1,5 +1,7 @@
 package capec
 
+import "encoding/xml"
+
 // Domain types for CAPEC XML parsing
 // These structs are minimal and map the commonly-needed fields.
 type CAPECAttackPattern struct {
@@ -28,4 +30,15 @@ type InnerXML struct {
 
 type RelatedRef struct {
 	ExternalRef string `xml:"External_Reference_ID,attr" json:"external_reference_id"`
+}
+
+// Root is the root element of CAPEC XML feed
+type Root struct {
+	XMLName        xml.Name           `xml:"Attack_Pattern_Catalog"`
+	AttackPatterns AttackPatternsList `xml:"Attack_Patterns"`
+}
+
+// AttackPatternsList contains the list of attack patterns
+type AttackPatternsList struct {
+	AttackPattern []CAPECAttackPattern `xml:"Attack_Pattern"`
 }

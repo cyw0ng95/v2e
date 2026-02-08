@@ -41,7 +41,11 @@ func main() {
 	}
 
 	// Create CVE fetcher
-	fetcher := remote.NewFetcher(apiKey)
+	fetcher, err := remote.NewFetcher(apiKey)
+	if err != nil {
+		logger.Error("Failed to create fetcher: %v", err)
+		os.Exit(1)
+	}
 	logger.Info(LogMsgFetcherCreated, apiKey != "")
 
 	// Register RPC handlers

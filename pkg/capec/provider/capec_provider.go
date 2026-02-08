@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"os"
@@ -10,18 +11,20 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/capec"
+	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 )
 
 // CAPECProvider implements DataSourceProvider for CAPEC data
 type CAPECProvider struct {
-	config      *provider.ProviderConfig
-	rateLimiter *provider.RateLimiter
-	progress    *provider.ProviderProgress
-	cancelFunc  context.CancelFunc
-	mu          sync.RWMutex
-	ctx         context.Context
-	localPath   string
+	config       *provider.ProviderConfig
+	rateLimiter  *provider.RateLimiter
+	progress     *provider.ProviderProgress
+	cancelFunc   context.CancelFunc
+	mu           sync.RWMutex
+	ctx          context.Context
+	localPath    string
+	eventHandler func(*fsm.Event) error
 }
 
 // NewCAPECProvider creates a new CAPEC provider
@@ -68,8 +71,8 @@ func (p *CAPECProvider) GetType() string {
 }
 
 // GetState returns the current state as a string
-func (p *CAPECProvider) GetState() string {
-	return "IDLE"
+func (p *CAPECProvider) GetState() fsm.ProviderState {
+	return fsm.ProviderIdle
 }
 
 // Start begins provider execution
@@ -79,6 +82,24 @@ func (p *CAPECProvider) Start() error {
 
 // Pause pauses provider execution
 func (p *CAPECProvider) Pause() error {
+	return nil
+}
+
+// Resume resumes provider execution
+func (p *CAPECProvider) Resume() error {
+	return nil
+}
+
+// SetEventHandler sets the callback for event bubbling to MacroFSM
+func (p *CAPECProvider) SetEventHandler(handler func(*fsm.Event) error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.eventHandler = handler
+}
+
+// Transition attempts to transition to a new state
+func (p *CAPECProvider) Transition(newState fsm.ProviderState) error {
+	// TODO: Implement state transition logic with validation
 	return nil
 }
 
@@ -165,7 +186,8 @@ func (p *CAPECProvider) Store(ctx context.Context) error {
 			time.Sleep(1 * time.Second)
 		}
 
-		attackPatternJSON, err := json.Marshal(attackPattern)
+		// TODO: Use RPCStoreCAPEC to store each item
+		_, err := json.Marshal(attackPattern)
 		if err != nil {
 			atomic.AddInt64(&p.progress.Failed, 1)
 			continue
@@ -175,26 +197,12 @@ func (p *CAPECProvider) Store(ctx context.Context) error {
 			return err
 		}
 
+		stored++
 		atomic.StoreInt64(&p.progress.Stored, int64(stored))
-
-		return nil
 	}
 
-	if i > 0 && i%p.config.BatchSize == 0 {
-		time.Sleep(1 * time.Second)
-	}
-
-	attackPatternJSON, err := json.Marshal(attackPattern)
-	if err != nil {
-		atomic.AddInt64(&p.progress.Failed, 1)
-		continue
-	}
-
-	if err := p.rateLimiter.Wait(ctx); err != nil {
-		return err
-	}
-
-	atomic.StoreInt64(&p.progress.Stored, int64(stored))
+	p.progress.LastStoreAt = time.Now()
+	p.progress.StoreRate = float64(stored) / time.Since(p.progress.LastFetchAt).Seconds()
 
 	return nil
 }

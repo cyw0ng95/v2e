@@ -8,18 +8,20 @@ import (
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
+	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 )
 
 // CVEProvider implements DataSourceProvider for CVE data
 type CVEProvider struct {
-	config      *provider.ProviderConfig
-	rateLimiter *provider.RateLimiter
-	progress    *provider.ProviderProgress
-	cancelFunc  context.CancelFunc
-	mu          sync.RWMutex
-	ctx         context.Context
-	fetcher     *remote.Fetcher
+	config       *provider.ProviderConfig
+	rateLimiter  *provider.RateLimiter
+	progress     *provider.ProviderProgress
+	cancelFunc   context.CancelFunc
+	mu           sync.RWMutex
+	ctx          context.Context
+	fetcher      *remote.Fetcher
+	eventHandler func(*fsm.Event) error
 }
 
 // NewCVEProvider creates a new CVE provider
@@ -68,8 +70,8 @@ func (p *CVEProvider) GetType() string {
 }
 
 // GetState returns the current state as a string
-func (p *CVEProvider) GetState() string {
-	return "IDLE"
+func (p *CVEProvider) GetState() fsm.ProviderState {
+	return fsm.ProviderIdle
 }
 
 // Start begins provider execution
@@ -79,6 +81,24 @@ func (p *CVEProvider) Start() error {
 
 // Pause pauses provider execution
 func (p *CVEProvider) Pause() error {
+	return nil
+}
+
+// Resume resumes provider execution
+func (p *CVEProvider) Resume() error {
+	return nil
+}
+
+// SetEventHandler sets the callback for event bubbling to MacroFSM
+func (p *CVEProvider) SetEventHandler(handler func(*fsm.Event) error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.eventHandler = handler
+}
+
+// Transition attempts to transition to a new state
+func (p *CVEProvider) Transition(newState fsm.ProviderState) error {
+	// TODO: Implement state transition logic with validation
 	return nil
 }
 

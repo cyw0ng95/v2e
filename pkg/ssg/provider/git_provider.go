@@ -7,19 +7,21 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/ssg/remote"
 )
 
 // SSGProvider implements DataSourceProvider for SSG data
 type SSGProvider struct {
-	config     *provider.ProviderConfig
-	rateLimiter *provider.RateLimiter
-	progress   *provider.ProviderProgress
-	cancelFunc  context.CancelFunc
-	mu          sync.RWMutex
-	ctx         context.Context
-	gitClient *remote.GitClient
+	config       *provider.ProviderConfig
+	rateLimiter  *provider.RateLimiter
+	progress     *provider.ProviderProgress
+	cancelFunc   context.CancelFunc
+	mu           sync.RWMutex
+	ctx          context.Context
+	gitClient    *remote.GitClient
+	eventHandler func(*fsm.Event) error
 }
 
 // NewSSGProvider creates a new SSG provider
@@ -65,8 +67,8 @@ func (p *SSGProvider) GetType() string {
 }
 
 // GetState returns the current state as a string
-func (p *SSGProvider) GetState() string {
-	return "IDLE"
+func (p *SSGProvider) GetState() fsm.ProviderState {
+	return fsm.ProviderIdle
 }
 
 // Start begins provider execution
@@ -76,6 +78,24 @@ func (p *SSGProvider) Start() error {
 
 // Pause pauses provider execution
 func (p *SSGProvider) Pause() error {
+	return nil
+}
+
+// Resume resumes provider execution
+func (p *SSGProvider) Resume() error {
+	return nil
+}
+
+// SetEventHandler sets the callback for event bubbling to MacroFSM
+func (p *SSGProvider) SetEventHandler(handler func(*fsm.Event) error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.eventHandler = handler
+}
+
+// Transition attempts to transition to a new state
+func (p *SSGProvider) Transition(newState fsm.ProviderState) error {
+	// TODO: Implement state transition logic with validation
 	return nil
 }
 
