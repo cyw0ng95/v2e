@@ -1,6 +1,6 @@
 # v2e - Vulnerability Viewer Engine
 
-A broker-first microservices system for managing CVE, CWE, CAPEC, ATT&CK, and OWASP ASVS security data.
+A broker-first microservices system for managing CVE, CWE, CAPEC, ATT&CK, OWASP ASVS, SSG, and CCE security data.
 
 ## Design Philosophy
 
@@ -100,7 +100,7 @@ IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → 
 - Manages learning session states: idle, browsing, deep_dive, reviewing, paused
 - Tracks user progress with viewed/completed items
 - Maintains item relationship graph for DFS navigation
-- Supports session persistence with BoltDB storage
+- Supports session persistence with SQLite storage
 
 **Strategy Pattern** - `pkg/notes/strategy/`
 - **BFS Strategy**: Sequential browsing through available items
@@ -124,7 +124,7 @@ IDLE → BROWSING → DEEP_DIVE → REVIEWING → PAUSED
 **Architecture**:
 ```
 LearningFSM (State Machine)
-    ├── Storage (BoltDB persistence)
+    ├── Storage (SQLite persistence via v2local)
     ├── ItemGraph (Link relationships)
     ├── Strategy (Navigation logic)
     │   ├── BFS Strategy (Sequential browsing)
@@ -137,14 +137,11 @@ LearningFSM (State Machine)
 ```
 
 **RPC Integration**:
-- `RPCLearningStart`: Initialize learning session with available items
-- `RPCLearningNextItem`: Get next item based on current strategy
-- `RPCLearningViewItem`: Mark item as viewed and update context
-- `RPCLearningFollowLink`: Follow related link (DFS mode)
-- `RPCLearningGoBack`: Navigate back in path history
-- `RPCLearningSwitchStrategy`: Switch between BFS and DFS modes
-- `RPCLearningCompleteItem`: Mark item as learned
-- `RPCLearningPauseResume`: Pause or resume learning session
+Learning session management is integrated into v2local service:
+- Bookmark-based learning sessions with state tracking
+- Memory card creation with TipTap content support
+- Learning state management (new, learning, reviewing, mastered)
+- Strategy-based navigation for related concepts
 
 **TipTap JSON Schema**:
 
@@ -201,12 +198,11 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 |---------|:---:|:---:|:---:|:-----:|----------------------|
 | **v2broker** | - | - | X | - | Central orchestrator, process management, message routing, permit management |
 | **v2access** | - | - | X | - | REST gateway, frontend communication, HTTP to RPC translation |
-| **v2local** | X | X | - | - | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS), CRUD operations, caching |
+| **v2local** | X | X | - | X | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), CRUD operations, caching, bookmarks, notes, memory cards, learning sessions |
 | **v2remote** | X | - | - | - | External API integration (NVD, MITRE), rate limiting, retry mechanisms |
 | **v2meta** | X | - | X | - | ETL orchestration, provider management, URN checkpointing, state machines |
 | **v2sysmon** | - | - | X | - | System metrics collection, health monitoring, performance reporting |
 | **v2analysis** | - | X | X | - | Graph database management, relationship analysis, attack path discovery |
-| **v2notes** | - | - | X | X | Learning session management, bookmark/note/memory card storage, strategy-based navigation |
 
 ### Framework Distribution
 
@@ -215,7 +211,7 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 | **UEE** (Unified ETL Engine) | v2meta | v2local, v2remote | URN (checkpointing), RPC (coordination) |
 | **UDA** (Unified Data Analysis) | v2analysis | v2local (data source) | URN (node IDs), RPC (queries) |
 | **UME** (Unified Message Exchanging) | v2broker | All services | RPC (message protocol), Binary Protocol |
-| **Notes** (Learning Strategy System) | v2notes | v2local (bookmark storage), v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (BoltDB) |
+| **Notes** (Learning Strategy System) | v2local (bookmarks, notes, memory cards) | v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (SQLite) |
 
 ---
 
@@ -225,28 +221,21 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 +----------------+      +-------------+      +---------+
 | Next.js Frontend|----->| Access Svc  |----->| Broker  |
 +----------------+      +-------------+      +---------+
-                                                        |
-                +----------------------------------------+
-                |                                        |
-                v                                        v
-     +----------+----------+          +----------+------------------+
-     |   v2local          |          |   v2meta                   |
-     |   (Data Storage)   |          |   (UEE Framework)          |
-     +--------------------+          +----------------------------+
-                +----------+------------------+
-                |          |                |
-                v          v                v
-     +----------+   +-----+-----+   +-------+------+
-     | v2remote |   |v2sysmon |   |v2analysis    |
-     | (APIs)   |   | (Monitor)|   | (UDA Graph)  |
-     +----------+   +---------+   +--------------+
-                |
-                v
-          +------------+
-          | v2notes    |
-          | (Learning  |
-          |  Sessions) |
-          +------------+
+                                                         |
+                 +----------------------------------------+
+                 |                                        |
+                 v                                        v
+      +----------+----------+          +----------+------------------+
+      |   v2local          |          |   v2meta                   |
+      |   (Data Storage)   |          |   (UEE Framework)          |
+      +--------------------+          +----------------------------+
+                 +----------+------------------+
+                 |          |                |
+                 v          v                v
+      +----------+   +-----+-----+   +-------+------+
+      | v2remote |   |v2sysmon |   |v2analysis    |
+      | (APIs)   |   | (Monitor)|   | (UDA Graph)  |
+      +----------+   +---------+   +--------------+
 ```
 
 ---
@@ -353,7 +342,7 @@ v2e::ssg::ssg::rhel9-guide-ospp
 cmd/
   v2broker/           # Broker service (UME framework)
   v2access/           # REST gateway
-  v2local/            # Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS)
+  v2local/            # Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), bookmarks, notes, memory cards
   v2remote/           # External API integration
   v2meta/             # ETL orchestration (UEE framework)
   v2sysmon/           # System monitoring
@@ -365,8 +354,11 @@ pkg/
   rpc/                # RPC client helpers
   graph/              # In-memory graph database
   analysis/           # FSM and storage for UDA
-  notes/              # Learning strategy system (FSM, strategy pattern, BoltDB storage)
+  notes/              # Learning strategy system (FSM, strategy pattern, SQLite storage)
   cve/taskflow/       # ETL executor framework
+  ssg/                # SSG (SCAP Security Guide) parsing and models
+  cce/                # CCE (Common Configuration Enumeration) models
+  asvs/               # ASVS (Application Security Verification Standard) models
 website/              # Next.js frontend
 assets/               # Data assets (CWE, CAPEC, ATT&CK)
 ```
@@ -378,6 +370,7 @@ assets/               # Data assets (CWE, CAPEC, ATT&CK)
 - [cmd/v2meta](cmd/v2meta) - UEE framework documentation
 - [cmd/v2analysis](cmd/v2analysis) - UDA framework documentation
 - [cmd/v2broker](cmd/v2broker) - Broker implementation
+- [cmd/v2local](cmd/v2local) - Local data storage, bookmarks, notes, and memory cards
 - [pkg/urn](pkg/urn) - URN identifier implementation
 - [cmd/v2meta/providers](cmd/v2meta/providers) - ETL provider implementations
 - [pkg/notes](pkg/notes) - Learning strategy system documentation
