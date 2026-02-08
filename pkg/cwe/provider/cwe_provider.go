@@ -6,167 +6,78 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cwe"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
-	"github.com/cyw0ng95/v2e/pkg/meta/provider"
-	proc "github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/meta/storage"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
+	"github.com/cyw0ng95/v2e/pkg/urn"
 )
 
-// CWEProvider implements DataSourceProvider for CWE data
+// CWEProvider implements ProviderFSM for CWE data
 type CWEProvider struct {
-	config       *provider.ProviderConfig
-	rateLimiter  *provider.RateLimiter
-	progress     *provider.ProviderProgress
-	cancelFunc   context.CancelFunc
-	mu           sync.RWMutex
-	ctx          context.Context
-	localPath    string
-	rpcClient    *rpc.Client
-	eventHandler func(*fsm.Event) error
+	*fsm.BaseProviderFSM
+	localPath  string
+	batchSize  int
+	maxRetries int
+	retryDelay time.Duration
+	rpcClient  *rpc.Client
+	mu         sync.RWMutex
 }
 
-// NewCWEProvider creates a new CWE provider
+// NewCWEProvider creates a new CWE provider with FSM support
 // localPath is the path to the CWE JSON file
-func NewCWEProvider(localPath string) (*CWEProvider, error) {
-	baseConfig := provider.DefaultProviderConfig()
-	baseConfig.Name = "CWE"
-	baseConfig.DataType = "CWE"
-	baseConfig.LocalPath = localPath
-	baseConfig.BatchSize = 100
-	baseConfig.MaxRetries = 3
-	baseConfig.RetryDelay = 5 * time.Second
-	baseConfig.RateLimitPermits = 10
-
+func NewCWEProvider(localPath string, store *storage.Store) (*CWEProvider, error) {
 	if localPath == "" {
 		localPath = "assets/cwe-raw.json"
 	}
 
-	return &CWEProvider{
-		config:      baseConfig,
-		rateLimiter: provider.NewRateLimiter(baseConfig.RateLimitPermits),
-		progress:    &provider.ProviderProgress{},
-		rpcClient:   &rpc.Client{},
-		localPath:   localPath,
-	}, nil
+	provider := &CWEProvider{
+		localPath:  localPath,
+		rpcClient:  &rpc.Client{},
+		batchSize:  100,
+		maxRetries: 3,
+		retryDelay: 5 * time.Second,
+	}
+
+	// Create base FSM with custom executor
+	base, err := fsm.NewBaseProviderFSM(fsm.ProviderConfig{
+		ID:           "cwe",
+		ProviderType: "cwe",
+		Storage:      store,
+		Executor:     provider.execute,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	provider.BaseProviderFSM = base
+	return provider, nil
 }
 
 // Initialize sets up the CWE provider context
 func (p *CWEProvider) Initialize(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.ctx, p.cancelFunc = context.WithCancel(ctx)
 	return nil
 }
 
-// GetID returns the provider ID
-func (p *CWEProvider) GetID() string {
-	return p.config.DataType
-}
+// execute performs CWE fetch and store operations
+func (p *CWEProvider) execute() error {
+	currentState := p.GetState()
 
-// GetType returns the provider type
-func (p *CWEProvider) GetType() string {
-	return p.config.DataType
-}
-
-// GetState returns the current state as a string
-func (p *CWEProvider) GetState() fsm.ProviderState {
-	return fsm.ProviderIdle
-}
-
-// Start begins provider execution
-func (p *CWEProvider) Start() error {
-	return nil
-}
-
-// Pause pauses provider execution
-func (p *CWEProvider) Pause() error {
-	return nil
-}
-
-// Resume resumes provider execution
-func (p *CWEProvider) Resume() error {
-	return nil
-}
-
-// SetEventHandler sets the callback for event bubbling to MacroFSM
-func (p *CWEProvider) SetEventHandler(handler func(*fsm.Event) error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.eventHandler = handler
-}
-
-// Transition attempts to transition to a new state
-func (p *CWEProvider) Transition(newState fsm.ProviderState) error {
-	// TODO: Implement state transition logic with validation
-	return nil
-}
-
-// Stop terminates provider execution
-func (p *CWEProvider) Stop() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cancelFunc != nil {
-		p.cancelFunc()
+	// Check if we should be running
+	if currentState != fsm.ProviderRunning {
+		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
 	}
 
-	return nil
-}
+	p.mu.RLock()
+	localPath := p.localPath
+	batchSize := p.batchSize
+	rpcClient := p.rpcClient
+	p.mu.RUnlock()
 
-// OnQuotaRevoked handles quota revocation
-func (p *CWEProvider) OnQuotaRevoked(revokedCount int) error {
-	return nil
-}
-
-// OnQuotaGranted handles quota grant
-func (p *CWEProvider) OnQuotaGranted(grantedCount int) error {
-	return nil
-}
-
-// OnRateLimited handles rate limiting
-func (p *CWEProvider) OnRateLimited(retryAfter time.Duration) error {
-	return nil
-}
-
-// Execute performs the fetch and store operations
-func (p *CWEProvider) Execute() error {
-	return p.Fetch(p.ctx)
-}
-
-// Fetch reads and parses CWE data from local JSON file
-func (p *CWEProvider) Fetch(ctx context.Context) error {
-	atomic.StoreInt64(&p.progress.Fetched, 0)
-
-	data, err := os.ReadFile(p.localPath)
-	if err != nil {
-		atomic.AddInt64(&p.progress.Failed, 1)
-		return fmt.Errorf("failed to read CWE file: %w", err)
-	}
-
-	var cweList []cwe.CWEItem
-	if err := json.Unmarshal(data, &cweList); err != nil {
-		atomic.AddInt64(&p.progress.Failed, 1)
-		return fmt.Errorf("failed to unmarshal CWE data: %w", err)
-	}
-
-	count := len(cweList)
-	atomic.StoreInt64(&p.progress.Fetched, int64(count))
-	p.progress.LastFetchAt = time.Now()
-
-	return nil
-}
-
-// Store stores fetched CWE data using local service RPC
-func (p *CWEProvider) Store(ctx context.Context) error {
-	atomic.StoreInt64(&p.progress.Stored, 0)
-	atomic.StoreInt64(&p.progress.Failed, 0)
-
-	data, err := os.ReadFile(p.localPath)
+	// Read and parse CWE data
+	data, err := os.ReadFile(localPath)
 	if err != nil {
 		return fmt.Errorf("failed to read CWE file: %w", err)
 	}
@@ -176,79 +87,76 @@ func (p *CWEProvider) Store(ctx context.Context) error {
 		return fmt.Errorf("failed to unmarshal CWE data: %w", err)
 	}
 
-	stored := 0
-	for i, cweItem := range cweList {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+	totalCount := len(cweList)
+
+	// Process CWEs in batches
+	for i := 0; i < totalCount; i++ {
+		// Check for cancellation or state change
+		if p.GetState() != fsm.ProviderRunning {
+			break
 		}
 
-		if i > 0 && i%p.config.BatchSize == 0 {
+		cweItem := cweList[i]
+
+		// Create URN for checkpointing
+		itemURN := urn.MustParse(fmt.Sprintf("v2e::mitre::cwe::%s", cweItem.ID))
+
+		// Store CWE via RPC
+		cweItemData, err := json.Marshal(cweItem)
+		if err != nil {
+			return fmt.Errorf("failed to marshal CWE item: %w", err)
+		}
+
+		// Simulate batch delay
+		if i > 0 && i%batchSize == 0 {
 			time.Sleep(1 * time.Second)
 		}
 
-		atomic.StoreInt64(&p.progress.Stored, int64(stored))
-
-		if err := p.rateLimiter.Wait(ctx); err != nil {
-			return err
-		}
-
-		cweItemData, err := json.Marshal(cweItem)
-		if err != nil {
-			atomic.AddInt64(&p.progress.Failed, 1)
-			continue
-		}
-
-		msg, err := p.rpcClient.InvokeRPC(ctx, "local", "RPCImportCWE", map[string]interface{}{
+		// Call RPC to store CWE
+		_, err = rpcClient.InvokeRPC(context.Background(), "local", "RPCImportCWE", map[string]interface{}{
 			"cweData": cweItemData,
 		})
 
+		success := true
+		errorMsg := ""
 		if err != nil {
-			atomic.AddInt64(&p.progress.Failed, 1)
-			continue
-		} else if msg.Type == proc.MessageTypeError {
-			stored++
-		} else {
-			stored++
+			success = false
+			errorMsg = fmt.Sprintf("failed to store CWE: %v", err)
+		}
+
+		// Save checkpoint
+		if err := p.SaveCheckpoint(itemURN, success, errorMsg); err != nil {
+			return fmt.Errorf("failed to save checkpoint for %s: %w", cweItem.ID, err)
 		}
 	}
 
-	p.progress.LastStoreAt = time.Now()
-	p.progress.StoreRate = float64(stored) / time.Since(p.progress.LastFetchAt).Seconds()
-
 	return nil
 }
 
-// GetProgress returns a copy of current progress metrics
-func (p *CWEProvider) GetProgress() *provider.ProviderProgress {
+// GetLocalPath returns the local file path
+func (p *CWEProvider) GetLocalPath() string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-
-	return &provider.ProviderProgress{
-		Fetched:     atomic.LoadInt64(&p.progress.Fetched),
-		Stored:      atomic.LoadInt64(&p.progress.Stored),
-		Failed:      atomic.LoadInt64(&p.progress.Failed),
-		LastFetchAt: p.progress.LastFetchAt,
-		LastStoreAt: p.progress.LastStoreAt,
-		FetchRate:   p.progress.FetchRate,
-		StoreRate:   p.progress.StoreRate,
-	}
+	return p.localPath
 }
 
-// GetConfig returns provider configuration
-func (p *CWEProvider) GetConfig() *provider.ProviderConfig {
-	return p.config
-}
-
-// Cleanup releases resources held by the CWE provider
-func (p *CWEProvider) Cleanup(ctx context.Context) error {
+// SetLocalPath sets the local file path
+func (p *CWEProvider) SetLocalPath(path string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.localPath = path
+}
 
-	if p.cancelFunc != nil {
-		p.cancelFunc()
-	}
+// GetBatchSize returns the batch size
+func (p *CWEProvider) GetBatchSize() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.batchSize
+}
 
-	return nil
+// SetBatchSize sets the batch size
+func (p *CWEProvider) SetBatchSize(size int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.batchSize = size
 }

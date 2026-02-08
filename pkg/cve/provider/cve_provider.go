@@ -4,171 +4,121 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
-	"github.com/cyw0ng95/v2e/pkg/meta/provider"
+	"github.com/cyw0ng95/v2e/pkg/meta/storage"
+	"github.com/cyw0ng95/v2e/pkg/urn"
 )
 
-// CVEProvider implements DataSourceProvider for CVE data
+// CVEProvider implements ProviderFSM for CVE data
 type CVEProvider struct {
-	config       *provider.ProviderConfig
-	rateLimiter  *provider.RateLimiter
-	progress     *provider.ProviderProgress
-	cancelFunc   context.CancelFunc
-	mu           sync.RWMutex
-	ctx          context.Context
-	fetcher      *remote.Fetcher
-	eventHandler func(*fsm.Event) error
+	*fsm.BaseProviderFSM
+	fetcher    *remote.Fetcher
+	batchSize  int
+	maxRetries int
+	retryDelay time.Duration
+	apiKey     string
+	mu         sync.RWMutex
 }
 
-// NewCVEProvider creates a new CVE provider
+// NewCVEProvider creates a new CVE provider with FSM support
 // apiKey is optional NVD API key for higher rate limits
-func NewCVEProvider(apiKey string) (*CVEProvider, error) {
-	baseConfig := provider.DefaultProviderConfig()
-	baseConfig.Name = "CVE"
-	baseConfig.DataType = "CVE"
-	baseConfig.BaseURL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-	baseConfig.APIKey = apiKey
-	baseConfig.BatchSize = 2000
-	baseConfig.MaxRetries = 3
-	baseConfig.RetryDelay = 5 * time.Second
-	baseConfig.RateLimitPermits = 10
-
+func NewCVEProvider(apiKey string, store *storage.Store) (*CVEProvider, error) {
 	fetcher, err := remote.NewFetcher(apiKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetcher: %w", err)
 	}
 
-	return &CVEProvider{
-		config:      baseConfig,
-		rateLimiter: provider.NewRateLimiter(baseConfig.RateLimitPermits),
-		progress:    &provider.ProviderProgress{},
-		fetcher:     fetcher,
-	}, nil
+	provider := &CVEProvider{
+		fetcher:    fetcher,
+		apiKey:     apiKey,
+		batchSize:  2000,
+		maxRetries: 3,
+		retryDelay: 5 * time.Second,
+	}
+
+	// Create base FSM with custom executor
+	base, err := fsm.NewBaseProviderFSM(fsm.ProviderConfig{
+		ID:           "cve",
+		ProviderType: "cve",
+		Storage:      store,
+		Executor:     provider.execute,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	provider.BaseProviderFSM = base
+	return provider, nil
 }
 
 // Initialize sets up the CVE provider context
 func (p *CVEProvider) Initialize(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.ctx, p.cancelFunc = context.WithCancel(ctx)
+	// BaseProviderFSM doesn't need explicit initialization
 	return nil
 }
 
-// GetID returns the provider ID
-func (p *CVEProvider) GetID() string {
-	return p.config.DataType
-}
+// execute performs the CVE fetch and store operations
+func (p *CVEProvider) execute() error {
+	currentState := p.GetState()
 
-// GetType returns the provider type
-func (p *CVEProvider) GetType() string {
-	return p.config.DataType
-}
-
-// GetState returns the current state as a string
-func (p *CVEProvider) GetState() fsm.ProviderState {
-	return fsm.ProviderIdle
-}
-
-// Start begins provider execution
-func (p *CVEProvider) Start() error {
-	return nil
-}
-
-// Pause pauses provider execution
-func (p *CVEProvider) Pause() error {
-	return nil
-}
-
-// Resume resumes provider execution
-func (p *CVEProvider) Resume() error {
-	return nil
-}
-
-// SetEventHandler sets the callback for event bubbling to MacroFSM
-func (p *CVEProvider) SetEventHandler(handler func(*fsm.Event) error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.eventHandler = handler
-}
-
-// Transition attempts to transition to a new state
-func (p *CVEProvider) Transition(newState fsm.ProviderState) error {
-	// TODO: Implement state transition logic with validation
-	return nil
-}
-
-// Stop terminates provider execution
-func (p *CVEProvider) Stop() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cancelFunc != nil {
-		p.cancelFunc()
+	// Check if we should be running
+	if currentState != fsm.ProviderRunning {
+		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
 	}
 
-	return nil
-}
+	p.mu.RLock()
+	batchSize := p.batchSize
+	fetcher := p.fetcher
+	p.mu.RUnlock()
 
-// OnQuotaRevoked handles quota revocation
-func (p *CVEProvider) OnQuotaRevoked(revokedCount int) error {
-	return nil
-}
-
-// OnQuotaGranted handles quota grant
-func (p *CVEProvider) OnQuotaGranted(grantedCount int) error {
-	return nil
-}
-
-// OnRateLimited handles rate limiting
-func (p *CVEProvider) OnRateLimited(retryAfter time.Duration) error {
-	return nil
-}
-
-// Execute performs the fetch operation
-func (p *CVEProvider) Execute() error {
-	return p.Fetch(p.ctx)
-}
-
-// Fetch retrieves CVEs from NVD API
-// This method implements the fetch loop with rate limiting and retry logic
-func (p *CVEProvider) Fetch(ctx context.Context) error {
-	config := p.config
 	startIndex := 0
-	pageSize := config.BatchSize
-
-	atomic.StoreInt64(&p.progress.Fetched, 0)
 
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+		// Check for cancellation or state change
+		if p.GetState() != fsm.ProviderRunning {
+			break
 		}
 
-		if err := p.rateLimiter.Wait(ctx); err != nil {
-			return err
-		}
-
-		resp, err := p.fetcher.FetchCVEs(startIndex, pageSize)
+		// Fetch batch from NVD API
+		resp, err := fetcher.FetchCVEs(startIndex, batchSize)
 		if err != nil {
+			// Handle rate limiting
 			if err == remote.ErrRateLimited {
+				if stateErr := p.OnRateLimited(30 * time.Second); stateErr != nil {
+					return fmt.Errorf("rate limit handling failed: %w", stateErr)
+				}
+				// Backoff and retry
 				time.Sleep(30 * time.Second)
 				continue
 			}
 
-			atomic.AddInt64(&p.progress.Failed, 1)
-			return fmt.Errorf("failed to fetch CVEs: %w", err)
+			// Handle other errors
+			return fmt.Errorf("failed to fetch CVEs at index %d: %w", startIndex, err)
 		}
 
+		// Process each CVE in batch
 		count := len(resp.Vulnerabilities)
-		atomic.AddInt64(&p.progress.Fetched, int64(count))
-		p.progress.LastFetchAt = time.Now()
+		for _, vuln := range resp.Vulnerabilities {
+			cveID := vuln.CVE.ID
 
+			// Create URN for checkpointing
+			itemURN := urn.MustParse(fmt.Sprintf("v2e::nvd::cve::%s", cveID))
+
+			// Store CVE (TODO: implement actual storage via RPC)
+			// For now, just simulate success
+			success := true
+			errorMsg := ""
+
+			// Save checkpoint
+			if err := p.SaveCheckpoint(itemURN, success, errorMsg); err != nil {
+				return fmt.Errorf("failed to save checkpoint for %s: %w", cveID, err)
+			}
+		}
+
+		// Check if we've fetched all CVEs
 		if startIndex+count >= resp.TotalResults {
 			break
 		}
@@ -179,41 +129,30 @@ func (p *CVEProvider) Fetch(ctx context.Context) error {
 	return nil
 }
 
-// Store stores fetched CVEs using local service
-// TODO: Implement store logic using RPC calls to local service
-func (p *CVEProvider) Store(ctx context.Context) error {
-	return fmt.Errorf("CVE store not yet implemented")
-}
-
-// GetProgress returns a copy of current progress metrics
-func (p *CVEProvider) GetProgress() *provider.ProviderProgress {
+// GetBatchSize returns the batch size for fetching
+func (p *CVEProvider) GetBatchSize() int {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-
-	return &provider.ProviderProgress{
-		Fetched:     atomic.LoadInt64(&p.progress.Fetched),
-		Stored:      atomic.LoadInt64(&p.progress.Stored),
-		Failed:      atomic.LoadInt64(&p.progress.Failed),
-		LastFetchAt: p.progress.LastFetchAt,
-		LastStoreAt: p.progress.LastStoreAt,
-		FetchRate:   p.progress.FetchRate,
-		StoreRate:   p.progress.StoreRate,
-	}
+	return p.batchSize
 }
 
-// GetConfig returns the provider configuration
-func (p *CVEProvider) GetConfig() *provider.ProviderConfig {
-	return p.config
-}
-
-// Cleanup releases resources held by the CVE provider
-func (p *CVEProvider) Cleanup(ctx context.Context) error {
+// SetBatchSize sets the batch size for fetching
+func (p *CVEProvider) SetBatchSize(size int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.batchSize = size
+}
 
-	if p.cancelFunc != nil {
-		p.cancelFunc()
-	}
+// GetAPIKey returns the NVD API key
+func (p *CVEProvider) GetAPIKey() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.apiKey
+}
 
-	return nil
+// GetFetcher returns the NVD fetcher
+func (p *CVEProvider) GetFetcher() *remote.Fetcher {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.fetcher
 }

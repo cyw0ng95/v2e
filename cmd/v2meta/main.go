@@ -23,11 +23,11 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
-	"github.com/cyw0ng95/v2e/pkg/rpc"
-	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
-	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
+	cwejob "github.com/cyw0ng95/v2e/pkg/cwe/job"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/rpc"
+	ssgjob "github.com/cyw0ng95/v2e/pkg/ssg/job"
 )
 
 const (
@@ -44,7 +44,7 @@ const (
 	DataTypeRemote = "remote"
 
 	// RPC method names
-	RPCListProviders      = "RPCListProviders"
+	RPCListProviders     = "RPCListProviders"
 	RPCGetProviderStatus = "RPCGetProviderStatus"
 )
 
@@ -230,6 +230,21 @@ func main() {
 	logger.Info(LogMsgRunRecoveryStarted)
 	recoverRuns(jobExecutor, logger)
 	logger.Info(LogMsgRunRecoveryCompleted)
+
+	// Initialize UEE FSM infrastructure
+	logger.Info("Initializing UEE FSM infrastructure...")
+	if err := initFSMInfrastructure(logger, runDBPath); err != nil {
+		logger.Error("Failed to initialize UEE FSM infrastructure: %v", err)
+		// Continue without FSM infrastructure for now
+	} else {
+		// Register FSM control RPC handlers
+		fsmHandlers := CreateFSMRPCHandlers(logger)
+		for name, handler := range fsmHandlers {
+			sp.RegisterHandler(name, handler)
+			logger.Info(LogMsgRPCHandlerRegistered, name)
+			logger.Debug(LogMsgRPCClientHandlerRegistered, name)
+		}
+	}
 
 	// Register RPC handlers for CRUD operations
 	logger.Info("Registering RPC handlers...")
