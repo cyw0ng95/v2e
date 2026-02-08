@@ -6,7 +6,6 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |------|------------------|---------|------------------------------------------------------------------------------------|----------|----------|---------|
-
 | 232 | pkg/notes/fsm    | Test    | Add BoltDB storage failure scenario tests                                          | 150      | 2        |         |
 | 231 | pkg/notes/strategy | Test    | Add tests for strategy switching edge cases                                        | 150      | 2        |         |
 | 238 | pkg/notes        | Docs    | Document FSM state machine transitions with state diagrams                         | 200      | 2        |         |
