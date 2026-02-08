@@ -28,10 +28,10 @@ interface TabsProps {
 export function Tabs({ value, defaultValue, onValueChange, children, className }: TabsProps) {
   // Use controlled or uncontrolled state
   const [internalValue, setInternalValue] = React.useState(defaultValue || '');
-  
-  // Determine the current value (controlled vs uncontrolled)
+
+  // Determine current value (controlled vs uncontrolled)
   const currentValue = value !== undefined ? value : internalValue;
-  
+
   // Handle value change
   const handleValueChange = React.useCallback((newValue: string) => {
     // Update internal state for uncontrolled mode
@@ -43,13 +43,13 @@ export function Tabs({ value, defaultValue, onValueChange, children, className }
       onValueChange(newValue);
     }
   }, [value, onValueChange]);
-  
+
   // Create context value
   const contextValue = React.useMemo(() => ({
     value: currentValue,
     onValueChange: handleValueChange,
   }), [currentValue, handleValueChange]);
-  
+
   return (
     <TabsContext.Provider value={contextValue}>
       <div className={className}>
@@ -67,7 +67,7 @@ interface TabsListProps {
 
 export function TabsList({ children, className }: TabsListProps) {
   return (
-    <div className={"inline-flex gap-1 p-1.5 bg-muted/50 rounded-xl backdrop-blur-sm border border-border/50 " + (className || "")}>
+    <div className={"inline-flex gap-0.5 p-1 bg-muted/40 rounded-lg border border-border/40 backdrop-blur-sm " + (className || "")}>
       {children}
     </div>
   );
@@ -84,23 +84,23 @@ interface TabsTriggerProps {
 export function TabsTrigger({ value, children, disabled, className }: TabsTriggerProps) {
   const { value: selectedValue, onValueChange } = useTabsContext();
   const isSelected = selectedValue === value;
-  
+
   const handleClick = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     if (!disabled) {
       onValueChange(value);
     }
   }, [disabled, onValueChange, value]);
-  
+
   const buttonClassName = React.useMemo(() => {
-    const baseClass = "px-4 py-2 rounded-lg transition-all duration-150 cursor-pointer font-medium text-sm";
+    const baseClass = "px-3.5 py-2 rounded-md transition-all duration-200 cursor-pointer font-medium text-sm";
     const stateClass = isSelected
-      ? "bg-background text-foreground shadow-sm hover:shadow-md"
-      : "text-muted-foreground hover:text-foreground hover:bg-background/50 hover:-translate-y-px";
-    const disabledClass = disabled ? "opacity-50 cursor-not-allowed hover:translate-y-0" : "";
+      ? "bg-background text-foreground shadow-sm"
+      : "text-muted-foreground/80 hover:text-foreground hover:bg-background/50";
+    const disabledClass = disabled ? "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground/80" : "";
     return `${baseClass} ${stateClass} ${disabledClass} ${className || ""}`.trim();
   }, [isSelected, disabled, className]);
-  
+
   return (
     <button
       type="button"
@@ -133,7 +133,7 @@ export function TabsContent({ value, children, className }: TabsContentProps) {
   return (
     <div
       role="tabpanel"
-      className={`flex-1 min-h-0 overflow-auto animate-in fade-in slide-in-from-bottom-4 duration-300 ${className || ""}`}
+      className={`flex-1 min-h-0 overflow-auto animate-in fade-in slide-in-from-bottom-2 duration-200 ${className || ""}`}
     >
       {children}
     </div>
