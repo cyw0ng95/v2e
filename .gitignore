@@ -1,3 +1,11 @@
 .build
 .claude
-v2*
+/v2broker
+/v2meta
+/v2local
+/v2remote
+/v2analysis
+/v2sysmon
+/db
+/db-shm
+/db-wal
