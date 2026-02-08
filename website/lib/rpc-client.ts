@@ -152,7 +152,12 @@ const logger = createLogger('rpc-client');
 // Default Configuration
 // ============================================================================
 
-const DEFAULT_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Detect if running in remote development environment
+const isRemoteDev = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+
+const DEFAULT_API_BASE_URL = isRemoteDev
+  ? '/restful'  // Use relative path in remote dev (will be proxied)
+  : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';  // Local dev or fallback
 const DEFAULT_TIMEOUT = 120000; // 120 seconds (2 minutes) - increased for SSG operations
 const MOCK_DELAY_MS = 500; // 500ms delay for mock responses
 
