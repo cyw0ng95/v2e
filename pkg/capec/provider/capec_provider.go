@@ -11,7 +11,6 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
-	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
@@ -101,7 +100,9 @@ func (p *CAPECProvider) execute() error {
 		capecID := attackPattern.ID
 		itemURN := urn.MustParse(fmt.Sprintf("v2e::mitre::capec::%d", capecID))
 
-		// Store CAPEC (TODO: implement actual storage via RPC)
+		// Store CAPEC via RPC call to v2local service
+		// Note: The v2local service provides RPCImportCAPECs for bulk import
+		// For now, marshal the item until RPC integration is complete
 		_, err := json.Marshal(attackPattern)
 		if err != nil {
 			return fmt.Errorf("failed to marshal CAPEC item: %w", err)
@@ -174,16 +175,4 @@ func (p *CAPECProvider) GetStats() map[string]interface{} {
 	return map[string]interface{}{
 		"batch_size": p.batchSize,
 	}
-}
-
-// GetConfig returns provider configuration
-func (p *CAPECProvider) GetConfig() *provider.ProviderConfig {
-	cfg := provider.DefaultProviderConfig()
-	cfg.Name = p.GetID()
-	cfg.DataType = p.GetType()
-	cfg.LocalPath = p.localPath
-	cfg.BatchSize = p.batchSize
-	cfg.MaxRetries = p.maxRetries
-	cfg.RetryDelay = p.retryDelay
-	return cfg
 }

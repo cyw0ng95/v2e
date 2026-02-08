@@ -156,29 +156,6 @@ func (p *CWEProvider) GetStats() map[string]interface{} {
 	}
 }
 
-// GetConfig returns provider configuration
-func (p *CWEProvider) GetConfig() *provider.ProviderConfig {
-	return p.BaseProviderFSM.GetConfig()
-}
-
-// Fetch performs the fetch operation (delegates to FSM Execute)
-func (p *CWEProvider) Fetch(ctx context.Context) error {
-	return p.Execute()
-}
-
-// Store performs the store operation (delegates to FSM Execute)
-func (p *CWEProvider) Store(ctx context.Context) error {
-	return p.Execute()
-}
-
-// GetStats returns provider statistics
-func (p *CWEProvider) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return map[string]interface{}{
-		"batch_size": p.batchSize,
-	}
-}
 
 // SetBatchSize sets the batch size
 func (p *CWEProvider) SetBatchSize(size int) {

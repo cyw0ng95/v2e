@@ -8,7 +8,6 @@ import (
 
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
-	"github.com/cyw0ng95/v2e/pkg/meta/provider"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
@@ -108,8 +107,10 @@ func (p *CVEProvider) execute() error {
 			// Create URN for checkpointing
 			itemURN := urn.MustParse(fmt.Sprintf("v2e::nvd::cve::%s", cveID))
 
-			// Store CVE (TODO: implement actual storage via RPC)
-			// For now, just simulate success
+			// Store CVE via RPC call to v2local service
+			// Note: RPCSaveCVEByID expects a full CVE object with id field
+			// The v2local service must be running for this to work
+			// For now, simulate success until RPC integration is complete
 			success := true
 			errorMsg := ""
 
@@ -141,8 +142,8 @@ func (p *CVEProvider) Store(ctx context.Context) error {
 }
 
 // GetProgress returns provider progress
-func (p *CVEProvider) GetProgress() *provider.ProviderProgress {
-	return &provider.ProviderProgress{
+func (p *CVEProvider) GetProgress() *fsm.ProviderProgress {
+	return &fsm.ProviderProgress{
 		Fetched: 0,
 		Stored:  0,
 		Failed:  0,

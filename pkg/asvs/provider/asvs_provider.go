@@ -97,7 +97,8 @@ func (p *ASVSProvider) SetEventHandler(handler func(*fsm.Event) error) {
 
 // Transition attempts to transition to a new state
 func (p *ASVSProvider) Transition(newState fsm.ProviderState) error {
-	// TODO: Implement state transition logic with validation
+	// State transition validation not yet implemented
+	// ASVS provider uses a simplified state model (always IDLE)
 	return nil
 }
 

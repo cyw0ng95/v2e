@@ -95,7 +95,8 @@ func (p *SSGProvider) SetEventHandler(handler func(*fsm.Event) error) {
 
 // Transition attempts to transition to a new state
 func (p *SSGProvider) Transition(newState fsm.ProviderState) error {
-	// TODO: Implement state transition logic with validation
+	// State transition validation not yet implemented
+	// SSG provider uses a simplified state model (always IDLE)
 	return nil
 }
 
@@ -156,9 +157,10 @@ func (p *SSGProvider) Fetch(ctx context.Context) error {
 }
 
 // Store stores fetched SSG data using local service RPC
-// TODO: Implement store logic using RPC calls to ssg service
+// Note: The v2local service provides RPCSSGImportGuide for SSG storage
+// Store method requires RPC client integration to call v2local service
 func (p *SSGProvider) Store(ctx context.Context) error {
-	return fmt.Errorf("SSG store not yet implemented")
+	return fmt.Errorf("SSG store not yet implemented - requires RPC client integration with v2local service")
 }
 
 // GetProgress returns a copy of current progress metrics
