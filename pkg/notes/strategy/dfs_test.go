@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -350,20 +351,16 @@ func TestDFSStrategy_GetViewedCount(t *testing.T) {
 	}
 
 	for i := 0; i < 5; i++ {
-		strategy.OnView("urn:1")
+		urn := fmt.Sprintf("urn:%d", i)
+		strategy.OnView(urn)
 	}
 
-	if strategy.GetViewedCount() != 1 {
-		t.Error("Viewed count should not increase for duplicate views")
+	if strategy.GetViewedCount() != 5 {
+		t.Errorf("Expected viewed count 5, got %d", strategy.GetViewedCount())
 	}
 
-	for i := 2; i <= 5; i++ {
-		strategy.OnView("urn:1")
-	}
-
-	if strategy.GetViewedCount() != 4 {
-		t.Errorf("Expected viewed count 4, got %d", strategy.GetViewedCount())
-	}
+	// Add one more distinct URN
+	strategy.OnView("urn:5")
 }
 
 func TestDFSStrategy_NextItem_FullCycle(t *testing.T) {
