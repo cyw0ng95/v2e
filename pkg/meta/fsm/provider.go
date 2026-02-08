@@ -73,10 +73,10 @@ func NewBaseProviderFSM(config ProviderConfig) (*BaseProviderFSM, error) {
 		executor:     config.Executor,
 	}
 
-	// Try to load existing state from storage
+	// Try to load existing state from storage only if it exists
 	if config.Storage != nil {
-		if err := p.loadState(); err != nil {
-			// If no state exists, that's fine (new provider)
+		if err := p.loadStateIfExists(); err != nil {
+			// Ignore errors - state might not exist for new providers
 		}
 	}
 
@@ -138,9 +138,9 @@ func (p *BaseProviderFSM) GetStats() map[string]interface{} {
 		"provider_type":   p.providerType,
 		"state":           string(p.state),
 		"last_checkpoint": p.lastCheckpoint,
-		"processed_count": p.processedCount,
-		"error_count":     p.errorCount,
-		"permits_held":    p.permitsHeld,
+		"processed_count": atomic.LoadInt64(&p.processedCount),
+		"error_count":     atomic.LoadInt64(&p.errorCount),
+		"permits_held":    atomic.LoadInt32(&p.permitsHeld),
 		"created_at":      p.createdAt.Format(time.RFC3339),
 		"updated_at":      p.updatedAt.Format(time.RFC3339),
 	}
@@ -409,14 +409,38 @@ func (p *BaseProviderFSM) SaveCheckpoint(itemURN *urn.URN, success bool, errorMs
 		if err := p.storage.SaveCheckpoint(checkpoint); err != nil {
 			return fmt.Errorf("failed to save checkpoint: %w", err)
 		}
+
+		// Persist updated stats to storage for recovery
+		p.persistStats()
 	}
 
 	// Emit checkpoint event every 100 items
-	if p.processedCount%100 == 0 {
+	if atomic.LoadInt64(&p.processedCount)%100 == 0 {
 		p.emitEvent(EventCheckpoint)
 	}
 
 	return nil
+}
+
+// persistStats saves the current provider stats to storage without changing state
+func (p *BaseProviderFSM) persistStats() {
+	if p.storage == nil {
+		return
+	}
+
+	providerState := providerStatePool.Get().(*storage.ProviderFSMState)
+	providerState.ID = p.id
+	providerState.ProviderType = p.providerType
+	providerState.State = storage.ProviderState(p.state)
+	providerState.LastCheckpoint = p.lastCheckpoint
+	providerState.ProcessedCount = atomic.LoadInt64(&p.processedCount)
+	providerState.ErrorCount = atomic.LoadInt64(&p.errorCount)
+	providerState.CreatedAt = p.createdAt
+	providerState.UpdatedAt = time.Now()
+
+	_ = p.storage.SaveProviderState(providerState)
+
+	providerStatePool.Put(providerState)
 }
 
 // loadState attempts to load persisted state from storage
@@ -430,12 +454,45 @@ func (p *BaseProviderFSM) loadState() error {
 		return err
 	}
 
+	p.mu.Lock()
 	p.state = ProviderState(state.State)
 	p.lastCheckpoint = state.LastCheckpoint
 	p.processedCount = state.ProcessedCount
 	p.errorCount = state.ErrorCount
 	p.createdAt = state.CreatedAt
 	p.updatedAt = state.UpdatedAt
+	p.mu.Unlock()
+
+	return nil
+}
+
+// LoadState explicitly loads the provider's state from storage
+// This is used when recovering a provider after a restart
+func (p *BaseProviderFSM) LoadState() error {
+	return p.loadState()
+}
+
+// loadStateIfExists loads state only if it exists in storage
+func (p *BaseProviderFSM) loadStateIfExists() error {
+	if p.storage == nil {
+		return fmt.Errorf("storage not configured")
+	}
+
+	// Check if state exists first
+	state, err := p.storage.GetProviderState(p.id)
+	if err != nil {
+		// State doesn't exist, that's fine for a new provider
+		return nil
+	}
+
+	p.mu.Lock()
+	p.state = ProviderState(state.State)
+	p.lastCheckpoint = state.LastCheckpoint
+	p.processedCount = state.ProcessedCount
+	p.errorCount = state.ErrorCount
+	p.createdAt = state.CreatedAt
+	p.updatedAt = state.UpdatedAt
+	p.mu.Unlock()
 
 	return nil
 }
