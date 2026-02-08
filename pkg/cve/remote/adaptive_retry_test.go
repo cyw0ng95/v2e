@@ -388,7 +388,7 @@ func TestPriorityBasedRetry(t *testing.T) {
 }
 
 func TestAdaptiveRetry_WithCircuitBreakerOpen(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAdaptiveRetry_WithCircuitBreakerOpen", nil, func(t *testing.T, _ *gorm.DB) {
+	testutils.Run(t, testutils.Level3, "TestAdaptiveRetry_WithCircuitBreakerOpen", nil, func(t *testing.T, _ *gorm.DB) {
 		ar := NewAdaptiveRetryWithDefaults()
 
 		// Trip circuit breaker

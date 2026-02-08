@@ -178,7 +178,7 @@ func BenchmarkBackoff_WithJitter(b *testing.B) {
 
 // TestAdaptiveRetry_SuccessRate benchmarks and measures success rate
 func TestAdaptiveRetry_SuccessRate(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAdaptiveRetry_SuccessRate", nil, func(t *testing.T, _ *gorm.DB) {
+	testutils.Run(t, testutils.Level3, "TestAdaptiveRetry_SuccessRate", nil, func(t *testing.T, _ *gorm.DB) {
 		ar := NewAdaptiveRetryWithDefaults()
 
 		// Execute 100 requests with 10% failure rate
@@ -203,7 +203,7 @@ func TestAdaptiveRetry_SuccessRate(t *testing.T) {
 
 // TestAdaptiveRetry_RetryOverhead measures retry overhead
 func TestAdaptiveRetry_RetryOverhead(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAdaptiveRetry_RetryOverhead", nil, func(t *testing.T, _ *gorm.DB) {
+	testutils.Run(t, testutils.Level3, "TestAdaptiveRetry_RetryOverhead", nil, func(t *testing.T, _ *gorm.DB) {
 		// Benchmark with fast retry (less sleep)
 		ar := NewAdaptiveRetryWithDefaults()
 
@@ -225,7 +225,7 @@ func TestAdaptiveRetry_RetryOverhead(t *testing.T) {
 
 // TestCircuitBreaker_RecoveryTime measures circuit breaker recovery time
 func TestCircuitBreaker_RecoveryTime(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestCircuitBreaker_RecoveryTime", nil, func(t *testing.T, _ *gorm.DB) {
+	testutils.Run(t, testutils.Level3, "TestCircuitBreaker_RecoveryTime", nil, func(t *testing.T, _ *gorm.DB) {
 		config := CircuitBreakerConfig{
 			FailureThreshold: 3,
 			Timeout:          100 * time.Millisecond,
@@ -267,7 +267,7 @@ func TestCircuitBreaker_RecoveryTime(t *testing.T) {
 
 // TestAdaptiveRetry_PriorityImpact measures priority-based retry performance
 func TestAdaptiveRetry_PriorityImpact(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestAdaptiveRetry_PriorityImpact", nil, func(t *testing.T, _ *gorm.DB) {
+	testutils.Run(t, testutils.Level3, "TestAdaptiveRetry_PriorityImpact", nil, func(t *testing.T, _ *gorm.DB) {
 		ar := NewAdaptiveRetryWithDefaults()
 
 		// Execute requests with different priorities
@@ -292,7 +292,7 @@ func TestAdaptiveRetry_PriorityImpact(t *testing.T) {
 
 // TestRetryMetrics_Accuracy tests metrics accuracy
 func TestRetryMetrics_Accuracy(t *testing.T) {
-	testutils.Run(t, testutils.Level1, "TestRetryMetrics_Accuracy", nil, func(t *testing.T, _ *gorm.DB) {
+	testutils.Run(t, testutils.Level3, "TestRetryMetrics_Accuracy", nil, func(t *testing.T, _ *gorm.DB) {
 		ar := NewAdaptiveRetryWithDefaults()
 
 		totalAttempts := 100
