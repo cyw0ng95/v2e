@@ -114,7 +114,8 @@ func TestIntelligentBatcher_Metrics(t *testing.T) {
 	}
 	defer db.Close()
 
-	ib := NewIntelligentBatcher(db.db, 2, 2, 5, 100*time.Millisecond)
+	// Use minBatchSize larger than test size to avoid async flushes during AddTask
+	ib := NewIntelligentBatcher(db.db, 2, 20, 50, 10*time.Second)
 	defer ib.Close()
 
 	taskHandler := func(data interface{}) error {

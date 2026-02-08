@@ -139,6 +139,14 @@ func (ba *BatchAck) flush() {
 }
 
 func (ba *BatchAck) startFlushTimer() {
+	ba.mu.Lock()
+	defer ba.mu.Unlock()
+
+	// Stop any existing timer before starting a new one
+	if ba.flushTimer != nil {
+		ba.flushTimer.Stop()
+	}
+
 	ba.flushTimer = time.AfterFunc(ba.config.FlushInterval, func() {
 		if err := ba.Flush(); err != nil {
 			return

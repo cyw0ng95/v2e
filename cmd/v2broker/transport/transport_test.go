@@ -3,6 +3,7 @@ package transport
 import (
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -597,16 +598,16 @@ func TestBatchAckFlushInterval(t *testing.T) {
 	ba := NewBatchAck(config)
 	defer ba.Close()
 
-	flushed := false
+	var flushed atomic.Bool
 	ba.SetOnFlush(func(msgs []AckMessage) {
-		flushed = true
+		flushed.Store(true)
 	})
 
 	ba.AddAck(AckMessage{SeqNum: 1, Success: true})
 
 	time.Sleep(100 * time.Millisecond)
 
-	if !flushed {
+	if !flushed.Load() {
 		t.Error("Should flush after interval even when not full")
 	}
 }
