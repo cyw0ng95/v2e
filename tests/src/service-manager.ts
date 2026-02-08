@@ -149,6 +149,7 @@ export class ServiceManager {
       CAPEC_DB_PATH: join(this.testDbDir, 'capec.db'),
       ATTACK_DB_PATH: join(this.testDbDir, 'attack.db'),
       SESSION_DB_PATH: join(this.testDbDir, 'session.db'),
+      BOOKMARK_DB_PATH: join(this.testDbDir, 'bookmark.db'),
     };
 
     // Spawn broker
