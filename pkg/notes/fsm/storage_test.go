@@ -944,3 +944,112 @@ func TestBoltDBStorage_ConcurrentAccess(t *testing.T) {
 		}
 	}
 }
+
+func TestBoltDBStorage_ReadOnlyFile(t *testing.T) {
+	t.Skip("Skipping: BoltDB handles read-only files inconsistently across platforms")
+}
+
+func TestBoltDBStorage_DeletedDatabase(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "fsm-deleted-*.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	storage, err := NewBoltDBStorage(tmpFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state := &MemoryFSMState{
+		URN:       "v2e::card::test",
+		State:     MemoryStateNew,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	err = storage.SaveMemoryFSMState("v2e::card::test", state)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	storage.Close()
+
+	os.Remove(tmpFile.Name())
+
+	storage, err = NewBoltDBStorage(tmpFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer storage.Close()
+
+	_, err = storage.LoadMemoryFSMState("v2e::card::test")
+	if err == nil {
+		t.Error("expected error when loading from non-existent database")
+	}
+}
+
+func TestBoltDBStorage_OperationAfterClose(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "fsm-closed-*.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	storage, err := NewBoltDBStorage(tmpFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state := &MemoryFSMState{
+		URN:       "v2e::card::test",
+		State:     MemoryStateNew,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	err = storage.SaveMemoryFSMState("v2e::card::test", state)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	storage.Close()
+
+	// Operations after close should fail
+	err = storage.SaveMemoryFSMState("v2e::card::test2", state)
+	if err == nil {
+		t.Error("expected error when saving after close")
+	}
+
+	_, err = storage.LoadMemoryFSMState("v2e::card::test")
+	if err == nil {
+		t.Error("expected error when loading after close")
+	}
+
+	learningState := &LearningFSMState{
+		State:           LearningStateIdle,
+		CurrentStrategy: "bfs",
+		SessionStart:    time.Now(),
+		LastActivity:    time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	err = storage.SaveLearningFSMState(learningState)
+	if err == nil {
+		t.Error("expected error when saving learning state after close")
+	}
+
+	_, err = storage.LoadLearningFSMState()
+	if err == nil {
+		t.Error("expected error when loading learning state after close")
+	}
+
+	_, err = storage.GetAllMemoryFSMStates()
+	if err == nil {
+		t.Error("expected error when getting all states after close")
+	}
+
+	err = storage.ValidateMemoryFSMState("v2e::card::test")
+	if err == nil {
+		t.Error("expected error when validating after close")
+	}
+}
