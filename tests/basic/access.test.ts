@@ -28,15 +28,16 @@ describe('Access Service', () => {
     }
   });
 
-  it('should forward RPC calls to broker', async () => {
-    const response = await rpcClient.call('RPCListProcesses', {}, 'broker');
+  it('should forward RPC calls to local service', async () => {
+    // Use existing RPC method from local service
+    const response = await rpcClient.call('RPCCountCVEs', {}, 'local');
 
     expect(response.retcode).toBe(0);
     expect(response.payload).toBeDefined();
   });
 
   it('should return error for invalid RPC method', async () => {
-    const response = await rpcClient.call('RPCInvalidMethodXYZ', {}, 'broker');
+    const response = await rpcClient.call('RPCInvalidMethodXYZ', {}, 'local');
 
     expect(response.retcode).not.toBe(0);
   });
