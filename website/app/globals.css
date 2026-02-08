@@ -527,3 +527,24 @@ html, body, #__next {
   transition: background-color 150ms ease-in-out, color 150ms ease-in-out, border-color 150ms ease-in-out, opacity 150ms ease-in-out;
 }
 
+/* ============================================
+   Flashcard 3D Flip Animation
+   ============================================ */
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
