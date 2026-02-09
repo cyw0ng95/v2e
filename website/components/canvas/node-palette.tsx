@@ -3,14 +3,13 @@
 import { useState } from 'react';
 import { useGLCStore } from '@/lib/glc/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { NodeTypeDefinition } from '@/lib/glc/types';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { NodeTypeDefinition } from '@/lib/glc/types';
 import { getNodeStyle } from '@/lib/glc/canvas/canvas-config';
 import { iconMap } from './dynamic-node';
 import * as Icons from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Search, GripHorizontal } from 'lucide-react';
+import { ChevronDown, Search, GripHorizontal } from 'lucide-react';
 
 interface NodePaletteProps {
   isOpen: boolean;
@@ -97,27 +96,22 @@ export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
         <ScrollArea className="h-[calc(100vh-140px)]">
           <div className="p-4 space-y-2">
             {categories.map(category => (
-              <Accordion
-                key={category}
-                className="border rounded-lg"
-                value={expandedCategories.has(category) ? category : undefined}
-              >
-                <AccordionTrigger
+              <div key={category} className="mb-4">
+                <button
                   onClick={() => toggleCategory(category)}
-                  className="px-4 py-3 hover:no-underline data-[state=open]:bg-muted/50"
+                  className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between rounded-lg border"
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary" />
-                      <span className="font-medium">{category}</span>
-                      <span className="text-sm text-muted-foreground">
-                        ({groupedByCategory[category].length})
-                      </span>
-                    </div>
-                    <Icons.ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="font-medium">{category}</span>
+                    <span className="text-sm text-muted-foreground">
+                      ({groupedByCategory[category].length})
+                    </span>
                   </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pt-2 pb-4">
+                  <Icons.ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedCategories.has(category) ? 'rotate-180' : ''}`} />
+                </button>
+                {expandedCategories.has(category) && (
+                  <div className="px-4 pt-2 pb-4 space-y-2">
                   <div className="space-y-2">
                     {groupedByCategory[category].map((nodeType: any) => {
                       const Icon = (iconMap as any)[nodeType.style.icon] || Icons.Box;
@@ -159,24 +153,12 @@ export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
                                   {nodeType.properties.length} properties
                                 </span>
                               )}
-                            </div>
-                          </div>
-                          <GripHorizontal className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      );
-                    })}
+                      </div>
+                    </div>
                   </div>
-                </AccordionContent>
-              </Accordion>
-            ))}
-
-            {filteredNodeTypes.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No node types found</p>
-                <p className="text-sm mt-1">Try a different search term</p>
+                )}
               </div>
-            )}
+            ))}
           </div>
         </ScrollArea>
       </CardContent>
