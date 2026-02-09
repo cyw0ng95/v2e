@@ -18,6 +18,8 @@ const iconMap: Record<string, any> = {
   StickyNote,
 };
 
+export { iconMap };
+
 export const DynamicNode = memo(({ data, selected }: NodeProps) => {
   const { currentPreset } = useGLCStore();
   

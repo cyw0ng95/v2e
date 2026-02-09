@@ -14,6 +14,7 @@ import { RelationshipPicker } from '@/components/canvas/relationship-picker';
 import { NodePalette } from '@/components/canvas/node-palette';
 import { DropZone } from '@/components/canvas/drop-zone';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import FileMenu from '@/components/file-menu';
 
 export default function CanvasPage() {
   const params = useParams();
@@ -142,6 +143,14 @@ export default function CanvasPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <FileMenu
+                preset={params.presetId as string}
+                onSave={() => console.log('Save graph')}
+                onOpen={() => console.log('Open graph')}
+                onExport={(format) => console.log('Export as', format)}
+                onShare={() => console.log('Share graph')}
+              />
+
               <Button
                 onClick={() => setPaletteOpen(!paletteOpen)}
                 variant="outline"

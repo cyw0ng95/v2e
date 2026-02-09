@@ -1,0 +1,801 @@
+{
+  "version": "1.0.0",
+  "examples": [
+    {
+      "id": "d3fend-simple-attack",
+      "name": "Simple Attack Chain",
+      "description": "A basic D3FEND attack chain demonstrating how an attacker can exploit a vulnerability and trigger an event",
+      "preset": "d3fend",
+      "category": "D3FEND - Attack Scenarios",
+      "nodes": [
+        {
+          "id": "vuln-1",
+          "type": "vulnerability",
+          "position": { "x": 100, "y": 200 },
+          "data": {
+            "label": "CVE-2023-XXXX",
+            "description": "Remote code execution vulnerability in web server",
+            "properties": {
+              "severity": "CRITICAL",
+              "cvss_score": 9.8
+            }
+          }
+        },
+        {
+          "id": "agent-1",
+          "type": "agent",
+          "position": { "x": 350, "y": 200 },
+          "data": {
+            "label": "Attacker",
+            "description": "Malicious actor exploiting the vulnerability",
+            "properties": {
+              "type": "external"
+            }
+          }
+        },
+        {
+          "id": "event-1",
+          "type": "event",
+          "position": { "x": 600, "y": 200 },
+          "data": {
+            "label": "Exploit Event",
+            "description": "Remote code execution exploit",
+            "properties": {
+              "timestamp": "2023-10-15T10:30:00Z",
+              "technique": "CVE-Exploitation"
+            }
+          }
+        },
+        {
+          "id": "artifact-1",
+          "type": "artifact",
+          "position": { "x": 850, "y": 200 },
+          "data": {
+            "label": "Web Shell",
+            "description": "Backdoor artifact planted on server",
+            "properties": {
+              "file_type": "php",
+              "location": "/var/www/html/shell.php"
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-1",
+          "source": "agent-1",
+          "target": "vuln-1",
+          "type": "exploits",
+          "data": {
+            "label": "exploits"
+          }
+        },
+        {
+          "id": "edge-2",
+          "source": "vuln-1",
+          "target": "event-1",
+          "type": "triggers",
+          "data": {
+            "label": "triggers"
+          }
+        },
+        {
+          "id": "edge-3",
+          "source": "event-1",
+          "target": "artifact-1",
+          "type": "creates",
+          "data": {
+            "label": "creates"
+          }
+        }
+      ],
+      "metadata": {
+        "nodeCount": 4,
+        "edgeCount": 3,
+        "complexity": "beginner",
+        "created": "2026-02-09"
+      }
+    },
+    {
+      "id": "d3fend-complex-attack",
+      "name": "Complex Attack Chain",
+      "description": "A multi-stage attack demonstrating lateral movement and privilege escalation",
+      "preset": "d3fend",
+      "category": "D3FEND - Attack Scenarios",
+      "nodes": [
+        {
+          "id": "agent-1",
+          "type": "agent",
+          "position": { "x": 50, "y": 250 },
+          "data": {
+            "label": "Attacker",
+            "description": "External threat actor",
+            "properties": { "type": "external" }
+          }
+        },
+        {
+          "id": "vuln-1",
+          "type": "vulnerability",
+          "position": { "x": 250, "y": 150 },
+          "data": {
+            "label": "CVE-2023-001",
+            "description": "Initial access vulnerability",
+            "properties": { "severity": "HIGH", "cvss_score": 8.5 }
+          }
+        },
+        {
+          "id": "vuln-2",
+          "type": "vulnerability",
+          "position": { "x": 250, "y": 350 },
+          "data": {
+            "label": "CVE-2023-002",
+            "description": "Privilege escalation vulnerability",
+            "properties": { "severity": "HIGH", "cvss_score": 8.2 }
+          }
+        },
+        {
+          "id": "event-1",
+          "type": "event",
+          "position": { "x": 450, "y": 150 },
+          "data": {
+            "label": "Initial Access",
+            "description": "Gaining initial foothold",
+            "properties": { "technique": "Exploit Public-Facing Application" }
+          }
+        },
+        {
+          "id": "event-2",
+          "type": "event",
+          "position": { "x": 450, "y": 350 },
+          "data": {
+            "label": "Privilege Escalation",
+            "description": "Elevating privileges",
+            "properties": { "technique": "Exploitation for Privilege Escalation" }
+          }
+        },
+        {
+          "id": "remote-cmd-1",
+          "type": "remote-command",
+          "position": { "x": 650, "y": 150 },
+          "data": {
+            "label": "Lateral Movement",
+            "description": "Moving to internal systems",
+            "properties": { "protocol": "SMB", "target": "internal-server" }
+          }
+        },
+        {
+          "id": "remote-cmd-2",
+          "type": "remote-command",
+          "position": { "x": 650, "y": 350 },
+          "data": {
+            "label": "Data Exfiltration",
+            "description": "Exfiltrating sensitive data",
+            "properties": { "protocol": "HTTPS", "data_size": "500MB" }
+          }
+        },
+        {
+          "id": "artifact-1",
+          "type": "artifact",
+          "position": { "x": 850, "y": 150 },
+          "data": {
+            "label": "Credentials",
+            "description": "Stolen credentials",
+            "properties": { "type": "password" }
+          }
+        },
+        {
+          "id": "artifact-2",
+          "type": "artifact",
+          "position": { "x": 850, "y": 350 },
+          "data": {
+            "label": "Exfiltrated Data",
+            "description": "Customer database backup",
+            "properties": { "size": "500MB", "format": "sql" }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-1",
+          "source": "agent-1",
+          "target": "vuln-1",
+          "type": "exploits",
+          "data": { "label": "exploits" }
+        },
+        {
+          "id": "edge-2",
+          "source": "agent-1",
+          "target": "vuln-2",
+          "type": "exploits",
+          "data": { "label": "exploits" }
+        },
+        {
+          "id": "edge-3",
+          "source": "vuln-1",
+          "target": "event-1",
+          "type": "triggers",
+          "data": { "label": "triggers" }
+        },
+        {
+          "id": "edge-4",
+          "source": "vuln-2",
+          "target": "event-2",
+          "type": "triggers",
+          "data": { "label": "triggers" }
+        },
+        {
+          "id": "edge-5",
+          "source": "event-1",
+          "target": "remote-cmd-1",
+          "type": "accesses",
+          "data": { "label": "accesses" }
+        },
+        {
+          "id": "edge-6",
+          "source": "event-2",
+          "target": "remote-cmd-1",
+          "type": "accesses",
+          "data": { "label": "accesses" }
+        },
+        {
+          "id": "edge-7",
+          "source": "remote-cmd-1",
+          "target": "artifact-1",
+          "type": "creates",
+          "data": { "label": "creates" }
+        },
+        {
+          "id": "edge-8",
+          "source": "remote-cmd-2",
+          "target": "artifact-2",
+          "type": "creates",
+          "data": { "label": "creates" }
+        }
+      ],
+      "metadata": {
+        "nodeCount": 9,
+        "edgeCount": 8,
+        "complexity": "intermediate",
+        "created": "2026-02-09"
+      }
+    },
+    {
+      "id": "d3fend-defense",
+      "name": "Defense Strategy",
+      "description": "A layered defense strategy with multiple countermeasures",
+      "preset": "d3fend",
+      "category": "D3FEND - Defense Scenarios",
+      "nodes": [
+        {
+          "id": "agent-1",
+          "type": "agent",
+          "position": { "x": 50, "y": 250 },
+          "data": {
+            "label": "Attacker",
+            "description": "External threat actor",
+            "properties": { "type": "external" }
+          }
+        },
+        {
+          "id": "event-1",
+          "type": "event",
+          "position": { "x": 250, "y": 250 },
+          "data": {
+            "label": "Attack Attempt",
+            "description": "Malicious activity detected",
+            "properties": { "technique": "Phishing" }
+          }
+        },
+        {
+          "id": "cm-1",
+          "type": "countermeasure",
+          "position": { "x": 450, "y": 100 },
+          "data": {
+            "label": "Email Filter",
+            "description": "Email security gateway",
+            "properties": { "type": "preventive", "effectiveness": "85%" }
+          }
+        },
+        {
+          "id": "cm-2",
+          "type": "countermeasure",
+          "position": { "x": 450, "y": 250 },
+          "data": {
+            "label": "EDR",
+            "description": "Endpoint detection and response",
+            "properties": { "type": "detective", "effectiveness": "90%" }
+          }
+        },
+        {
+          "id": "cm-3",
+          "type": "countermeasure",
+          "position": { "x": 450, "y": 400 },
+          "data": {
+            "label": "Network Firewall",
+            "description": "Network access control",
+            "properties": { "type": "preventive", "effectiveness": "80%" }
+          }
+        },
+        {
+          "id": "event-2",
+          "type": "event",
+          "position": { "x": 650, "y": 200 },
+          "data": {
+            "label": "Detection Event",
+            "description": "Threat detected by EDR",
+            "properties": { "severity": "HIGH", "confidence": 95 }
+          }
+        },
+        {
+          "id": "cm-4",
+          "type": "countermeasure",
+          "position": { "x": 850, "y": 200 },
+          "data": {
+            "label": "SOAR Playbook",
+            "description": "Automated incident response",
+            "properties": { "type": "corrective", "effectiveness": "95%" }
+          }
+        },
+        {
+          "id": "artifact-1",
+          "type": "artifact",
+          "position": { "x": 1050, "y": 200 },
+          "data": {
+            "label": "Incident Report",
+            "description": "Generated incident documentation",
+            "properties": { "format": "PDF", "status": "closed" }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-1",
+          "source": "agent-1",
+          "target": "event-1",
+          "type": "triggers",
+          "data": { "label": "triggers" }
+        },
+        {
+          "id": "edge-2",
+          "source": "cm-1",
+          "target": "event-1",
+          "type": "detects",
+          "data": { "label": "detects" }
+        },
+        {
+          "id": "edge-3",
+          "source": "cm-2",
+          "target": "event-1",
+          "type": "detects",
+          "data": { "label": "detects" }
+        },
+        {
+          "id": "edge-4",
+          "source": "cm-2",
+          "target": "event-2",
+          "type": "detects",
+          "data": { "label": "detects" }
+        },
+        {
+          "id": "edge-5",
+          "source": "cm-4",
+          "target": "event-2",
+          "type": "counters",
+          "data": { "label": "counters" }
+        },
+        {
+          "id": "edge-6",
+          "source": "cm-4",
+          "target": "artifact-1",
+          "type": "creates",
+          "data": { "label": "creates" }
+        }
+      ],
+      "metadata": {
+        "nodeCount": 8,
+        "edgeCount": 6,
+        "complexity": "intermediate",
+        "created": "2026-02-09"
+      }
+    },
+    {
+      "id": "topo-network",
+      "name": "Network Topology",
+      "description": "A basic network topology diagram showing connections between network components",
+      "preset": "topo",
+      "category": "Topo-Graph - Network Diagrams",
+      "nodes": [
+        {
+          "id": "entity-1",
+          "type": "entity",
+          "position": { "x": 50, "y": 250 },
+          "data": {
+            "label": "Internet",
+            "description": "External network",
+            "properties": { "icon": "globe" }
+          }
+        },
+        {
+          "id": "entity-2",
+          "type": "entity",
+          "position": { "x": 250, "y": 250 },
+          "data": {
+            "label": "Firewall",
+            "description": "Network firewall",
+            "properties": { "icon": "shield" }
+          }
+        },
+        {
+          "id": "group-1",
+          "type": "group",
+          "position": { "x": 450, "y": 150 },
+          "data": {
+            "label": "DMZ Network",
+            "description": "Demilitarized zone",
+            "properties": { "subnet": "192.168.1.0/24" }
+          }
+        },
+        {
+          "id": "entity-3",
+          "type": "entity",
+          "position": { "x": 650, "y": 100 },
+          "data": {
+            "label": "Web Server",
+            "description": "Public-facing web server",
+            "properties": { "ip": "192.168.1.10" }
+          }
+        },
+        {
+          "id": "entity-4",
+          "type": "entity",
+          "position": { "x": 650, "y": 250 },
+          "data": {
+            "label": "Load Balancer",
+            "description": "Application load balancer",
+            "properties": { "type": "nginx" }
+          }
+        },
+        {
+          "id": "group-2",
+          "type": "group",
+          "position": { "x": 850, "y": 150 },
+          "data": {
+            "label": "Internal Network",
+            "description": "Private network",
+            "properties": { "subnet": "10.0.0.0/8" }
+          }
+        },
+        {
+          "id": "entity-5",
+          "type": "entity",
+          "position": { "x": 1050, "y": 100 },
+          "data": {
+            "label": "Database",
+            "description": "Primary database server",
+            "properties": { "type": "PostgreSQL" }
+          }
+        },
+        {
+          "id": "entity-6",
+          "type": "entity",
+          "position": { "x": 1050, "y": 250 },
+          "data": {
+            "label": "App Server",
+            "description": "Application server",
+            "properties": { "type": "Node.js" }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-1",
+          "source": "entity-1",
+          "target": "entity-2",
+          "type": "connects",
+          "data": { "label": "connects" }
+        },
+        {
+          "id": "edge-2",
+          "source": "entity-2",
+          "target": "group-1",
+          "type": "connects",
+          "data": { "label": "connects" }
+        },
+        {
+          "id": "edge-3",
+          "source": "group-1",
+          "target": "entity-3",
+          "type": "contains",
+          "data": { "label": "contains" }
+        },
+        {
+          "id": "edge-4",
+          "source": "group-1",
+          "target": "entity-4",
+          "type": "contains",
+          "data": { "label": "contains" }
+        },
+        {
+          "id": "edge-5",
+          "source": "entity-4",
+          "target": "group-2",
+          "type": "connects",
+          "data": { "label": "connects" }
+        },
+        {
+          "id": "edge-6",
+          "source": "group-2",
+          "target": "entity-5",
+          "type": "contains",
+          "data": { "label": "contains" }
+        },
+        {
+          "id": "edge-7",
+          "source": "group-2",
+          "target": "entity-6",
+          "type": "contains",
+          "data": { "label": "contains" }
+        }
+      ],
+      "metadata": {
+        "nodeCount": 8,
+        "edgeCount": 7,
+        "complexity": "beginner",
+        "created": "2026-02-09"
+      }
+    },
+    {
+      "id": "topo-process-flow",
+      "name": "Process Flow",
+      "description": "A simple process flow diagram showing a data processing pipeline",
+      "preset": "topo",
+      "category": "Topo-Graph - Process Diagrams",
+      "nodes": [
+        {
+          "id": "start-1",
+          "type": "start-end",
+          "position": { "x": 50, "y": 200 },
+          "data": {
+            "label": "Start",
+            "description": "Process begins",
+            "properties": { "type": "start" }
+          }
+        },
+        {
+          "id": "process-1",
+          "type": "process",
+          "position": { "x": 250, "y": 200 },
+          "data": {
+            "label": "Receive Data",
+            "description": "Ingest raw data",
+            "properties": { "source": "API" }
+          }
+        },
+        {
+          "id": "decision-1",
+          "type": "decision",
+          "position": { "x": 450, "y": 200 },
+          "data": {
+            "label": "Validate?",
+            "description": "Check data validity",
+            "properties": { "condition": "valid_format" }
+          }
+        },
+        {
+          "id": "process-2",
+          "type": "process",
+          "position": { "x": 650, "y": 100 },
+          "data": {
+            "label": "Process Data",
+            "description": "Transform and enrich",
+            "properties": { "transformation": "normalize" }
+          }
+        },
+        {
+          "id": "process-3",
+          "type": "process",
+          "position": { "x": 650, "y": 300 },
+          "data": {
+            "label": "Log Error",
+            "description": "Record validation failure",
+            "properties": { "error_type": "validation" }
+          }
+        },
+        {
+          "id": "data-1",
+          "type": "data",
+          "position": { "x": 850, "y": 100 },
+          "data": {
+            "label": "Storage",
+            "description": "Persist processed data",
+            "properties": { "type": "database", "format": "JSON" }
+          }
+        },
+        {
+          "id": "end-1",
+          "type": "start-end",
+          "position": { "x": 1050, "y": 200 },
+          "data": {
+            "label": "End",
+            "description": "Process completes",
+            "properties": { "type": "end" }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-1",
+          "source": "start-1",
+          "target": "process-1",
+          "type": "flows-to",
+          "data": { "label": "flows-to" }
+        },
+        {
+          "id": "edge-2",
+          "source": "process-1",
+          "target": "decision-1",
+          "type": "flows-to",
+          "data": { "label": "flows-to" }
+        },
+        {
+          "id": "edge-3",
+          "source": "decision-1",
+          "target": "process-2",
+          "type": "flows-to",
+          "data": { "label": "yes" }
+        },
+        {
+          "id": "edge-4",
+          "source": "decision-1",
+          "target": "process-3",
+          "type": "flows-to",
+          "data": { "label": "no" }
+        },
+        {
+          "id": "edge-5",
+          "source": "process-2",
+          "target": "data-1",
+          "type": "flows-to",
+          "data": { "label": "flows-to" }
+        },
+        {
+          "id": "edge-6",
+          "source": "data-1",
+          "target": "end-1",
+          "type": "flows-to",
+          "data": { "label": "flows-to" }
+        },
+        {
+          "id": "edge-7",
+          "source": "process-3",
+          "target": "end-1",
+          "type": "flows-to",
+          "data": { "label": "flows-to" }
+        }
+      ],
+      "metadata": {
+        "nodeCount": 7,
+        "edgeCount": 7,
+        "complexity": "beginner",
+        "created": "2026-02-09"
+      }
+    },
+    {
+      "id": "topo-er-diagram",
+      "name": "Entity Relationship Diagram",
+      "description": "An ER diagram showing relationships between database entities",
+      "preset": "topo",
+      "category": "Topo-Graph - Data Diagrams",
+      "nodes": [
+        {
+          "id": "entity-1",
+          "type": "entity",
+          "position": { "x": 100, "y": 300 },
+          "data": {
+            "label": "User",
+            "description": "User account",
+            "properties": {
+              "table": "users",
+              "fields": ["id", "email", "password", "created_at"]
+            }
+          }
+        },
+        {
+          "id": "entity-2",
+          "type": "entity",
+          "position": { "x": 400, "y": 100 },
+          "data": {
+            "label": "Order",
+            "description": "Customer order",
+            "properties": {
+              "table": "orders",
+              "fields": ["id", "user_id", "total", "status"]
+            }
+          }
+        },
+        {
+          "id": "entity-3",
+          "type": "entity",
+          "position": { "x": 400, "y": 300 },
+          "data": {
+            "label": "Product",
+            "description": "Product catalog",
+            "properties": {
+              "table": "products",
+              "fields": ["id", "name", "price", "stock"]
+            }
+          }
+        },
+        {
+          "id": "entity-4",
+          "type": "entity",
+          "position": { "x": 400, "y": 500 },
+          "data": {
+            "label": "Review",
+            "description": "Product review",
+            "properties": {
+              "table": "reviews",
+              "fields": ["id", "user_id", "product_id", "rating"]
+            }
+          }
+        },
+        {
+          "id": "entity-5",
+          "type": "entity",
+          "position": { "x": 700, "y": 100 },
+          "data": {
+            "label": "OrderItem",
+            "description": "Order line items",
+            "properties": {
+              "table": "order_items",
+              "fields": ["id", "order_id", "product_id", "quantity"]
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-1",
+          "source": "entity-1",
+          "target": "entity-2",
+          "type": "related-to",
+          "data": { "label": "1:N", "relationship": "places" }
+        },
+        {
+          "id": "edge-2",
+          "source": "entity-2",
+          "target": "entity-5",
+          "type": "related-to",
+          "data": { "label": "1:N", "relationship": "contains" }
+        },
+        {
+          "id": "edge-3",
+          "source": "entity-5",
+          "target": "entity-3",
+          "type": "related-to",
+          "data": { "label": "N:1", "relationship": "references" }
+        },
+        {
+          "id": "edge-4",
+          "source": "entity-1",
+          "target": "entity-4",
+          "type": "related-to",
+          "data": { "label": "1:N", "relationship": "writes" }
+        },
+        {
+          "id": "edge-5",
+          "source": "entity-3",
+          "target": "entity-4",
+          "type": "related-to",
+          "data": { "label": "1:N", "relationship": "receives" }
+        }
+      ],
+      "metadata": {
+        "nodeCount": 5,
+        "edgeCount": 5,
+        "complexity": "intermediate",
+        "created": "2026-02-09"
+      }
+    }
+  ]
+}
