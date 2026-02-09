@@ -1,0 +1,217 @@
+import { CanvasPreset } from '../types';
+
+export const D3FEND_PRESET: CanvasPreset = {
+  id: 'd3fend',
+  name: 'D3FEND Cyber Defense Modeling',
+  version: '1.0.0',
+  category: 'Security',
+  description: 'MITRE D3FEND ontology for modeling cyber attack and defense strategies',
+  author: 'MITRE',
+  createdAt: '2026-02-09T00:00:00Z',
+  updatedAt: '2026-02-09T00:00:00Z',
+  isBuiltIn: true,
+  nodeTypes: [
+    {
+      id: 'event',
+      name: 'Event',
+      category: 'Attack',
+      description: 'A security event or incident',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'description', name: 'Description', type: 'text', required: false },
+        { id: 'timestamp', name: 'Timestamp', type: 'date', required: false },
+      ],
+      style: {
+        backgroundColor: '#ef4444',
+        borderColor: '#dc2626',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'AlertTriangle',
+      },
+      ontologyMappings: [
+        { ontology: 'D3FEND', externalType: 'Event', properties: {} },
+      ],
+    },
+    {
+      id: 'remote-command',
+      name: 'Remote Command',
+      category: 'Attack',
+      description: 'A command executed remotely',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'command', name: 'Command', type: 'text', required: true },
+      ],
+      style: {
+        backgroundColor: '#f97316',
+        borderColor: '#ea580c',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'Terminal',
+      },
+    },
+    {
+      id: 'countermeasure',
+      name: 'Countermeasure',
+      category: 'Defense',
+      description: 'A defensive action or control',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'enum', required: true, options: ['Detect', 'Isolate', 'Deceive', 'Evict', 'Eliminate'] },
+      ],
+      style: {
+        backgroundColor: '#22c55e',
+        borderColor: '#16a34a',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'Shield',
+      },
+      ontologyMappings: [
+        { ontology: 'D3FEND', externalType: 'Countermeasure', properties: {} },
+      ],
+    },
+    {
+      id: 'artifact',
+      name: 'Artifact',
+      category: 'Asset',
+      description: 'A digital asset or artifact',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'enum', required: true, options: ['File', 'Database', 'Network', 'Service'] },
+      ],
+      style: {
+        backgroundColor: '#3b82f6',
+        borderColor: '#2563eb',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'File',
+      },
+    },
+    {
+      id: 'agent',
+      name: 'Agent',
+      category: 'Actor',
+      description: 'An attacker or defender',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'enum', required: true, options: ['Attacker', 'Defender', 'System'] },
+      ],
+      style: {
+        backgroundColor: '#8b5cf6',
+        borderColor: '#7c3aed',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'User',
+      },
+    },
+    {
+      id: 'vulnerability',
+      name: 'Vulnerability',
+      category: 'Threat',
+      description: 'A security vulnerability',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'cve', name: 'CVE ID', type: 'text', required: false },
+        { id: 'severity', name: 'Severity', type: 'enum', required: false, options: ['Low', 'Medium', 'High', 'Critical'] },
+      ],
+      style: {
+        backgroundColor: '#eab308',
+        borderColor: '#ca8a04',
+        textColor: '#000000',
+        borderRadius: 8,
+        icon: 'Bug',
+      },
+      ontologyMappings: [
+        { ontology: 'CVE', externalType: 'Vulnerability', properties: {} },
+        { ontology: 'CWE', externalType: 'Weakness', properties: {} },
+      ],
+    },
+    {
+      id: 'condition',
+      name: 'Condition',
+      category: 'Logic',
+      description: 'A precondition or condition',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'expression', name: 'Expression', type: 'text', required: true },
+      ],
+      style: {
+        backgroundColor: '#06b6d4',
+        borderColor: '#0891b2',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'GitBranch',
+      },
+    },
+    {
+      id: 'note',
+      name: 'Note',
+      category: 'Documentation',
+      description: 'A note or comment',
+      properties: [
+        { id: 'name', name: 'Title', type: 'text', required: true },
+        { id: 'content', name: 'Content', type: 'text', required: true },
+      ],
+      style: {
+        backgroundColor: '#64748b',
+        borderColor: '#475569',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'StickyNote',
+      },
+    },
+    {
+      id: 'thing',
+      name: 'Thing',
+      category: 'Entity',
+      description: 'A generic entity or object',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'text', required: false },
+      ],
+      style: {
+        backgroundColor: '#94a3b8',
+        borderColor: '#64748b',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'Box',
+      },
+    },
+  ],
+  relationshipTypes: [
+    { id: 'accesses', name: 'Accesses', category: 'Access', description: 'Accesses a resource', sourceNodeTypes: ['agent', 'event'], targetNodeTypes: ['artifact', 'thing'], style: { strokeColor: '#3b82f6', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'creates', name: 'Creates', category: 'Creation', description: 'Creates an artifact', sourceNodeTypes: ['agent', 'event'], targetNodeTypes: ['artifact', 'thing'], style: { strokeColor: '#22c55e', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'detects', name: 'Detects', category: 'Detection', description: 'Detects a threat', sourceNodeTypes: ['countermeasure'], targetNodeTypes: ['event', 'vulnerability'], style: { strokeColor: '#eab308', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'counters', name: 'Counters', category: 'Defense', description: 'Counters an attack', sourceNodeTypes: ['countermeasure'], targetNodeTypes: ['event', 'vulnerability', 'remote-command'], style: { strokeColor: '#ef4444', strokeWidth: 3, strokeStyle: 'dashed' }, directionality: 'directed', multiplicity: 'one-to-one' },
+    { id: 'exploits', name: 'Exploits', category: 'Attack', description: 'Exploits a vulnerability', sourceNodeTypes: ['event', 'remote-command'], targetNodeTypes: ['vulnerability'], style: { strokeColor: '#f97316', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'many-to-one' },
+    { id: 'mitigates', name: 'Mitigates', category: 'Defense', description: 'Mitigates a vulnerability', sourceNodeTypes: ['countermeasure'], targetNodeTypes: ['vulnerability'], style: { strokeColor: '#22c55e', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'requires', name: 'Requires', category: 'Dependency', description: 'Requires a condition', sourceNodeTypes: ['event', 'remote-command'], targetNodeTypes: ['condition'], style: { strokeColor: '#8b5cf6', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'triggers', name: 'Triggers', category: 'Causality', description: 'Triggers an event', sourceNodeTypes: ['event', 'condition'], targetNodeTypes: ['event'], style: { strokeColor: '#ef4444', strokeWidth: 2, animated: true }, directionality: 'directed', multiplicity: 'one-to-many' },
+  ],
+  styling: {
+    theme: 'dark',
+    primaryColor: '#3b82f6',
+    backgroundColor: '#0f172a',
+    gridColor: '#1e293b',
+    fontFamily: 'Inter, sans-serif',
+  },
+  behavior: {
+    pan: true,
+    zoom: true,
+    snapToGrid: true,
+    gridSize: 20,
+    undoRedo: true,
+    autoSave: true,
+    autoSaveInterval: 30000,
+    maxNodes: 500,
+    maxEdges: 1000,
+  },
+  validationRules: [
+    { type: 'custom', message: 'Node name must be unique within graph', validator: (value: any) => !!value && value.length > 0 },
+  ],
+  metadata: {
+    tags: ['security', 'd3fend', 'cybersecurity', 'defense', 'attack'],
+    documentationUrl: 'https://d3fend.mitre.org/',
+  },
+};
+
+export default D3FEND_PRESET;

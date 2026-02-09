@@ -1,0 +1,188 @@
+import { CanvasPreset } from '../types';
+
+export const TOPO_PRESET: CanvasPreset = {
+  id: 'topo-graph',
+  name: 'Topology Graph',
+  version: '1.0.0',
+  category: 'General',
+  description: 'General-purpose topology and graph diagramming',
+  author: 'GLC Team',
+  createdAt: '2026-02-09T00:00:00Z',
+  updatedAt: '2026-02-09T00:00:00Z',
+  isBuiltIn: true,
+  nodeTypes: [
+    {
+      id: 'entity',
+      name: 'Entity',
+      category: 'Core',
+      description: 'A generic entity or object',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'text', required: false },
+        { id: 'description', name: 'Description', type: 'text', required: false },
+      ],
+      style: {
+        backgroundColor: '#3b82f6',
+        borderColor: '#2563eb',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'Box',
+      },
+    },
+    {
+      id: 'process',
+      name: 'Process',
+      category: 'Action',
+      description: 'A process or action',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'text', required: false },
+      ],
+      style: {
+        backgroundColor: '#22c55e',
+        borderColor: '#16a34a',
+        textColor: '#ffffff',
+        borderRadius: 20,
+        icon: 'Activity',
+      },
+    },
+    {
+      id: 'data',
+      name: 'Data',
+      category: 'Resource',
+      description: 'A data object or information',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'text', required: false },
+      ],
+      style: {
+        backgroundColor: '#f97316',
+        borderColor: '#ea580c',
+        textColor: '#ffffff',
+        borderRadius: 6,
+        icon: 'Database',
+      },
+    },
+    {
+      id: 'resource',
+      name: 'Resource',
+      category: 'Asset',
+      description: 'A physical or virtual resource',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'enum', required: false, options: ['Server', 'Network', 'Storage', 'Device'] },
+      ],
+      style: {
+        backgroundColor: '#8b5cf6',
+        borderColor: '#7c3aed',
+        textColor: '#ffffff',
+        borderRadius: 8,
+        icon: 'Server',
+      },
+    },
+    {
+      id: 'group',
+      name: 'Group',
+      category: 'Organization',
+      description: 'A group or collection',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'size', name: 'Size', type: 'number', required: false },
+      ],
+      style: {
+        backgroundColor: '#06b6d4',
+        borderColor: '#0891b2',
+        textColor: '#ffffff',
+        borderRadius: 12,
+        icon: 'Users',
+      },
+    },
+    {
+      id: 'decision',
+      name: 'Decision',
+      category: 'Logic',
+      description: 'A decision point or condition',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'condition', name: 'Condition', type: 'text', required: true },
+      ],
+      style: {
+        backgroundColor: '#eab308',
+        borderColor: '#ca8a04',
+        textColor: '#000000',
+        borderRadius: 4,
+        icon: 'Diamond',
+      },
+    },
+    {
+      id: 'start-end',
+      name: 'Start/End',
+      category: 'Terminator',
+      description: 'A start or end point',
+      properties: [
+        { id: 'name', name: 'Name', type: 'text', required: true },
+        { id: 'type', name: 'Type', type: 'enum', required: true, options: ['Start', 'End'] },
+      ],
+      style: {
+        backgroundColor: '#ef4444',
+        borderColor: '#dc2626',
+        textColor: '#ffffff',
+        borderRadius: 50,
+        icon: 'Circle',
+      },
+    },
+    {
+      id: 'note',
+      name: 'Note',
+      category: 'Documentation',
+      description: 'A note or comment',
+      properties: [
+        { id: 'name', name: 'Title', type: 'text', required: true },
+        { id: 'content', name: 'Content', type: 'text', required: true },
+      ],
+      style: {
+        backgroundColor: '#94a3b8',
+        borderColor: '#64748b',
+        textColor: '#ffffff',
+        borderRadius: 4,
+        icon: 'StickyNote',
+      },
+    },
+  ],
+  relationshipTypes: [
+    { id: 'connects', name: 'Connects', category: 'Connection', description: 'Connects two nodes', sourceNodeTypes: ['*'], targetNodeTypes: ['*'], style: { strokeColor: '#3b82f6', strokeWidth: 2 }, directionality: 'undirected', multiplicity: 'many-to-many' },
+    { id: 'contains', name: 'Contains', category: 'Hierarchy', description: 'Contains a child node', sourceNodeTypes: ['group', 'resource'], targetNodeTypes: ['entity', 'process', 'data', 'resource'], style: { strokeColor: '#22c55e', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'depends-on', name: 'Depends On', category: 'Dependency', description: 'Depends on another node', sourceNodeTypes: ['process', 'entity', 'data'], targetNodeTypes: ['process', 'entity', 'data'], style: { strokeColor: '#8b5cf6', strokeWidth: 2, strokeStyle: 'dashed' }, directionality: 'directed', multiplicity: 'many-to-many' },
+    { id: 'flows-to', name: 'Flows To', category: 'Flow', description: 'Data or control flow', sourceNodeTypes: ['process', 'data', 'start-end'], targetNodeTypes: ['process', 'data', 'start-end'], style: { strokeColor: '#f97316', strokeWidth: 2, animated: true }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'related-to', name: 'Related To', category: 'Association', description: 'Related to another node', sourceNodeTypes: ['*'], targetNodeTypes: ['*'], style: { strokeColor: '#06b6d4', strokeWidth: 1 }, directionality: 'bidirectional', multiplicity: 'many-to-many' },
+    { id: 'controls', name: 'Controls', category: 'Control', description: 'Controls or manages another node', sourceNodeTypes: ['entity', 'process', 'group'], targetNodeTypes: ['process', 'resource', 'data'], style: { strokeColor: '#ef4444', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'owns', name: 'Owns', category: 'Ownership', description: 'Owns or possesses', sourceNodeTypes: ['entity', 'group'], targetNodeTypes: ['resource', 'data', 'process'], style: { strokeColor: '#eab308', strokeWidth: 2 }, directionality: 'directed', multiplicity: 'one-to-many' },
+    { id: 'implements', name: 'Implements', category: 'Implementation', description: 'Implements or realizes', sourceNodeTypes: ['process', 'entity'], targetNodeTypes: ['entity', 'data'], style: { strokeColor: '#22c55e', strokeWidth: 2, strokeStyle: 'dotted' }, directionality: 'directed', multiplicity: 'many-to-one' },
+  ],
+  styling: {
+    theme: 'light',
+    primaryColor: '#3b82f6',
+    backgroundColor: '#ffffff',
+    gridColor: '#e5e7eb',
+    fontFamily: 'Inter, sans-serif',
+  },
+  behavior: {
+    pan: true,
+    zoom: true,
+    snapToGrid: false,
+    gridSize: 10,
+    undoRedo: true,
+    autoSave: false,
+    autoSaveInterval: 60000,
+    maxNodes: 1000,
+    maxEdges: 2000,
+  },
+  validationRules: [
+    { type: 'custom', message: 'Node name must be unique within graph', validator: (value: any) => !!value && value.length > 0 },
+  ],
+  metadata: {
+    tags: ['general', 'topology', 'diagram', 'graph'],
+  },
+};
+
+export default TOPO_PRESET;
