@@ -31,9 +31,10 @@ import type { CanvasPreset } from '@/lib/glc/types';
 interface CanvasToolbarProps {
   preset: CanvasPreset;
   graphName?: string;
+  onShowShortcuts?: () => void;
 }
 
-export function CanvasToolbar({ preset, graphName }: CanvasToolbarProps) {
+export function CanvasToolbar({ preset, graphName, onShowShortcuts }: CanvasToolbarProps) {
   const { canUndo, canRedo, undo, redo, graph } = useGLCStore();
   const [showGrid, setShowGrid] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -172,7 +173,7 @@ export function CanvasToolbar({ preset, graphName }: CanvasToolbarProps) {
       <Separator orientation="vertical" className="h-6 mx-1" style={{ backgroundColor: theme.border }} />
 
       {/* Help */}
-      <Button variant="ghost" size="icon" className="h-8 w-8">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowShortcuts}>
         <HelpCircle className="w-4 h-4" style={{ color: theme.textMuted }} />
       </Button>
 
