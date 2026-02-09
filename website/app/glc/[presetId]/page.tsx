@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+'use client';
+
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useGLCStore } from '@/lib/glc/store';
 import { Button } from '@/components/ui/button';
@@ -7,29 +9,30 @@ import CanvasWrapper from '@/components/canvas/canvas-wrapper';
 import { nodeTypes, createFlowNodes } from '@/components/canvas/node-factory';
 import { edgeTypes, createFlowEdges } from '@/components/canvas/edge-factory';
 import { NodeDetailsSheet } from '@/components/canvas/node-details-sheet';
+import { EdgeDetailsSheet } from '@/components/canvas/edge-details-sheet';
 import { RelationshipPicker } from '@/components/canvas/relationship-picker';
 import { NodePalette } from '@/components/canvas/node-palette';
 import { DropZone } from '@/components/canvas/drop-zone';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
-import { useState } from 'react';
 
 export default function CanvasPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentPreset, setCurrentPreset, getPresetById, nodes, edges, setSelectedNodeId, setSelectedEdgeId, addEdge } = useGLCStore();
+  const { currentPreset, setCurrentPreset, getPresetById, nodes, edges, setSelectedNodeId, setSelectedEdgeId, addEdge, updateNode, deleteNode } = useGLCStore();
   const [nodeDetailsOpen, setNodeDetailsOpen] = useState(false);
+  const [edgeDetailsOpen, setEdgeDetailsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(true);
   const { setNodes, setEdges } = useReactFlow();
 
   useEffect(() => {
     const presetId = params.presetId as string;
     const preset = getPresetById(presetId);
-    
+
     if (!preset) {
       router.push('/glc');
       return;
     }
-    
+
     if (!currentPreset || currentPreset.id !== presetId) {
       setCurrentPreset(preset);
     }
@@ -57,12 +60,15 @@ export default function CanvasPage() {
   const onNodesClick = (_: React.MouseEvent, node: any) => {
     setSelectedNodeId(node.id);
     setSelectedEdgeId(null);
+    setEdgeDetailsOpen(false);
     setNodeDetailsOpen(true);
   };
 
   const onEdgesClick = (_: React.MouseEvent, edge: any) => {
     setSelectedNodeId(null);
     setSelectedEdgeId(edge.id);
+    setNodeDetailsOpen(false);
+    setEdgeDetailsOpen(true);
   };
 
   const onConnect = (params: any) => {
@@ -86,7 +92,7 @@ export default function CanvasPage() {
     }
 
     const relationshipType = validRelationships[0].id;
-    
+
     const newEdge = {
       id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       source: params.source,
@@ -127,7 +133,8 @@ export default function CanvasPage() {
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
-              </Button>              
+              </Button>
+
               <div>
                 <h1 className="text-xl font-bold text-white">{currentPreset.name}</h1>
                 <p className="text-sm text-slate-400">{currentPreset.description}</p>
@@ -181,12 +188,11 @@ export default function CanvasPage() {
             open={nodeDetailsOpen}
             onOpenChange={setNodeDetailsOpen}
           />
-          </CanvasWrapper>
 
-          <NodeDetailsSheet
-            nodeId={nodes.find(n => n.id === useGLCStore.getState().selectedNodeId)?.id || null}
-            open={nodeDetailsOpen}
-            onOpenChange={setNodeDetailsOpen}
+          <EdgeDetailsSheet
+            edgeId={edges.find(e => e.id === useGLCStore.getState().selectedEdgeId)?.id || null}
+            open={edgeDetailsOpen}
+            onOpenChange={setEdgeDetailsOpen}
           />
         </div>
       </div>
