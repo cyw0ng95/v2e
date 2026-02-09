@@ -4,12 +4,16 @@ import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useGLCStore } from '@/lib/glc/store';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus } from 'lucide-react';
+import CanvasWrapper from '@/components/canvas/canvas-wrapper';
+import { nodeTypes, createFlowNodes } from '@/components/canvas/node-factory';
+import { edgeTypes, createFlowEdges } from '@/components/canvas/edge-factory';
+import { ReactFlowProvider } from '@xyflow/react';
 
 export default function CanvasPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentPreset, setCurrentPreset, getPresetById } = useGLCStore();
+  const { currentPreset, setCurrentPreset, getPresetById, nodes, edges } = useGLCStore();
 
   useEffect(() => {
     const presetId = params.presetId as string;
@@ -25,6 +29,25 @@ export default function CanvasPage() {
     }
   }, [params.presetId, currentPreset, getPresetById, setCurrentPreset, router]);
 
+  const handleAddNode = () => {
+    if (!currentPreset) return;
+
+    const nodeType = currentPreset.nodeTypes[0];
+    const newNode = {
+      id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: nodeType.id,
+      position: {
+        x: Math.random() * 400 + 200,
+        y: Math.random() * 300 + 150,
+      },
+      data: {
+        name: `${nodeType.name} ${nodes.length + 1}`,
+      },
+    };
+
+    useGLCStore.getState().addNode(newNode);
+  };
+
   if (!currentPreset) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
@@ -37,35 +60,49 @@ export default function CanvasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => router.push('/glc')}
-            className="text-slate-300 hover:text-white hover:bg-slate-800"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Presets
-          </Button>
-        </div>
+    <ReactFlowProvider>
+      <div className="min-h-screen bg-slate-900 flex flex-col">
+        <div className="container mx-auto px-4 py-4 border-b border-slate-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/glc')}
+                className="text-slate-300 hover:text-white hover:bg-slate-800"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              
+              <div>
+                <h1 className="text-xl font-bold text-white">{currentPreset.name}</h1>
+                <p className="text-sm text-slate-400">{currentPreset.description}</p>
+              </div>
+            </div>
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">{currentPreset.name}</h1>
-          <p className="text-slate-400">{currentPreset.description}</p>
-        </div>
-
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 text-center">
-          <h2 className="text-2xl font-semibold text-white mb-4">Canvas Coming Soon</h2>
-          <p className="text-slate-400 mb-6">
-            The interactive canvas is under development. Check back soon for updates!
-          </p>
-          <div className="inline-flex items-center text-sm text-slate-500">
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Phase 2 implementation in progress
+            <Button
+              onClick={handleAddNode}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Node
+            </Button>
           </div>
         </div>
+
+        <div className="flex-1 relative">
+          <CanvasWrapper>
+            <ReactFlow
+              nodes={createFlowNodes(nodes)}
+              edges={createFlowEdges(edges)}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              fitView
+              attributionPosition="bottom-left"
+            />
+          </CanvasWrapper>
+        </div>
       </div>
-    </div>
+    </ReactFlowProvider>
   );
 }
