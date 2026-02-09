@@ -22,10 +22,10 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 136 | pkg/proc         | Code    | Enable response buffer reuse for hot RPC methods                                   | 400      | 3        |         |
 | 138 | pkg/proc         | Code    | Add prediction accuracy metrics                                                    | 200      | 3        |         |
 | 169 | pkg/notes        | Code    | Extract common RPC validation and error handling patterns into helper functions    | 400      | 3        |         |
-| 170 | pkg/notes/rpc_client | Code    | Refactor rpc_client.go (1101 lines) into smaller, focused modules                  | 600      | 3        |         |
-| 171 | pkg/notes/service | Code    | Refactor service.go (1006 lines) into smaller, focused modules                     | 500      | 3        |         |
+| 170 | pkg/notes/rpc_client | Code    | Refactor rpc_client.go (1153 lines) into smaller, focused modules                  | 600      | 3        |         |
+| 171 | pkg/notes/service | Code    | Refactor service.go (1229 lines) into smaller, focused modules                     | 500      | 3        |         |
 | 172 | pkg/ssg/local/store | Code    | Refactor store.go (828 lines) into smaller modules (models, queries, migrations)   | 400      | 3        |         |
-| 173 | pkg/cwe/local    | Code    | Refactor local.go (665 lines) into smaller, focused modules                        | 400      | 3        |         |
+| 173 | pkg/cwe/local    | Code    | Refactor local.go (674 lines) into smaller, focused modules                        | 400      | 3        |         |
 | 174 | pkg/cve/taskflow/executor | Code    | Refactor executor.go (612 lines) - extract job state management                    | 350      | 3        |         |
 | 175 | pkg/ssg/job/importer | Code    | Refactor importer.go (597 lines) - extract parsing logic                           | 350      | 3        |         |
 | 176 | pkg/cve/local/learning | Code    | Refactor learning.go (518 lines) - extract pattern analysis                        | 300      | 3        |         |
@@ -147,6 +147,20 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 165 | website          | Debt    | Make RPC timeout configurable per request type                                     | 50       | 5        |         |
 | 166 | website          | Debt    | Remove or conditionalize console.log statements in production                      | 25       | 5        |         |
 | 167 | website          | Debt    | Extract magic numbers to configuration constants                                   | 25       | 5        |         |
+| 351 | pkg/common/procfs| Code    | Replace deprecated ioutil.ReadFile with os.ReadFile (8 usages in net.go, memory.go, cpu.go) | 20       | 2        |         |
+| 352 | pkg/analysis     | Test    | Add test files for pkg/analysis (currently no test files, 0% coverage)            | 400      | 2        |         |
+| 353 | pkg/ssg/provider | Code    | Implement guide import via RPC to v2local service (TODO in git_provider.go:88)    | 200      | 2        |         |
+| 354 | pkg/ssg/parser   | Code    | Implement SSG references parsing (TODO in guide.go:468)                           | 150      | 2        |         |
+| 355 | pkg/asvs/provider| Code    | Implement CSV rows parsing and RPC import (TODO in asvs_provider.go:90)           | 200      | 2        |         |
+| 356 | cmd/v2access     | Test    | Re-enable and fix disabled tests - service currently stub (main_test.go:19-27)    | 300      | 2        |         |
+| 357 | pkg/notes        | Refactor| Split rpc_handlers.go (1527 lines) into smaller, focused modules                  | 500      | 3        |         |
+| 359 | cmd/v2meta       | Refactor| Split main.go (1216 lines) into smaller, focused modules                          | 400      | 3        |         |
+| 361 | cmd/v2local      | Refactor| Split ssg_handlers.go (1083 lines) into smaller, focused modules                  | 350      | 3        |         |
+| 363 | cmd/v2broker/perf| Refactor| Split optimizer.go (798 lines) into smaller, focused modules                      | 300      | 3        |         |
+| 365 | pkg/*/provider   | Test    | Add tests for provider packages (asvs, attack, capec, cce, cve, cwe, ssg - all 0% coverage) | 600      | 3        |         |
+| 366 | pkg/ssg/*        | Test    | Add tests for ssg subpackages (crossref, job, local, provider - all 0% coverage)  | 500      | 3        |         |
+| 367 | pkg/*            | Code    | Replace interface{} with any (Go 1.18+ style) - 30+ occurrences found             | 50       | 4        |         |
+| 368 | cmd/v2broker/core| Test    | Implement UDS-based RPC round-trip test if needed (invoke_rpc_test.go:16)         | 200      | 4        |         |
 
 ## Maintenance Strategy
 
