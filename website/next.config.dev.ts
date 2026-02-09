@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* Static Site Generation (SSG) configuration */
-  output: 'export',
+  /* Development mode configuration */
+  output: undefined, // Not static export in dev mode
 
-  /* Disable image optimization for static export to reduce build size */
+  /* Disable image optimization */
   images: {
     unoptimized: false,
   },
@@ -12,14 +12,16 @@ const nextConfig: NextConfig = {
   /* Use relative paths for assets */
   basePath: '',
 
-  /* Trailing slash for static hosting */
-  trailingSlash: true,
-
-  /* Optimize production builds - disable source maps to reduce bundle size */
-  productionBrowserSourceMaps: false,
-
-  /* Compress output */
-  compress: true,
+  /* Configure RPC proxy for development mode */
+  async rewrites() {
+    const v2accessUrl = process.env.V2ACCESS_URL || 'http://localhost:8080';
+    return [
+      {
+        source: '/api/restful/:path*',
+        destination: `${v2accessUrl}/restful/:path*`,
+      },
+    ];
+  },
 
   /* Allow remote development access */
   async headers() {
