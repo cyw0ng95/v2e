@@ -273,13 +273,9 @@ run_node_and_broker_once() {
 
     log_info "Starting Node.js process in website directory..."
     pushd website > /dev/null
-    # Set environment variables for development
-    export V2ACCESS_URL="http://localhost:8080"
-    export NODE_ENV=development
-    npm run dev -- -c next.config.dev.ts &
+    npm run dev &
     NODE_DEV_PID=$!
     log_info "Node.js process started with PID: $NODE_DEV_PID"
-    log_info "Node.js will proxy /api/restful requests to v2access at http://localhost:8080"
     popd > /dev/null
 
     log_info "[build.sh] Starting broker from $PACKAGE_DIR..."

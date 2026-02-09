@@ -152,14 +152,11 @@ const logger = createLogger('rpc-client');
 // Default Configuration
 // ============================================================================
 
-// Detect if running in remote development environment or local dev mode
+// Detect if running in remote development environment
 const isRemoteDev = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-const isLocalDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
-// In both remote dev and local dev (when running ./build.sh -r), use relative path
-// This will be proxied through Next.js rewrites to v2access
-const DEFAULT_API_BASE_URL = (isRemoteDev || isLocalDev)
-  ? '/api'  // Use /api prefix for Next.js rewrites
+const DEFAULT_API_BASE_URL = isRemoteDev
+  ? '/restful'  // Use relative path in remote dev (will be proxied)
   : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';  // Local dev or fallback
 const DEFAULT_TIMEOUT = 120000; // 120 seconds (2 minutes) - increased for SSG operations
 const MOCK_DELAY_MS = 500; // 500ms delay for mock responses
@@ -357,15 +354,9 @@ const cachedCall = React.cache(async function (
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      logger.debug('Making RPC request', { method, target, params, baseUrl });
+      logger.debug('Making RPC request', { method, target, params });
 
-      // In dev mode (local or remote), use Next.js rewrites to proxy to v2access
-      // The rewrite rule is: /api/restful/:path* -> http://localhost:8080/restful/:path*
-      const rpcUrl = (isRemoteDev || isLocalDev)
-        ? '/api/restful/rpc'
-        : `${baseUrl}/restful/rpc`;
-
-      const response = await fetch(rpcUrl, {
+      const response = await fetch(`${baseUrl}/restful/rpc`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -381,7 +372,7 @@ const cachedCall = React.cache(async function (
       if (!response.ok) {
         // HTTP-level error with full details for debugging
         logger.error(`HTTP error: ${response.status} ${response.statusText}`, new Error(`HTTP ${response.status}`), {
-          url: rpcUrl,
+          url: `${baseUrl}/restful/rpc`,
           method,
           target,
           status: response.status,
@@ -1288,12 +1279,7 @@ export class RPCClient {
     }
 
     try {
-      // In dev mode (local or remote), use Next.js rewrites to proxy to v2access
-      const healthUrl = (isRemoteDev || isLocalDev)
-        ? '/api/restful/health'
-        : `${this.baseUrl}/restful/health`;
-
-      const response = await fetch(healthUrl);
+      const response = await fetch(`${this.baseUrl}/restful/health`);
       const data = await response.json();
       return {
         retcode: 0,
