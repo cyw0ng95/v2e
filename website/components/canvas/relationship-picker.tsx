@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGLCStore } from '../../store';
+import { useGLCStore } from '@/lib/glc/store';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { X, Link } from 'lucide-react';
-import { RelationshipDefinition } from '../../types';
+import { RelationshipDefinition } from "@/lib/glc/types"
 
 interface RelationshipPickerProps {
   sourceNodeId: string;
@@ -27,7 +27,7 @@ export function RelationshipPicker({
   onRelationshipSelect,
   children,
 }: RelationshipPickerProps) {
-  const { currentPreset, nodes } = useGLCStore();
+  const { currentPreset, nodes } = useGLCStore() as any;
   const [open, setOpen] = useState(false);
   const [selectedRelationship, setSelectedRelationship] = useState<string | null>(null);
 
@@ -35,14 +35,14 @@ export function RelationshipPicker({
     return null;
   }
 
-  const sourceNode = nodes.find(n => n.id === sourceNodeId);
-  const targetNode = nodes.find(n => n.id === targetNodeId);
+  const sourceNode = nodes.find((n: any) => n.id === sourceNodeId);
+  const targetNode = nodes.find((n: any) => n.id === targetNodeId);
 
   if (!sourceNode || !targetNode) {
     return null;
   }
 
-  const validRelationships = currentPreset.relationshipTypes.filter(rel =>
+  const validRelationships = currentPreset.relationshipTypes.filter(rel: any =>
     (rel.sourceNodeTypes.includes('*') || rel.sourceNodeTypes.includes(sourceNode.type)) &&
     (rel.targetNodeTypes.includes('*') || rel.targetNodeTypes.includes(targetNode.type))
   );
@@ -108,7 +108,7 @@ export function RelationshipPicker({
           </div>
 
           <div className="grid gap-3">
-            {validRelationships.map(rel => (
+            {validRelationships.map(rel: any => (
               <button
                 key={rel.id}
                 onClick={() => setSelectedRelationship(rel.id)}

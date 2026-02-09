@@ -2,8 +2,8 @@
 
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { useGLCStore } from '../../store';
-import { getNodeStyle } from '../../lib/glc/canvas/canvas-config';
+import { useGLCStore } from '@/lib/glc/store';
+import { getNodeStyle } from '@/lib/glc/canvas/canvas-config';
 import { Shield, Box, File, User, Bug, AlertTriangle, Activity, Terminal, StickyNote } from 'lucide-react';
 
 const iconMap: Record<string, any> = {
@@ -21,14 +21,14 @@ const iconMap: Record<string, any> = {
 export { iconMap };
 
 export const DynamicNode = memo(({ data, selected }: NodeProps) => {
-  const { currentPreset } = useGLCStore();
+  const { currentPreset } = useGLCStore() as any;
   
   if (!currentPreset) {
     return null;
   }
 
-  const nodeStyle = getNodeStyle(currentPreset, data.type);
-  const nodeType = currentPreset.nodeTypes.find(nt => nt.id === data.type);
+  const nodeStyle = getNodeStyle(currentPreset, (data as any).type);
+  const nodeType = currentPreset.nodeTypes.find((nt: any) => nt.id === (data as any).type);
   
   if (!nodeType) {
     return null;
@@ -50,13 +50,13 @@ export const DynamicNode = memo(({ data, selected }: NodeProps) => {
           <Icon className="w-4 h-4" />
         </div>
         <span className="font-medium text-sm truncate" style={{ color: nodeStyle.color }}>
-          {data.name || nodeType.name}
+          {(data as any).name || nodeType.name}
         </span>
       </div>
 
       {nodeType.properties.length > 0 && (
         <div className="space-y-1">
-          {nodeType.properties.slice(0, 3).map(prop => {
+          {nodeType.properties.slice(0, 3).map((prop: any) => {
             const value = data[prop.id];
             if (value === undefined || value === null || value === '') {
               return null;
@@ -72,10 +72,10 @@ export const DynamicNode = memo(({ data, selected }: NodeProps) => {
         </div>
       )}
 
-      {data._ontologyClass && (
+      {(data as any)._ontologyClass && (
         <div className="mt-2 pt-2 border-t border-black/10 text-xs" style={{ color: nodeStyle.color }}>
           <span className="opacity-60">D3FEND:</span>
-          <span className="ml-1 font-mono">{data._ontologyClass}</span>
+          <span className="ml-1 font-mono">{(data as any)._ontologyClass}</span>
         </div>
       )}
 

@@ -13,13 +13,25 @@ import { EdgeDetailsSheet } from '@/components/canvas/edge-details-sheet';
 import { RelationshipPicker } from '@/components/canvas/relationship-picker';
 import { NodePalette } from '@/components/canvas/node-palette';
 import { DropZone } from '@/components/canvas/drop-zone';
-import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { ReactFlowProvider, ReactFlow, useReactFlow } from '@xyflow/react';
 import FileMenu from '@/components/file-menu';
 
 export default function CanvasPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentPreset, setCurrentPreset, getPresetById, nodes, edges, setSelectedNodeId, setSelectedEdgeId, addEdge, updateNode, deleteNode } = useGLCStore();
+  const store = useGLCStore();
+  const {
+    currentPreset = null,
+    setCurrentPreset,
+    getPresetById,
+    nodes,
+    edges,
+    setSelectedNodeId,
+    setSelectedEdgeId,
+    addEdge,
+    updateNode,
+    deleteNode,
+  } = store as any;
   const [nodeDetailsOpen, setNodeDetailsOpen] = useState(false);
   const [edgeDetailsOpen, setEdgeDetailsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(true);
@@ -55,7 +67,7 @@ export default function CanvasPage() {
       },
     };
 
-    useGLCStore.getState().addNode(newNode);
+    (store as any).addNode(newNode);
   };
 
   const onNodesClick = (_: React.MouseEvent, node: any) => {
@@ -76,14 +88,14 @@ export default function CanvasPage() {
     if (!currentPreset) return;
 
     const existingEdge = edges.find(
-      e => e.source === params.source && e.target === params.target
+      (e: any) => e.source === params.source && e.target === params.target
     );
 
     if (existingEdge) {
       return;
     }
 
-    const validRelationships = currentPreset.relationshipTypes.filter(rel =>
+    const validRelationships = currentPreset.relationshipTypes.filter((rel: any) =>
       (rel.sourceNodeTypes.includes('*') || rel.sourceNodeTypes.includes(params.sourceType)) &&
       (rel.targetNodeTypes.includes('*') || rel.targetNodeTypes.includes(params.targetType))
     );
@@ -182,8 +194,8 @@ export default function CanvasPage() {
                   edges={createFlowEdges(edges)}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
-                  onNodesClick={onNodesClick}
-                  onEdgesClick={onEdgesClick}
+                  onNodeClick={onNodesClick}
+                  onEdgeClick={onEdgesClick}
                   onConnect={onConnect}
                   fitView
                   attributionPosition="bottom-left"
@@ -193,13 +205,13 @@ export default function CanvasPage() {
           </DropZone>
 
           <NodeDetailsSheet
-            nodeId={nodes.find(n => n.id === useGLCStore.getState().selectedNodeId)?.id || null}
+            nodeId={nodes.find((n: any) => n.id === (store as any).selectedNodeId)?.id || null}
             open={nodeDetailsOpen}
             onOpenChange={setNodeDetailsOpen}
           />
 
           <EdgeDetailsSheet
-            edgeId={edges.find(e => e.id === useGLCStore.getState().selectedEdgeId)?.id || null}
+            edgeId={edges.find((e: any) => e.id === (store as any).selectedEdgeId)?.id || null}
             open={edgeDetailsOpen}
             onOpenChange={setEdgeDetailsOpen}
           />

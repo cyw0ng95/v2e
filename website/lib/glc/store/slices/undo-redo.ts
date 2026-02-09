@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { CADNode, CADEdge, Graph } from '../types';
+import { CADNode, CADEdge, Graph } from '../../types';
 
 interface HistoryItem {
   nodes: CADNode[];

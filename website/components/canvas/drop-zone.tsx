@@ -1,21 +1,21 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useGLCStore } from '../../store';
-import { onDragOver, onDrop, isValidDropTarget, calculateDropPosition } from '../../lib/glc/canvas/drag-drop';
-import { NodeTypeDefinition } from '../../types';
+import { useGLCStore } from '@/lib/glc/store';
+import { onDragOver, onDrop, isValidDropTarget, calculateDropPosition } from '@/lib/glc/canvas/drag-drop';
+import { NodeTypeDefinition } from '@/lib/glc/types';
 
 interface DropZoneProps {
   children: React.ReactNode;
 }
 
 export function DropZone({ children }: DropZoneProps) {
-  const { addNode, nodes, currentPreset } = useGLCStore();
+  const { addNode, nodes, currentPreset } = useGLCStore() as any;
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dropPosition, setDropPosition] = useState<{ x: number; y: number } | null>(null);
 
-  const handleDragEnter = (event: React.DragEvent) => {
+  const handleDragEnter = (event: any) => {
     if (isValidDropTarget(event)) {
       setIsDragging(true);
     }

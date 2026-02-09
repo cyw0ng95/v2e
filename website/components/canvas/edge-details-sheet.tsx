@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useGLCStore } from '../../store';
+import { useState, useEffect } from 'react';
+import { useGLCStore } from '@/lib/glc/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Save, Trash2 } from 'lucide-react';
-import { CADEdge } from '../../types';
+import { CADEdge } from "@/lib/glc/types"
 import { showError } from '../../lib/glc/errors/error-handler';
 
 interface EdgeDetailsSheetProps {
@@ -19,13 +19,13 @@ interface EdgeDetailsSheetProps {
 }
 
 export function EdgeDetailsSheet({ edgeId, open, onOpenChange }: EdgeDetailsSheetProps) {
-  const { currentPreset, edges, updateEdge, deleteEdge, nodes } = useGLCStore();
+  const { currentPreset, edges, updateEdge, deleteEdge, nodes } = useGLCStore() as any;
   const [formData, setFormData] = useState<Record<string, any>>({});
 
-  const edge = edgeId ? edges.find(e => e.id === edgeId) : null;
-  const edgeType = edge && currentPreset ? currentPreset.relationshipTypes.find(rt => rt.id === edge.type) : null;
-  const sourceNode = edge ? nodes.find(n => n.id === edge.source) : null;
-  const targetNode = edge ? nodes.find(n => n.id === edge.target) : null;
+  const edge = edgeId ? edges.find((e: any) => e.id === edgeId) : null;
+  const edgeType = edge && currentPreset ? currentPreset.relationshipTypes.find((rt: any) => rt.id === edge.type) : null;
+  const sourceNode = edge ? nodes.find((n: any) => n.id === edge.source) : null;
+  const targetNode = edge ? nodes.find((n: any) => n.id === edge.target) : null;
 
   useEffect(() => {
     if (edge) {
@@ -60,12 +60,12 @@ export function EdgeDetailsSheet({ edgeId, open, onOpenChange }: EdgeDetailsShee
   const getValidRelationshipTypes = (sourceNodeId: string, targetNodeId: string) => {
     if (!currentPreset) return [];
 
-    const sourceNode = nodes.find(n => n.id === sourceNodeId);
-    const targetNode = nodes.find(n => n.id === targetNodeId);
+    const sourceNode = nodes.find((n: any) => n.id === sourceNodeId);
+    const targetNode = nodes.find((n: any) => n.id === targetNodeId);
 
     if (!sourceNode || !targetNode) return [];
 
-    return currentPreset.relationshipTypes.filter(rel =>
+    return currentPreset.relationshipTypes.filter((rel: any) =>
       (rel.sourceNodeTypes.includes('*') || rel.sourceNodeTypes.includes(sourceNode.type)) &&
       (rel.targetNodeTypes.includes('*') || rel.targetNodeTypes.includes(targetNode.type))
     );
@@ -121,7 +121,7 @@ export function EdgeDetailsSheet({ edgeId, open, onOpenChange }: EdgeDetailsShee
                 <SelectValue placeholder="Select relationship type" />
               </SelectTrigger>
               <SelectContent>
-                {validRelationshipTypes.map(rel => (
+                {validRelationshipTypes.map((rel: any) => (
                   <SelectItem key={rel.id} value={rel.id}>
                     {rel.name}
                   </SelectItem>

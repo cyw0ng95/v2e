@@ -14,9 +14,9 @@ import {
   Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useGLCStore } from '../../store';
-import { getCanvasConfig, getCanvasBackground, applyPresetTheme, removePresetTheme } from '../../lib/glc/canvas/canvas-config';
-import { GraphErrorBoundary } from '../../lib/glc/errors/error-boundaries';
+import { useGLCStore } from '@/lib/glc/store';
+import { getCanvasConfig, getCanvasBackground, applyPresetTheme, removePresetTheme } from '@/lib/glc/canvas/canvas-config';
+import { GraphErrorBoundary } from '@/lib/glc/errors/error-boundaries';
 
 interface CanvasWrapperProps {
   children?: React.ReactNode;
@@ -24,7 +24,7 @@ interface CanvasWrapperProps {
 
 export function CanvasWrapper({ children }: CanvasWrapperProps) {
   const { currentPreset, nodes, edges, setViewport, addNode, addEdge: addStoreEdge } = useGLCStore(
-    state => ({
+    (state: any) => ({
       currentPreset: state.currentPreset,
       nodes: state.nodes,
       edges: state.edges,
@@ -76,7 +76,7 @@ export function CanvasWrapper({ children }: CanvasWrapperProps) {
 
   const onMoveEnd = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      useGLCStore.getState().updateNode(node.id, {
+      (useGLCStore.getState() as any).updateNode(node.id, {
         position: node.position,
       });
     },

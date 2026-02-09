@@ -9,14 +9,19 @@ import { Shield, Box, ArrowRight, FolderOpen } from 'lucide-react';
 
 export default function GLCLandingPage() {
   const router = useRouter();
-  const { builtInPresets, setCurrentPreset, getAllPresets } = useGLCStore();
+  const store = useGLCStore();
+  const {
+    builtInPresets = [],
+    setCurrentPreset,
+    getAllPresets,
+  } = store as any;
 
   useEffect(() => {
     getAllPresets();
   }, [getAllPresets]);
 
   const handleSelectPreset = (presetId: string) => {
-    const preset = builtInPresets.find(p => p.id === presetId);
+    const preset = builtInPresets.find((p: any) => p.id === presetId);
     if (preset) {
       setCurrentPreset(preset);
       router.push(`/glc/${presetId}`);
@@ -55,7 +60,7 @@ export default function GLCLandingPage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-16">
-          {presetCards.map((card) => {
+          {presetCards.map((card: any) => {
             const Icon = card.icon;
             return (
               <Card key={card.id} className="bg-slate-800 border-slate-700 hover:border-blue-500 transition-all cursor-pointer group">

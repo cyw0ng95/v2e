@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { CADNode, CADEdge, Graph, GraphMetadata } from '../types';
+import { CADNode, CADEdge, Graph, GraphMetadata } from '../../types';
 
 interface GraphState {
   graph: Graph | null;

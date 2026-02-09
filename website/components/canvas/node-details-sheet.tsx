@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useGLCStore } from '../../store';
+import { useState, useEffect } from 'react';
+import { useGLCStore } from '@/lib/glc/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { X, Save, Trash2 } from 'lucide-react';
-import { CADNode } from '../../types';
+import { CADNode } from "@/lib/glc/types"
 import { showError } from '../../lib/glc/errors/error-handler';
 import { validateNodePosition } from '../../lib/glc/utils';
 
@@ -19,12 +19,12 @@ interface NodeDetailsSheetProps {
 }
 
 export function NodeDetailsSheet({ nodeId, open, onOpenChange }: NodeDetailsSheetProps) {
-  const { currentPreset, nodes, updateNode, deleteNode } = useGLCStore();
+  const { currentPreset, nodes, updateNode, deleteNode } = useGLCStore() as any;
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  const node = nodeId ? nodes.find(n => n.id === nodeId) : null;
-  const nodeType = node && currentPreset ? currentPreset.nodeTypes.find(nt => nt.id === node.type) : null;
+  const node = nodeId ? nodes.find((n: any) => n.id === nodeId) : null;
+  const nodeType = node && currentPreset ? currentPreset.nodeTypes.find((nt: any) => nt.id === node.type) : null;
 
   useEffect(() => {
     if (node) {
@@ -64,7 +64,7 @@ export function NodeDetailsSheet({ nodeId, open, onOpenChange }: NodeDetailsShee
 
     const newPosition = { ...position, [field]: numValue };
     
-    if (!validateNodePosition(nodes.filter(n => n.id !== nodeId), newPosition)) {
+    if (!validateNodePosition(nodes.filter((n: any) => n.id !== nodeId), newPosition)) {
       return;
     }
 
@@ -130,7 +130,7 @@ export function NodeDetailsSheet({ nodeId, open, onOpenChange }: NodeDetailsShee
               <CardTitle className="text-base">Properties</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {nodeType.properties.map(prop => (
+              {nodeType.properties.map((prop: any) => (
                 <div key={prop.id}>
                   <Label htmlFor={`prop-${prop.id}`}>
                     {prop.name}
@@ -174,7 +174,7 @@ export function NodeDetailsSheet({ nodeId, open, onOpenChange }: NodeDetailsShee
                       required={prop.required}
                     >
                       <option value="">Select...</option>
-                      {prop.options.map(option => (
+                      {prop.options.map((option: any) => (
                         <option key={option} value={option}>{option}</option>
                       ))}
                     </select>

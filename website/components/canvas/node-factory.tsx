@@ -1,6 +1,6 @@
 import { Node } from '@xyflow/react';
 import { DynamicNode } from './dynamic-node';
-import { CADNode } from '../../types';
+import { CADNode } from "@/lib/glc/types"
 
 export const nodeTypes = {
   'dynamic-node': DynamicNode,

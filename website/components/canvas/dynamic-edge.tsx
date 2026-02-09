@@ -2,22 +2,26 @@
 
 import React, { memo } from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, EdgeLabelRenderer } from '@xyflow/react';
-import { useGLCStore } from '../../store';
-import { getEdgeStyle } from '../../lib/glc/canvas/canvas-config';
+import { useGLCStore } from '@/lib/glc/store';
+import { getEdgeStyle } from '@/lib/glc/canvas/canvas-config';
 
 export const DynamicEdge = memo(({ id, source, target, data, selected }: EdgeProps) => {
-  const { currentPreset } = useGLCStore();
+  const { currentPreset } = useGLCStore() as any;
   
-  if (!currentPreset) {
+  if (!currentPreset || !data) {
     return null;
   }
 
-  const edgeType = currentPreset.relationshipTypes.find(rt => rt.id === data.type);
-  const edgeStyle = edgeType ? getEdgeStyle(currentPreset, data.type) : {};
+  const edgeType = currentPreset.relationshipTypes.find((rt: any) => rt.id === data.type);
+  const edgeStyle = edgeType ? getEdgeStyle(currentPreset, (data as any).type) : {};
 
   const [edgePath, labelX, labelY] = getBezierPath({
-    source: source as any,
-    target: target as any,
+    sourceX: (source as any).x,
+    sourceY: (source as any).y,
+    sourcePosition: (source as any).position,
+    targetX: (target as any).x,
+    targetY: (target as any).y,
+    targetPosition: (target as any).position,
   });
 
   return (
@@ -40,7 +44,7 @@ export const DynamicEdge = memo(({ id, source, target, data, selected }: EdgePro
               pointerEvents: 'none',
             }}
           >
-            {data.label}
+            {(data as any).label}
           </div>
         </EdgeLabelRenderer>
       )}

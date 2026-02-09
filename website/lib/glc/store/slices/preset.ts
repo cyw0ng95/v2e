@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
-import { CanvasPreset } from '../types';
-import { BUILT_IN_PRESETS } from '../presets';
+import { CanvasPreset } from '../../types';
+import { BUILT_IN_PRESETS } from '../../presets';
 
 interface PresetState {
   currentPreset: CanvasPreset | null;

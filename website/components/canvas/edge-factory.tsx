@@ -1,6 +1,6 @@
 import { Edge } from '@xyflow/react';
 import { DynamicEdge } from './dynamic-edge';
-import { CADEdge } from '../../types';
+import { CADEdge } from "@/lib/glc/types"
 
 export const edgeTypes = {
   'dynamic-edge': DynamicEdge,

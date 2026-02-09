@@ -1,16 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useGLCStore } from '../../store';
+import { useGLCStore } from '@/lib/glc/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { NodeTypeDefinition } from '@/lib/glc/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Search, GripHorizontal } from 'lucide-react';
-import { NodeTypeDefinition } from '../../types';
-import { getNodeStyle } from '../../lib/glc/canvas/canvas-config';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { getNodeStyle } from '@/lib/glc/canvas/canvas-config';
 import { iconMap } from './dynamic-node';
 import * as Icons from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Search, GripHorizontal } from 'lucide-react';
 
 interface NodePaletteProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ interface NodePaletteProps {
 }
 
 export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
-  const { currentPreset, addNode, nodes } = useGLCStore();
+  const { currentPreset, addNode, nodes } = useGLCStore() as any;
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
@@ -26,7 +26,7 @@ export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
     return null;
   }
 
-  const filteredNodeTypes = currentPreset.nodeTypes.filter(nodeType => {
+  const filteredNodeTypes = currentPreset.nodeTypes.filter((nodeType: any) => {
     const searchLower = searchQuery.toLowerCase();
     return (
       nodeType.name.toLowerCase().includes(searchLower) ||
@@ -35,7 +35,7 @@ export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
     );
   });
 
-  const groupedByCategory = filteredNodeTypes.reduce((acc, nodeType) => {
+  const groupedByCategory = filteredNodeTypes.reduce((acc: any, nodeType: any) => {
     if (!acc[nodeType.category]) {
       acc[nodeType.category] = [];
     }
@@ -63,7 +63,7 @@ export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
     event.dataTransfer.effectAllowed = 'copy';
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (event: any) => {
     event.dataTransfer.clearData();
   };
 
@@ -99,8 +99,6 @@ export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
             {categories.map(category => (
               <Accordion
                 key={category}
-                type="single"
-                collapsible
                 className="border rounded-lg"
                 value={expandedCategories.has(category) ? category : undefined}
               >
@@ -121,7 +119,7 @@ export function NodePalette({ isOpen, onToggle }: NodePaletteProps) {
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pt-2 pb-4">
                   <div className="space-y-2">
-                    {groupedByCategory[category].map(nodeType => {
+                    {groupedByCategory[category].map((nodeType: any) => {
                       const Icon = (iconMap as any)[nodeType.style.icon] || Icons.Box;
                       const style = getNodeStyle(currentPreset, nodeType.id);
 
