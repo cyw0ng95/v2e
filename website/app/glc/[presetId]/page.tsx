@@ -1,15 +1,15 @@
-'use client';
-
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useGLCStore } from '@/lib/glc/store';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Plus } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, LayoutTemplate } from 'lucide-react';
 import CanvasWrapper from '@/components/canvas/canvas-wrapper';
 import { nodeTypes, createFlowNodes } from '@/components/canvas/node-factory';
 import { edgeTypes, createFlowEdges } from '@/components/canvas/edge-factory';
 import { NodeDetailsSheet } from '@/components/canvas/node-details-sheet';
 import { RelationshipPicker } from '@/components/canvas/relationship-picker';
+import { NodePalette } from '@/components/canvas/node-palette';
+import { DropZone } from '@/components/canvas/drop-zone';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import { useState } from 'react';
 
@@ -18,6 +18,7 @@ export default function CanvasPage() {
   const router = useRouter();
   const { currentPreset, setCurrentPreset, getPresetById, nodes, edges, setSelectedNodeId, setSelectedEdgeId, addEdge } = useGLCStore();
   const [nodeDetailsOpen, setNodeDetailsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(true);
   const { setNodes, setEdges } = useReactFlow();
 
   useEffect(() => {
@@ -126,37 +127,60 @@ export default function CanvasPage() {
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
-              </Button>
-              
+              </Button>              
               <div>
                 <h1 className="text-xl font-bold text-white">{currentPreset.name}</h1>
                 <p className="text-sm text-slate-400">{currentPreset.description}</p>
               </div>
             </div>
 
-            <Button
-              onClick={handleAddNode}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Node
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setPaletteOpen(!paletteOpen)}
+                variant="outline"
+                className="border-slate-600 text-slate-300 hover:bg-slate-800"
+              >
+                <LayoutTemplate className="mr-2 h-4 w-4" />
+                {paletteOpen ? 'Hide' : 'Show'} Palette
+              </Button>
+
+              <Button
+                onClick={handleAddNode}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Node
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 relative">
-          <CanvasWrapper>
-            <ReactFlow
-              nodes={createFlowNodes(nodes)}
-              edges={createFlowEdges(edges)}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              onNodesClick={onNodesClick}
-              onEdgesClick={onEdgesClick}
-              onConnect={onConnect}
-              fitView
-              attributionPosition="bottom-left"
-            />
+        <div className="flex-1 relative flex">
+          <NodePalette isOpen={paletteOpen} onToggle={() => setPaletteOpen(!paletteOpen)} />
+
+          <DropZone>
+            <div className="w-full h-full">
+              <CanvasWrapper>
+                <ReactFlow
+                  nodes={createFlowNodes(nodes)}
+                  edges={createFlowEdges(edges)}
+                  nodeTypes={nodeTypes}
+                  edgeTypes={edgeTypes}
+                  onNodesClick={onNodesClick}
+                  onEdgesClick={onEdgesClick}
+                  onConnect={onConnect}
+                  fitView
+                  attributionPosition="bottom-left"
+                />
+              </CanvasWrapper>
+            </div>
+          </DropZone>
+
+          <NodeDetailsSheet
+            nodeId={nodes.find(n => n.id === useGLCStore.getState().selectedNodeId)?.id || null}
+            open={nodeDetailsOpen}
+            onOpenChange={setNodeDetailsOpen}
+          />
           </CanvasWrapper>
 
           <NodeDetailsSheet
