@@ -1,0 +1,703 @@
+{
+  "version": "1.0.0",
+  "classes": [
+    {
+      "id": "d3fend:event",
+      "name": "Event",
+      "d3fend_type": "event",
+      "type": "object",
+      "description": "A security event or incident",
+      "tactics": ["detect", "analyze", "report"],
+      "properties": [
+        {
+          "id": "event-name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "description": "The name of the event"
+        },
+        {
+          "id": "event-description",
+          "name": "Description",
+          "type": "text",
+          "required": false,
+          "description": "Detailed description of the event"
+        },
+        {
+          "id": "event-timestamp",
+          "name": "Timestamp",
+          "type": "datetime",
+          "required": false,
+          "description": "When the event occurred"
+        },
+        {
+          "id": "event-severity",
+          "name": "Severity",
+          "type": "enum",
+          "required": false,
+          "options": ["Low", "Medium", "High", "Critical"],
+          "description": "Severity level of the event"
+        },
+        {
+          "id": "event-location",
+          "name": "Location",
+          "type": "text",
+          "required": false,
+          "description": "Where the event occurred"
+        },
+        {
+          "id": "event-attacker",
+          "name": "Attacker",
+          "type": "text",
+          "required": false,
+          "description": "The threat actor responsible"
+        },
+        {
+          "id": "event-victim",
+          "name": "Victim",
+          "type": "text",
+          "required": false,
+          "description": "The affected system or entity"
+        },
+        {
+          "id": "event-asset",
+          "name": "Asset",
+          "type": "text",
+          "required": false,
+          "description": "The affected asset"
+        },
+        {
+          "id": "event-mitigation",
+          "name": "Mitigation",
+          "type": "text",
+          "required": false,
+          "description": "Measures taken or planned"
+        }
+      ]
+    },
+    {
+      "id": "d3fend:remote-command",
+      "name": "Remote Command",
+      "d3fend_type": "remote-command",
+      "type": "object",
+      "description": "A command executed remotely",
+      "tactics": ["execute", "persist", "remotely-deliver", "exfiltrate"],
+      "properties": [
+        {
+          "id": "command-string",
+          "name": "Command",
+          "type": "text",
+          "required": true,
+          "description": "The command to execute"
+        },
+        {
+          "id": "command-output",
+          "name": "Output",
+          "type": "text",
+          "required": false,
+          "description": "Output from command execution"
+        },
+        {
+          "id": "command-exit-code",
+          "name": "Exit Code",
+          "type": "number",
+          "required": false,
+          "description": "The exit code of the command"
+        },
+        {
+          "id": "command-executed-at",
+          "name": "Executed At",
+          "type": "datetime",
+          "required": false,
+          "description": "When the command was executed"
+        },
+        {
+          "id": "command-persistence",
+          "name": "Persistence",
+          "type": "boolean",
+          "required": false,
+          "description": "Whether command output persists"
+        },
+        {
+          "id": "target-system",
+          "name": "Target System",
+          "type": "text",
+          "required": false,
+          "description": "The target system or component"
+        },
+        {
+          "id": "delivery-method",
+          "name": "Delivery Method",
+          "type": "enum",
+          "required": false,
+          "options": ["manual", "automated"],
+          "description": "How the command is delivered"
+        }
+      ]
+    },
+    {
+      "id": "d3fend:countermeasure",
+      "name": "Countermeasure",
+      "d3fend_type": "countermeasure",
+      "type": "object",
+      "description": "A defensive measure or security control",
+      "tactics": ["detect", "isolate", "evict", "deceive", "deny", "obfuscate"],
+      "properties": [
+        {
+          "id": "countermeasure-name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "description": "The name of the countermeasure"
+        },
+        {
+          "id": "countermeasure-type",
+          "name": "Type",
+          "type": "enum",
+          "required": true,
+          "options": ["Detect", "Isolate", "Evict", "Deceive", "Deny", "Obfuscate"],
+          "description": "Type of countermeasure"
+        },
+        {
+          "id": "countermeasure-description",
+          "name": "Description",
+          "type": "text",
+          "required": false,
+          "description": "Detailed description"
+        },
+        {
+          "id": "countermeasure-effectiveness",
+          "name": "Effectiveness",
+          "type": "enum",
+          "required": false,
+          "options": ["Low", "Medium", "High", "Critical"],
+          "description": "How effective the countermeasure is"
+        },
+        {
+          "id": "countermeasure-implementation",
+          "name": "Implementation",
+          "type": "text",
+          "required": false,
+          "description": "How the countermeasure is implemented"
+        },
+        {
+          "id": "countermeasure-d3fend-class",
+          "name": "D3FEND Class",
+          "type": "text",
+          "required": false,
+          "description": "The D3FEND ontology class this belongs to"
+        },
+        {
+          "id": "countermeasure-resources",
+          "name": "Resources Required",
+          "type": "text",
+          "required": false,
+          "description": "Resources required for the countermeasure"
+        },
+        {
+          "id": "countermeasure-side-effects",
+          "name": "Side Effects",
+          "type": "text",
+          "required": false,
+          "description": "Potential side effects"
+        }
+      ]
+    },
+    {
+      "id": "d3fend:vulnerability",
+      "name": "Vulnerability",
+      "d3fend_type": "vulnerability",
+      "type": "object",
+      "description": "A security vulnerability or weakness",
+      "tactics": ["exploit", "mitigate", "patch", "monitor", "accept"],
+      "properties": [
+        {
+          "id": "vuln-id",
+          "name": "VULN ID",
+          "type": "text",
+          "required": false,
+          "description": "Common Vulnerabilities and Exposures (CVE) ID)"
+        },
+        {
+          "id": "cve-id",
+          "name": "CVE ID",
+          "type": "text",
+          "required": false,
+          "description": "CVE identifier"
+        },
+        {
+          "id": "weakness-name",
+          "name": "Weakness Name",
+          "type": "text",
+          "required": false,
+          "description": "Common Weaknesses (CWE) ID)"
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "type": "text",
+          "required": false,
+          "description": "Detailed description"
+        },
+        {
+          "id": "affected-assets",
+          "name": "Affected Assets",
+          "type": "text",
+          "required": false,
+          "description": "Affected systems or components"
+        },
+        {
+          "id": "mitigation-strategies",
+          "name": "Mitigation Strategies",
+          "type": "text",
+          "required": false,
+          "description": "How to address the vulnerability"
+        },
+        {
+          "id": "severity",
+          "name": "Severity",
+          "type": "enum",
+          "required": false,
+          "options": ["Low", "Medium", "High", "Critical"],
+          "description": "Severity level"
+        },
+        {
+          "id": "exploit-available",
+          "name": "Exploit Available",
+          "type": "boolean",
+          "required": false,
+          "description": "Whether exploit code is publicly available"
+        },
+        {
+          "id": "references",
+          "name": "References",
+          "type": "array",
+          "required": false,
+          "description": "Related resources"
+        }
+      ]
+    },
+    {
+      "id": "d3fend:artifact",
+      "name": "Artifact",
+      "d3fend_type": "artifact",
+      "type": "object",
+      "description": "A digital asset or system component",
+      "tactics": ["protect", "monitor", "hardening", "verify", "backups", "recover"],
+      "properties": [
+        {
+          "id": "artifact-name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "description": "The name of the artifact"
+        },
+        {
+          "id": "artifact-type",
+          "name": "Type",
+          "type": "enum",
+          "required": true,
+          "options": ["File", "Database", "Service", "API", "Network", "System"],
+          "description": "Type of artifact"
+        },
+        {
+          "id": "artifact-description",
+          "name": "Description",
+          "type": "text",
+          "required": false,
+          "description": "Description of the artifact"
+        },
+        {
+          "id": "criticality",
+          "name": "Criticality",
+          "type": "enum",
+          "required": false,
+          "options": ["Informational", "Low", "Medium", "High", "Critical"],
+          "description": "Business criticality level"
+        },
+        {
+          "id": "sensitivity",
+          "name": "Sensitivity",
+          "type": "enum",
+          "required": false,
+          "options": ["Public", "Internal", 'Confidential', 'Restricted'],
+          "description": "Data sensitivity classification"
+        },
+        {
+          "id": "owner",
+          "name": "Owner",
+          "type": "text",
+          "required": false,
+          "description": "Team or individual responsible"
+        },
+        {
+          "id": "exposure",
+          "name": "Exposure",
+          "type": "enum",
+          "required": false,
+          "options": ["Internet-facing", 'Internal-Only', 'Restricted-Access'],
+          "description": "Network exposure level"
+        },
+        {
+          "id": "protection-measures",
+          "name": "Protection Measures",
+          "type": "text",
+          "required": false,
+          "description": "Current protection measures"
+        },
+        {
+          "id": "compliance-requirements",
+          "name": "Compliance Requirements",
+          "type": "text",
+          "required": false,
+          "description": "Regulatory or policy requirements"
+        },
+        {
+          "id": "backup-requirements",
+          "name": "Backup Requirements",
+          "type": "text",
+          "required": false,
+          "description": "Backup and recovery requirements"
+        },
+        {
+          "id": "last-assessment",
+          "name": "Last Assessment",
+          "type": "datetime",
+          "required": false,
+          "description": "Date of last security assessment"
+        }
+      ]
+    },
+    {
+      "id": "d3fend:agent",
+      "name": "Agent",
+      "d3fend_type": "agent",
+      "type": "object",
+      "description": "An attacker or defender actor",
+      "tactics": ["attack", "defend", "pivot", "persist", "evade", "impersonate"],
+      "properties": [
+        {
+          "id": "agent-name",
+          "name": "Name",
+          "type": "text",
+          "required": false,
+          "description": "The name of the agent"
+        },
+        {
+          "id": "agent-type",
+          "name": "Type",
+          "type": "enum",
+          "required": true,
+          "options": ['Threat', 'Defender', 'Neutral', 'Unknown'],
+          "description": "Type of agent"
+        },
+        {
+          "id": "agent-capabilities",
+          "name": "Capabilities",
+          "type": "text",
+          "required": false,
+          "description": "Known capabilities and skills"
+        },
+        {
+          "id": "motivation",
+          "name": "Motivation",
+          "type": "text",
+          "required": false,
+          "description": "Reason for agent's actions"
+        },
+        {
+          "id": "resources",
+          "name": "Resources",
+          "type": "text",
+          "required": false,
+          "description": "Available resources"
+        },
+        {
+          "id": "geographic",
+          "name": "Geographic",
+          "type": "text",
+          "required": false,
+          "description": "Geographic location or origin"
+        },
+        {
+          "id": "attack-history",
+          "name": "Attack History",
+          "type": "text",
+          "required": false,
+          "description": "Previous attacks attributed to this agent"
+        },
+        {
+          "id": "attribution-confidence",
+          "name": "Attribution Confidence",
+          "type": "enum",
+          "required": false,
+          "options": ["High", 'Medium', 'Low', 'Speculative', 'Confirmed'],
+          "description": "Confidence level in attribution"
+        },
+        {
+          "id": "support-infrastructure",
+          "name": "Support Infrastructure",
+          "type": "text",
+          "required": false,
+          "description": "Support systems and tools"
+        }
+      ]
+    },
+    {
+      "id": "d3fend:condition",
+      "name": "Condition",
+      "d3fend_type": "condition",
+      "type": "object",
+      "description": "A condition or prerequisite",
+      "tactics": ["test", "verify", "invalidate", "satisfy", "bypass"],
+      "properties": [
+        {
+          "id": "condition-name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "description": "The name of the condition"
+        },
+        {
+          "id": "condition-expression",
+          "name": "Expression",
+          "type": "text",
+          "required": true,
+          "description": "Logical expression for the condition"
+        },
+        {
+          "id": "condition-type",
+          "name": "Type",
+          "type": "enum",
+          "required": false,
+          "options": ["precondition", 'postcondition', 'state', 'environment', 'network', 'timing'],
+          "description": "Type of condition"
+        },
+        {
+          "id": "validation-rules",
+          "name": "Validation Rules",
+          "type": "array",
+          "required": false,
+          "description": "How the condition is validated"
+        },
+        {
+          "id": "test-methods",
+          "name": "Test Methods",
+          "type": "array",
+          "required": false,
+          "description": "How to test the condition"
+        },
+        {
+          "id": "remediation-options",
+          "name": "Remediation Options",
+          "type": "array",
+          "required": false,
+          "description": "How to remediate if the condition is false"
+        },
+        {
+          "id": "d3fend-class",
+          "name": "D3FEND Class",
+          "type": "text",
+          "required": false,
+          "description": "The D3FEND ontology class this belongs to"
+        },
+        {
+          "id": "affected-components",
+          "name": "Affected Components",
+          "type": "array",
+          "required": false,
+          "description": "System components affected by this condition"
+        }
+      ]
+    },
+    {
+      "id": "d3fend:thing",
+      "name": "Thing",
+      "d3fend_type": "thing",
+      "type": "object",
+      "description": "A generic entity or object",
+      "tactics": ["observe", 'monitor', 'classify', 'tag', 'track", 'inventory"],
+      "properties": [
+        {
+          "id": "thing-name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "description": "The name of the thing"
+        },
+        {
+          "id": "thing-type",
+          "name": "Type",
+          "type": "text",
+          "required": false,
+          "description": "The type or category"
+        },
+        {
+          "id": "thing-category",
+          "name": "Category",
+          "type": "text",
+          "required": false,
+          "description": "The category or classification"
+        },
+        {
+          "id": "thing-tags",
+          "name": "Tags",
+          "type": "text",
+          "required": false,
+          "description": "Tags or labels"
+        },
+        {
+          "id": "thing-owner",
+          "name": "Owner",
+          "type": "text",
+          "required": false,
+          "description": "The owner or custodian"
+        },
+        {
+          "id": "classification",
+          "name": "Classification",
+          "type": "text",
+          "required": false,
+          "description": "Security classification"
+        },
+        {
+          "id": "location",
+          "name": "Location",
+          "type": "text",
+          "required": false,
+          "description": "Where the thing is located"
+        },
+        {
+          "id": "state",
+          "name": "State",
+          "type": "enum",
+          "required": false,
+          "options": ["Active", 'Inactive', 'Decommissioned', 'Retiring', 'Maintenance"],
+          "description": "Current state of the thing"
+        },
+        {
+          "id": "sensitivity",
+          "name": "Sensitivity",
+          "type": "enum",
+          "required": false,
+          "options": ['Public', 'Internal', 'Confidential', 'Secret'],
+          "description": "Data sensitivity classification"
+        },
+        {
+          "id": "data-value",
+          "name": "Data Value",
+          "type": "any",
+          "required": false,
+          "description": "The actual data value"
+        },
+        {
+          "id": "created-at",
+          "name": "Created At",
+          "type": "datetime",
+          "required": false,
+          "description": "When this thing was created"
+        },
+        {
+          "id": "updated-at",
+          "name": "Updated At",
+          "type": "datetime",
+          "required": false,
+          "description": "Last time this thing was updated"
+        }
+      ]
+    }
+  ],
+  "properties": {},
+  "relationships": [
+    {
+      "id": "attacks",
+      "name": "Attacks",
+      "category": "Attack",
+      "source_node_types": ["agent", "event", "vulnerability"],
+      "target_node_types": ["artifact", "agent", "vulnerability", "condition"],
+      "directionality": "directed",
+      "multiplicity": "one-to-many",
+      "style": {
+        "stroke_color": "#ef4444",
+        "stroke_width": 2,
+        "line_style": "solid",
+        "animated": false,
+        "label_color": "#64748b",
+        "label_background_color": "#1e293b"
+      },
+      "description": "Agent conducts attacks against systems"
+    },
+    {
+      "id": "exploits",
+      "name": "Exploits",
+      "category": "Attack",
+      "source_node_types": ["agent", "event"],
+      "target_node_types": ["vulnerability", "artifact"],
+      "directionality": "directed",
+      "multiplicity": "one-to-many",
+      "style": {
+        "stroke_color": "#f97316",
+        "stroke_width": 2,
+        "line_style": "dashed",
+        "animated": true,
+        "label_color": "#eab308",
+        "label_background_color": "#7c2d12"
+      },
+      "description": "Agent exploits vulnerabilities in systems"
+    },
+    {
+      "id": "detects",
+      "name": "Detects",
+      "category": "Defense",
+      "source_node_types": ["countermeasure", "vulnerability", "artifact"],
+      "target_node_types": ["event", "vulnerability", "agent"],
+      "directionality": "directed",
+      "multiplicity": "one-to-many",
+      "style": {
+        "stroke_color": "#22c55e",
+        "stroke_width": 2,
+        "line_style": "dotted",
+        "animated": false,
+        "label_color": "#16a34a",
+        "label_background_color": "#0ea5e9"
+      },
+      "description": "Countermeasures detect security issues"
+    },
+    {
+      "id": "counters",
+      "name": "Counters",
+      "category": "Defense",
+      "source_node_types": ["countermeasure", "vulnerability", "artifact"],
+      "target_node_types": ["event", "vulnerability"],
+      "directionality": "directed",
+      "multiplicity": "one-to-many",
+      "style": {
+        "stroke_color": "#3b82f6",
+        "stroke_width": 2,
+        "line_style": "solid",
+        "animated": false,
+        "label_color": "#0ea5e9",
+        "label_background_color": "#0ea5e9"
+      },
+      "description": "Countermeasures counter threats"
+    },
+    {
+      "id": "is-related-to",
+      "name": "Is Related To",
+      "category": "Analysis",
+      "source_node_types": ["event", "vulnerability", "agent", "thing"],
+      "target_node_types": ["vulnerability", "artifact", "agent", "thing"],
+      "directionality": "directed",
+      "multiplicity": "many-to-many",
+      "style": {
+        "stroke_color": "#8b5cf6",
+        "stroke_width": 2,
+        "line_style": "dotted",
+        "animated": false,
+        "label_color": "#a855f7",
+        "label_background_color": "#f0f9ff"
+      },
+      "description": "Indicates potential relationships"
+    }
+  ]
+}
