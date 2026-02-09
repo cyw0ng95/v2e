@@ -8,12 +8,17 @@ import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import CanvasWrapper from '@/components/canvas/canvas-wrapper';
 import { nodeTypes, createFlowNodes } from '@/components/canvas/node-factory';
 import { edgeTypes, createFlowEdges } from '@/components/canvas/edge-factory';
-import { ReactFlowProvider } from '@xyflow/react';
+import { NodeDetailsSheet } from '@/components/canvas/node-details-sheet';
+import { RelationshipPicker } from '@/components/canvas/relationship-picker';
+import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { useState } from 'react';
 
 export default function CanvasPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentPreset, setCurrentPreset, getPresetById, nodes, edges } = useGLCStore();
+  const { currentPreset, setCurrentPreset, getPresetById, nodes, edges, setSelectedNodeId, setSelectedEdgeId, addEdge } = useGLCStore();
+  const [nodeDetailsOpen, setNodeDetailsOpen] = useState(false);
+  const { setNodes, setEdges } = useReactFlow();
 
   useEffect(() => {
     const presetId = params.presetId as string;
@@ -46,6 +51,55 @@ export default function CanvasPage() {
     };
 
     useGLCStore.getState().addNode(newNode);
+  };
+
+  const onNodesClick = (_: React.MouseEvent, node: any) => {
+    setSelectedNodeId(node.id);
+    setSelectedEdgeId(null);
+    setNodeDetailsOpen(true);
+  };
+
+  const onEdgesClick = (_: React.MouseEvent, edge: any) => {
+    setSelectedNodeId(null);
+    setSelectedEdgeId(edge.id);
+  };
+
+  const onConnect = (params: any) => {
+    if (!currentPreset) return;
+
+    const existingEdge = edges.find(
+      e => e.source === params.source && e.target === params.target
+    );
+
+    if (existingEdge) {
+      return;
+    }
+
+    const validRelationships = currentPreset.relationshipTypes.filter(rel =>
+      (rel.sourceNodeTypes.includes('*') || rel.sourceNodeTypes.includes(params.sourceType)) &&
+      (rel.targetNodeTypes.includes('*') || rel.targetNodeTypes.includes(params.targetType))
+    );
+
+    if (validRelationships.length === 0) {
+      return;
+    }
+
+    const relationshipType = validRelationships[0].id;
+    
+    const newEdge = {
+      id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      source: params.source,
+      target: params.target,
+      type: relationshipType,
+      data: {},
+    };
+
+    addEdge(newEdge);
+    setEdges((eds: any[]) => [...eds, {
+      ...newEdge,
+      id: `flow-${newEdge.id}`,
+      type: 'dynamic-edge',
+    }]);
   };
 
   if (!currentPreset) {
@@ -97,10 +151,19 @@ export default function CanvasPage() {
               edges={createFlowEdges(edges)}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
+              onNodesClick={onNodesClick}
+              onEdgesClick={onEdgesClick}
+              onConnect={onConnect}
               fitView
               attributionPosition="bottom-left"
             />
           </CanvasWrapper>
+
+          <NodeDetailsSheet
+            nodeId={nodes.find(n => n.id === useGLCStore.getState().selectedNodeId)?.id || null}
+            open={nodeDetailsOpen}
+            onOpenChange={setNodeDetailsOpen}
+          />
         </div>
       </div>
     </ReactFlowProvider>
