@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cwe"
@@ -18,12 +17,8 @@ import (
 // CWEProvider implements ProviderFSM for CWE data
 type CWEProvider struct {
 	*fsm.BaseProviderFSM
-	localPath  string
-	batchSize  int
-	maxRetries int
-	retryDelay time.Duration
-	rpcClient  *rpc.Client
-	mu         sync.RWMutex
+	localPath string
+	rpcClient *rpc.Client
 }
 
 // NewCWEProvider creates a new CWE provider with FSM support
@@ -34,11 +29,8 @@ func NewCWEProvider(localPath string, store *storage.Store) (*CWEProvider, error
 	}
 
 	provider := &CWEProvider{
-		localPath:  localPath,
-		rpcClient:  &rpc.Client{},
-		batchSize:  100,
-		maxRetries: 3,
-		retryDelay: 5 * time.Second,
+		localPath: localPath,
+		rpcClient: &rpc.Client{},
 	}
 
 	// Create base FSM with custom executor
@@ -56,11 +48,6 @@ func NewCWEProvider(localPath string, store *storage.Store) (*CWEProvider, error
 	return provider, nil
 }
 
-// Initialize sets up the CWE provider context
-func (p *CWEProvider) Initialize(ctx context.Context) error {
-	return nil
-}
-
 // execute performs CWE fetch and store operations
 func (p *CWEProvider) execute() error {
 	currentState := p.GetState()
@@ -70,11 +57,9 @@ func (p *CWEProvider) execute() error {
 		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
 	}
 
-	p.mu.RLock()
 	localPath := p.localPath
-	batchSize := p.batchSize
+	batchSize := p.GetBatchSize()
 	rpcClient := p.rpcClient
-	p.mu.RUnlock()
 
 	// Read and parse CWE data
 	data, err := os.ReadFile(localPath)
@@ -132,55 +117,12 @@ func (p *CWEProvider) execute() error {
 	return nil
 }
 
-// Cleanup releases any resources held by the provider
-func (p *CWEProvider) Cleanup(ctx context.Context) error {
-	return nil
-}
-
-// Fetch performs the fetch operation
-func (p *CWEProvider) Fetch(ctx context.Context) error {
-	return p.Execute()
-}
-
-// Store performs the store operation
-func (p *CWEProvider) Store(ctx context.Context) error {
-	return p.Execute()
-}
-
-// GetStats returns provider statistics
-func (p *CWEProvider) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return map[string]interface{}{
-		"batch_size": p.batchSize,
-	}
-}
-
-
-// SetBatchSize sets the batch size
-func (p *CWEProvider) SetBatchSize(size int) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.batchSize = size
-}
-
 // GetLocalPath returns the local file path
 func (p *CWEProvider) GetLocalPath() string {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
 	return p.localPath
 }
 
 // SetLocalPath sets the local file path
 func (p *CWEProvider) SetLocalPath(path string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	p.localPath = path
-}
-
-// GetBatchSize returns the batch size
-func (p *CWEProvider) GetBatchSize() int {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.batchSize
 }

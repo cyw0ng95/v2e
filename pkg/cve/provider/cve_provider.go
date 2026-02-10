@@ -1,9 +1,7 @@
 package provider
 
 import (
-	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
@@ -15,12 +13,8 @@ import (
 // CVEProvider implements ProviderFSM for CVE data
 type CVEProvider struct {
 	*fsm.BaseProviderFSM
-	fetcher    *remote.Fetcher
-	batchSize  int
-	maxRetries int
-	retryDelay time.Duration
-	apiKey     string
-	mu         sync.RWMutex
+	fetcher *remote.Fetcher
+	apiKey  string
 }
 
 // NewCVEProvider creates a new CVE provider with FSM support
@@ -32,11 +26,8 @@ func NewCVEProvider(apiKey string, store *storage.Store) (*CVEProvider, error) {
 	}
 
 	provider := &CVEProvider{
-		fetcher:    fetcher,
-		apiKey:     apiKey,
-		batchSize:  2000,
-		maxRetries: 3,
-		retryDelay: 5 * time.Second,
+		fetcher: fetcher,
+		apiKey:  apiKey,
 	}
 
 	// Create base FSM with custom executor
@@ -45,6 +36,7 @@ func NewCVEProvider(apiKey string, store *storage.Store) (*CVEProvider, error) {
 		ProviderType: "cve",
 		Storage:      store,
 		Executor:     provider.execute,
+		BatchSize:    2000,
 	})
 	if err != nil {
 		return nil, err
@@ -52,12 +44,6 @@ func NewCVEProvider(apiKey string, store *storage.Store) (*CVEProvider, error) {
 
 	provider.BaseProviderFSM = base
 	return provider, nil
-}
-
-// Initialize sets up to CVE provider context
-func (p *CVEProvider) Initialize(ctx context.Context) error {
-	// BaseProviderFSM doesn't need explicit initialization
-	return nil
 }
 
 // execute performs CVE fetch and store operations
@@ -69,10 +55,8 @@ func (p *CVEProvider) execute() error {
 		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
 	}
 
-	p.mu.RLock()
-	batchSize := p.batchSize
+	batchSize := p.GetBatchSize()
 	fetcher := p.fetcher
-	p.mu.RUnlock()
 
 	startIndex := 0
 
@@ -131,47 +115,12 @@ func (p *CVEProvider) execute() error {
 	return nil
 }
 
-// Fetch performs fetch operation
-func (p *CVEProvider) Fetch(ctx context.Context) error {
-	return p.Execute()
-}
-
-// Store performs store operation
-func (p *CVEProvider) Store(ctx context.Context) error {
-	return p.Execute()
-}
-
-// GetStats returns provider statistics
-func (p *CVEProvider) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return map[string]interface{}{
-		"batch_size": p.batchSize,
-	}
-}
-
-// Cleanup releases any resources held by the provider
-func (p *CVEProvider) Cleanup(ctx context.Context) error {
-	return nil
-}
-
-// SetBatchSize sets the batch size for fetching
-func (p *CVEProvider) SetBatchSize(size int) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.batchSize = size
-}
-
 // GetAPIKey returns the NVD API key
 func (p *CVEProvider) GetAPIKey() string {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
 	return p.apiKey
 }
 
 // GetFetcher returns the NVD fetcher
 func (p *CVEProvider) GetFetcher() *remote.Fetcher {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
 	return p.fetcher
 }
