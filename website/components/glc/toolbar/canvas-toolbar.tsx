@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Home,
   MoreHorizontal,
+  Activity,
 } from 'lucide-react';
 import { useGLCStore } from '@/lib/glc/store';
 import { Button } from '@/components/ui/button';
@@ -29,9 +30,10 @@ interface CanvasToolbarProps {
   onShowShortcuts?: () => void;
   onShowExport?: () => void;
   onShowShare?: () => void;
+  onShowInferences?: () => void;
 }
 
-export function CanvasToolbar({ preset, graphName, onShowShortcuts, onShowExport, onShowShare }: CanvasToolbarProps) {
+export function CanvasToolbar({ preset, graphName, onShowShortcuts, onShowExport, onShowShare, onShowInferences }: CanvasToolbarProps) {
   const { canUndo, canRedo, undo, redo, graph } = useGLCStore();
   const [showGrid, setShowGrid] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -368,6 +370,13 @@ export function CanvasToolbar({ preset, graphName, onShowShortcuts, onShowExport
       </Button>
 
       <Separator orientation="vertical" className="h-6 mx-1" style={{ backgroundColor: theme.border }} />
+
+      {/* Inferences - D3FEND only */}
+      {preset.meta.id === 'd3fend' && preset.behavior.enableInference && (
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowInferences}>
+          <Activity className="w-4 h-4" style={{ color: theme.text }} />
+        </Button>
+      )}
 
       {/* Save */}
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
