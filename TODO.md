@@ -66,8 +66,19 @@ For detailed guidelines on managing TODO items, see the **TODO Management** sect
 
 ### Quick Reference
 
-- **Adding Tasks**: Use next available ID, include test code in LoC estimates
-- **Completing Tasks**: Verify acceptance criteria, run tests, remove row from table
-- **Marking WONTFIX**: Only for obsolete features, keep row for history
-- **Priority**: High (critical), Medium (important), Low (nice-to-have)
-- **LoC Estimates**: Small (<100), Medium (100-300), Large (300+)
+**Adding Tasks**: Use next available ID, include test code in LoC estimates, write detailed actionable descriptions
+
+**Completing Tasks**:
+1. Verify all acceptance criteria are met
+2. Run relevant tests (`./build.sh -t`)
+3. Remove entire row from table (not just mark as done)
+4. Maintain markdown table formatting consistency
+5. Commit deletion of task row from TODO.md
+
+**Marking WONTFIX**:
+- Only project maintainers can mark tasks as obsolete
+- AI agents MUST NOT add "WONTFIX" to any task
+
+**Priority**: High (critical), Medium (important), Low (nice-to-have)
+
+**LoC Estimates**: Small (<100), Medium (100-300), Large (300+)

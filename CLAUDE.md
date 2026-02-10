@@ -373,18 +373,23 @@ The project maintains a comprehensive TODO list in `TODO.md` that tracks improve
 1. Use next available ID (increment from last TODO-NNN)
 2. Ensure LoC estimate includes test code
 3. Use appropriate Type and Priority based on task nature
-4. Keep descriptions concise but actionable
+4. **Write descriptions that are actionable by AI agents**:
+   - Use imperative verbs (Add, Implement, Fix, Refactor, Optimize)
+   - Include specific technical details (file names, function names, packages)
+   - Specify acceptance criteria or measurable outcomes
+   - Include context about why the change is needed
 
 **Completing Tasks**:
 1. Verify all acceptance criteria are met
 2. Run relevant tests using `./build.sh -t`
-3. Remove the entire row from the table
+3. Remove the entire row from the table (not just mark as done)
 4. Maintain markdown table formatting consistency
+5. Commit the deletion of the task row from TODO.md
 
-**Marking as WONTFIX**:
-1. Only mark if feature is no longer relevant or superseded
-2. Keep row in table for historical reference
-3. Add "WONTFIX" to the last column
+**Agents MUST NOT mark WONTFIX**:
+- The "Mark WONTFIX?" column is for project maintainers only
+- AI agents should never add "WONTFIX" to any task
+- Only human reviewers can mark tasks as obsolete
 
 ### Priority Definitions
 
