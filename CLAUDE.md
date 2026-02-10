@@ -48,7 +48,7 @@ npm run lint      # ESLint
 
 **Build Tags**: Default `GO_TAGS=CONFIG_USE_LIBXML2`. Override via environment variable.
 
-**Version Requirements**: Go 1.21+, Node.js 20+, npm 10+. macOS requires Podman for containerized builds.
+**Version Requirements**: Go 1.25.6, Node.js 20+, npm 10+. macOS requires Podman for containerized builds.
 
 **Prerequisites**:
 ```bash

@@ -311,7 +311,7 @@ v2e::ssg::ssg::rhel9-guide-ospp
 ## Quick Start
 
 ```bash
-# Prerequisites: Go 1.21+, Node.js 20+, npm 10+
+# Prerequisites: Go 1.25.6, Node.js 20+, npm 10+
 
 # Run full development environment (recommended)
 ./build.sh -r
