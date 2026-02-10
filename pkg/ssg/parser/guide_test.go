@@ -2,14 +2,15 @@
 package parser
 
 import (
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/cyw0ng95/v2e/pkg/ssg"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"gorm.io/gorm"
 )
 
 func TestExtractIDFromPath(t *testing.T) {
@@ -129,6 +130,76 @@ func TestNormalizeParentID(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				if got := normalizeParentID(tt.parentID); got != tt.want {
 					t.Errorf("normalizeParentID() = %v, want %v", got, tt.want)
+				}
+			})
+		}
+	})
+
+}
+
+func TestParseReferences(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestParseReferences", nil, func(t *testing.T, tx *gorm.DB) {
+		tests := []struct {
+			name     string
+			html     string
+			ruleID   string
+			wantLen  int
+			wantFirst ssg.SSGReference
+		}{
+			{
+				name:   "single reference",
+				html:   `<table class="identifiers"><tr><td><a href="https://example.com/nist">nist</a></td><td>CM-6(a)</td></tr></table>`,
+				ruleID: "test-rule",
+				wantLen: 1,
+				wantFirst: ssg.SSGReference{
+					RuleID: "test-rule",
+					Href:   "https://example.com/nist",
+					Label:  "nist",
+					Value:  "CM-6(a)",
+				},
+			},
+			{
+				name:   "multiple references",
+				html:   `<table class="identifiers"><tr><td><a href="https://example.com/nist">nist</a></td><td>CM-6(a)</td></tr><tr><td><a href="https://example.com/cis">cis</a></td><td>1.3.1</td></tr></table>`,
+				ruleID: "test-rule",
+				wantLen: 2,
+				wantFirst: ssg.SSGReference{
+					RuleID: "test-rule",
+					Href:   "https://example.com/nist",
+					Label:  "nist",
+					Value:  "CM-6(a)",
+				},
+			},
+			{
+				name:    "no references",
+				html:    `<table class="identifiers"></table>`,
+				ruleID:  "test-rule",
+				wantLen: 0,
+			},
+			{
+				name:    "empty row",
+				html:    `<table class="identifiers"><tr><td></td><td></td></tr></table>`,
+				ruleID:  "test-rule",
+				wantLen: 0,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				doc, err := goquery.NewDocumentFromReader(strings.NewReader(tt.html))
+				if err != nil {
+					t.Fatalf("Failed to parse HTML: %v", err)
+				}
+
+				refs := parseReferences(doc.Selection, tt.ruleID)
+				if len(refs) != tt.wantLen {
+					t.Errorf("parseReferences() got %d references, want %d", len(refs), tt.wantLen)
+				}
+
+				if tt.wantLen > 0 {
+					if refs[0] != tt.wantFirst {
+						t.Errorf("parseReferences() first = %+v, want %+v", refs[0], tt.wantFirst)
+					}
 				}
 			})
 		}
