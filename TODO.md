@@ -42,7 +42,6 @@
 | TODO-038 | ssg | Optimization | Implement parallel parsing with worker pools for large SSG XML files to reduce import time by 40% | 180 | Medium | |
 | TODO-039 | testutils | Feature | Add mock HTTP server for testing remote providers with configurable responses and delay simulation | 150 | Medium | |
 | TODO-040 | testutils | Refactor | Extract common test patterns into helpers (database fixtures, assertion helpers, context factories) | 100 | Low | |
-| TODO-041 | urn | Feature | Add URN validation with comprehensive rules to catch malformed URNs before database operations | 80 | Medium | |
 | TODO-042 | urn | Test | Add property-based tests using testing/quick for URN parsing edge cases | 120 | Medium | |
 | TODO-043 | vconfig | Feature | Add configuration validation with detailed error messages indicating which option failed and why | 120 | High | |
 | TODO-044 | vconfig | Bug Fix | Fix TUI rendering issues on terminals with non-standard dimensions (handle resize gracefully) | 80 | High | |

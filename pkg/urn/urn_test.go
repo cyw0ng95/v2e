@@ -90,7 +90,7 @@ func TestParse(t *testing.T) {
 			name:    "empty atomic ID",
 			input:   "v2e::nvd::cve::",
 			want:    nil,
-			wantErr: ErrEmptyAtomicID,
+			wantErr: ErrInvalidURN, // Changed from ErrEmptyAtomicID to ErrInvalidURN for better error message
 		},
 	}
 
@@ -360,6 +360,299 @@ func TestRoundTrip(t *testing.T) {
 			got := urn.String()
 			if got != tt {
 				t.Errorf("Round trip failed: got %v, want %v", got, tt)
+			}
+		})
+	}
+}
+
+func TestURN_ProviderTypeValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr error
+	}{
+		{
+			name:    "invalid: NVD provider with CAPEC type",
+			input:   "v2e::nvd::capec::CAPEC-1",
+			wantErr: ErrProviderTypeMismatch,
+		},
+		{
+			name:    "invalid: MITRE provider with CVE type",
+			input:   "v2e::mitre::cve::CVE-2024-1",
+			wantErr: ErrProviderTypeMismatch,
+		},
+		{
+			name:    "invalid: SSG provider with CVE type",
+			input:   "v2e::ssg::cve::CVE-2024-1",
+			wantErr: ErrProviderTypeMismatch,
+		},
+		{
+			name:    "valid: NVD with CVE",
+			input:   "v2e::nvd::cve::CVE-2024-1234",
+			wantErr: nil,
+		},
+		{
+			name:    "valid: MITRE with CWE",
+			input:   "v2e::mitre::cwe::CWE-79",
+			wantErr: nil,
+		},
+		{
+			name:    "valid: MITRE with CAPEC",
+			input:   "v2e::mitre::capec::CAPEC-1",
+			wantErr: nil,
+		},
+		{
+			name:    "valid: MITRE with ATT&CK",
+			input:   "v2e::mitre::attack::T1566",
+			wantErr: nil,
+		},
+		{
+			name:    "valid: SSG with SSG",
+			input:   "v2e::ssg::ssg::rhel9-guide",
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(tt.input)
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Errorf("Parse() error = nil, wantErr %v", tt.wantErr)
+					return
+				}
+				if !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			} else if err != nil {
+				t.Errorf("Parse() unexpected error = %v", err)
+			}
+		})
+	}
+}
+
+func TestURN_AtomicIDFormatValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr error
+	}{
+		// CVE format tests
+		{
+			name:    "valid CVE format",
+			input:   "v2e::nvd::cve::CVE-2024-1234",
+			wantErr: nil,
+		},
+		{
+			name:    "invalid CVE: missing year",
+			input:   "v2e::nvd::cve::CVE-1234",
+			wantErr: ErrInvalidAtomicIDFormat,
+		},
+		{
+			name:    "invalid CVE: too few digits",
+			input:   "v2e::nvd::cve::CVE-2024-123",
+			wantErr: ErrInvalidAtomicIDFormat,
+		},
+		{
+			name:    "valid CVE: 5-digit number",
+			input:   "v2e::nvd::cve::CVE-2024-12345",
+			wantErr: nil,
+		},
+		// CWE format tests
+		{
+			name:    "valid CWE format",
+			input:   "v2e::mitre::cwe::CWE-79",
+			wantErr: nil,
+		},
+		{
+			name:    "invalid CWE: no number",
+			input:   "v2e::mitre::cwe::CWE-",
+			wantErr: ErrInvalidAtomicIDFormat,
+		},
+		{
+			name:    "invalid CWE: extra text",
+			input:   "v2e::mitre::cwe::CWE-79a",
+			wantErr: ErrInvalidAtomicIDFormat,
+		},
+		// CAPEC format tests
+		{
+			name:    "valid CAPEC format",
+			input:   "v2e::mitre::capec::CAPEC-66",
+			wantErr: nil,
+		},
+		{
+			name:    "invalid CAPEC: no number",
+			input:   "v2e::mitre::capec::CAPEC-",
+			wantErr: ErrInvalidAtomicIDFormat,
+		},
+		// ATT&CK format tests
+		{
+			name:    "valid ATT&CK format: T-prefixed",
+			input:   "v2e::mitre::attack::T1566",
+			wantErr: nil,
+		},
+		{
+			name:    "valid ATT&CK format: with sub-technique",
+			input:   "v2e::mitre::attack::T1566.001",
+			wantErr: nil,
+		},
+		{
+			name:    "invalid ATT&CK: wrong prefix",
+			input:   "v2e::mitre::attack::A1566",
+			wantErr: ErrInvalidAtomicIDFormat,
+		},
+		{
+			name:    "invalid ATT&CK: not enough digits",
+			input:   "v2e::mitre::attack::T156",
+			wantErr: ErrInvalidAtomicIDFormat,
+		},
+		// SSG format tests (flexible)
+		{
+			name:    "valid SSG format",
+			input:   "v2e::ssg::ssg::rhel9-guide-ospp",
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(tt.input)
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Errorf("Parse() error = nil, wantErr %v", tt.wantErr)
+					return
+				}
+				if !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			} else if err != nil {
+				t.Errorf("Parse() unexpected error = %v", err)
+			}
+		})
+	}
+}
+
+func TestURN_EdgeCaseValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr error
+	}{
+		{
+			name:    "empty URN string",
+			input:   "",
+			wantErr: ErrInvalidURN,
+		},
+		{
+			name:    "whitespace only URN",
+			input:   "   ",
+			wantErr: ErrInvalidURN,
+		},
+		{
+			name:    "URN with leading/trailing whitespace",
+			input:   "  v2e::nvd::cve::CVE-2024-1234  ",
+			wantErr: nil,
+		},
+		{
+			name:    "empty part between separators",
+			input:   "v2e::nvd::::CVE-2024-1234",
+			wantErr: ErrInvalidURN,
+		},
+		{
+			name:    "too many separators",
+			input:   "v2e::nvd::cve::CVE-2024-1234::extra",
+			wantErr: ErrInvalidURN,
+		},
+		{
+			name:    "atomic ID exceeds maximum length",
+			input:   "v2e::ssg::ssg::" + strings.Repeat("a", maxAtomicIDLength+1),
+			wantErr: ErrAtomicIDTooLong,
+		},
+		{
+			name:    "atomic ID at maximum length",
+			input:   "v2e::ssg::ssg::" + strings.Repeat("a", maxAtomicIDLength),
+			wantErr: nil,
+		},
+		{
+			name:    "New with whitespace atomic ID gets trimmed",
+			input:   "",
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "New with whitespace atomic ID gets trimmed" {
+				// Special test for New function with trimming
+				urn, err := New(ProviderSSG, TypeSSG, "  test-id  ")
+				if err != nil {
+					t.Errorf("New() unexpected error = %v", err)
+				} else if urn.AtomicID != "test-id" {
+					t.Errorf("New() atomicID not trimmed, got '%s'", urn.AtomicID)
+				}
+				return
+			}
+
+			_, err := Parse(tt.input)
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Errorf("Parse() error = nil, wantErr %v", tt.wantErr)
+					return
+				}
+				if !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			} else if err != nil {
+				t.Errorf("Parse() unexpected error = %v", err)
+			}
+		})
+	}
+}
+
+func TestURN_NewWithProviderTypeValidation(t *testing.T) {
+	tests := []struct {
+		name         string
+		provider     Provider
+		resourceType ResourceType
+		atomicID     string
+		wantErr      error
+	}{
+		{
+			name:         "invalid: NVD with CAPEC",
+			provider:     ProviderNVD,
+			resourceType: TypeCAPEC,
+			atomicID:     "CAPEC-1",
+			wantErr:      ErrProviderTypeMismatch,
+		},
+		{
+			name:         "valid: NVD with CVE",
+			provider:     ProviderNVD,
+			resourceType: TypeCVE,
+			atomicID:     "CVE-2024-1234",
+			wantErr:      nil,
+		},
+		{
+			name:         "valid: MITRE with CWE",
+			provider:     ProviderMITRE,
+			resourceType: TypeCWE,
+			atomicID:     "CWE-79",
+			wantErr:      nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := New(tt.provider, tt.resourceType, tt.atomicID)
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Errorf("New() error = nil, wantErr %v", tt.wantErr)
+					return
+				}
+				if !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			} else if err != nil {
+				t.Errorf("New() unexpected error = %v", err)
 			}
 		})
 	}

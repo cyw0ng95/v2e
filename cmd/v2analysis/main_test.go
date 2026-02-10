@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -181,12 +182,12 @@ func TestAnalysisServiceGetNodesByType(t *testing.T) {
 
 		// Add multiple nodes of different types
 		for i := 0; i < 5; i++ {
-			cve, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-"+string(rune('0'+i)))
+			cve, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, fmt.Sprintf("CVE-2024-%04d", i))
 			service.graph.AddNode(cve, nil)
 		}
 
 		for i := 0; i < 3; i++ {
-			cwe, _ := urn.New(urn.ProviderMITRE, urn.TypeCWE, "CWE-"+string(rune('0'+i)))
+			cwe, _ := urn.New(urn.ProviderMITRE, urn.TypeCWE, fmt.Sprintf("CWE-%d", 79+i))
 			service.graph.AddNode(cwe, nil)
 		}
 
