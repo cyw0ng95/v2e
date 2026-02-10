@@ -38,43 +38,36 @@
 | TODO-034 | rpc | Bug Fix | Fix potential memory leak in pending request map | 40 | High | |
 | TODO-035 | rpc | Feature | Add request retry with exponential backoff | 120 | Medium | |
 | TODO-036 | rpc | Refactor | Implement connection pooling for RPC clients | 100 | Medium | |
-| TODO-037 | ssg | Feature | Add incremental SSG data update support | 250 | High | |
-| TODO-038 | ssg | Optimization | Implement parallel parsing for large SSG files | 180 | Medium | |
-| TODO-039 | testutils | Feature | Add mock HTTP server for testing remote providers | 150 | Medium | |
-| TODO-040 | testutils | Refactor | Extract common test patterns into helpers | 100 | Low | |
-| TODO-041 | urn | Feature | Add URN validation with comprehensive rules | 80 | Medium | |
-| TODO-042 | urn | Test | Add property-based tests for URN parsing | 120 | Medium | |
-| TODO-043 | analysis | Documentation | Add examples for graph analysis API usage | 80 | Low | |
-| TODO-044 | meta | Documentation | Document provider FSM lifecycle and transitions | 100 | Low | |
-| TODO-045 | notes | Documentation | Add learning strategy comparison guide | 60 | Low | |
-| TODO-046 | proc | Documentation | Document message flow and serialization format | 100 | Low | |
-| TODO-047 | all | Refactor | Standardize error codes across all packages | 400 | Medium | |
-| TODO-048 | all | Feature | Add distributed tracing support | 500 | Low | |
-| TODO-049 | all | Test | Add integration test suite for broker-subprocess communication | 300 | High | |
-| TODO-050 | all | Optimization | Profile and optimize hot paths across all packages | 200 | Medium | |
+ | TODO-037 | ssg | Feature | Add incremental SSG data update support with field-level diffing to avoid re-importing entire datasets when only subset changes | 250 | High | |
+| TODO-038 | ssg | Optimization | Implement parallel parsing with worker pools for large SSG XML files to reduce import time by 40% | 180 | Medium | |
+| TODO-039 | testutils | Feature | Add mock HTTP server for testing remote providers with configurable responses and delay simulation | 150 | Medium | |
+| TODO-040 | testutils | Refactor | Extract common test patterns into helpers (database fixtures, assertion helpers, context factories) | 100 | Low | |
+| TODO-041 | urn | Feature | Add URN validation with comprehensive rules to catch malformed URNs before database operations | 80 | Medium | |
+| TODO-042 | urn | Test | Add property-based tests using testing/quick for URN parsing edge cases | 120 | Medium | |
+| TODO-043 | vconfig | Feature | Add configuration validation with detailed error messages indicating which option failed and why | 120 | High | |
+| TODO-044 | vconfig | Bug Fix | Fix TUI rendering issues on terminals with non-standard dimensions (handle resize gracefully) | 80 | High | |
+| TODO-045 | vconfig | Feature | Add search/filter functionality in TUI to quickly locate configuration options by name or description | 150 | Medium | |
+| TODO-046 | vconfig | Refactor | Extract TUI event handling logic into separate package to improve testability and reduce coupling | 180 | Medium | |
+| TODO-047 | vconfig | Feature | Implement configuration profiles to allow switching between different build configurations (dev, test, prod) | 200 | Medium | |
+| TODO-048 | vconfig | Test | Add integration tests for TUI interactions using simulated terminal input | 200 | Medium | |
+| TODO-049 | vconfig | Documentation | Add detailed inline comments explaining config spec loading and conversion logic | 80 | Low | |
+| TODO-050 | analysis | Documentation | Add examples for graph analysis API usage showing path finding, neighbor queries, and metrics | 80 | Low | |
+| TODO-051 | meta | Documentation | Document provider FSM lifecycle and transitions with state diagrams and example flows | 100 | Low | |
+| TODO-052 | notes | Documentation | Add learning strategy comparison guide explaining when to use BFS vs DFS navigation | 60 | Low | |
+| TODO-053 | proc | Documentation | Document message flow and serialization format with examples of each message type | 100 | Low | |
+| TODO-054 | all | Refactor | Standardize error codes across all packages with custom error types and error code constants | 400 | Medium | |
+| TODO-055 | all | Feature | Add distributed tracing support with OpenTelemetry for request tracking across services | 500 | Low | |
+| TODO-056 | all | Test | Add integration test suite for broker-subprocess communication covering all RPC methods | 300 | High | |
+| TODO-057 | all | Optimization | Profile and optimize hot paths across all packages using pprof and benchmarking | 200 | Medium | |
 
 ## TODO Management Guidelines
 
-### Priority Levels
-- **High**: Critical bugs, security issues, or blocking features
-- **Medium**: Important improvements, performance optimizations
-- **Low**: Nice-to-have features, code quality improvements
+For detailed guidelines on managing TODO items, see the **TODO Management** section in `CLAUDE.md`.
 
-### When to Mark as WONTFIX
-- Feature is no longer relevant to project goals
-- Issue is superseded by a better approach
-- Cost of implementation exceeds benefit
-- External dependency handles the requirement
+### Quick Reference
 
-### Removing Completed Tasks
-When a TODO is complete:
-1. Verify all acceptance criteria are met
-2. Run relevant tests (`./build.sh -t`)
-3. Remove the corresponding row from this table
-4. Keep the markdown formatting consistent
-
-### Estimating LoC
-- **Small**: < 100 lines of code
-- **Medium**: 100-300 lines of code
-- **Large**: 300+ lines of code
-- Include test code in estimates (aim for >80% test coverage)
+- **Adding Tasks**: Use next available ID, include test code in LoC estimates
+- **Completing Tasks**: Verify acceptance criteria, run tests, remove row from table
+- **Marking WONTFIX**: Only for obsolete features, keep row for history
+- **Priority**: High (critical), Medium (important), Low (nice-to-have)
+- **LoC Estimates**: Small (<100), Medium (100-300), Large (300+)
