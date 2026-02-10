@@ -48,7 +48,7 @@ const STIXRelationshipSchema = STIXCommonPropertiesSchema.extend({
 // ============================================================================
 
 const STIX_TO_GLC_TYPE_MAPPING: Record<string, string> = {
-  'attack-pattern': 'attack-technique',
+  'attack-pattern': 'attack-pattern',
   'campaign': 'group',
   'course-of-action': 'technique',
   'grouping': 'group',
@@ -82,7 +82,6 @@ const RELATIONSHIP_TYPE_MAPPING: Record<string, string> = {
   'variant-of': 'variant-of',
   'derived-from': 'derived-from',
   'duplicate-of': 'duplicate-of',
-  'related-to': 'connects',
 };
 
 // ============================================================================
@@ -249,7 +248,7 @@ export class STIXImportEngine {
 
       processedIds.add(id);
 
-      const node = this.stixObjectToNode();
+      const node = this.stixObjectToNode(obj);
       if (node) {
         nodes.push(node);
       }
@@ -301,7 +300,7 @@ export class STIXImportEngine {
    * Convert a single STIX object to GLC node
    */
   private stixObjectToNode(obj: STIXObject): GLCImportNode | null {
-    const position = this.calculatePosition(obj);
+    const position = this.calculatePosition();
 
     const baseData = {
       label: this.getObjectLabel(obj),
@@ -313,19 +312,21 @@ export class STIXImportEngine {
 
     let typeId: string;
     let nodeType = 'glc';
+    let d3fendClass: string | undefined;
 
+    // Apply D3FEND mapping if enabled
     if (this.options.mapToD3FEND) {
-      const d3fendClass = STIX_TO_D3FEND_MAPPING[obj.type];
-      if (d3fendClass) {
-        typeId = d3fendClass;
+      const d3fendClassId = STIX_TO_D3FEND_MAPPING[obj.type];
+      if (d3fendClassId) {
+        d3fendClass = d3fendClassId;
+        typeId = 'd3f:Detection';
         nodeType = 'glc';
-      } else {
-        typeId = STIX_TO_GLC_TYPE_MAPPING[obj.type] || obj.type;
       }
-    } else if (this.options.mapToGLCTypes) {
+    }
+
+    // Apply GLC type mapping if enabled
+    if (this.options.mapToGLCTypes) {
       typeId = STIX_TO_GLC_TYPE_MAPPING[obj.type] || obj.type;
-    } else {
-      typeId = obj.type;
     }
 
     return {
@@ -335,7 +336,7 @@ export class STIXImportEngine {
       data: {
         ...baseData,
         typeId,
-        d3fendClass: STIX_TO_D3FEND_MAPPING[obj.type],
+        d3fendClass,
       },
     };
   }
@@ -441,8 +442,28 @@ export class STIXImportEngine {
   }
 
   /**
+   * Map node type to D3FEND class
+   */
+  private mapNodeTypeToD3FENDClass(nodeType: string): string | null {
+    // Direct mapping for known D3FEND node types
+    if (D3FEND_CLASSES.find(c => c.id === nodeType)) {
+      return nodeType;
+    }
+
+    // Map common node types to D3FEND classes
+    const mappings: Record<string, string> = {
+      'firewall': 'd3f:Isolation',
+      'ids': 'd3f:Detection',
+      'ips': 'd3f:Detection',
+      'siem': 'd3f:Hardening',
+      'waf': 'd3f:Hardening',
+    };
+
+    return mappings[nodeType] || null;
+  }
+
+  /**
    * Calculate initial position for node
-   * Uses a simple spiral layout
    */
   private calculatePosition(): { x: number; y: number } {
     const index = this.stats.importedObjects;
