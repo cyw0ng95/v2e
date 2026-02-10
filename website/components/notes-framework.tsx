@@ -566,8 +566,8 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
                 {histories.length === 0 ? (
                   <p className="text-sm text-gray-500 italic">No history yet</p>
                 ) : (
-                  histories.map((entry, index) => (
-                    <div key={`${entry.id}-${index}`} className="p-2 bg-gray-100 rounded text-xs">
+                  histories.map((entry) => (
+                    <div key={`${entry.id}-${entry.action}`} className="p-2 bg-gray-100 rounded text-xs">
                       <div className="font-medium">{entry.action}</div>
                       <div className="text-gray-600">
                         {new Date(entry.timestamp).toLocaleString()} | {entry.item_type}: {entry.item_id}

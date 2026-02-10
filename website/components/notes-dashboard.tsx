@@ -4,6 +4,14 @@ import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('notes-dashboard');
 
+interface RecentItem {
+  type: 'bookmark';
+  title: string;
+  date: string;
+  item_type: string;
+  item_id: string;
+}
+
 const NotesDashboard: React.FC = () => {
   const [stats, setStats] = useState({
     totalBookmarks: 0,
@@ -14,7 +22,7 @@ const NotesDashboard: React.FC = () => {
     masteredCards: 0,
     todayReviews: 0,
   });
-  const [recentItems, setRecentItems] = useState<any[]>([]);
+  const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -258,8 +266,8 @@ const NotesDashboard: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
           <div className="space-y-4">
             {recentItems.length > 0 ? (
-              recentItems.map((item, index) => (
-                <div key={`${item.type}-${item.urn}-${index}`} className="flex items-start">
+              recentItems.map((item) => (
+                <div key={`${item.type}-${item.urn}`} className="flex items-start">
                   <div className="shrink-0">
                     {item.type === 'bookmark' && (
                       <div className="bg-blue-100 rounded-full p-2">

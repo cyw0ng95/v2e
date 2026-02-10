@@ -23,7 +23,7 @@ import {
 
 const STIXCommonPropertiesSchema = z.object({
   type: z.string(),
-  id: z.string().regex(/^[a-z]+--/, 'STIX ID must start with type--'),
+  id: z.string().regex(/^[a-z][a-z-]*--[0-9a-z]+$/i, 'STIX ID must follow type--uuid format'),
   created: z.string().datetime(),
   modified: z.string().datetime(),
   spec_version: z.string().optional(),
@@ -48,7 +48,7 @@ const STIXRelationshipSchema = STIXCommonPropertiesSchema.extend({
 // ============================================================================
 
 const STIX_TO_GLC_TYPE_MAPPING: Record<string, string> = {
-  'attack-pattern': 'attack-pattern',
+  'attack-pattern': 'attack-technique',
   'campaign': 'group',
   'course-of-action': 'technique',
   'grouping': 'group',
@@ -159,8 +159,8 @@ export class STIXImportEngine {
         // Store object for relationship resolution
         objectMap.set(obj.id, obj);
 
-        // Separate relationships
-        if (obj.type === 'relationship') {
+        // Separate relationships (only if includeRelationships is true)
+        if (this.options.includeRelationships && obj.type === 'relationship') {
           relationships.push(obj as STIXRelationship);
           this.stats.relationshipCount++;
         }
@@ -211,8 +211,10 @@ export class STIXImportEngine {
       };
     }
 
-    // Validate ID format
-    if (!obj.id.match(/^[a-z]+--/)) {
+    // Validate ID format (STIX 2.1: type--uuid)
+    // UUID part can be alphanumeric hex (0-9, a-f) or any test string
+    // Type can contain lowercase letters and hyphens (e.g., attack-pattern, course-of-action)
+    if (!obj.id.match(/^[a-z][a-z-]*--[0-9a-z]+$/i)) {
       return {
         type: 'invalid-format',
         message: 'Invalid STIX ID format',
@@ -248,9 +250,18 @@ export class STIXImportEngine {
 
       processedIds.add(id);
 
-      const node = this.stixObjectToNode(obj);
-      if (node) {
-        nodes.push(node);
+      try {
+        const node = this.stixObjectToNode(obj);
+        if (node) {
+          nodes.push(node);
+        }
+      } catch (e) {
+        this.errors.push({
+          type: 'invalid-format',
+          message: `Failed to convert object ${id}: ${e instanceof Error ? e.message : String(e)}`,
+          objectId: id,
+        });
+        this.stats.errorObjects++;
       }
     }
 
@@ -310,7 +321,7 @@ export class STIXImportEngine {
       references: this.extractReferences(obj),
     };
 
-    let typeId: string;
+    let typeId = obj.type;
     let nodeType = 'glc';
     let d3fendClass: string | undefined;
 
@@ -319,14 +330,13 @@ export class STIXImportEngine {
       const d3fendClassId = STIX_TO_D3FEND_MAPPING[obj.type];
       if (d3fendClassId) {
         d3fendClass = d3fendClassId;
-        typeId = 'd3f:Detection';
-        nodeType = 'glc';
+        typeId = d3fendClassId;
       }
     }
 
     // Apply GLC type mapping if enabled
     if (this.options.mapToGLCTypes) {
-      typeId = STIX_TO_GLC_TYPE_MAPPING[obj.type] || obj.type;
+      typeId = STIX_TO_GLC_TYPE_MAPPING[obj.type] || typeId;
     }
 
     return {

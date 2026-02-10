@@ -6,7 +6,6 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 
 | ID  | Package           | Type    | Description                                                                        | Est LoC | Priority | WONTFIX |
 |-----|-------------------|---------|------------------------------------------------------------------------------------|---------|----------|---------|
-| 350 | website/          | Bug     | Dark mode switch button not functional - investigate and fix theme toggle mechanism | 50      | 1        |         |
 | 291 | website/          | Feature | Add data validation for all forms (currently minimal validation)                   | 200      | 2        |         |
 | 345 | website/          | Perf    | Add React.memo and performance optimizations for large components                  | 400      | 2        |         |
 | 346 | website/          | Feature | Implement responsive design improvements for mobile/tablet layouts                 | 300      | 2        |         |
@@ -55,8 +54,6 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 272 | website/         | A11y    | Add aria-label to all buttons without text content (only 19 aria-label attributes found in 55 components) | 100      | 3        |         |
 | 273 | website/         | A11y    | Add keyboard navigation support for interactive components (graphs, modals, tables) | 200      | 3        |         |
 | 274 | website/         | A11y    | Add proper role attributes to interactive elements (currently only 12 instances with role=) | 80       | 3        |         |
-| 275 | website/components | Code    | Fix array index keys in components (notes-framework.tsx:570, notes-dashboard.tsx:259) | 20       | 3        |         |
-| 279 | website/         | Perf    | Implement React.memo for 64 components (currently only 24 use useMemo/useCallback) | 300      | 3        |         |
 | 329 | pkg/cve/provider  | Code    | Implement store logic using RPC calls to local service (TODO in cve_provider.go)      | 200      | 2        |         |
 | 330 | pkg/ssg/provider  | Code    | Implement store logic using RPC calls to ssg service (TODO in git_provider.go)       | 200      | 2        |         |
 | 332 | pkg/attack/provider | Code    | Use RPCStoreAttack to store each item (TODO in attack_provider.go)                    | 100      | 2        |         |
@@ -147,11 +144,9 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 166 | website          | Debt    | Remove or conditionalize console.log statements in production                      | 25       | 5        |         |
 | 167 | website          | Debt    | Extract magic numbers to configuration constants                                   | 25       | 5        |         |
 | 352 | pkg/analysis     | Test    | Add test files for pkg/analysis (currently no test files, 0% coverage)            | 400      | 2        |         |
-| 353 | pkg/ssg/provider | Code    | Implement guide import via RPC to v2local service (TODO in git_provider.go:88)    | 200      | 2        |         |
 | 355 | pkg/asvs/provider| Code    | Implement CSV rows parsing and RPC import (TODO in asvs_provider.go:90)           | 200      | 2        |         |
 | 356 | cmd/v2access     | Test    | Re-enable and fix disabled tests - service currently stub (main_test.go:19-27)    | 300      | 2        |         |
 | 357 | pkg/notes        | Refactor| Split rpc_handlers.go (1527 lines) into smaller, focused modules                  | 500      | 3        |         |
-| 359 | cmd/v2meta       | Refactor| Split main.go (1216 lines) into smaller, focused modules                          | 400      | 3        |         |
 | 361 | cmd/v2local      | Refactor| Split ssg_handlers.go (1083 lines) into smaller, focused modules                  | 350      | 3        |         |
 | 363 | cmd/v2broker/perf| Refactor| Split optimizer.go (798 lines) into smaller, focused modules                      | 300      | 3        |         |
 | 365 | pkg/*/provider   | Test    | Add tests for provider packages (asvs, attack, capec, cce, cve, cwe, ssg - all 0% coverage) | 600      | 3        |         |
