@@ -228,6 +228,7 @@ export interface STIXSighting extends STIXCommonProperties {
   sighting_of_ref: string;
   where_sighted_refs?: string[];
   observed_data_refs?: string[];
+  [key: string]: unknown;
 }
 
 // ============================================================================
@@ -390,8 +391,21 @@ export interface STIXValidationError {
 }
 
 /**
- * STIX Import Statistics
+ * Reference
  */
+export interface Reference {
+  type: 'cve' | 'cwe' | 'capec' | 'attack' | 'd3fend' | 'url' | 'stix';
+  id: string;
+  label?: string;
+  url?: string;
+}
+
+export interface Property {
+  key: string;
+  value: string;
+  type: 'string' | 'number' | 'boolean' | 'date' | 'url';
+}
+
 export interface STIXImportStats {
   totalObjects: number;
   importedObjects: number;
@@ -401,21 +415,14 @@ export interface STIXImportStats {
   byType: Record<string, number>;
 }
 
-/**
- * Property
- */
-export interface Property {
-  key: string;
-  value: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'url';
-}
-
-/**
- * Reference
- */
-export interface Reference {
-  type: 'cve' | 'cwe' | 'capec' | 'attack' | 'd3fend' | 'url' | 'stix';
+export type GLCImportEdge = {
   id: string;
+  source: string;
+  target: string;
+  type?: string;
   label?: string;
-  url?: string;
-}
+  data?: {
+    relationshipType?: string;
+    stixId?: string;
+  };
+};

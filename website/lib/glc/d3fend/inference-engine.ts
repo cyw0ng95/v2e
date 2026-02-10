@@ -8,7 +8,7 @@
  */
 
 import type { Node, Edge } from '@xyflow/react';
-import { D3FEND_CLASSES, type D3FENDClass } from './ontology';
+import { D3FEND_CLASSES } from './ontology';
 
 // ============================================================================
 // Inference Types
@@ -414,7 +414,6 @@ export class D3FENDInferenceEngine {
    * Find attack indicators in a node
    */
   private findAttackIndicator(node: Node): { indicator: string; recommended: string[]; severity: Severity } | null {
-    const nodeData = node.data as any;
     const label = node.data?.label?.toLowerCase() || '';
     const properties = node.data?.properties || [];
 

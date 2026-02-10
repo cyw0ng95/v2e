@@ -8,7 +8,7 @@ import { createGraphSlice, createEmptyGraph, createNode, createEdge } from '../.
 import { createCanvasSlice } from '../../lib/glc/store/canvas-slice';
 import { createUISlice } from '../../lib/glc/store/ui-slice';
 import { createUndoRedoSlice } from '../../lib/glc/store/undo-redo-slice';
-import type { GraphSlice, CanvasSlice, UISlice, UndoRedoSlice, Graph, CADNode, CADEdge } from '../../lib/glc/types';
+import type { GraphSlice, CanvasSlice, UISlice, UndoRedoSlice, CADNode, CADEdge } from '../../lib/glc/types';
 
 describe('Graph Slice', () => {
   describe('createEmptyGraph', () => {

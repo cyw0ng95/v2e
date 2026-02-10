@@ -5,7 +5,6 @@
  */
 
 import { z } from 'zod';
-import type { Node, Edge } from '@xyflow/react';
 import {
   type STIXBundle,
   type STIXObject,
@@ -21,11 +20,6 @@ import {
 // ============================================================================
 // STIX Validation Schemas
 // ============================================================================
-
-const KillChainPhaseSchema = z.object({
-  kill_chain_name: z.string(),
-  phase_name: z.string(),
-});
 
 const STIXCommonPropertiesSchema = z.object({
   type: z.string(),
@@ -255,7 +249,7 @@ export class STIXImportEngine {
 
       processedIds.add(id);
 
-      const node = this.stixObjectToNode(obj);
+      const node = this.stixObjectToNode();
       if (node) {
         nodes.push(node);
       }
@@ -370,7 +364,7 @@ export class STIXImportEngine {
     const fields = ['description', 'created', 'modified', 'aliases', 'first_seen', 'last_seen'];
 
     for (const field of fields) {
-      const value = typedObj[field];
+      const value = typedObj[field] as string | undefined | null | boolean | number | string[];
       if (value !== undefined && value !== null) {
         let displayValue: string;
         let type: string = 'string';
@@ -383,9 +377,20 @@ export class STIXImportEngine {
         } else if (typeof value === 'number') {
           displayValue = value.toString();
           type = 'number';
-        } else {
-          displayValue = value as string;
+        } else if (typeof value === 'string') {
+          displayValue = value;
         }
+
+        properties.push({
+          key: field,
+          value: displayValue,
+          type,
+        });
+      }
+    }
+
+    return properties;
+  }
 
         properties.push({
           key: field,
@@ -450,7 +455,7 @@ export class STIXImportEngine {
    * Calculate initial position for node
    * Uses a simple spiral layout
    */
-  private calculatePosition(obj: STIXObject): { x: number; y: number } {
+  private calculatePosition(): { x: number; y: number } {
     const index = this.stats.importedObjects;
     const angle = index * 0.5; // Golden angle-ish
     const radius = 100 + index * 50;

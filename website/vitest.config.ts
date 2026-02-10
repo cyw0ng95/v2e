@@ -15,9 +15,6 @@ export default defineConfig({
     // Environment
     environment: 'node',
 
-    // Run tests sequentially for stability
-    singleThread: true,
-
     // reporters
     reporters: ['verbose'],
   },
