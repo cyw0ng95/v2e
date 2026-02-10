@@ -1,5 +1,7 @@
-.build
-.build/*
+.build/
+.claude
+/v2broker
+/v2meta
 .claude
 /v2broker
 /v2meta
