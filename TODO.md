@@ -37,6 +37,7 @@ The following tasks have been completed and removed from the TODO list:
 ### Completed in this session:
 - ID 350: Dark mode switch button (Priority 1) - Added ThemeProvider to lib/providers.tsx
 - ID 352: pkg/analysis tests (Priority 2) - Package does not exist
+- ID 354: SSG references parsing (Priority 2) - Implemented SSG references parsing in pkg/ssg/parser
 - ID 356: v2access disabled tests (Priority 2) - Requires architecture redesign
 - ID 275: Array index keys (Priority 3) - Fixed key props in notes-framework.tsx and notes-dashboard.tsx
 - ID 291: Form data validation (Priority 2) - Added validation to CreateMemoryCardForm and CrossReferenceForm
