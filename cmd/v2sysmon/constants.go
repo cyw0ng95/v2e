@@ -73,4 +73,8 @@ const (
 	LogMsgMetricsMarshalingStarted = "[sysmon] Metrics marshaling started"
 	LogMsgMetricsMarshalingSuccess = "[sysmon] Metrics marshaling completed successfully"
 	LogMsgMetricsMarshalingFailed  = "[sysmon] Metrics marshaling failed: %v"
+
+	// Error Handling Log Messages
+	LogMsgRPCClientPanicRecovered = "[sysmon] Recovered from panic during RPC call to broker: %v"
+	LogMsgBrokerUnavailable       = "[sysmon] Broker unavailable, skipping message stats fetch"
 )

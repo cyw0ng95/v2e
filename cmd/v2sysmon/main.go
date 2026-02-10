@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/common/procfs"
@@ -47,25 +48,36 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *rpc.Client) su
 			logger.Info(LogMsgGetSysMetricsFailed, msg.CorrelationID, err)
 			return subprocess.NewErrorResponse(msg, "Failed to collect metrics"), nil
 		}
-		// Attempt to fetch broker message statistics via RPC
+		// Attempt to fetch broker message statistics via RPC with panic recovery
 		if rpcClient != nil {
 			logger.Info(LogMsgBrokerStatsFetchStarted)
 			rpcCtx, cancel := context.WithTimeout(ctx, rpc.DefaultRPCTimeout)
 			defer cancel()
-			resp, rpcErr := rpcClient.InvokeRPC(rpcCtx, "broker", "RPCGetMessageStats", nil)
-			if rpcErr != nil {
-				logger.Info(LogMsgFailedFetchBrokerStats, rpcErr)
-			} else if resp != nil && len(resp.Payload) > 0 {
-				var msgStats map[string]interface{}
-				if err := subprocess.UnmarshalFast(resp.Payload, &msgStats); err != nil {
-					logger.Info(LogMsgFailedUnmarshalStats, err)
+
+			// Recover from panic if broker terminates unexpectedly during RPC call
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Info(LogMsgRPCClientPanicRecovered, fmt.Sprintf("%v", r))
+						logger.Info(LogMsgBrokerUnavailable)
+					}
+				}()
+
+				resp, rpcErr := rpcClient.InvokeRPC(rpcCtx, "broker", "RPCGetMessageStats", nil)
+				if rpcErr != nil {
+					logger.Info(LogMsgFailedFetchBrokerStats, rpcErr)
+				} else if resp != nil && len(resp.Payload) > 0 {
+					var msgStats map[string]interface{}
+					if err := subprocess.UnmarshalFast(resp.Payload, &msgStats); err != nil {
+						logger.Info(LogMsgFailedUnmarshalStats, err)
+					} else {
+						metrics["message_stats"] = msgStats
+						logger.Info(LogMsgBrokerStatsFetchSuccess)
+					}
 				} else {
-					metrics["message_stats"] = msgStats
-					logger.Info(LogMsgBrokerStatsFetchSuccess)
+					logger.Info(LogMsgBrokerStatsFetchFailed, "empty response")
 				}
-			} else {
-				logger.Info(LogMsgBrokerStatsFetchFailed, "empty response")
-			}
+			}()
 		}
 		logger.Info(LogMsgCollectedMetrics, metrics["cpu_usage"], metrics["memory_usage"], metrics["load_avg"], metrics["uptime"])
 		logger.Info(LogMsgMetricsMarshalingStarted)

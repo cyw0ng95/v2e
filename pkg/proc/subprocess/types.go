@@ -111,3 +111,8 @@ func (s *Subprocess) RegisterHandler(pattern string, handler Handler) {
 	defer s.mu.Unlock()
 	s.handlers[pattern] = handler
 }
+
+// Context returns the subprocess's context for monitoring shutdown state
+func (s *Subprocess) Context() context.Context {
+	return s.ctx
+}
