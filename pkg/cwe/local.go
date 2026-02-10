@@ -172,6 +172,21 @@ func NewLocalCWEStore(dbPath string) (*LocalCWEStore, error) {
 		return nil, err
 	}
 
+	// Add database indexes for common query patterns to improve performance
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_cwe_item_name ON cwe_item_models(name)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_cwe_item_status ON cwe_item_models(status)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_cwe_item_abstraction ON cwe_item_models(abstraction)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_related_weakness_cwe_id ON related_weakness_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_related_weakness_related_cwe_id ON related_weakness_models(related_cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_weakness_ordinality_cwe_id ON weakness_ordinality_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_detection_method_cwe_id ON detection_method_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_mitigation_cwe_id ON mitigation_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_demonstrative_example_cwe_id ON demonstrative_example_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_observed_example_cwe_id ON observed_example_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_taxonomy_mapping_cwe_id ON taxonomy_mapping_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_note_cwe_id ON note_models(cwe_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_content_history_cwe_id ON content_history_models(cwe_id)")
+
 	// Migrate view-related tables
 	if err := AutoMigrateViews(db); err != nil {
 		return nil, err

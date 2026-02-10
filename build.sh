@@ -368,30 +368,20 @@ build_project() {
         
         # Check if binary exists and if any source files are newer
         if [ -f "$binary_path" ]; then
-            local latest_source_time=0
-            # Find the most recent source file modification time
-            for src_file in $(find . -name "*.go" -not -path "./.build/*" -newer go.mod 2>/dev/null); do
-                if [ "$VERBOSE" = true ]; then
-                    log_debug "Found newer source file: $src_file"
-                fi
+            local rebuild_needed=false
+            
+            # Check if go.mod or go.sum are newer than the binary
+            if [ go.mod -nt "$binary_path" ] || ([ -f go.sum ] && [ go.sum -nt "$binary_path" ]); then
                 rebuild_needed=true
-                break
-            done
-            
-            # If no newer files found, check against go.mod and go.sum
-            if [ "$rebuild_needed" = true ] && [ ! -f go.sum ]; then
-                rebuild_needed=false
-            fi
-            
-            if [ "$rebuild_needed" = true ]; then
+                if [ "$VERBOSE" = true ]; then
+                    log_debug "go.mod or go.sum is newer than binary, need to rebuild"
+                fi
+            else
                 # Check if any .go files are newer than the binary
-                if ! find . -name "*.go" -not -path "./.build/*" -newer "$binary_path" -print -quit | grep -q .; then
-                    # Also check go.mod and go.sum
-                    if [ go.mod -ot "$binary_path" ] && ([ ! -f go.sum ] || [ go.sum -ot "$binary_path" ]); then
-                        rebuild_needed=false
-                        if [ "$VERBOSE" = true ]; then
-                            log_debug "Binary is up-to-date, skipping rebuild"
-                        fi
+                if find . -name "*.go" -not -path "./.build/*" -newer "$binary_path" -print -quit | grep -q .; then
+                    rebuild_needed=true
+                    if [ "$VERBOSE" = true ]; then
+                        log_debug "Found newer source files, need to rebuild"
                     fi
                 fi
             fi

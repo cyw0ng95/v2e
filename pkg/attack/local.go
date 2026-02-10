@@ -420,7 +420,8 @@ func getStringValue(row []string, colIndex int, headers []string, possibleHeader
 		for _, possibleHeader := range possibleHeaders {
 			if headerLower == strings.ToLower(strings.TrimSpace(possibleHeader)) {
 				if i < len(row) {
-					return strings.TrimSpace(row[i])
+					// Handle cases where cell contains non-string data (e.g., numbers, dates)
+					return strings.TrimSpace(fmt.Sprintf("%v", row[i]))
 				}
 				break
 			}
@@ -429,7 +430,7 @@ func getStringValue(row []string, colIndex int, headers []string, possibleHeader
 
 	// Fallback to index if headers don't match or row doesn't have enough columns
 	if colIndex < len(row) {
-		return strings.TrimSpace(row[colIndex])
+		return strings.TrimSpace(fmt.Sprintf("%v", row[colIndex]))
 	}
 
 	return ""
@@ -452,7 +453,7 @@ func getBoolValue(row []string, colIndex int) bool {
 		return false
 	}
 
-	value := strings.TrimSpace(strings.ToLower(row[colIndex]))
+	value := strings.TrimSpace(strings.ToLower(fmt.Sprintf("%v", row[colIndex])))
 	switch value {
 	case "true", "1", "yes", "y", "t":
 		return true

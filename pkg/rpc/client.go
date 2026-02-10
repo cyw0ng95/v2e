@@ -113,7 +113,9 @@ func (c *Client) InvokeRPC(ctx context.Context, target, method string, params in
 	// Clean up on exit: remove from map and close entry
 	defer func() {
 		c.mu.Lock()
-		delete(c.pendingRequests, correlationID)
+		if _, exists := c.pendingRequests[correlationID]; exists {
+			delete(c.pendingRequests, correlationID)
+		}
 		c.mu.Unlock()
 		entry.Close()
 	}()
