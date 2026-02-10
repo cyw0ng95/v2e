@@ -14,3 +14,4 @@
 /db-wal
 /*.test
 **/:memory:
+/node_modules
