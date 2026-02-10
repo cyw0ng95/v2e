@@ -4,7 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-v2e (Vulnerabilities Viewer Engine) is a broker-first microservices system for managing CVE, CWE, CAPEC, and ATT&CK security data. The architecture enforces a central broker pattern where `cmd/v2broker` is the sole process manager and message router - no subprocess-to-subprocess communication is allowed.
+v2e (Vulnerabilities Viewer Engine) is a broker-first microservices system for managing CVE, CWE, CAPEC, ATT&CK, OWASP ASVS, SSG, and CCE security data. The architecture enforces a central broker pattern where `cmd/v2broker` is the sole process manager and message router - no subprocess-to-subprocess communication is allowed.
+
+### Unified Frameworks
+
+v2e is built on four unified frameworks that provide separation of concerns while enabling comprehensive security data management:
+
+- **UEE (Unified ETL Engine)** - Resource-aware ETL orchestration for security data ingestion
+- **UDA (Unified Data Analysis)** - URN-based relationship graph analysis for security entity correlation
+- **UME (Unified Message Exchanging)** - High-performance message routing and transport management
+- **ULP (Unified Learning Portal)** - Intelligent learning session management with adaptive navigation strategies
 
 ## Build & Development Commands
 
@@ -70,7 +79,9 @@ Frontend (Next.js) → Access Service (/restful/rpc) → Broker → Backend Serv
 - `cmd/broker/core` - Broker orchestrator, Process, Router interfaces
 - `cmd/broker/transport` - UDS transport implementation
 - `cmd/broker/perf` - Optimizer with adaptive tuning, message batching, worker pools
+- `pkg/notes/` - ULP framework: FSM state machine, strategy pattern (BFS/DFS), SQLite storage
 - `pkg/cve/taskflow` - Taskflow-based job executor with BoltDB persistence
+- `pkg/analysis/` - UDA framework: FSM state management, graph storage, relationship queries
 
 ## Subprocess Development Pattern
 
@@ -259,6 +270,12 @@ Every service must have a `service.md` file that documents its complete RPC API 
 - `CWE_DB_PATH` - SQLite CWE database
 - `CAPEC_DB_PATH` - SQLite CAPEC database
 - `ATTACK_DB_PATH` - SQLite ATT&CK database
+- `SSG_DB_PATH` - SQLite SSG database
+- `ASVS_DB_PATH` - SQLite ASVS database
+- `CCE_DB_PATH` - SQLite CCE database
+- `BOOKMARK_DB_PATH` - SQLite bookmark database
+- `LEARNING_FSM_DB_PATH` - SQLite ULP learning session database
+- `ANALYSIS_GRAPH_DB_PATH` - SQLite UDA graph database
 - `CAPEC_STRICT_XSD` - Enable XSD validation for CAPEC imports
 
 ### Broker Configuration
@@ -294,7 +311,7 @@ The meta service orchestrates data population using the Unified ETL Engine (UEE)
 
 **Auto-Recovery**: On service restart, RUNNING providers resume with permit re-acquisition; PAUSED providers remain paused.
 
-**Provider System**: CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider with resource-aware execution and field-level diffing.
+**Provider System**: CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider, SSGProvider, ASVSProvider, CCEProvider with resource-aware execution and field-level diffing.
 
 ## Database Migrations
 
@@ -316,3 +333,5 @@ Located in `tool/migrations/` with:
 | Migrations | `tool/migrations/` |
 | Assets (data files) | `assets/` |
 | Runtime logs | `.build/package/logs/` |
+| ULP framework | `pkg/notes/` (learning FSM, strategy pattern, SQLite storage) |
+| UDA framework | `pkg/analysis/` (FSM, graph storage, relationship queries) |
