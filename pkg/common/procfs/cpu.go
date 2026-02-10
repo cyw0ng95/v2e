@@ -1,14 +1,14 @@
 package procfs
 
 import (
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
 
 // ReadCPUUsage returns the 1-minute load average from /proc/loadavg (fast, non-blocking)
 func ReadCPUUsage() (float64, error) {
-	data, err := ioutil.ReadFile("/proc/loadavg")
+	data, err := os.ReadFile("/proc/loadavg")
 	if err != nil {
 		return 0, err
 	}
@@ -25,7 +25,7 @@ func ReadCPUUsage() (float64, error) {
 
 // ReadLoadAvg returns the 1, 5 and 15 minute load averages from /proc/loadavg
 func ReadLoadAvg() ([]float64, error) {
-	data, err := ioutil.ReadFile("/proc/loadavg")
+	data, err := os.ReadFile("/proc/loadavg")
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func ReadLoadAvg() ([]float64, error) {
 
 // ReadUptime returns system uptime in seconds from /proc/uptime
 func ReadUptime() (float64, error) {
-	data, err := ioutil.ReadFile("/proc/uptime")
+	data, err := os.ReadFile("/proc/uptime")
 	if err != nil {
 		return 0, err
 	}
