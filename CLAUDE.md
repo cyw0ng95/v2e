@@ -50,6 +50,16 @@ npm run lint      # ESLint
 
 **Version Requirements**: Go 1.21+, Node.js 20+, npm 10+. macOS requires Podman for containerized builds.
 
+**Prerequisites**:
+```bash
+# For Go build with libxml2 support (required for CAPEC parsing)
+sudo apt-get install libxml2-dev  # Debian/Ubuntu
+sudo yum install libxml2-devel  # CentOS/RHEL
+
+# For frontend build
+cd website && npm install
+```
+
 ## Architecture: Broker-First Pattern
 
 The broker is the central orchestrator. All subprocess services (`cmd/v2access`, `cmd/v2local`, `cmd/v2remote`, `cmd/v2meta`, `cmd/v2sysmon`) communicate exclusively via stdin/stdout RPC messages routed through the broker.
@@ -113,6 +123,10 @@ func main() {
    - Reducing test data size
    - Mocking expensive operations
    - Moving long-running tests to a separate benchmark or integration suite
+
+3. **BUILD PREREQUISITES** - Before running tests or builds:
+   - Install libxml2-dev for Go builds (required for CAPEC parsing): `sudo apt-get install libxml2-dev` (Debian/Ubuntu) or `sudo yum install libxml2-devel` (CentOS/RHEL)
+   - Install npm packages for website: `cd website && npm install`
 
 ### Unit Tests
 - Located alongside source (`*_test.go`)
