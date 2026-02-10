@@ -1,4 +1,5 @@
 .build
+.build/*
 .claude
 /v2broker
 /v2meta

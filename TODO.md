@@ -75,6 +75,10 @@ For detailed guidelines on managing TODO items, see the **TODO Management** sect
 4. Maintain markdown table formatting consistency
 5. Commit deletion of task row from TODO.md
 
+**Repository Cleanup**:
+- Ensure `.build/*` is ignored via `.gitignore` (pattern: `.build/*`)
+- Clean up committed build artifacts if present
+
 **Marking WONTFIX**:
 - Only project maintainers can mark tasks as obsolete
 - AI agents MUST NOT add "WONTFIX" to any task
