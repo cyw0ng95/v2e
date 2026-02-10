@@ -2,9 +2,6 @@
 .claude
 /v2broker
 /v2meta
-.claude
-/v2broker
-/v2meta
 /v2local
 /v2remote
 /v2analysis
