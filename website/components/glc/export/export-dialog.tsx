@@ -15,10 +15,10 @@ import { downloadGraphJson, downloadCanvasPng, downloadCanvasSvg } from '@/lib/g
 interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  canvasElement?: HTMLElement | null;
+  canvasRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export function ExportDialog({ open, onOpenChange, canvasElement }: ExportDialogProps) {
+export function ExportDialog({ open, onOpenChange, canvasRef }: ExportDialogProps) {
   const { graph, currentPreset } = useGLCStore();
   const [exporting, setExporting] = useState<string | null>(null);
 
@@ -36,10 +36,10 @@ export function ExportDialog({ open, onOpenChange, canvasElement }: ExportDialog
   };
 
   const handleExportPng = async () => {
-    if (!canvasElement) return;
+    if (!canvasRef?.current) return;
     setExporting('png');
     try {
-      await downloadCanvasPng(canvasElement, `${filename}.png`, {
+      await downloadCanvasPng(canvasRef.current, `${filename}.png`, {
         backgroundColor: currentPreset.theme.background,
       });
     } finally {
@@ -48,10 +48,10 @@ export function ExportDialog({ open, onOpenChange, canvasElement }: ExportDialog
   };
 
   const handleExportSvg = async () => {
-    if (!canvasElement) return;
+    if (!canvasRef?.current) return;
     setExporting('svg');
     try {
-      await downloadCanvasSvg(canvasElement, `${filename}.svg`, {
+      await downloadCanvasSvg(canvasRef.current, `${filename}.svg`, {
         backgroundColor: currentPreset.theme.background,
       });
     } finally {
@@ -73,7 +73,7 @@ export function ExportDialog({ open, onOpenChange, canvasElement }: ExportDialog
       description: 'High-resolution image (2x)',
       icon: Image,
       handler: handleExportPng,
-      disabled: !canvasElement,
+      disabled: !canvasRef?.current,
     },
     {
       id: 'svg',
@@ -81,7 +81,7 @@ export function ExportDialog({ open, onOpenChange, canvasElement }: ExportDialog
       description: 'Scalable vector graphics',
       icon: FileCode,
       handler: handleExportSvg,
-      disabled: !canvasElement,
+      disabled: !canvasRef?.current,
     },
   ];
 

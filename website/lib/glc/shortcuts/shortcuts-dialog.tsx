@@ -1,7 +1,6 @@
 'use client';
 
-import { Keyboard, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Keyboard } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

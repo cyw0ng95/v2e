@@ -5,7 +5,7 @@
 import type { StateCreator } from 'zustand';
 import type { UISlice } from '../types';
 
-export const createUISlice: StateCreator<UISlice> = (set, get) => ({
+export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   theme: 'dark',
   sidebarOpen: true,
   nodePaletteOpen: true,

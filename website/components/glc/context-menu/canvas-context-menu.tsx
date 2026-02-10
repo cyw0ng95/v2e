@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/context-menu';
 import {
   Copy,
-  Scissors,
   Clipboard,
   Trash2,
   Edit3,
@@ -33,7 +32,7 @@ export function NodeContextMenu({
   onEdit,
   onDuplicate,
 }: NodeContextMenuProps) {
-  const { graph, removeNode, canUndo, canRedo, undo, redo } = useGLCStore();
+  const { removeNode, canUndo, canRedo, undo, redo } = useGLCStore();
 
   const handleDelete = useCallback(() => {
     removeNode(nodeId);

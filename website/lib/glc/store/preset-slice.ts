@@ -6,7 +6,7 @@ import type { StateCreator } from 'zustand';
 import type { PresetSlice, CanvasPreset } from '../types';
 import { d3fendPreset, topoPreset } from '../presets';
 
-export const createPresetSlice: StateCreator<PresetSlice> = (set, get) => ({
+export const createPresetSlice: StateCreator<PresetSlice, [], [], PresetSlice> = (set) => ({
   currentPreset: null,
   builtInPresets: [d3fendPreset, topoPreset],
   userPresets: [],

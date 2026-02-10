@@ -1,40 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGLCStore } from '@/lib/glc/store';
-import type { Property, Reference, NodeTypeDefinition } from '@/lib/glc/types';
+import type { Property, Reference } from '@/lib/glc/types';
 
 interface NodeDetailsSheetProps {
   nodeId: string;
   onClose: () => void;
 }
 
-export function NodeDetailsSheet({ nodeId, onClose }: NodeDetailsSheetProps) {
+function NodeDetailsSheetContent({ nodeId, onClose }: NodeDetailsSheetProps) {
   const { graph, currentPreset, updateNode } = useGLCStore();
-  const [label, setLabel] = useState('');
-  const [notes, setNotes] = useState('');
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [references, setReferences] = useState<Reference[]>([]);
 
   // Find the node
   const node = graph?.nodes.find((n) => n.id === nodeId);
   const nodeType = currentPreset?.nodeTypes.find((t) => t.id === node?.data.typeId);
 
-  // Initialize form state when node changes
-  useEffect(() => {
-    if (node) {
-      setLabel(node.data.label || '');
-      setNotes(node.data.notes || '');
-      setProperties(node.data.properties || []);
-      setReferences(node.data.references || []);
-    }
-  }, [node]);
+  // Initialize form state with node data (component is remounted when nodeId changes)
+  const [label, setLabel] = useState(node?.data?.label || '');
+  const [notes, setNotes] = useState(node?.data?.notes || '');
+  const [properties, setProperties] = useState<Property[]>(node?.data?.properties || []);
+  const [references, setReferences] = useState<Reference[]>(node?.data?.references || []);
 
   // Save changes
   const handleSave = () => {
@@ -281,4 +272,10 @@ export function NodeDetailsSheet({ nodeId, onClose }: NodeDetailsSheetProps) {
       </div>
     </div>
   );
+}
+
+// Wrapper that remounts content when nodeId changes to reset form state
+export function NodeDetailsSheet(props: NodeDetailsSheetProps) {
+  // Use key to force remount when nodeId changes
+  return <NodeDetailsSheetContent key={props.nodeId} {...props} />;
 }

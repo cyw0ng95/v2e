@@ -3,7 +3,7 @@
  */
 
 import type { StateCreator } from 'zustand';
-import type { UndoRedoSlice, UndoRedoAction } from '../types';
+import type { UndoRedoSlice } from '../types';
 
 const MAX_HISTORY = 100;
 

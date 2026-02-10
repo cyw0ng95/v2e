@@ -305,7 +305,7 @@ export default function GLCCanvasPage() {
       <ExportDialog
         open={showExport}
         onOpenChange={setShowExport}
-        canvasElement={reactFlowWrapper.current}
+        canvasRef={reactFlowWrapper}
       />
 
       {/* Share Dialog */}

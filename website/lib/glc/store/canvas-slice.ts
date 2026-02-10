@@ -5,7 +5,7 @@
 import type { StateCreator } from 'zustand';
 import type { CanvasSlice } from '../types';
 
-export const createCanvasSlice: StateCreator<CanvasSlice> = (set, get) => ({
+export const createCanvasSlice: StateCreator<CanvasSlice, [], [], CanvasSlice> = (set) => ({
   selectedNodes: [],
   selectedEdges: [],
   zoom: 1,

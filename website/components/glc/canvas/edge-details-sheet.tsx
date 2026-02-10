@@ -1,26 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useGLCStore } from '@/lib/glc/store';
-import type { RelationshipDefinition } from '@/lib/glc/types';
 
 interface EdgeDetailsSheetProps {
   edgeId: string;
   onClose: () => void;
 }
 
-export function EdgeDetailsSheet({ edgeId, onClose }: EdgeDetailsSheetProps) {
+function EdgeDetailsSheetContent({ edgeId, onClose }: EdgeDetailsSheetProps) {
   const { graph, currentPreset, updateEdge } = useGLCStore();
-  const [relationshipId, setRelationshipId] = useState('');
-  const [label, setLabel] = useState('');
-  const [notes, setNotes] = useState('');
 
   // Find the edge
   const edge = graph?.edges.find((e) => e.id === edgeId);
+
+  // Initialize form state with edge data (component is remounted when edgeId changes)
+  const [relationshipId, setRelationshipId] = useState(edge?.data?.relationshipId || '');
+  const [label, setLabel] = useState(edge?.data?.label || '');
+  const [notes, setNotes] = useState(edge?.data?.notes || '');
 
   // Get available relationships based on source/target node types
   const sourceNode = graph?.nodes.find((n) => n.id === edge?.source);
@@ -33,15 +34,6 @@ export function EdgeDetailsSheet({ edgeId, onClose }: EdgeDetailsSheetProps) {
       (r.targetTypes.includes(targetNode?.data.typeId || '') ||
         r.targetTypes.length === 0)
   ) || [];
-
-  // Initialize form state when edge changes
-  useEffect(() => {
-    if (edge?.data) {
-      setRelationshipId(edge.data.relationshipId || '');
-      setLabel(edge.data.label || '');
-      setNotes(edge.data.notes || '');
-    }
-  }, [edge]);
 
   // Save changes
   const handleSave = () => {
@@ -170,4 +162,10 @@ export function EdgeDetailsSheet({ edgeId, onClose }: EdgeDetailsSheetProps) {
       </div>
     </div>
   );
+}
+
+// Wrapper that remounts content when edgeId changes to reset form state
+export function EdgeDetailsSheet(props: EdgeDetailsSheetProps) {
+  // Use key to force remount when edgeId changes
+  return <EdgeDetailsSheetContent key={props.edgeId} {...props} />;
 }
