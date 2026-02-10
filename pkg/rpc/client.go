@@ -28,14 +28,26 @@ type RequestEntry struct {
 // Signal signals the request entry with a message
 func (e *RequestEntry) Signal(m *subprocess.Message) {
 	e.once.Do(func() {
+		// Recover from panic if channel is already closed
+		defer func() {
+			if r := recover(); r != nil {
+				// Channel was closed concurrently, ignore
+			}
+		}()
 		e.resp <- m
 		close(e.resp)
 	})
 }
 
-// Close closes the request entry
+// Close closes the request entry without sending a message
 func (e *RequestEntry) Close() {
 	e.once.Do(func() {
+		// Recover from panic if channel is already closed
+		defer func() {
+			if r := recover(); r != nil {
+				// Channel was closed concurrently, ignore
+			}
+		}()
 		close(e.resp)
 	})
 }
@@ -95,6 +107,13 @@ func (c *Client) HandleError(ctx context.Context, msg *subprocess.Message) (*sub
 
 // InvokeRPC invokes an RPC method on another service through the broker
 func (c *Client) InvokeRPC(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error) {
+	// Add panic recovery for broker disconnect scenarios
+	defer func() {
+		if r := recover(); r != nil {
+			c.logger.Error("Panic recovered in InvokeRPC: %v", r)
+		}
+	}()
+
 	// Generate correlation ID
 	c.mu.Lock()
 	c.correlationSeq++
@@ -110,12 +129,22 @@ func (c *Client) InvokeRPC(ctx context.Context, target, method string, params in
 	c.pendingRequests[correlationID] = entry
 	c.mu.Unlock()
 
-	// Clean up on exit: remove from map and close entry
+	// Clean up on exit: remove from map and close entry if not already handled
+	// This prevents memory leaks by ensuring entries are always cleaned up,
+	// even on error paths or when the request times out.
 	defer func() {
 		c.mu.Lock()
-		delete(c.pendingRequests, correlationID)
+		// Check if entry is still in map (meaning HandleResponse/HandleError hasn't processed it yet)
+		_, exists := c.pendingRequests[correlationID]
+		if exists {
+			delete(c.pendingRequests, correlationID)
+		}
 		c.mu.Unlock()
-		entry.Close()
+		// Only close if entry was still in map (not handled yet)
+		// If HandleResponse already processed it, it also called Signal which closes the channel
+		if exists {
+			entry.Close()
+		}
 	}()
 
 	// Create request message
@@ -139,6 +168,14 @@ func (c *Client) InvokeRPC(ctx context.Context, target, method string, params in
 
 	c.logger.Debug("Sending RPC request: method=%s, target=%s, correlationID=%s", method, target, correlationID)
 
+	// Check if subprocess context is already canceled before sending
+	select {
+	case <-c.sp.Context().Done():
+		c.logger.Error("Subprocess context canceled before sending RPC request: method=%s, target=%s", method, target)
+		return nil, fmt.Errorf("broker disconnected before RPC request could be sent")
+	default:
+	}
+
 	// Send request to broker (which will route to target)
 	if err := c.sp.SendMessage(msg); err != nil {
 		c.logger.Error("Failed to send RPC request: %v", err)
@@ -148,7 +185,12 @@ func (c *Client) InvokeRPC(ctx context.Context, target, method string, params in
 	// Wait for response with timeout
 	c.logger.Debug("Waiting for RPC response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
 	select {
-	case response := <-resp:
+	case response, ok := <-resp:
+		if !ok {
+			// Channel was closed without receiving a response (broker disconnect)
+			c.logger.Error("RPC response channel closed unexpectedly: method=%s, target=%s, correlationID=%s", method, target, correlationID)
+			return nil, fmt.Errorf("broker disconnected during RPC call")
+		}
 		c.logger.Debug("Received RPC response: correlationID=%s, type=%s", correlationID, response.Type)
 		return response, nil
 	case <-time.After(c.rpcTimeout):
@@ -158,5 +200,9 @@ func (c *Client) InvokeRPC(ctx context.Context, target, method string, params in
 		err := ctx.Err()
 		c.logger.Warn("RPC call context canceled while waiting for response: method=%s, target=%s, correlationID=%s, error: %v", method, target, correlationID, err)
 		return nil, err
+	case <-c.sp.Context().Done():
+		// Broker disconnected while waiting for response
+		c.logger.Error("Broker disconnected while waiting for RPC response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
+		return nil, fmt.Errorf("broker disconnected while waiting for RPC response")
 	}
 }

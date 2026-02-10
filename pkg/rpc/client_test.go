@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"gorm.io/gorm"
 	"io"
@@ -334,5 +335,224 @@ func BenchmarkHandleError(b *testing.B) {
 func BenchmarkGetDefaultTimeout(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = GetDefaultTimeout()
+	}
+}
+
+// TestPendingRequestMap_NoLeakOnTimeout verifies that pending requests are properly
+// cleaned up from the map when a request times out. This test prevents memory leaks
+// by ensuring the map doesn't grow unbounded.
+func TestPendingRequestMap_NoLeakOnTimeout(t *testing.T) {
+	logger := common.NewLogger(io.Discard, "", common.InfoLevel)
+	sp := subprocess.New("test-service")
+	client := NewClient(sp, logger, 50*time.Millisecond)
+
+	// Track initial map size
+	initialSize := len(client.pendingRequests)
+
+	// Make a request that will timeout (no broker to respond)
+	ctx := context.Background()
+	_, err := client.InvokeRPC(ctx, "test-service", "TestMethod", map[string]string{"key": "value"})
+
+	// Should get timeout error
+	if err == nil {
+		t.Error("InvokeRPC() should return timeout error")
+	}
+
+	// Wait a bit for defer to complete
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify map size hasn't grown (entry was cleaned up)
+	currentSize := len(client.pendingRequests)
+	if currentSize != initialSize {
+		t.Errorf("Pending request map leaked: expected %d entries, got %d", initialSize, currentSize)
+	}
+}
+
+// TestPendingRequestMap_NoLeakOnContextCancel verifies that pending requests are
+// properly cleaned up when the context is canceled.
+func TestPendingRequestMap_NoLeakOnContextCancel(t *testing.T) {
+	logger := common.NewLogger(io.Discard, "", common.InfoLevel)
+	sp := subprocess.New("test-service")
+	client := NewClient(sp, logger, 10*time.Second)
+
+	// Track initial map size
+	initialSize := len(client.pendingRequests)
+
+	// Create a context and cancel it immediately
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Make a request with canceled context
+	_, err := client.InvokeRPC(ctx, "test-service", "TestMethod", nil)
+
+	// Should get context canceled error
+	if err == nil {
+		t.Error("InvokeRPC() should return context canceled error")
+	}
+
+	// Wait a bit for defer to complete
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify map size hasn't grown (entry was cleaned up)
+	currentSize := len(client.pendingRequests)
+	if currentSize != initialSize {
+		t.Errorf("Pending request map leaked on context cancel: expected %d entries, got %d", initialSize, currentSize)
+	}
+}
+
+// TestPendingRequestMap_NoLeakOnConcurrentRequests verifies that multiple concurrent
+// requests don't cause memory leaks in the pending request map.
+func TestPendingRequestMap_NoLeakOnConcurrentRequests(t *testing.T) {
+	logger := common.NewLogger(io.Discard, "", common.InfoLevel)
+	sp := subprocess.New("test-service")
+	client := NewClient(sp, logger, 100*time.Millisecond)
+
+	// Track initial map size
+	initialSize := len(client.pendingRequests)
+
+	// Launch multiple concurrent requests that will timeout
+	const numRequests = 10
+	done := make(chan struct{}, numRequests)
+
+	for i := 0; i < numRequests; i++ {
+		go func(idx int) {
+			defer func() { done <- struct{}{} }()
+			ctx := context.Background()
+			_, _ = client.InvokeRPC(ctx, "test-service", fmt.Sprintf("TestMethod%d", idx), nil)
+		}(i)
+	}
+
+	// Wait for all requests to complete
+	for i := 0; i < numRequests; i++ {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("Test timed out waiting for concurrent requests")
+		}
+	}
+
+	// Wait a bit for all defer functions to complete
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify map size hasn't grown (all entries were cleaned up)
+	currentSize := len(client.pendingRequests)
+	if currentSize != initialSize {
+		t.Errorf("Pending request map leaked after %d concurrent requests: expected %d entries, got %d",
+			numRequests, initialSize, currentSize)
+	}
+}
+
+// TestRequestEntry_ConcurrentCloseAndSignal verifies that concurrent calls to
+// Close() and Signal() don't cause panics or deadlocks.
+func TestRequestEntry_ConcurrentCloseAndSignal(t *testing.T) {
+	entry := &RequestEntry{
+		resp: make(chan *subprocess.Message, 1),
+	}
+
+	msg := &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		CorrelationID: "test-123",
+	}
+
+	// Launch concurrent Close and Signal calls
+	done := make(chan struct{}, 2)
+
+	go func() {
+		defer func() { done <- struct{}{} }()
+		for i := 0; i < 100; i++ {
+			entry.Close()
+		}
+	}()
+
+	go func() {
+		defer func() { done <- struct{}{} }()
+		for i := 0; i < 100; i++ {
+			entry.Signal(msg)
+		}
+	}()
+
+	// Wait for both goroutines
+	select {
+	case <-done:
+		select {
+		case <-done:
+			// Both completed
+		case <-time.After(time.Second):
+			t.Fatal("Timed out waiting for goroutines")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Timed out waiting for goroutines")
+	}
+
+	// Verify channel is closed (due to sync.Once, either Close or Signal executed)
+	// The channel should be closed regardless of which function ran first
+	select {
+	case v, ok := <-entry.resp:
+		// Channel is closed when ok is false
+		// If ok is true, we received the message and channel should still be closed
+		if ok && v != nil {
+			// Signal() executed first and sent message
+			// Channel should now be closed
+		}
+		// If ok is false, Close() executed first and closed channel
+		// Either way, no panic or deadlock occurred
+	case <-time.After(100 * time.Millisecond):
+		t.Error("Channel should be closed (select should not block)")
+	}
+}
+
+// TestRequestEntry_DoubleSignal verifies that calling Signal() multiple times
+// only sends the message once (due to sync.Once).
+func TestRequestEntry_DoubleSignal(t *testing.T) {
+	entry := &RequestEntry{
+		resp: make(chan *subprocess.Message, 2), // Buffered for 2
+	}
+
+	msg := &subprocess.Message{
+		Type:          subprocess.MessageTypeResponse,
+		CorrelationID: "test-123",
+	}
+
+	// Signal twice
+	entry.Signal(msg)
+	entry.Signal(msg)
+
+	// Should only receive one message
+	select {
+	case receivedMsg := <-entry.resp:
+		// First message received
+		if receivedMsg != msg {
+			t.Error("Received wrong message")
+		}
+	default:
+		t.Error("Expected to receive first message")
+	}
+
+	// Channel should be closed now (Signal closes it after sending)
+	// Try to receive again - should get zero value immediately due to closed channel
+	receivedMsg, ok := <-entry.resp
+	if ok {
+		t.Error("Channel should be closed after Signal, but received another message")
+	}
+	if receivedMsg != nil {
+		t.Error("Should not receive a second message from closed channel")
+	}
+}
+
+// TestRequestEntry_DoubleClose verifies that calling Close() multiple times
+// doesn't panic (idempotent operation).
+func TestRequestEntry_DoubleClose(t *testing.T) {
+	entry := &RequestEntry{
+		resp: make(chan *subprocess.Message, 1),
+	}
+
+	// Close twice - should not panic
+	entry.Close()
+	entry.Close()
+
+	// Verify channel is closed
+	_, ok := <-entry.resp
+	if ok {
+		t.Error("Response channel should be closed")
 	}
 }

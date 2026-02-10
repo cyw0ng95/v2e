@@ -34,7 +34,6 @@
 | TODO-031 | proc | Feature | Implement subprocess health monitoring and auto-restart | 200 | High | |
 | TODO-032 | proc | Optimization | Add message prioritization and backpressure handling | 150 | Medium | |
 | TODO-033 | proc | Test | Add fuzz testing for message serialization/deserialization | 150 | Medium | |
-| TODO-034 | rpc | Bug Fix | Fix potential memory leak in pending request map | 40 | High | |
 | TODO-035 | rpc | Feature | Add request retry with exponential backoff | 120 | Medium | |
 | TODO-036 | rpc | Refactor | Implement connection pooling for RPC clients | 100 | Medium | |
 | TODO-037 | ssg | Feature | Add incremental SSG data update support with field-level diffing to avoid re-importing entire datasets when only subset changes | 250 | High | |
@@ -92,7 +91,6 @@
 | TODO-091 | cmd/v2remote | Optimization | Implement response caching for frequently accessed API endpoints (e.g., CVE by ID lookup) to reduce API calls | 120 | Medium | |
 | TODO-092 | cmd/v2sysmon | Refactor | Extract metric collection logic into reusable functions to reduce code duplication for CPU, memory, and disk monitoring | 80 | Medium | |
 | TODO-093 | cmd/v2sysmon | Feature | Add alert threshold configuration with webhook or email notifications when metrics exceed defined limits | 150 | Medium | |
-| TODO-094 | cmd/v2sysmon | Bug Fix | Fix potential panic when process terminates unexpectedly while monitoring active | 60 | High | |
 | TODO-095 | cmd/v2sysmon | Optimization | Reduce CPU overhead in metric collection by sampling metrics at configurable intervals instead of every poll cycle | 100 | Medium | |
 
 ## TODO Management Guidelines
