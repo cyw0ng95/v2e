@@ -134,12 +134,3 @@ For detailed guidelines on managing TODO items, see the **TODO Management** sect
 | TODO-126 | all | Feature | Add OpenTelemetry instrumentation to pkg/glc for distributed tracing of database operations | 250 | Low | |
 | TODO-127 | all | Feature | Add OpenTelemetry instrumentation to pkg/urn for distributed tracing of URN parsing and validation | 250 | Low | |
 | TODO-128 | all | Feature | Add OpenTelemetry instrumentation to pkg/jsonutil for distributed tracing of JSON marshaling/unmarshaling | 250 | Low | |
-| TODO-129 | all | Feature | Add OpenTelemetry instrumentation to pkg/common for distributed tracing of logging operations | 250 | Low | |
-| TODO-130 | all | Feature | Add OpenTelemetry instrumentation to pkg/testutils for distributed tracing of test utilities | 250 | Low |
-| TODO-131 | all | Feature | Add OpenTelemetry instrumentation to cmd/v2broker for distributed tracing of process management | 250 | Low | |
-| TODO-132 | all | Feature | Add OpenTelemetry instrumentation to cmd/v2access for distributed tracing of RPC handling | 250 | Low | |
-| TODO-133 | all | Feature | Add OpenTelemetry instrumentation to cmd/v2local for distributed tracing of database operations | 250 | Low | |
-| TODO-134 | all | Feature | Add OpenTelemetry instrumentation to cmd/v2remote for distributed tracing of API calls | 250 | Low | |
-| TODO-135 | all | Feature | Add OpenTelemetry instrumentation to cmd/v2meta for distributed tracing of provider orchestration | 250 | Low | |
-| TODO-136 | all | Feature | Add OpenTelemetry instrumentation to cmd/v2sysmon for distributed tracing of monitoring operations | 250 | Low | |
-EOF'
