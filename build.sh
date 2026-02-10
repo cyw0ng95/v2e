@@ -368,30 +368,21 @@ build_project() {
         
         # Check if binary exists and if any source files are newer
         if [ -f "$binary_path" ]; then
-            local latest_source_time=0
-            # Find the most recent source file modification time
-            for src_file in $(find . -name "*.go" -not -path "./.build/*" -newer go.mod 2>/dev/null); do
-                if [ "$VERBOSE" = true ]; then
-                    log_debug "Found newer source file: $src_file"
+            # Check if any .go files are newer than the binary
+            if ! find . -name "*.go" -not -path "./.build/*" -newer "$binary_path" -print -quit | grep -q .; then
+                # No .go files newer than binary, check go.mod and go.sum
+                local mod_files_newer=false
+                if [ go.mod -nt "$binary_path" ] 2>/dev/null; then
+                    mod_files_newer=true
                 fi
-                rebuild_needed=true
-                break
-            done
-            
-            # If no newer files found, check against go.mod and go.sum
-            if [ "$rebuild_needed" = true ] && [ ! -f go.sum ]; then
-                rebuild_needed=false
-            fi
-            
-            if [ "$rebuild_needed" = true ]; then
-                # Check if any .go files are newer than the binary
-                if ! find . -name "*.go" -not -path "./.build/*" -newer "$binary_path" -print -quit | grep -q .; then
-                    # Also check go.mod and go.sum
-                    if [ go.mod -ot "$binary_path" ] && ([ ! -f go.sum ] || [ go.sum -ot "$binary_path" ]); then
-                        rebuild_needed=false
-                        if [ "$VERBOSE" = true ]; then
-                            log_debug "Binary is up-to-date, skipping rebuild"
-                        fi
+                if [ -f go.sum ] && [ go.sum -nt "$binary_path" ] 2>/dev/null; then
+                    mod_files_newer=true
+                fi
+                if [ "$mod_files_newer" = false ]; then
+                    # All source files and dependency files are older than binary
+                    rebuild_needed=false
+                    if [ "$VERBOSE" = true ]; then
+                        log_debug "Binary is up-to-date, skipping rebuild"
                     fi
                 fi
             fi
