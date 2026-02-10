@@ -1954,3 +1954,243 @@ export interface GetProviderCheckpointsResponse {
   checkpoints: Checkpoint[];
   count: number;
 }
+
+// ============================================================================
+// GLC (Graphized Learning Canvas) Types
+// ============================================================================
+
+// Graph Model
+export interface GLCGraph {
+  id: number;
+  graph_id: string;
+  name: string;
+  description: string;
+  preset_id: string;
+  tags: string;
+  nodes: string; // JSON array of CADNode
+  edges: string; // JSON array of CADEdge
+  viewport: string; // JSON viewport state
+  version: number;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GLCGraphVersion {
+  id: number;
+  graph_id: number;
+  version: number;
+  nodes: string;
+  edges: string;
+  viewport: string;
+  created_at: string;
+}
+
+// Graph Request/Response Types
+export interface CreateGLCGraphRequest {
+  name: string;
+  description?: string;
+  preset_id: string;
+  nodes?: string;
+  edges?: string;
+  viewport?: string;
+  tags?: string;
+}
+
+export interface CreateGLCGraphResponse {
+  success: boolean;
+  graph: GLCGraph;
+}
+
+export interface GetGLCGraphRequest {
+  graph_id: string;
+}
+
+export interface GetGLCGraphResponse {
+  graph: GLCGraph;
+}
+
+export interface UpdateGLCGraphRequest {
+  graph_id: string;
+  name?: string;
+  description?: string;
+  nodes?: string;
+  edges?: string;
+  viewport?: string;
+  tags?: string;
+  is_archived?: boolean;
+}
+
+export interface UpdateGLCGraphResponse {
+  success: boolean;
+  graph: GLCGraph;
+}
+
+export interface DeleteGLCGraphRequest {
+  graph_id: string;
+}
+
+export interface DeleteGLCGraphResponse {
+  success: boolean;
+}
+
+export interface ListGLCGraphsRequest {
+  preset_id?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface ListGLCGraphsResponse {
+  graphs: GLCGraph[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface ListRecentGLCGraphsRequest {
+  limit?: number;
+}
+
+export interface ListRecentGLCGraphsResponse {
+  graphs: GLCGraph[];
+}
+
+// Version Request/Response Types
+export interface GetGLCVersionRequest {
+  graph_id: string;
+  version: number;
+}
+
+export interface GetGLCVersionResponse {
+  version: GLCGraphVersion;
+}
+
+export interface ListGLCVersionsRequest {
+  graph_id: string;
+  limit?: number;
+}
+
+export interface ListGLCVersionsResponse {
+  versions: GLCGraphVersion[];
+}
+
+export interface RestoreGLCVersionRequest {
+  graph_id: string;
+  version: number;
+}
+
+export interface RestoreGLCVersionResponse {
+  success: boolean;
+  graph: GLCGraph;
+}
+
+// User Preset Model
+export interface GLCUserPreset {
+  id: number;
+  preset_id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  theme: string; // JSON CanvasPresetTheme
+  behavior: string; // JSON CanvasPresetBehavior
+  node_types: string; // JSON array of NodeTypeDefinition
+  relationships: string; // JSON array of RelationshipDefinition
+  created_at: string;
+  updated_at: string;
+}
+
+// Preset Request/Response Types
+export interface CreateGLCPresetRequest {
+  name: string;
+  version?: string;
+  description?: string;
+  author?: string;
+  theme: object;
+  behavior: object;
+  node_types: object[];
+  relationships: object[];
+}
+
+export interface CreateGLCPresetResponse {
+  success: boolean;
+  preset: GLCUserPreset;
+}
+
+export interface GetGLCPresetRequest {
+  preset_id: string;
+}
+
+export interface GetGLCPresetResponse {
+  preset: GLCUserPreset;
+}
+
+export interface UpdateGLCPresetRequest {
+  preset_id: string;
+  name?: string;
+  version?: string;
+  description?: string;
+  author?: string;
+  theme?: object;
+  behavior?: object;
+  node_types?: object[];
+  relationships?: object[];
+}
+
+export interface UpdateGLCPresetResponse {
+  success: boolean;
+  preset: GLCUserPreset;
+}
+
+export interface DeleteGLCPresetRequest {
+  preset_id: string;
+}
+
+export interface DeleteGLCPresetResponse {
+  success: boolean;
+}
+
+export interface ListGLCPresetsResponse {
+  presets: GLCUserPreset[];
+}
+
+// Share Link Model
+export interface GLCShareLink {
+  id: number;
+  link_id: string;
+  graph_id: string;
+  password?: string;
+  expires_at?: string;
+  view_count: number;
+  created_at: string;
+}
+
+// Share Link Request/Response Types
+export interface CreateGLCShareLinkRequest {
+  graph_id: string;
+  password?: string;
+  expires_in_hours?: number;
+}
+
+export interface CreateGLCShareLinkResponse {
+  success: boolean;
+  share_link: GLCShareLink;
+}
+
+export interface GetGLCSharedGraphRequest {
+  link_id: string;
+  password?: string;
+}
+
+export interface GetGLCSharedGraphResponse {
+  graph: GLCGraph;
+}
+
+export interface GetGLCShareEmbedDataRequest {
+  link_id: string;
+}
+
+export interface GetGLCShareEmbedDataResponse {
+  share_link: GLCShareLink;
+  graph: GLCGraph;
+}
