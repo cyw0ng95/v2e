@@ -22,15 +22,17 @@ import '@xyflow/react/dist/style.css';
 
 import { useGLCStore } from '@/lib/glc/store';
 import { NodePalette } from '@/components/glc/palette/node-palette';
+import { DrawerPalette } from '@/components/glc/responsive/drawer-palette';
 import { CanvasToolbar } from '@/components/glc/toolbar/canvas-toolbar';
 import { DynamicNode } from '@/components/glc/canvas/dynamic-node';
 import { DynamicEdge } from '@/components/glc/canvas/dynamic-edge';
 import { NodeDetailsSheet } from '@/components/glc/canvas/node-details-sheet';
 import { EdgeDetailsSheet } from '@/components/glc/canvas/edge-details-sheet';
-import { CanvasContextMenu } from '@/components/glc/context-menu/canvas-context-menu';
+import { CanvasContextMenu, EdgeContextMenu } from '@/components/glc/context-menu/canvas-context-menu';
 import { useShortcuts, ShortcutsDialog } from '@/lib/glc/shortcuts';
 import { ExportDialog } from '@/components/glc/export';
 import { ShareDialog } from '@/components/glc/share';
+import { useResponsive, TOUCH_TARGET_SIZE } from '@/lib/glc/responsive';
 
 // Register custom node and edge types
 const nodeTypes = { glc: DynamicNode as never };
@@ -41,7 +43,8 @@ export default function GLCCanvasPage() {
   const router = useRouter();
   const presetId = params.presetId as string;
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getEdge } = useReactFlow();
+  const { isMobile, isDesktop } = useResponsive();
 
   const {
     currentPreset,
@@ -61,6 +64,13 @@ export default function GLCCanvasPage() {
   // Detail sheet state
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+
+  // Edge context menu state
+  const [edgeContextMenu, setEdgeContextMenu] = useState<{
+    edgeId: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Dialog state
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -153,7 +163,34 @@ export default function GLCCanvasPage() {
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
     setSelectedEdge(null);
+    setEdgeContextMenu(null);
   }, []);
+
+  // Handle edge context menu
+  const onEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
+    event.preventDefault();
+    setEdgeContextMenu({
+      edgeId: edge.id,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }, []);
+
+  // Close edge context menu
+  const closeEdgeContextMenu = useCallback(() => {
+    setEdgeContextMenu(null);
+  }, []);
+
+  // Handle edge reverse
+  const handleEdgeReverse = useCallback((reversedEdge: Edge) => {
+    setEdges((eds) => {
+      // Remove the old edge
+      const filtered = eds.filter((e) => e.id !== edgeContextMenu?.edgeId);
+      // Add the reversed edge
+      return [...filtered, reversedEdge];
+    });
+    setEdgeContextMenu(null);
+  }, [edgeContextMenu]);
 
   // Handle dropping nodes from palette
   const handleDrop = useCallback((event: React.DragEvent) => {
@@ -232,12 +269,22 @@ export default function GLCCanvasPage() {
 
   return (
     <div className="h-screen w-full flex">
-      {/* Node Palette */}
-      <NodePalette preset={currentPreset} />
+      {/* Node Palette - Desktop/Tablet only, Mobile uses drawer */}
+      {!isMobile && <NodePalette preset={currentPreset} />}
+
+      {/* Mobile Drawer Toggle Button */}
+      {isMobile && (
+        <div
+          className="absolute left-4 top-4 z-30"
+          style={{ marginTop: '60px' }} // Below toolbar
+        >
+          <DrawerPalette preset={currentPreset} />
+        </div>
+      )}
 
       {/* Canvas */}
       <div
-        className="flex-1 relative"
+        className={`flex-1 relative ${isMobile ? 'ml-0' : ''}`}
         ref={reactFlowWrapper}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -254,6 +301,7 @@ export default function GLCCanvasPage() {
             onNodeClick={onNodeClick}
             onEdgeClick={onEdgeClick}
             onPaneClick={onPaneClick}
+            onEdgeContextMenu={onEdgeContextMenu}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             style={flowStyle}
@@ -264,8 +312,18 @@ export default function GLCCanvasPage() {
             className="bg-background"
           >
             <Background color={currentPreset.theme.border} gap={currentPreset.behavior.gridSize} />
-            <Controls className="!bg-surface !border-border !text-text" />
-            <MiniMap className="!bg-surface !border-border" />
+            <Controls
+              className="!bg-surface !border-border !text-text"
+              style={{
+                // Larger touch targets on mobile
+                ...(isMobile && {
+                  '--rf-controls-button-width': `${TOUCH_TARGET_SIZE}px`,
+                  '--rf-controls-button-height': `${TOUCH_TARGET_SIZE}px`,
+                } as React.CSSProperties),
+              }}
+            />
+            {/* MiniMap only on desktop */}
+            {isDesktop && <MiniMap className="!bg-surface !border-border" />}
             <Panel position="top-center">
               <CanvasToolbar
                 preset={currentPreset}
@@ -277,6 +335,26 @@ export default function GLCCanvasPage() {
             </Panel>
           </ReactFlow>
         </CanvasContextMenu>
+
+        {/* Edge Context Menu (positioned absolutely) */}
+        {edgeContextMenu && (
+          <div
+            className="fixed z-50"
+            style={{ left: edgeContextMenu.x, top: edgeContextMenu.y }}
+          >
+            <EdgeContextMenu
+              edgeId={edgeContextMenu.edgeId}
+              edge={getEdge(edgeContextMenu.edgeId)}
+              onEdit={() => {
+                setSelectedEdge(edgeContextMenu.edgeId);
+                closeEdgeContextMenu();
+              }}
+              onReverse={handleEdgeReverse}
+            >
+              <div className="w-0 h-0" />
+            </EdgeContextMenu>
+          </div>
+        )}
       </div>
 
       {/* Node Details Sheet */}

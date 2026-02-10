@@ -77,7 +77,7 @@ export const DynamicEdge = memo(function DynamicEdge({
       {labelText && (
         <EdgeLabelRenderer>
           <div
-            className="absolute px-2 py-0.5 rounded text-xs font-medium pointer-events-none transform -translate-x-1/2 -translate-y-1/2"
+            className="absolute px-2 py-0.5 rounded text-xs font-medium pointer-events-auto cursor-context-menu transform -translate-x-1/2 -translate-y-1/2"
             style={{
               left: labelX,
               top: labelY,
