@@ -9,10 +9,12 @@ import {
   X,
   PanelLeftClose,
   PanelLeft,
+  GripVertical,
 } from 'lucide-react';
 import { useGLCStore } from '@/lib/glc/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useResponsive, TOUCH_TARGET_SIZE } from '@/lib/glc/responsive';
 import type { CanvasPreset, NodeTypeDefinition } from '@/lib/glc/types';
 
 // Dynamic icon component
@@ -32,6 +34,7 @@ export function NodePalette({ preset }: NodePaletteProps) {
     new Set(preset.nodeTypes.map((n) => n.category))
   );
   const { nodePaletteOpen, toggleNodePalette } = useGLCStore();
+  const { isMobile, isTablet } = useResponsive();
 
   const theme = preset.theme;
 
@@ -80,10 +83,20 @@ export function NodePalette({ preset }: NodePaletteProps) {
     event.dataTransfer.effectAllowed = 'move';
   };
 
+  // Responsive sizing
+  const paletteWidth = isMobile ? 'w-56' : isTablet ? 'w-60' : 'w-64';
+  const collapsedWidth = isMobile ? 'w-14' : 'w-12';
+  const itemPadding = isMobile ? 'px-3 py-3' : 'px-3 py-2';
+  const touchMinHeight = isMobile ? TOUCH_TARGET_SIZE : undefined;
+  const inputHeight = isMobile ? 'h-11' : 'h-9';
+  const iconSize = isMobile ? 'w-5 h-5' : 'w-4 h-4';
+  const smallIconSize = isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5';
+  const nodeIconBoxSize = isMobile ? 'w-10 h-10' : 'w-8 h-8';
+
   if (!nodePaletteOpen) {
     return (
       <div
-        className="w-12 border-r flex flex-col items-center py-4"
+        className={`${collapsedWidth} border-r flex flex-col items-center py-4`}
         style={{
           backgroundColor: theme.surface,
           borderColor: theme.border,
@@ -94,8 +107,9 @@ export function NodePalette({ preset }: NodePaletteProps) {
           size="icon"
           onClick={toggleNodePalette}
           className="text-textMuted hover:text-text"
+          style={{ minWidth: isMobile ? TOUCH_TARGET_SIZE : undefined, minHeight: isMobile ? TOUCH_TARGET_SIZE : undefined }}
         >
-          <PanelLeft className="w-5 h-5" />
+          <PanelLeft className={iconSize} />
         </Button>
       </div>
     );
@@ -103,7 +117,7 @@ export function NodePalette({ preset }: NodePaletteProps) {
 
   return (
     <div
-      className="w-64 border-r flex flex-col"
+      className={`${paletteWidth} border-r flex flex-col`}
       style={{
         backgroundColor: theme.surface,
         borderColor: theme.border,
@@ -123,31 +137,33 @@ export function NodePalette({ preset }: NodePaletteProps) {
           onClick={toggleNodePalette}
           className="h-8 w-8 text-textMuted hover:text-text"
         >
-          <PanelLeftClose className="w-4 h-4" />
+          <PanelLeftClose className={smallIconSize} />
         </Button>
       </div>
 
       {/* Search */}
       <div className="px-3 py-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-textMuted" />
+          <Search className={`absolute left-2.5 top-1/2 transform -translate-y-1/2 ${smallIconSize} text-textMuted`} />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search nodes..."
-            className="pl-8 pr-8 h-9"
+            className={`pl-8 pr-8 ${inputHeight}`}
             style={{
               backgroundColor: theme.background,
               borderColor: theme.border,
               color: theme.text,
+              fontSize: isMobile ? '16px' : undefined, // Prevent zoom on iOS
             }}
           />
           {search && (
             <button
               onClick={() => setSearch('')}
               className="absolute right-2.5 top-1/2 transform -translate-y-1/2"
+              style={{ minWidth: isMobile ? TOUCH_TARGET_SIZE : undefined, minHeight: isMobile ? TOUCH_TARGET_SIZE : undefined }}
             >
-              <X className="w-4 h-4 text-textMuted hover:text-text" />
+              <X className={`${smallIconSize} text-textMuted hover:text-text`} />
             </button>
           )}
         </div>
@@ -160,16 +176,16 @@ export function NodePalette({ preset }: NodePaletteProps) {
             {/* Category Header */}
             <button
               onClick={() => toggleCategory(category)}
-              className="w-full px-4 py-2 flex items-center gap-2 hover:bg-background/50 transition-colors"
-              style={{ color: theme.textMuted }}
+              className={`w-full px-4 py-2 flex items-center gap-2 hover:bg-background/50 transition-colors`}
+              style={{ color: theme.textMuted, minHeight: touchMinHeight }}
             >
               {expandedCategories.has(category) ? (
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className={iconSize} />
               ) : (
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className={iconSize} />
               )}
-              <span className="text-sm font-medium">{category}</span>
-              <span className="ml-auto text-xs">({types.length})</span>
+              <span className={`font-medium ${isMobile ? 'text-base' : 'text-sm'}`}>{category}</span>
+              <span className={`ml-auto ${isMobile ? 'text-sm' : 'text-xs'}`}>({types.length})</span>
             </button>
 
             {/* Node Types */}
@@ -180,29 +196,36 @@ export function NodePalette({ preset }: NodePaletteProps) {
                     key={nodeType.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, nodeType)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing hover:bg-background/50 transition-colors"
-                    style={{ borderLeft: `3px solid ${nodeType.color}` }}
+                    className={`flex items-center gap-3 ${itemPadding} rounded-lg cursor-grab active:cursor-grabbing hover:bg-background/50 transition-colors`}
+                    style={{
+                      borderLeft: `${isMobile ? '4px' : '3px'} solid ${nodeType.color}`,
+                      minHeight: touchMinHeight,
+                    }}
                   >
+                    {/* Drag handle for mobile */}
+                    {isMobile && (
+                      <GripVertical className="w-4 h-4 shrink-0" style={{ color: theme.textMuted }} />
+                    )}
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      className={`${nodeIconBoxSize} rounded-lg flex items-center justify-center`}
                       style={{ backgroundColor: nodeType.color + '20' }}
                     >
                       <DynamicIcon
                         name={nodeType.icon}
-                        className="w-4 h-4"
+                        className={iconSize}
                         style={{ color: nodeType.color } as React.CSSProperties}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div
-                        className="text-sm font-medium truncate"
+                        className={`font-medium truncate ${isMobile ? 'text-sm' : 'text-sm'}`}
                         style={{ color: theme.text }}
                       >
                         {nodeType.label}
                       </div>
                       {nodeType.description && (
                         <div
-                          className="text-xs truncate"
+                          className={`truncate ${isMobile ? 'text-sm' : 'text-xs'}`}
                           style={{ color: theme.textMuted }}
                         >
                           {nodeType.description}
