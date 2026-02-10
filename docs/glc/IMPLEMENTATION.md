@@ -25,7 +25,7 @@
 | 3 | Advanced Features | 8 weeks | ✅ COMPLETE |
 | 4 | UI Polish & Testing | 12 weeks | ✅ COMPLETE |
 | 5 | Backend Integration | 12 weeks | ✅ COMPLETE |
-| **Total** | | **48 weeks** | **~95% Complete** |
+| **Total** | | **48 weeks** | **~97% Complete** |
 
 ---
 
@@ -167,13 +167,15 @@
 ### Jobs
 
 #### J3.1 D3FEND Ontology Integration ✅ COMPLETE
-**Files**: `lib/glc/d3fend/ontology.ts`, `lib/glc/d3fend/loader.ts`, `lib/glc/d3fend/types.ts`, `components/glc/d3fend/class-browser.tsx`, `components/glc/d3fend/class-picker.tsx`
+**Files**: `lib/glc/d3fend/ontology.ts`, `lib/glc/d3fend/loader.ts`, `lib/glc/d3fend/types.ts`, `components/glc/d3fend/class-browser.tsx`, `components/glc/d3fend/class-picker.tsx`, `lib/glc/d3fend/inference-engine.ts`, `components/glc/d3fend/inference-panel.tsx`, `components/glc/context-menu/d3fend-context-menu.tsx`
 - ✅ Simplified D3FEND class hierarchy
 - ✅ Search, ancestors, children helpers
 - ✅ Lazy loading full D3FEND data from assets
 - ✅ Virtualized tree for class browser component
 - ✅ Class picker UI component
-- ❌ TODO: Inference engine (sensors, defensive techniques, weakness)
+- ✅ Inference engine (sensors, defensive techniques, weakness mapping)
+- ✅ D3FEND context menu for node-level inferences
+- ✅ Inference panel showing sensor coverage and analysis
 
 #### J3.2 Graph Save/Load ✅ COMPLETE
 **Files**: `lib/glc/io/graph-io.ts`
@@ -525,11 +527,10 @@ website/assets/
 
 ## Open TODO Items
 
-### Phase 3 Remaining Work (J3.1, J3.4-J3.7)
+### Phase 3 Remaining Work (J3.4-J3.7)
 
 | Job | Priority | Effort | Description |
 |-----|----------|--------|-------------|
-| J3.1 | HIGH | 2 weeks | D3FEND full ontology loading, class browser UI, inference engine |
 | J3.4 | MEDIUM | 2 weeks | STIX 2.1 import with validation and mapping |
 | J3.5 | LOW | 3 weeks | Custom preset editor wizard (5-step) |
 | J3.6 | LOW | 1 week | Example graphs and gallery |
