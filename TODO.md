@@ -38,7 +38,7 @@
 | TODO-034 | rpc | Bug Fix | Fix potential memory leak in pending request map | 40 | High | |
 | TODO-035 | rpc | Feature | Add request retry with exponential backoff | 120 | Medium | |
 | TODO-036 | rpc | Refactor | Implement connection pooling for RPC clients | 100 | Medium | |
- | TODO-037 | ssg | Feature | Add incremental SSG data update support with field-level diffing to avoid re-importing entire datasets when only subset changes | 250 | High | |
+| TODO-037 | ssg | Feature | Add incremental SSG data update support with field-level diffing to avoid re-importing entire datasets when only subset changes | 250 | High | |
 | TODO-038 | ssg | Optimization | Implement parallel parsing with worker pools for large SSG XML files to reduce import time by 40% | 180 | Medium | |
 | TODO-039 | testutils | Feature | Add mock HTTP server for testing remote providers with configurable responses and delay simulation | 150 | Medium | |
 | TODO-040 | testutils | Refactor | Extract common test patterns into helpers (database fixtures, assertion helpers, context factories) | 100 | Low | |
