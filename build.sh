@@ -66,7 +66,7 @@ log_info "Running on Linux system, proceeding with native build..."
 GO_TAGS="${GO_TAGS:-CONFIG_USE_LIBXML2}"
 
 # Version requirements
-MIN_GO_VERSION="1.21"
+MIN_GO_VERSION="1.25.6"
 MIN_NODE_VERSION="20"
 MIN_NPM_VERSION="10"
 

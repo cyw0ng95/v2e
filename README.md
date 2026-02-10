@@ -26,7 +26,7 @@ v2e implements a **broker-first architecture** where the broker serves as the ce
 
 ## Unified Frameworks
 
-v2e is built on three unified frameworks that provide separation of concerns while enabling comprehensive security data management.
+v2e is built on four unified frameworks that provide separation of concerns while enabling comprehensive security data management.
 
 ### UEE - Unified ETL Engine
 
@@ -84,11 +84,11 @@ IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → 
 - Message pooling with sync.Pool
 - Adaptive worker pools and batching
 
-### Notes - Learning Strategy System
+### ULP - Unified Learning Portal
 
 **Purpose**: Intelligent learning session management with adaptive navigation strategies for security knowledge acquisition.
 
-**Why Notes?**
+**Why ULP?**
 - Provides structured learning workflows for security practitioners
 - Implements FSM-based session state management
 - Supports multiple navigation strategies (BFS/DFS) for different learning styles
@@ -194,11 +194,11 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 
 ## Service-Framework Matrix
 
-| Service | UEE | UDA | UME | Notes | Key Responsibilities |
+| Service | UEE | UDA | UME | ULP | Key Responsibilities |
 |---------|:---:|:---:|:---:|:-----:|----------------------|
 | **v2broker** | - | - | X | - | Central orchestrator, process management, message routing, permit management |
 | **v2access** | - | - | X | - | REST gateway, frontend communication, HTTP to RPC translation |
-| **v2local** | X | X | - | X | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), CRUD operations, caching, bookmarks, notes, memory cards, learning sessions |
+| **v2local** | X | X | - | X | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), CRUD operations, caching, bookmarks, learning sessions, memory cards |
 | **v2remote** | X | - | - | - | External API integration (NVD, MITRE), rate limiting, retry mechanisms |
 | **v2meta** | X | - | X | - | ETL orchestration, provider management, URN checkpointing, state machines |
 | **v2sysmon** | - | - | X | - | System metrics collection, health monitoring, performance reporting |
@@ -211,7 +211,7 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 | **UEE** (Unified ETL Engine) | v2meta | v2local, v2remote | URN (checkpointing), RPC (coordination) |
 | **UDA** (Unified Data Analysis) | v2analysis | v2local (data source) | URN (node IDs), RPC (queries) |
 | **UME** (Unified Message Exchanging) | v2broker | All services | RPC (message protocol), Binary Protocol |
-| **Notes** (Learning Strategy System) | v2local (bookmarks, notes, memory cards) | v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (SQLite) |
+| **ULP** (Unified Learning Portal) | v2local (bookmarks, memory cards, learning sessions) | v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (SQLite) |
 
 ---
 
@@ -284,7 +284,7 @@ v2e::ssg::ssg::rhel9-guide-ospp
 ```
 
 **Providers**: nvd, mitre, ssg
-**Types**: cve, cwe, capec, attack, ssg
+**Types**: cve, cwe, capec, attack, ssg, asvs, cce
 
 **Why URN?**
 - Immutable identity across services and databases
@@ -311,7 +311,7 @@ v2e::ssg::ssg::rhel9-guide-ospp
 ## Quick Start
 
 ```bash
-# Prerequisites: Go 1.21+, Node.js 20+, npm 10+
+# Prerequisites: Go 1.25.6, Node.js 20+, npm 10+
 
 # Run full development environment (recommended)
 ./build.sh -r
@@ -339,28 +339,28 @@ v2e::ssg::ssg::rhel9-guide-ospp
 ## Project Structure
 
 ```
-cmd/
-  v2broker/           # Broker service (UME framework)
-  v2access/           # REST gateway
-  v2local/            # Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), bookmarks, notes, memory cards
-  v2remote/           # External API integration
-  v2meta/             # ETL orchestration (UEE framework)
-  v2sysmon/           # System monitoring
-  v2analysis/          # Graph analysis (UDA framework)
-pkg/
-  proc/               # Subprocess framework
-  message/            # Message handling with pooling
-  urn/                # URN atomic identifiers
-  rpc/                # RPC client helpers
-  graph/              # In-memory graph database
-  analysis/           # FSM and storage for UDA
-  notes/              # Learning strategy system (FSM, strategy pattern, SQLite storage)
-  cve/taskflow/       # ETL executor framework
-  ssg/                # SSG (SCAP Security Guide) parsing and models
-  cce/                # CCE (Common Configuration Enumeration) models
-  asvs/               # ASVS (Application Security Verification Standard) models
-website/              # Next.js frontend
-assets/               # Data assets (CWE, CAPEC, ATT&CK)
+  cmd/
+    v2broker/           # Broker service (UME framework)
+    v2access/           # REST gateway
+    v2local/            # Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), bookmarks, memory cards, learning sessions
+    v2remote/           # External API integration
+    v2meta/             # ETL orchestration (UEE framework)
+    v2sysmon/           # System monitoring
+    v2analysis/          # Graph analysis (UDA framework)
+  pkg/
+    proc/               # Subprocess framework
+    message/            # Message handling with pooling
+    urn/                # URN atomic identifiers
+    rpc/                # RPC client helpers
+    graph/              # In-memory graph database
+    analysis/           # FSM and storage for UDA
+    notes/              # ULP framework: FSM, strategy pattern, SQLite storage
+    cve/taskflow/       # ETL executor framework
+    ssg/                # SSG (SCAP Security Guide) parsing and models
+    cce/                # CCE (Common Configuration Enumeration) models
+    asvs/               # ASVS (Application Security Verification Standard) models
+  website/              # Next.js frontend
+  assets/               # Data assets (CWE, CAPEC, ATT&CK)
 ```
 
 ---
@@ -370,10 +370,10 @@ assets/               # Data assets (CWE, CAPEC, ATT&CK)
 - [cmd/v2meta](cmd/v2meta) - UEE framework documentation
 - [cmd/v2analysis](cmd/v2analysis) - UDA framework documentation
 - [cmd/v2broker](cmd/v2broker) - Broker implementation
-- [cmd/v2local](cmd/v2local) - Local data storage, bookmarks, notes, and memory cards
+- [cmd/v2local](cmd/v2local) - Local data storage, bookmarks, memory cards, and learning sessions
 - [pkg/urn](pkg/urn) - URN identifier implementation
 - [cmd/v2meta/providers](cmd/v2meta/providers) - ETL provider implementations
-- [pkg/notes](pkg/notes) - Learning strategy system documentation
+- [pkg/notes](pkg/notes) - ULP (Unified Learning Portal) framework documentation
 
 ---
 
