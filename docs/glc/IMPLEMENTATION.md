@@ -346,36 +346,44 @@
 
 **Duration**: 12 weeks
 **Service**: `cmd/v2local` (existing - no new subprocess)
+**Status**: In Progress
 
 ### Overview
 GLC backend integration uses the existing `v2local` service, which already handles SQLite storage for CVE/CWE/CAPEC/ATT&CK data and memory cards. No new `v2glc` subprocess is needed.
 
 ### Jobs
 
-#### J6.1 Backend Handlers in v2local
-**Files**: `cmd/v2local/glc_handlers.go`, `cmd/v2local/service.md`
-- Add RPC handlers to v2local (not a new service):
+#### J6.1 Backend Handlers in v2local ✅ COMPLETE
+**Files**: `cmd/v2local/glc_handlers.go`, `cmd/v2local/service.md`, `pkg/glc/`
+- ✅ Created `pkg/glc/` package with models, store, and migrations
+- ✅ Added RPC handlers to v2local:
   - `RPCGLCGraphCreate`, `RPCGLCGraphGet`, `RPCGLCGraphUpdate`, `RPCGLCGraphDelete`, `RPCGLCGraphList`, `RPCGLCGraphListRecent`
-  - `RPCGLCVersionGet`, `RPCGLCVersionList`, `RPCGLCVersionRestore`, `RPCGLCVersionDelete`
+  - `RPCGLCVersionGet`, `RPCGLCVersionList`, `RPCGLCVersionRestore`
   - `RPCGLCPresetCreate`, `RPCGLCPresetGet`, `RPCGLCPresetUpdate`, `RPCGLCPresetDelete`, `RPCGLCPresetList`
   - `RPCGLCShareCreateLink`, `RPCGLCShareGetShared`, `RPCGLCShareGetEmbedData`
-- Update `cmd/v2local/service.md` with API specification
+- ✅ Updated `cmd/v2local/service.md` with API specification (methods 101-117)
 
-#### J6.2 Database Schema in v2local
-**Files**: `cmd/v2local/glc_schema.sql` (embedded or migration)
-- SQLite tables in v2local's existing database:
+#### J6.2 Database Schema in v2local ✅ COMPLETE
+**Files**: `pkg/glc/models.go`, `pkg/glc/migration.go`
+- ✅ SQLite tables via GORM AutoMigrate:
   - `glc_graphs` - graph metadata and content
   - `glc_graph_versions` - version history for undo/restore
-  - `glc_presets` - user-defined presets
+  - `glc_user_presets` - user-defined presets
   - `glc_share_links` - share/embed links
-- Reuse v2local's existing SQLite connection pooling
+- ✅ Reuses v2local's existing SQLite connection (bookmark.db)
 
-#### J6.3 Frontend RPC Client
-**Files**: `lib/rpc/*.ts`, `lib/rpc-client.ts`
-- Add GLC methods to existing RPC client pattern
-- Retry with exponential backoff
-- Offline queue (localStorage)
-- Network status monitoring
+#### J6.3 Frontend RPC Client ✅ COMPLETE
+**Files**: `website/lib/types.ts`, `website/lib/rpc-client.ts`
+- ✅ Added GLC types: GLCGraph, GLCGraphVersion, GLCUserPreset, GLCShareLink
+- ✅ Added request/response types for all operations
+- ✅ Added RPC methods:
+  - Graph: createGLCGraph, getGLCGraph, updateGLCGraph, deleteGLCGraph, listGLCGraphs, listRecentGLCGraphs
+  - Versions: getGLCVersion, listGLCVersions, restoreGLCVersion
+  - Presets: createGLCPreset, getGLCPreset, updateGLCPreset, deleteGLCPreset, listGLCPresets
+  - Share: createGLCShareLink, getGLCSharedGraph, getGLCShareEmbedData
+- ⏳ TODO: Retry with exponential backoff
+- ⏳ TODO: Offline queue (localStorage)
+- ⏳ TODO: Network status monitoring
 
 #### J6.4 Optimistic UI
 **Files**: `lib/optimistic/*.ts`, `components/optimistic/*.tsx`
@@ -509,14 +517,19 @@ website/glc/
 │   └── examples/                 # Example graphs
 └── __tests__/                    # Test files
 
-cmd/v2local/                      # Existing service - add GLC handlers (Phase 6)
-├── glc_handlers.go               # GLC RPC handlers
-├── glc_handlers_test.go          # Handler tests
-└── service.md                    # Updated with GLC API spec
+cmd/v2local/                      # Existing service - GLC handlers added
+├── glc_handlers.go               # ✅ GLC RPC handlers
+├── service.md                    # ✅ Updated with GLC API spec (methods 101-117)
+└── main.go                       # ✅ Updated to register GLC handlers
+
+pkg/glc/                          # ✅ NEW: GLC backend package
+├── models.go                     # GraphModel, GraphVersionModel, UserPresetModel, ShareLinkModel
+├── store.go                      # CRUD operations for graphs/versions/presets/links
+└── migration.go                  # GORM AutoMigrate helper
 ```
 
 ---
 
-**Document Version**: 3.0
+**Document Version**: 4.0
 **Last Updated**: 2026-02-10
-**Status**: Ready for Implementation
+**Status**: Phase 6 In Progress (J6.1-J6.3 Complete)
