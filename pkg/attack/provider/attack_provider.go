@@ -5,25 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
-	"github.com/cyw0ng95/v2e/pkg/rpc"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
 
 // ATTACKProvider implements ProviderFSM for ATT&CK data
 type ATTACKProvider struct {
 	*fsm.BaseProviderFSM
-	localPath  string
-	batchSize  int
-	maxRetries int
-	retryDelay time.Duration
-	rpcClient  *rpc.Client
-	mu         sync.RWMutex
+	localPath string
 }
 
 // NewATTACKProvider creates a new ATT&CK provider with FSM support
@@ -34,11 +27,7 @@ func NewATTACKProvider(localPath string, store *storage.Store) (*ATTACKProvider,
 	}
 
 	provider := &ATTACKProvider{
-		localPath:  localPath,
-		rpcClient:  &rpc.Client{},
-		batchSize:  100,
-		maxRetries: 3,
-		retryDelay: 5 * time.Second,
+		localPath: localPath,
 	}
 
 	// Create base FSM with custom executor
@@ -56,11 +45,6 @@ func NewATTACKProvider(localPath string, store *storage.Store) (*ATTACKProvider,
 	return provider, nil
 }
 
-// Initialize sets up the ATT&CK provider context
-func (p *ATTACKProvider) Initialize(ctx context.Context) error {
-	return nil
-}
-
 // execute performs ATT&CK fetch and store operations
 func (p *ATTACKProvider) execute() error {
 	currentState := p.GetState()
@@ -70,10 +54,8 @@ func (p *ATTACKProvider) execute() error {
 		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
 	}
 
-	p.mu.RLock()
 	localPath := p.localPath
-	batchSize := p.batchSize
-	p.mu.RUnlock()
+	batchSize := p.GetBatchSize()
 
 	// Read and parse ATT&CK data
 	data, err := os.ReadFile(localPath)
@@ -126,55 +108,12 @@ func (p *ATTACKProvider) execute() error {
 	return nil
 }
 
-// GetLocalPath returns to local file path
+// GetLocalPath returns the local file path
 func (p *ATTACKProvider) GetLocalPath() string {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
 	return p.localPath
 }
 
-// SetLocalPath sets to local file path
+// SetLocalPath sets the local file path
 func (p *ATTACKProvider) SetLocalPath(path string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	p.localPath = path
 }
-
-// GetBatchSize returns to batch size
-func (p *ATTACKProvider) GetBatchSize() int {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.batchSize
-}
-
-// SetBatchSize sets to batch size
-func (p *ATTACKProvider) SetBatchSize(size int) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.batchSize = size
-}
-
-// Cleanup releases any resources held by the provider
-func (p *ATTACKProvider) Cleanup(ctx context.Context) error {
-	return nil
-}
-
-// Fetch performs the fetch operation
-func (p *ATTACKProvider) Fetch(ctx context.Context) error {
-	return p.Execute()
-}
-
-// Store performs the store operation
-func (p *ATTACKProvider) Store(ctx context.Context) error {
-	return p.Execute()
-}
-
-// GetStats returns provider statistics
-func (p *ATTACKProvider) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return map[string]interface{}{
-		"batch_size": p.batchSize,
-	}
-}
-

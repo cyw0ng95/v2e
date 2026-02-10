@@ -142,6 +142,44 @@ import type {
   SSGListGuidesResponse,
   SSGGetGuideRequest,
   SSGGetGuideResponse,
+  // GLC Types
+  GLCGraph,
+  GLCGraphVersion,
+  GLCUserPreset,
+  GLCShareLink,
+  CreateGLCGraphRequest,
+  CreateGLCGraphResponse,
+  GetGLCGraphRequest,
+  GetGLCGraphResponse,
+  UpdateGLCGraphRequest,
+  UpdateGLCGraphResponse,
+  DeleteGLCGraphRequest,
+  DeleteGLCGraphResponse,
+  ListGLCGraphsRequest,
+  ListGLCGraphsResponse,
+  ListRecentGLCGraphsRequest,
+  ListRecentGLCGraphsResponse,
+  GetGLCVersionRequest,
+  GetGLCVersionResponse,
+  ListGLCVersionsRequest,
+  ListGLCVersionsResponse,
+  RestoreGLCVersionRequest,
+  RestoreGLCVersionResponse,
+  CreateGLCPresetRequest,
+  CreateGLCPresetResponse,
+  GetGLCPresetRequest,
+  GetGLCPresetResponse,
+  UpdateGLCPresetRequest,
+  UpdateGLCPresetResponse,
+  DeleteGLCPresetRequest,
+  DeleteGLCPresetResponse,
+  ListGLCPresetsResponse,
+  CreateGLCShareLinkRequest,
+  CreateGLCShareLinkResponse,
+  GetGLCSharedGraphRequest,
+  GetGLCSharedGraphResponse,
+  GetGLCShareEmbedDataRequest,
+  GetGLCShareEmbedDataResponse,
 } from './types';
 import { logError, logWarn, logDebug, createLogger } from './logger';
 
@@ -1474,6 +1512,82 @@ export class RPCClient {
 
   async rateMemoryCard(params: RateMemoryCardRequest): Promise<RPCResponse<RateMemoryCardResponse>> {
     return this.call<RateMemoryCardRequest, RateMemoryCardResponse>('RPCRateMemoryCard', params, 'local');
+  }
+
+  // ============================================================================
+  // GLC (Graphized Learning Canvas) Methods
+  // ============================================================================
+
+  // Graph Methods
+  async createGLCGraph(params: CreateGLCGraphRequest): Promise<RPCResponse<CreateGLCGraphResponse>> {
+    return this.call<CreateGLCGraphRequest, CreateGLCGraphResponse>('RPCGLCGraphCreate', params, 'local');
+  }
+
+  async getGLCGraph(params: GetGLCGraphRequest): Promise<RPCResponse<GetGLCGraphResponse>> {
+    return this.call<GetGLCGraphRequest, GetGLCGraphResponse>('RPCGLCGraphGet', params, 'local');
+  }
+
+  async updateGLCGraph(params: UpdateGLCGraphRequest): Promise<RPCResponse<UpdateGLCGraphResponse>> {
+    return this.call<UpdateGLCGraphRequest, UpdateGLCGraphResponse>('RPCGLCGraphUpdate', params, 'local');
+  }
+
+  async deleteGLCGraph(params: DeleteGLCGraphRequest): Promise<RPCResponse<DeleteGLCGraphResponse>> {
+    return this.call<DeleteGLCGraphRequest, DeleteGLCGraphResponse>('RPCGLCGraphDelete', params, 'local');
+  }
+
+  async listGLCGraphs(params?: ListGLCGraphsRequest): Promise<RPCResponse<ListGLCGraphsResponse>> {
+    return this.call<ListGLCGraphsRequest, ListGLCGraphsResponse>('RPCGLCGraphList', params || {}, 'local');
+  }
+
+  async listRecentGLCGraphs(params?: ListRecentGLCGraphsRequest): Promise<RPCResponse<ListRecentGLCGraphsResponse>> {
+    return this.call<ListRecentGLCGraphsRequest, ListRecentGLCGraphsResponse>('RPCGLCGraphListRecent', params || {}, 'local');
+  }
+
+  // Version Methods
+  async getGLCVersion(params: GetGLCVersionRequest): Promise<RPCResponse<GetGLCVersionResponse>> {
+    return this.call<GetGLCVersionRequest, GetGLCVersionResponse>('RPCGLCVersionGet', params, 'local');
+  }
+
+  async listGLCVersions(params: ListGLCVersionsRequest): Promise<RPCResponse<ListGLCVersionsResponse>> {
+    return this.call<ListGLCVersionsRequest, ListGLCVersionsResponse>('RPCGLCVersionList', params, 'local');
+  }
+
+  async restoreGLCVersion(params: RestoreGLCVersionRequest): Promise<RPCResponse<RestoreGLCVersionResponse>> {
+    return this.call<RestoreGLCVersionRequest, RestoreGLCVersionResponse>('RPCGLCVersionRestore', params, 'local');
+  }
+
+  // Preset Methods
+  async createGLCPreset(params: CreateGLCPresetRequest): Promise<RPCResponse<CreateGLCPresetResponse>> {
+    return this.call<CreateGLCPresetRequest, CreateGLCPresetResponse>('RPCGLCPresetCreate', params, 'local');
+  }
+
+  async getGLCPreset(params: GetGLCPresetRequest): Promise<RPCResponse<GetGLCPresetResponse>> {
+    return this.call<GetGLCPresetRequest, GetGLCPresetResponse>('RPCGLCPresetGet', params, 'local');
+  }
+
+  async updateGLCPreset(params: UpdateGLCPresetRequest): Promise<RPCResponse<UpdateGLCPresetResponse>> {
+    return this.call<UpdateGLCPresetRequest, UpdateGLCPresetResponse>('RPCGLCPresetUpdate', params, 'local');
+  }
+
+  async deleteGLCPreset(params: DeleteGLCPresetRequest): Promise<RPCResponse<DeleteGLCPresetResponse>> {
+    return this.call<DeleteGLCPresetRequest, DeleteGLCPresetResponse>('RPCGLCPresetDelete', params, 'local');
+  }
+
+  async listGLCPresets(): Promise<RPCResponse<ListGLCPresetsResponse>> {
+    return this.call<Record<string, never>, ListGLCPresetsResponse>('RPCGLCPresetList', {}, 'local');
+  }
+
+  // Share Link Methods
+  async createGLCShareLink(params: CreateGLCShareLinkRequest): Promise<RPCResponse<CreateGLCShareLinkResponse>> {
+    return this.call<CreateGLCShareLinkRequest, CreateGLCShareLinkResponse>('RPCGLCShareCreateLink', params, 'local');
+  }
+
+  async getGLCSharedGraph(params: GetGLCSharedGraphRequest): Promise<RPCResponse<GetGLCSharedGraphResponse>> {
+    return this.call<GetGLCSharedGraphRequest, GetGLCSharedGraphResponse>('RPCGLCShareGetShared', params, 'local');
+  }
+
+  async getGLCShareEmbedData(params: GetGLCShareEmbedDataRequest): Promise<RPCResponse<GetGLCShareEmbedDataResponse>> {
+    return this.call<GetGLCShareEmbedDataRequest, GetGLCShareEmbedDataResponse>('RPCGLCShareGetEmbedData', params, 'local');
   }
 
   // Cross Reference Methods

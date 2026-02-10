@@ -388,6 +388,7 @@ func parseGroupFromNode(node *ParseTreeNode, guideID string, nodeMap map[string]
 func parseRuleFromNode(node *ParseTreeNode, guideID string, nodeMap map[string]*goquery.Selection) *ssg.SSGRule {
 	// Find the element for this rule using O(1) map lookup
 	var title, description, rationale, severity string
+	var references []ssg.SSGReference
 
 	if sel, exists := nodeMap[node.ID]; exists {
 		// Try to find title - look for "Rule" label or nearby text
@@ -438,6 +439,9 @@ func parseRuleFromNode(node *ParseTreeNode, guideID string, nodeMap map[string]*
 				severity = "low"
 			}
 		}
+
+		// Parse references from the identifiers table
+		references = parseReferences(sel, node.ID)
 	}
 
 	// Default severity if not found
@@ -465,7 +469,7 @@ func parseRuleFromNode(node *ParseTreeNode, guideID string, nodeMap map[string]*
 		Rationale:   rationale,
 		Severity:    severity,
 		Level:       node.Level,
-		References:  []ssg.SSGReference{}, // TODO: Parse references
+		References:  references,
 	}
 }
 
@@ -486,6 +490,49 @@ func cleanTitle(title string) string {
 	// Remove extra whitespace
 	title = regexp.MustCompile(`\s+`).ReplaceAllString(title, " ")
 	return title
+}
+
+// parseReferences extracts reference information from the rule's identifiers table.
+// The HTML structure is:
+//
+//	<table class="identifiers">
+//	  <tr>
+//	    <td><a href="url">label</a></td>
+//	    <td>value</td>
+//	  </tr>
+//	</table>
+func parseReferences(sel *goquery.Selection, ruleID string) []ssg.SSGReference {
+	var references []ssg.SSGReference
+
+	// Find the identifiers table
+	sel.Find(".identifiers").Find("tr").Each(func(i int, row *goquery.Selection) {
+		cells := row.Find("td")
+		if cells.Length() < 2 {
+			return
+		}
+
+		// First cell contains the link with label and href
+		link := cells.Eq(0).Find("a")
+		href, _ := link.Attr("href")
+		label := strings.TrimSpace(link.Text())
+
+		// Second cell contains the value
+		value := strings.TrimSpace(cells.Eq(1).Text())
+
+		// Skip empty references
+		if label == "" && value == "" {
+			return
+		}
+
+		references = append(references, ssg.SSGReference{
+			RuleID: ruleID,
+			Href:   href,
+			Label:  label,
+			Value:  value,
+		})
+	})
+
+	return references
 }
 
 // updateGroupCounts updates group and rule counts for each group.

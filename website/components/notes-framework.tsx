@@ -566,8 +566,8 @@ const NotesFramework: React.FC<NotesFrameworkProps> = ({
                 {histories.length === 0 ? (
                   <p className="text-sm text-gray-500 italic">No history yet</p>
                 ) : (
-                  histories.map((entry, index) => (
-                    <div key={`${entry.id}-${index}`} className="p-2 bg-gray-100 rounded text-xs">
+                  histories.map((entry) => (
+                    <div key={`${entry.id}-${entry.action}`} className="p-2 bg-gray-100 rounded text-xs">
                       <div className="font-medium">{entry.action}</div>
                       <div className="text-gray-600">
                         {new Date(entry.timestamp).toLocaleString()} | {entry.item_type}: {entry.item_id}
@@ -594,12 +594,39 @@ interface CreateMemoryCardFormProps {
   onCreate: (front: string, back: string) => void;
 }
 
+const MAX_CARD_TEXT_LENGTH = 200;
+
 const CreateMemoryCardForm: React.FC<CreateMemoryCardFormProps> = ({ onCreate }) => {
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
+  const [frontError, setFrontError] = useState('');
+  const [backError, setBackError] = useState('');
+
+  const validateCardText = (text: string): string => {
+    if (text.length === 0) {
+      return 'Card text cannot be empty';
+    }
+    if (text.length > MAX_CARD_TEXT_LENGTH) {
+      return `Card text must not exceed ${MAX_CARD_TEXT_LENGTH} characters`;
+    }
+    return '';
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    setFrontError('');
+    setBackError('');
+
+    const frontValidationError = validateCardText(front.trim());
+    const backValidationError = validateCardText(back.trim());
+
+    if (frontValidationError || backValidationError) {
+      setFrontError(frontValidationError);
+      setBackError(backValidationError);
+      return;
+    }
+
     if (front.trim() && back.trim()) {
       onCreate(front.trim(), back.trim());
       setFront('');
@@ -615,15 +642,27 @@ const CreateMemoryCardForm: React.FC<CreateMemoryCardFormProps> = ({ onCreate })
         value={front}
         onChange={(e) => setFront(e.target.value)}
         placeholder="Front of card..."
+        maxLength={MAX_CARD_TEXT_LENGTH}
+        aria-invalid={!!frontError}
+        aria-describedby={frontError ? 'front-error' : undefined}
         className="w-full border rounded px-2 py-1 text-sm"
       />
+      {frontError && (
+        <p id="front-error" className="text-xs text-red-600 mt-1">{frontError}</p>
+      )}
       <input
         type="text"
         value={back}
         onChange={(e) => setBack(e.target.value)}
         placeholder="Back of card..."
+        maxLength={MAX_CARD_TEXT_LENGTH}
+        aria-invalid={!!backError}
+        aria-describedby={backError ? 'back-error' : undefined}
         className="w-full border rounded px-2 py-1 text-sm"
       />
+      {backError && (
+        <p id="back-error" className="text-xs text-red-600 mt-1">{backError}</p>
+      )}
       <button
         type="submit"
         disabled={!front.trim() || !back.trim()}
@@ -664,15 +703,73 @@ interface CrossReferenceFormProps {
   onCreate: (toItemId: string, toItemtype: string, relationshipType: string) => void;
 }
 
+const CROSS_REFERENCE_ITEM_ID_MAX_LENGTH = 50;
+const CROSS_REFERENCE_ITEM_TYPE_MAX_LENGTH = 20;
+const CROSS_REFERENCE_RELATIONSHIP_TYPE_MAX_LENGTH = 20;
+
 const CrossReferenceForm: React.FC<CrossReferenceFormProps> = ({ onCreate }) => {
   const [toItemId, setToItemId] = useState('');
   const [toItemtype, setToItemtype] = useState('CVE');
   const [relationshipType, setRelationshipType] = useState('related_to');
+  const [itemIdError, setItemIdError] = useState('');
+  const [itemTypeError, setItemTypeError] = useState('');
+  const [relationshipTypeError, setRelationshipTypeError] = useState('');
+
+  const validateItemId = (id: string): string => {
+    if (!id.trim()) {
+      return 'Item ID is required';
+    }
+    if (id.length > CROSS_REFERENCE_ITEM_ID_MAX_LENGTH) {
+      return `Item ID must not exceed ${CROSS_REFERENCE_ITEM_ID_MAX_LENGTH} characters`;
+    }
+    return '';
+  };
+
+  const validateItemType = (type: string): string => {
+    if (!type.trim()) {
+      return 'Item type is required';
+    }
+    if (type.length > CROSS_REFERENCE_ITEM_TYPE_MAX_LENGTH) {
+      return `Item type must not exceed ${CROSS_REFERENCE_ITEM_TYPE_MAX_LENGTH} characters`;
+    }
+    return '';
+  };
+
+  const validateRelationshipType = (type: string): string => {
+    if (!type.trim()) {
+      return 'Relationship type is required';
+    }
+    if (type.length > CROSS_REFERENCE_RELATIONSHIP_TYPE_MAX_LENGTH) {
+      return `Relationship type must not exceed ${CROSS_REFERENCE_RELATIONSHIP_TYPE_MAX_LENGTH} characters`;
+    }
+    return '';
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    setItemIdError('');
+    setItemTypeError('');
+    setRelationshipTypeError('');
+
+    const itemIdValidationError = validateItemId(toItemId.trim());
+    const itemTypeValidationError = validateItemType(toItemtype.trim());
+    const relationshipTypeValidationError = validateRelationshipType(relationshipType.trim());
+
+    if (itemIdValidationError || itemTypeValidationError || relationshipTypeValidationError) {
+      setItemIdError(itemIdValidationError);
+      setItemTypeError(itemTypeValidationError);
+      setRelationshipTypeError(relationshipTypeValidationError);
+      return;
+    }
+
     if (toItemId.trim() && toItemtype.trim() && relationshipType.trim()) {
       onCreate(toItemId.trim(), toItemtype.trim(), relationshipType.trim());
+      setToItemId('');
+      setToItemtype('CVE');
+      setRelationshipType('related_to');
+    }
+  };
       setToItemId('');
     }
   };
@@ -681,35 +778,69 @@ const CrossReferenceForm: React.FC<CrossReferenceFormProps> = ({ onCreate }) => 
     <form onSubmit={handleSubmit} className="space-y-2 p-2 bg-gray-50 rounded border">
       <div className="text-xs font-medium mb-1">Create Cross Reference:</div>
       <div className="grid grid-cols-3 gap-2">
-        <select
-          value={toItemtype}
-          onChange={(e) => setToItemtype(e.target.value)}
-          className="border rounded px-2 py-1 text-sm"
-        >
-          <option value="CVE">CVE</option>
-          <option value="CWE">CWE</option>
-          <option value="CAPEC">CAPEC</option>
-          <option value="ATT&CK">ATT&CK</option>
-        </select>
-        <input
-          type="text"
-          value={toItemId}
-          onChange={(e) => setToItemId(e.target.value)}
-          placeholder="Target ID"
-          className="border rounded px-2 py-1 text-sm"
-        />
-        <select
-          value={relationshipType}
-          onChange={(e) => setRelationshipType(e.target.value)}
-          className="border rounded px-2 py-1 text-sm"
-        >
-          <option value="related_to">Related To</option>
-          <option value="depends_on">Depends On</option>
-          <option value="similar_to">Similar To</option>
-          <option value="opposite_of">Opposite Of</option>
-          <option value="causes">Causes</option>
-          <option value="mitigates">Mitigates</option>
-        </select>
+        <div className="col-span-3">
+          <label htmlFor="itemType" className="text-xs text-gray-700 mb-1">
+            Item Type
+          </label>
+          <select
+            id="itemType"
+            value={toItemtype}
+            onChange={(e) => setToItemtype(e.target.value)}
+            className="border rounded px-2 py-1 text-sm"
+            aria-invalid={!!itemTypeError}
+            aria-describedby={itemTypeError ? 'itemType-error' : undefined}
+          >
+            <option value="CVE">CVE</option>
+            <option value="CWE">CWE</option>
+            <option value="CAPEC">CAPEC</option>
+            <option value="ATT&CK">ATT&CK</option>
+          </select>
+          {itemTypeError && (
+            <p id="itemType-error" className="text-xs text-red-600 mt-1">{itemTypeError}</p>
+          )}
+        </div>
+        <div className="col-span-3">
+          <label htmlFor="itemId" className="text-xs text-gray-700 mb-1">
+            Target ID
+          </label>
+          <input
+            id="itemId"
+            type="text"
+            value={toItemId}
+            onChange={(e) => setToItemId(e.target.value)}
+            placeholder="Target ID"
+            maxLength={CROSS_REFERENCE_ITEM_ID_MAX_LENGTH}
+            className="border rounded px-2 py-1 text-sm"
+            aria-invalid={!!itemIdError}
+            aria-describedby={itemIdError ? 'itemId-error' : undefined}
+          />
+          {itemIdError && (
+            <p id="itemId-error" className="text-xs text-red-600 mt-1">{itemIdError}</p>
+          )}
+        </div>
+        <div className="col-span-3">
+          <label htmlFor="relationshipType" className="text-xs text-gray-700 mb-1">
+            Relationship
+          </label>
+          <select
+            id="relationshipType"
+            value={relationshipType}
+            onChange={(e) => setRelationshipType(e.target.value)}
+            className="border rounded px-2 py-1 text-sm"
+            aria-invalid={!!relationshipTypeError}
+            aria-describedby={relationshipTypeError ? 'relationshipType-error' : undefined}
+          >
+            <option value="related_to">Related To</option>
+            <option value="depends_on">Depends On</option>
+            <option value="similar_to">Similar To</option>
+            <option value="opposite_of">Opposite Of</option>
+            <option value="causes">Causes</option>
+            <option value="mitigated_by">Mitigated By</option>
+          </select>
+          {relationshipTypeError && (
+            <p id="relationshipType-error" className="text-xs text-red-600 mt-1">{relationshipTypeError}</p>
+          )}
+        </div>
       </div>
       <button
         type="submit"

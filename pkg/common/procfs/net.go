@@ -1,14 +1,14 @@
 package procfs
 
 import (
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
 
 // ReadNetDevDetailed returns per-interface rx/tx bytes as a map keyed by interface name.
 func ReadNetDevDetailed() (map[string]map[string]uint64, error) {
-	data, err := ioutil.ReadFile("/proc/net/dev")
+	data, err := os.ReadFile("/proc/net/dev")
 	if err != nil {
 		return nil, err
 	}

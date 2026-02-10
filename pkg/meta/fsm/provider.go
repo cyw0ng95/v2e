@@ -44,6 +44,11 @@ type BaseProviderFSM struct {
 	permitsHeld    int32
 	executor       func() error
 	eventQueue     chan *Event
+
+	// Common configuration for all providers
+	batchSize    int
+	maxRetries   int
+	retryDelay   time.Duration
 }
 
 // ProviderConfig holds configuration for creating a provider FSM
@@ -52,6 +57,11 @@ type ProviderConfig struct {
 	ProviderType string
 	Storage      *storage.Store
 	Executor     func() error // Custom execution logic
+
+	// Common configuration (defaults applied if zero)
+	BatchSize    int           // Default: 100
+	MaxRetries   int           // Default: 3
+	RetryDelay   time.Duration // Default: 5 * time.Second
 }
 
 // NewBaseProviderFSM creates a new base provider FSM
@@ -63,6 +73,20 @@ func NewBaseProviderFSM(config ProviderConfig) (*BaseProviderFSM, error) {
 		return nil, fmt.Errorf("provider type cannot be empty")
 	}
 
+	// Apply defaults for common configuration
+	batchSize := config.BatchSize
+	if batchSize == 0 {
+		batchSize = 100
+	}
+	maxRetries := config.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = 3
+	}
+	retryDelay := config.RetryDelay
+	if retryDelay == 0 {
+		retryDelay = 5 * time.Second
+	}
+
 	p := &BaseProviderFSM{
 		id:           config.ID,
 		providerType: config.ProviderType,
@@ -71,6 +95,9 @@ func NewBaseProviderFSM(config ProviderConfig) (*BaseProviderFSM, error) {
 		createdAt:    time.Now(),
 		updatedAt:    time.Now(),
 		executor:     config.Executor,
+		batchSize:    batchSize,
+		maxRetries:   maxRetries,
+		retryDelay:   retryDelay,
 	}
 
 	// Try to load existing state from storage only if it exists
@@ -116,6 +143,48 @@ func (p *BaseProviderFSM) GetState() ProviderState {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.state
+}
+
+// GetBatchSize returns the batch size for processing
+func (p *BaseProviderFSM) GetBatchSize() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.batchSize
+}
+
+// SetBatchSize sets the batch size for processing
+func (p *BaseProviderFSM) SetBatchSize(size int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.batchSize = size
+}
+
+// GetMaxRetries returns the maximum retry count
+func (p *BaseProviderFSM) GetMaxRetries() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.maxRetries
+}
+
+// SetMaxRetries sets the maximum retry count
+func (p *BaseProviderFSM) SetMaxRetries(retries int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.maxRetries = retries
+}
+
+// GetRetryDelay returns the retry delay duration
+func (p *BaseProviderFSM) GetRetryDelay() time.Duration {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.retryDelay
+}
+
+// SetRetryDelay sets the retry delay duration
+func (p *BaseProviderFSM) SetRetryDelay(delay time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.retryDelay = delay
 }
 
 // Initialize sets up provider context before starting

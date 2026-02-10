@@ -1,14 +1,14 @@
 package procfs
 
 import (
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
 
 // ReadMemoryUsage reads memory usage from /proc/meminfo
 func ReadMemoryUsage() (float64, error) {
-	f, err := ioutil.ReadFile("/proc/meminfo")
+	f, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
 		return 0, err
 	}
@@ -40,7 +40,7 @@ func ReadMemoryUsage() (float64, error) {
 
 // ReadSwapUsage returns swap usage percentage (0..100). If no swap, returns 0.
 func ReadSwapUsage() (float64, error) {
-	f, err := ioutil.ReadFile("/proc/meminfo")
+	f, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
 		return 0, err
 	}
