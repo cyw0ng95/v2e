@@ -59,7 +59,6 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 279 | website/         | Perf    | Implement React.memo for 64 components (currently only 24 use useMemo/useCallback) | 300      | 3        |         |
 | 329 | pkg/cve/provider  | Code    | Implement store logic using RPC calls to local service (TODO in cve_provider.go)      | 200      | 2        |         |
 | 330 | pkg/ssg/provider  | Code    | Implement store logic using RPC calls to ssg service (TODO in git_provider.go)       | 200      | 2        |         |
-| 331 | pkg/ssg/parser    | Code    | Parse SSG references (TODO in guide.go)                                      | 150      | 2        |         |
 | 332 | pkg/attack/provider | Code    | Use RPCStoreAttack to store each item (TODO in attack_provider.go)                    | 100      | 2        |         |
 | 333 | website/components | A11y    | Add accessibility attributes to 12 components lacking aria-label/role           | 200      | 2        |         |
 | 334 | website/components | Code    | Fix 18 components using array index as key (React warning)                    | 100      | 2        |         |
@@ -147,10 +146,8 @@ This document tracks maintenance tasks for the v2e project. Tasks are organized 
 | 165 | website          | Debt    | Make RPC timeout configurable per request type                                     | 50       | 5        |         |
 | 166 | website          | Debt    | Remove or conditionalize console.log statements in production                      | 25       | 5        |         |
 | 167 | website          | Debt    | Extract magic numbers to configuration constants                                   | 25       | 5        |         |
-| 351 | pkg/common/procfs| Code    | Replace deprecated ioutil.ReadFile with os.ReadFile (8 usages in net.go, memory.go, cpu.go) | 20       | 2        |         |
 | 352 | pkg/analysis     | Test    | Add test files for pkg/analysis (currently no test files, 0% coverage)            | 400      | 2        |         |
 | 353 | pkg/ssg/provider | Code    | Implement guide import via RPC to v2local service (TODO in git_provider.go:88)    | 200      | 2        |         |
-| 354 | pkg/ssg/parser   | Code    | Implement SSG references parsing (TODO in guide.go:468)                           | 150      | 2        |         |
 | 355 | pkg/asvs/provider| Code    | Implement CSV rows parsing and RPC import (TODO in asvs_provider.go:90)           | 200      | 2        |         |
 | 356 | cmd/v2access     | Test    | Re-enable and fix disabled tests - service currently stub (main_test.go:19-27)    | 300      | 2        |         |
 | 357 | pkg/notes        | Refactor| Split rpc_handlers.go (1527 lines) into smaller, focused modules                  | 500      | 3        |         |
