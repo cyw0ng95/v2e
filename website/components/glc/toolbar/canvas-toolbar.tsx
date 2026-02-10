@@ -15,26 +15,21 @@ import {
   Share2,
   HelpCircle,
   Home,
-  Settings,
 } from 'lucide-react';
 import { useGLCStore } from '@/lib/glc/store';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import type { CanvasPreset } from '@/lib/glc/types';
 
 interface CanvasToolbarProps {
   preset: CanvasPreset;
   graphName?: string;
   onShowShortcuts?: () => void;
+  onShowExport?: () => void;
+  onShowShare?: () => void;
 }
 
-export function CanvasToolbar({ preset, graphName, onShowShortcuts }: CanvasToolbarProps) {
+export function CanvasToolbar({ preset, graphName, onShowShortcuts, onShowExport, onShowShare }: CanvasToolbarProps) {
   const { canUndo, canRedo, undo, redo, graph } = useGLCStore();
   const [showGrid, setShowGrid] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -51,11 +46,6 @@ export function CanvasToolbar({ preset, graphName, onShowShortcuts }: CanvasTool
     a.download = `${graph.metadata.name || 'graph'}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handleExport = (format: 'png' | 'svg' | 'json') => {
-    console.log('Export as:', format);
-    // TODO: Implement export functionality
   };
 
   return (
@@ -146,28 +136,13 @@ export function CanvasToolbar({ preset, graphName, onShowShortcuts }: CanvasTool
       </Button>
 
       {/* Export */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Download className="w-4 h-4" style={{ color: theme.text }} />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => handleExport('json')}>
-            Export as JSON
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleExport('png')}>
-            Export as PNG
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleExport('svg')}>
-            Export as SVG
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowExport}>
+        <Download className="w-4 h-4" style={{ color: theme.text }} />
+      </Button>
 
       {/* Share */}
-      <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-        <Share2 className="w-4 h-4" style={{ color: theme.textMuted }} />
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowShare}>
+        <Share2 className="w-4 h-4" style={{ color: theme.text }} />
       </Button>
 
       <Separator orientation="vertical" className="h-6 mx-1" style={{ backgroundColor: theme.border }} />

@@ -29,6 +29,8 @@ import { NodeDetailsSheet } from '@/components/glc/canvas/node-details-sheet';
 import { EdgeDetailsSheet } from '@/components/glc/canvas/edge-details-sheet';
 import { CanvasContextMenu } from '@/components/glc/context-menu/canvas-context-menu';
 import { useShortcuts, ShortcutsDialog } from '@/lib/glc/shortcuts';
+import { ExportDialog } from '@/components/glc/export';
+import { ShareDialog } from '@/components/glc/share';
 
 // Register custom node and edge types
 const nodeTypes = { glc: DynamicNode as never };
@@ -62,6 +64,8 @@ export default function GLCCanvasPage() {
 
   // Dialog state
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   // Find and set the preset
   useEffect(() => {
@@ -267,6 +271,8 @@ export default function GLCCanvasPage() {
                 preset={currentPreset}
                 graphName={graph?.metadata.name}
                 onShowShortcuts={() => setShowShortcuts(true)}
+                onShowExport={() => setShowExport(true)}
+                onShowShare={() => setShowShare(true)}
               />
             </Panel>
           </ReactFlow>
@@ -293,6 +299,19 @@ export default function GLCCanvasPage() {
       <ShortcutsDialog
         open={showShortcuts}
         onOpenChange={setShowShortcuts}
+      />
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={showExport}
+        onOpenChange={setShowExport}
+        canvasElement={reactFlowWrapper.current}
+      />
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={showShare}
+        onOpenChange={setShowShare}
       />
     </div>
   );
