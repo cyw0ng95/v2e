@@ -392,17 +392,6 @@ export class STIXImportEngine {
     return properties;
   }
 
-        properties.push({
-          key: field,
-          value: displayValue,
-          type,
-        });
-      }
-    }
-
-    return properties;
-  }
-
   /**
    * Extract references from STIX object
    */
