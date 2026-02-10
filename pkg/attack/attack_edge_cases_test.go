@@ -1,14 +1,17 @@
 package attack
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
 
 // TestAttackPatternValidation tests attack pattern validation functionality
@@ -713,4 +716,331 @@ func TestImportMetadata(t *testing.T) {
 		}
 	})
 
+}
+
+// TestHelperFunctionsWithNilAndEmptySlices tests that helper functions
+// handle nil and empty slices without panicking (TODO-007).
+func TestHelperFunctionsWithNilAndEmptySlices(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestHelperFunctionsWithNilAndEmptySlices", nil, func(t *testing.T, tx *gorm.DB) {
+		// Test getStringValue with nil headers
+		t.Run("getStringValue with nil headers", func(t *testing.T) {
+			// This should not panic
+			result := getStringValue([]string{"value1", "value2"}, 0, nil, "ID")
+			if result != "value1" {
+				t.Errorf("Expected 'value1', got '%s'", result)
+			}
+		})
+
+		// Test getStringValue with empty headers
+		t.Run("getStringValue with empty headers", func(t *testing.T) {
+			result := getStringValue([]string{"value1", "value2"}, 0, []string{}, "ID")
+			if result != "value1" {
+				t.Errorf("Expected 'value1', got '%s'", result)
+			}
+		})
+
+		// Test getStringValue with nil row
+		t.Run("getStringValue with nil row", func(t *testing.T) {
+			result := getStringValue(nil, 0, []string{"ID"}, "ID")
+			if result != "" {
+				t.Errorf("Expected empty string, got '%s'", result)
+			}
+		})
+
+		// Test getStringValue with nil row and nil headers
+		t.Run("getStringValue with nil row and nil headers", func(t *testing.T) {
+			result := getStringValue(nil, 0, nil, "ID")
+			if result != "" {
+				t.Errorf("Expected empty string, got '%s'", result)
+			}
+		})
+
+		// Test getStringValue with out-of-bounds index
+		t.Run("getStringValue with out-of-bounds index", func(t *testing.T) {
+			result := getStringValue([]string{"value1"}, 10, nil, "ID")
+			if result != "" {
+				t.Errorf("Expected empty string, got '%s'", result)
+			}
+		})
+
+		// Test getStringValue with nil entries in headers
+		t.Run("getStringValue with nil entries in headers", func(t *testing.T) {
+			headers := []string{"", "ID", ""}
+			row := []string{"value1", "value2", "value3"}
+			result := getStringValue(row, 0, headers, "ID")
+			if result != "value2" {
+				t.Errorf("Expected 'value2', got '%s'", result)
+			}
+		})
+
+		// Test getStringIndex with nil headers
+		t.Run("getStringIndex with nil headers", func(t *testing.T) {
+			result := getStringIndex(nil, []string{"ID"})
+			if result != -1 {
+				t.Errorf("Expected -1, got %d", result)
+			}
+		})
+
+		// Test getStringIndex with empty headers
+		t.Run("getStringIndex with empty headers", func(t *testing.T) {
+			result := getStringIndex([]string{}, []string{"ID"})
+			if result != -1 {
+				t.Errorf("Expected -1, got %d", result)
+			}
+		})
+
+		// Test getStringIndex with nil possibleHeaders
+		t.Run("getStringIndex with nil possibleHeaders", func(t *testing.T) {
+			result := getStringIndex([]string{"ID", "Name"}, nil)
+			if result != -1 {
+				t.Errorf("Expected -1, got %d", result)
+			}
+		})
+
+		// Test getStringIndex with empty possibleHeaders
+		t.Run("getStringIndex with empty possibleHeaders", func(t *testing.T) {
+			result := getStringIndex([]string{"ID", "Name"}, []string{})
+			if result != -1 {
+				t.Errorf("Expected -1, got %d", result)
+			}
+		})
+
+		// Test getStringIndex with nil entries in headers
+		t.Run("getStringIndex with nil entries in headers", func(t *testing.T) {
+			headers := []string{"", "ID", ""}
+			result := getStringIndex(headers, []string{"ID"})
+			if result != 1 {
+				t.Errorf("Expected 1, got %d", result)
+			}
+		})
+
+		// Test getBoolValue with nil row
+		t.Run("getBoolValue with nil row", func(t *testing.T) {
+			result := getBoolValue(nil, 0)
+			if result != false {
+				t.Errorf("Expected false, got %v", result)
+			}
+		})
+
+		// Test getBoolValue with negative index
+		t.Run("getBoolValue with negative index", func(t *testing.T) {
+			result := getBoolValue([]string{"true"}, -1)
+			if result != false {
+				t.Errorf("Expected false, got %v", result)
+			}
+		})
+
+		// Test getBoolValue with out-of-bounds index
+		t.Run("getBoolValue with out-of-bounds index", func(t *testing.T) {
+			result := getBoolValue([]string{"true"}, 10)
+			if result != false {
+				t.Errorf("Expected false, got %v", result)
+			}
+		})
+
+		// Test getBoolValue with empty row
+		t.Run("getBoolValue with empty row", func(t *testing.T) {
+			result := getBoolValue([]string{}, 0)
+			if result != false {
+				t.Errorf("Expected false, got %v", result)
+			}
+		})
+	})
+}
+
+// TestImportFromXLSX_WithUnexpectedDataTypes tests that ImportFromXLSX
+// handles Excel files with unexpected data types without panicking (TODO-007).
+func TestImportFromXLSX_WithUnexpectedDataTypes(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestImportFromXLSX_WithUnexpectedDataTypes", nil, func(t *testing.T, tx *gorm.DB) {
+		store, err := NewLocalAttackStore(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create store: %v", err)
+		}
+
+		tmpDir := t.TempDir()
+		xlsxPath := filepath.Join(tmpDir, "attack_unexpected_types.xlsx")
+
+		f := excelize.NewFile()
+		f.DeleteSheet("Sheet1")
+
+		// Create a Techniques sheet with various edge cases
+		sheetName := "Techniques"
+		f.NewSheet(sheetName)
+
+		// Set header row
+		headers := []interface{}{"ID", "Name", "Description", "Domain", "Platform", "Created", "Modified", "Revoked", "Deprecated"}
+		if err := f.SetSheetRow(sheetName, "A1", &headers); err != nil {
+			t.Fatalf("failed to set header row: %v", err)
+		}
+
+		// Test cases for various unexpected data scenarios
+		testCases := [][]interface{}{
+			// Normal row
+			{"T1001", "Normal Technique", "Description", "enterprise", "Windows", "2020-01-01", "2021-01-01", false, false},
+			// Empty string ID (should be skipped)
+			{"", "Empty ID Technique", "Description", "enterprise", "Windows", "2020-01-01", "2021-01-01", false, false},
+			// Row with fewer columns than expected
+			{"T1002", "Short Row", "Description"},
+			// Boolean values as strings
+			{"T1003", "Bool Technique", "Description", "enterprise", "Linux", "2020-01-01", "2021-01-01", "true", "false"},
+			// Integer values (Excel may return numbers)
+			{1004, "Numeric ID", "Description", "enterprise", "macOS", "2020-01-01", "2021-01-01", 0, 1},
+		}
+
+		for i, testCase := range testCases {
+			rowNum := i + 2
+			if err := f.SetSheetRow(sheetName, fmt.Sprintf("A%d", rowNum), &testCase); err != nil {
+				t.Fatalf("failed to set data row %d: %v", rowNum, err)
+			}
+		}
+
+		if err := f.SaveAs(xlsxPath); err != nil {
+			t.Fatalf("failed to save xlsx: %v", err)
+		}
+
+		// This should not panic even with unexpected data types
+		if err := store.ImportFromXLSX(xlsxPath, true); err != nil {
+			t.Fatalf("ImportFromXLSX returned error: %v", err)
+		}
+
+		// Verify that valid records were imported
+		ctx := context.Background()
+
+		// T1001 should be imported
+		tech1, err := store.GetTechniqueByID(ctx, "T1001")
+		if err != nil {
+			t.Errorf("Failed to get T1001: %v", err)
+		} else if tech1.Name != "Normal Technique" {
+			t.Errorf("T1001 has unexpected name: %s", tech1.Name)
+		}
+
+		// T1002 with short row should be imported (partial data)
+		tech2, err := store.GetTechniqueByID(ctx, "T1002")
+		if err != nil {
+			t.Errorf("Failed to get T1002: %v", err)
+		} else if tech2.Name != "Short Row" {
+			t.Errorf("T1002 has unexpected name: %s", tech2.Name)
+		}
+
+		// T1003 with bool strings should be imported
+		tech3, err := store.GetTechniqueByID(ctx, "T1003")
+		if err != nil {
+			t.Errorf("Failed to get T1003: %v", err)
+		} else if tech3.Name != "Bool Technique" {
+			t.Errorf("T1003 has unexpected name: %s", tech3.Name)
+		}
+
+		// Numeric ID should be converted to string (if Excel returns it as number)
+		// The GetRows function should convert everything to strings
+		tech4, err := store.GetTechniqueByID(ctx, "1004")
+		if err == nil {
+			// If numeric ID was converted, verify the data
+			if tech4.Name != "Numeric ID" {
+				t.Errorf("1004 has unexpected name: %s", tech4.Name)
+			}
+		}
+	})
+}
+
+// TestImportFromXLSX_WithEmptySheet tests that ImportFromXLSX
+// handles Excel files with empty sheets without panicking (TODO-007).
+func TestImportFromXLSX_WithEmptySheet(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestImportFromXLSX_WithEmptySheet", nil, func(t *testing.T, tx *gorm.DB) {
+		store, err := NewLocalAttackStore(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create store: %v", err)
+		}
+
+		tmpDir := t.TempDir()
+		xlsxPath := filepath.Join(tmpDir, "attack_empty_sheet.xlsx")
+
+		f := excelize.NewFile()
+		f.DeleteSheet("Sheet1")
+
+		// Create an empty Techniques sheet (just headers, no data rows)
+		sheetName := "Techniques"
+		f.NewSheet(sheetName)
+		headers := []interface{}{"ID", "Name", "Description", "Domain", "Platform", "Created", "Modified", "Revoked", "Deprecated"}
+		if err := f.SetSheetRow(sheetName, "A1", &headers); err != nil {
+			t.Fatalf("failed to set header row: %v", err)
+		}
+
+		// Create another empty sheet
+		sheetName2 := "Tactics"
+		f.NewSheet(sheetName2)
+		// Don't even add headers to this one
+
+		if err := f.SaveAs(xlsxPath); err != nil {
+			t.Fatalf("failed to save xlsx: %v", err)
+		}
+
+		// This should not panic with empty sheets
+		if err := store.ImportFromXLSX(xlsxPath, true); err != nil {
+			t.Fatalf("ImportFromXLSX returned error: %v", err)
+		}
+
+		// Verify metadata was created even with no data
+		ctx := context.Background()
+		meta, err := store.GetImportMetadata(ctx)
+		if err != nil {
+			t.Fatalf("GetImportMetadata error: %v", err)
+		}
+		if meta.TotalRecords != 0 {
+			t.Errorf("Expected 0 total records, got %d", meta.TotalRecords)
+		}
+	})
+}
+
+// TestImportFromXLSX_WithMalformedHeaders tests that ImportFromXLSX
+// handles Excel files with malformed headers without panicking (TODO-007).
+func TestImportFromXLSX_WithMalformedHeaders(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestImportFromXLSX_WithMalformedHeaders", nil, func(t *testing.T, tx *gorm.DB) {
+		store, err := NewLocalAttackStore(":memory:")
+		if err != nil {
+			t.Fatalf("failed to create store: %v", err)
+		}
+
+		tmpDir := t.TempDir()
+		xlsxPath := filepath.Join(tmpDir, "attack_malformed_headers.xlsx")
+
+		f := excelize.NewFile()
+		f.DeleteSheet("Sheet1")
+
+		// Create a Techniques sheet with malformed headers
+		sheetName := "Techniques"
+		f.NewSheet(sheetName)
+
+		// Set header row with empty strings and special characters
+		headers := []interface{}{"", " ", "ID", "\tName\t", "Description", "", "Domain", "Platform", "Created"}
+		if err := f.SetSheetRow(sheetName, "A1", &headers); err != nil {
+			t.Fatalf("failed to set header row: %v", err)
+		}
+
+		// Set data row
+		dataRow := []interface{}{"ignored", "ignored", "T9999", "Test Technique", "Desc", "ignored", "enterprise", "Windows", "2020-01-01"}
+		if err := f.SetSheetRow(sheetName, "A2", &dataRow); err != nil {
+			t.Fatalf("failed to set data row: %v", err)
+		}
+
+		if err := f.SaveAs(xlsxPath); err != nil {
+			t.Fatalf("failed to save xlsx: %v", err)
+		}
+
+		// This should not panic with malformed headers
+		if err := store.ImportFromXLSX(xlsxPath, true); err != nil {
+			t.Fatalf("ImportFromXLSX returned error: %v", err)
+		}
+
+		// Verify that data was still imported correctly by header matching
+		ctx := context.Background()
+		tech, err := store.GetTechniqueByID(ctx, "T9999")
+		if err != nil {
+			t.Errorf("Failed to get T9999: %v", err)
+		} else {
+			// The function should have matched by header name "ID" at index 2
+			if tech.Name != "Test Technique" {
+				t.Errorf("T9999 has unexpected name: %s (expected 'Test Technique')", tech.Name)
+			}
+		}
+	})
 }

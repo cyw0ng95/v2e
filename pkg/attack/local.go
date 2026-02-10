@@ -413,32 +413,69 @@ func (s *LocalAttackStore) GetImportMetadata(ctx context.Context) (*AttackMetada
 }
 
 // Helper functions for parsing Excel data
+
+// getStringValue safely extracts a string value from a row by column index or header name.
+// It handles nil slices and out-of-bounds access gracefully to prevent panics.
 func getStringValue(row []string, colIndex int, headers []string, possibleHeaders ...string) string {
+	// Guard against nil or empty headers
+	if headers == nil || len(headers) == 0 {
+		// Fallback to index if headers are not available
+		if row != nil && colIndex >= 0 && colIndex < len(row) {
+			return strings.TrimSpace(row[colIndex])
+		}
+		return ""
+	}
+
 	// First, try to find the column by header name
 	for i, header := range headers {
+		// Guard against nil header entries
+		if header == "" {
+			continue
+		}
 		headerLower := strings.ToLower(strings.TrimSpace(header))
 		for _, possibleHeader := range possibleHeaders {
+			if possibleHeader == "" {
+				continue
+			}
 			if headerLower == strings.ToLower(strings.TrimSpace(possibleHeader)) {
-				if i < len(row) {
+				// Safely access row with bounds checking
+				if row != nil && i >= 0 && i < len(row) {
 					return strings.TrimSpace(row[i])
 				}
-				break
+				return ""
 			}
 		}
 	}
 
 	// Fallback to index if headers don't match or row doesn't have enough columns
-	if colIndex < len(row) {
+	if row != nil && colIndex >= 0 && colIndex < len(row) {
 		return strings.TrimSpace(row[colIndex])
 	}
 
 	return ""
 }
 
+// getStringIndex finds the index of a header in the headers slice.
+// It returns -1 if not found or if headers is nil/empty.
 func getStringIndex(headers []string, possibleHeaders []string) int {
+	// Guard against nil or empty headers
+	if headers == nil || len(headers) == 0 {
+		return -1
+	}
+	if possibleHeaders == nil || len(possibleHeaders) == 0 {
+		return -1
+	}
+
 	for i, header := range headers {
+		// Guard against nil header entries
+		if header == "" {
+			continue
+		}
 		headerLower := strings.ToLower(strings.TrimSpace(header))
 		for _, possibleHeader := range possibleHeaders {
+			if possibleHeader == "" {
+				continue
+			}
 			if headerLower == strings.ToLower(strings.TrimSpace(possibleHeader)) {
 				return i
 			}
@@ -447,8 +484,11 @@ func getStringIndex(headers []string, possibleHeaders []string) int {
 	return -1 // Not found
 }
 
+// getBoolValue safely extracts a boolean value from a row by column index.
+// It handles nil slices and out-of-bounds access gracefully to prevent panics.
 func getBoolValue(row []string, colIndex int) bool {
-	if colIndex < 0 || colIndex >= len(row) {
+	// Guard against nil row and invalid indices
+	if row == nil || colIndex < 0 || colIndex >= len(row) {
 		return false
 	}
 

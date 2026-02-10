@@ -8,7 +8,6 @@
 | TODO-004 | asvs | Optimization | Optimize CSV import with streaming and parallel processing | 100 | Medium | |
 | TODO-005 | asvs | Feature | Add incremental update support for CSV imports | 80 | Medium | |
 | TODO-006 | attack | Refactor | Simplify Excel parsing logic by extracting helper functions | 120 | Medium | |
-| TODO-007 | attack | Bug Fix | Fix potential panic when XLSX sheet contains unexpected data types | 50 | High | |
 | TODO-008 | capec | Feature | Add streaming XML parser for large CAPEC files | 250 | High | |
 | TODO-009 | capec | Refactor | Deduplicate duplicate code in ImportFromXML transaction handling | 60 | Medium | |
 | TODO-010 | cce | Feature | Implement CCE update API with field-level diffing | 120 | Low | |
