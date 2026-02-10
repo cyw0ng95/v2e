@@ -1970,6 +1970,7 @@ export interface GLCGraph {
   nodes: string; // JSON array of CADNode
   edges: string; // JSON array of CADEdge
   viewport: string; // JSON viewport state
+  thumbnail?: string; // Base64 data URL for graph preview
   version: number;
   is_archived: boolean;
   created_at: string;

@@ -119,9 +119,11 @@ export default function GLCLandingPage() {
               New Graph
             </Link>
           </Button>
-          <Button variant="ghost" disabled>
-            <FolderOpen className="w-4 h-4 mr-2" />
-            My Graphs (coming soon)
+          <Button variant="ghost" asChild>
+            <Link href="/glc/my-graphs">
+              <FolderOpen className="w-4 h-4 mr-2" />
+              My Graphs
+            </Link>
           </Button>
         </div>
       </div>
