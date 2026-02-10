@@ -349,3 +349,61 @@ Located in `tool/migrations/` with:
 | Runtime logs | `.build/package/logs/` |
 | ULP framework | `pkg/notes/` (learning FSM, strategy pattern, SQLite storage) |
 | UDA framework | `pkg/analysis/` (FSM, graph storage, relationship queries) |
+
+## TODO Management
+
+The project maintains a comprehensive TODO list in `TODO.md` that tracks improvements across all Go packages.
+
+### TODO.md Guidelines
+
+**Location**: `TODO.md` in repository root
+
+**Table Columns**:
+- **ID**: Unique identifier (TODO-NNN format)
+- **Package**: Target package name (e.g., analysis, notes, rpc)
+- **Type**: Task category (Feature, Refactor, Bug Fix, Test, Optimization, Documentation)
+- **Description**: Clear, actionable description of the work
+- **Estimate LoC**: Estimated lines of code including tests (80%+ coverage required)
+- **Priority**: High/Medium/Low based on impact and urgency
+- **Mark WONTFIX?**: Column for marking tasks as obsolete (leave empty for active tasks)
+
+### Managing TODO Tasks
+
+**Adding New Tasks**:
+1. Use next available ID (increment from last TODO-NNN)
+2. Ensure LoC estimate includes test code
+3. Use appropriate Type and Priority based on task nature
+4. Keep descriptions concise but actionable
+
+**Completing Tasks**:
+1. Verify all acceptance criteria are met
+2. Run relevant tests using `./build.sh -t`
+3. Remove the entire row from the table
+4. Maintain markdown table formatting consistency
+
+**Marking as WONTFIX**:
+1. Only mark if feature is no longer relevant or superseded
+2. Keep row in table for historical reference
+3. Add "WONTFIX" to the last column
+
+### Priority Definitions
+
+- **High**: Critical bugs, security issues, blocking features, performance bottlenecks
+- **Medium**: Important improvements, performance optimizations, test coverage gaps
+- **Low**: Nice-to-have features, code quality improvements, documentation
+
+### Code Review Checklist
+
+When reviewing Go packages, reference `TODO.md` to:
+1. Identify areas needing improvement
+2. Track progress across multiple packages
+3. Ensure consistent quality standards
+4. Plan refactoring efforts strategically
+
+**Code Quality Standards**:
+- Functional correctness with proper error handling
+- Clean architecture with single responsibility
+- Readable code with clear naming
+- Comprehensive test coverage (>80%)
+- Performance optimization following `.github/copilot-instructions.md`
+- Security best practices (no hardcoded secrets, proper input validation)
