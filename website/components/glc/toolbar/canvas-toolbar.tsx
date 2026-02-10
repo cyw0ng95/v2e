@@ -17,6 +17,7 @@ import {
   Home,
   MoreHorizontal,
   Activity,
+  FileJson,
 } from 'lucide-react';
 import { useGLCStore } from '@/lib/glc/store';
 import { Button } from '@/components/ui/button';
@@ -31,9 +32,10 @@ interface CanvasToolbarProps {
   onShowExport?: () => void;
   onShowShare?: () => void;
   onShowInferences?: () => void;
+  onShowSTIXImport?: () => void;
 }
 
-export function CanvasToolbar({ preset, graphName, onShowShortcuts, onShowExport, onShowShare, onShowInferences }: CanvasToolbarProps) {
+export function CanvasToolbar({ preset, graphName, onShowShortcuts, onShowExport, onShowShare, onShowInferences, onShowSTIXImport }: CanvasToolbarProps) {
   const { canUndo, canRedo, undo, redo, graph } = useGLCStore();
   const [showGrid, setShowGrid] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -168,6 +170,14 @@ export function CanvasToolbar({ preset, graphName, onShowShortcuts, onShowExport
                 >
                   <Share2 className="w-5 h-5 mr-3" style={{ color: theme.text }} />
                   <span style={{ color: theme.text }}>Share</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="justify-start h-11 px-3"
+                  onClick={() => { onShowSTIXImport?.(); setShowMore(false); }}
+                >
+                  <FileJson className="w-5 h-5 mr-3" style={{ color: theme.text }} />
+                  <span style={{ color: theme.text }}>Import STIX</span>
                 </Button>
                 <Separator orientation="horizontal" className="my-1" style={{ backgroundColor: theme.border }} />
                 <Button

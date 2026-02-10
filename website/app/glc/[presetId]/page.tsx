@@ -34,6 +34,7 @@ import { InferencePanel } from '@/components/glc/d3fend';
 import { useShortcuts, ShortcutsDialog } from '@/lib/glc/shortcuts';
 import { ExportDialog } from '@/components/glc/export';
 import { ShareDialog } from '@/components/glc/share';
+import { STIXImportDialog } from '@/components/glc/stix';
 import { useResponsive, TOUCH_TARGET_SIZE } from '@/lib/glc/responsive';
 
 // Register custom node and edge types
@@ -86,6 +87,7 @@ export default function GLCCanvasPage() {
   const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showInferences, setShowInferences] = useState(false);
+  const [showSTIXImport, setShowSTIXImport] = useState(false);
 
   // Find and set the preset
   useEffect(() => {
@@ -357,6 +359,7 @@ export default function GLCCanvasPage() {
                 onShowExport={() => setShowExport(true)}
                 onShowShare={() => setShowShare(true)}
                 onShowInferences={() => setShowInferences(true)}
+                onShowSTIXImport={() => setShowSTIXImport(true)}
               />
             </Panel>
           </ReactFlow>
@@ -444,6 +447,12 @@ export default function GLCCanvasPage() {
           />
         </div>
       )}
+
+      {/* STIX Import Dialog */}
+      <STIXImportDialog
+        open={showSTIXImport}
+        onOpenChange={setShowSTIXImport}
+      />
     </div>
   );
 }
