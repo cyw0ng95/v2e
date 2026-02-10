@@ -24,6 +24,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/cwe"
+	"github.com/cyw0ng95/v2e/pkg/glc"
 	"github.com/cyw0ng95/v2e/pkg/notes"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	ssglocal "github.com/cyw0ng95/v2e/pkg/ssg/local"
@@ -246,6 +247,20 @@ func main() {
 		ssgStore.Close()
 	}()
 
+	// Initialize GLC store (uses the same bookmark DB for user data)
+	glcStore, err := glc.NewStore(bookmarkDB.GormDB())
+	if err != nil {
+		logger.Error("Failed to initialize GLC store: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("GLC store initialized")
+	// Run GLC table migrations
+	if err := glc.MigrateTables(bookmarkDB.GormDB()); err != nil {
+		logger.Error("Failed to migrate GLC tables: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("GLC tables migrated")
+
 	// Register RPC handlers
 	logger.Info("Registering RPC handlers...")
 	sp.RegisterHandler("RPCSaveCVEByID", createSaveCVEByIDHandler(db, logger))
@@ -366,6 +381,9 @@ func main() {
 	// Register SSG handlers
 	RegisterSSGHandlers(sp, ssgStore, logger)
 	logger.Info("SSG handlers registered")
+
+	// Register GLC handlers
+	RegisterGLCHandlers(sp, glcStore, logger)
 
 	logger.Info(LogMsgServiceStarting, sp.ID)
 	logger.Info(LogMsgServiceStarted)

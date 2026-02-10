@@ -1231,6 +1231,218 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, 
    - Missing CCE ID
    - Database error
 
+### GLC (Graphized Learning Canvas) Operations
+
+#### 101. RPCGLCGraphCreate
+- **Description**: Creates a new GLC graph with nodes and edges
+- **Request Parameters**:
+  - `name` (string, required): Graph name
+  - `description` (string, optional): Graph description
+  - `preset_id` (string, required): Preset identifier (built-in or user-defined)
+  - `nodes` (string, optional): JSON array of CADNode objects (default: "[]")
+  - `edges` (string, optional): JSON array of CADEdge objects (default: "[]")
+  - `viewport` (string, optional): JSON object for viewport state
+  - `tags` (string, optional): JSON array of tags
+- **Response**:
+  - `success` (bool): true if created
+  - `graph` (object): The created graph with generated graph_id
+- **Errors**:
+  - Missing name or preset_id
+  - Database error
+
+#### 102. RPCGLCGraphGet
+- **Description**: Retrieves a graph by graph_id
+- **Request Parameters**:
+  - `graph_id` (string, required): Graph identifier
+- **Response**:
+  - `graph` (object): The graph object with all fields
+- **Errors**:
+  - Missing graph_id
+  - Graph not found
+  - Database error
+
+#### 103. RPCGLCGraphUpdate
+- **Description**: Updates a graph and creates a version snapshot
+- **Request Parameters**:
+  - `graph_id` (string, required): Graph identifier
+  - Any updatable field: name, description, nodes, edges, viewport, tags, is_archived
+- **Response**:
+  - `success` (bool): true if updated
+  - `graph` (object): The updated graph
+- **Errors**:
+  - Missing graph_id
+  - Graph not found
+  - Database error
+
+#### 104. RPCGLCGraphDelete
+- **Description**: Soft-deletes a graph
+- **Request Parameters**:
+  - `graph_id` (string, required): Graph identifier
+- **Response**:
+  - `success` (bool): true if deleted
+- **Errors**:
+  - Missing graph_id
+  - Graph not found
+  - Database error
+
+#### 105. RPCGLCGraphList
+- **Description**: Lists graphs with pagination and optional preset filter
+- **Request Parameters**:
+  - `preset_id` (string, optional): Filter by preset
+  - `offset` (int, optional): Pagination offset (default: 0)
+  - `limit` (int, optional): Pagination limit (default: 20, max: 100)
+- **Response**:
+  - `graphs` (array): Array of graph objects
+  - `total` (int): Total count
+  - `offset` (int): Offset used
+  - `limit` (int): Limit used
+- **Errors**:
+  - Database error
+
+#### 106. RPCGLCGraphListRecent
+- **Description**: Lists recently accessed graphs
+- **Request Parameters**:
+  - `limit` (int, optional): Maximum results (default: 10, max: 50)
+- **Response**:
+  - `graphs` (array): Array of graph objects sorted by updated_at DESC
+- **Errors**:
+  - Database error
+
+#### 107. RPCGLCVersionGet
+- **Description**: Retrieves a specific version of a graph
+- **Request Parameters**:
+  - `graph_id` (string, required): Graph identifier
+  - `version` (int, required): Version number
+- **Response**:
+  - `version` (object): Version object with nodes, edges, viewport
+- **Errors**:
+  - Missing parameters
+  - Version not found
+  - Database error
+
+#### 108. RPCGLCVersionList
+- **Description**: Lists all versions of a graph
+- **Request Parameters**:
+  - `graph_id` (string, required): Graph identifier
+  - `limit` (int, optional): Maximum results (default: 20)
+- **Response**:
+  - `versions` (array): Array of version objects sorted by version DESC
+- **Errors**:
+  - Missing graph_id
+  - Database error
+
+#### 109. RPCGLCVersionRestore
+- **Description**: Restores a graph to a specific version
+- **Request Parameters**:
+  - `graph_id` (string, required): Graph identifier
+  - `version` (int, required): Version number to restore
+- **Response**:
+  - `success` (bool): true if restored
+  - `graph` (object): The restored graph
+- **Errors**:
+  - Missing parameters
+  - Version not found
+  - Database error
+
+#### 110. RPCGLCPresetCreate
+- **Description**: Creates a new user-defined preset
+- **Request Parameters**:
+  - `name` (string, required): Preset name
+  - `version` (string, optional): Preset version
+  - `description` (string, optional): Preset description
+  - `author` (string, optional): Author name
+  - `theme` (object, required): CanvasPresetTheme JSON object
+  - `behavior` (object, required): CanvasPresetBehavior JSON object
+  - `node_types` (array, required): NodeTypeDefinition JSON array
+  - `relationships` (array, required): RelationshipDefinition JSON array
+- **Response**:
+  - `success` (bool): true if created
+  - `preset` (object): The created preset with generated preset_id
+- **Errors**:
+  - Missing required fields
+  - Database error
+
+#### 111. RPCGLCPresetGet
+- **Description**: Retrieves a user preset by preset_id
+- **Request Parameters**:
+  - `preset_id` (string, required): Preset identifier
+- **Response**:
+  - `preset` (object): The preset object
+- **Errors**:
+  - Missing preset_id
+  - Preset not found
+  - Database error
+
+#### 112. RPCGLCPresetUpdate
+- **Description**: Updates a user preset
+- **Request Parameters**:
+  - `preset_id` (string, required): Preset identifier
+  - Any updatable field: name, version, description, author, theme, behavior, node_types, relationships
+- **Response**:
+  - `success` (bool): true if updated
+  - `preset` (object): The updated preset
+- **Errors**:
+  - Missing preset_id
+  - Preset not found
+  - Database error
+
+#### 113. RPCGLCPresetDelete
+- **Description**: Soft-deletes a user preset
+- **Request Parameters**:
+  - `preset_id` (string, required): Preset identifier
+- **Response**:
+  - `success` (bool): true if deleted
+- **Errors**:
+  - Missing preset_id
+  - Preset not found
+  - Database error
+
+#### 114. RPCGLCPresetList
+- **Description**: Lists all user presets
+- **Request Parameters**: None
+- **Response**:
+  - `presets` (array): Array of preset objects
+- **Errors**:
+  - Database error
+
+#### 115. RPCGLCShareCreateLink
+- **Description**: Creates a share link for a graph
+- **Request Parameters**:
+  - `graph_id` (string, required): Graph identifier
+  - `password` (string, optional): Password protection
+  - `expires_in_hours` (float, optional): Expiration time in hours
+- **Response**:
+  - `success` (bool): true if created
+  - `share_link` (object): The share link with link_id
+- **Errors**:
+  - Missing graph_id
+  - Database error
+
+#### 116. RPCGLCShareGetShared
+- **Description**: Retrieves a shared graph via link_id
+- **Request Parameters**:
+  - `link_id` (string, required): Share link identifier
+  - `password` (string, optional): Password if protected
+- **Response**:
+  - `graph` (object): The shared graph
+- **Errors**:
+  - Missing link_id
+  - Invalid password
+  - Share link expired
+  - Database error
+
+#### 117. RPCGLCShareGetEmbedData
+- **Description**: Retrieves embed data for a share link
+- **Request Parameters**:
+  - `link_id` (string, required): Share link identifier
+- **Response**:
+  - `share_link` (object): The share link object
+  - `graph` (object): The graph object
+- **Errors**:
+  - Missing link_id
+  - Share link not found
+  - Database error
+
  ## Configuration
  - **CVE Database Path**: Configurable via `CVE_DB_PATH` environment variable (default: "cve.db")
  - **CWE Database Path**: Configurable via `CWE_DB_PATH` environment variable (default: "cwe.db")
@@ -1242,11 +1454,12 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, 
 - **SSG Database Path**: Configurable via `SSG_DB_PATH` environment variable (default: "ssg.db")
 
 ## Notes
-- Uses SQLite databases for local storage of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, bookmarks, notes, and memory cards
+- Uses SQLite databases for local storage of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, bookmarks, notes, memory cards, and GLC graphs
 - Automatically imports ATT&CK data from XLSX files in the assets directory at startup
-- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE) in separate databases
+- Supports multiple data types (CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, GLC) in separate databases
 - Provides comprehensive CRUD operations for all data types
 - ASVS data can be imported from the official OWASP ASVS v5.0.0 CSV file on GitHub
 - Includes pagination support for listing operations
 - SSG data is read-only after import (no update or delete operations)
 - Cross-references enable navigation between related SSG objects based on rule IDs, CCE identifiers, products, and profile IDs
+- GLC graphs support versioning for undo/restore functionality and share links for collaboration
