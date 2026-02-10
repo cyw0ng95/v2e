@@ -6,3 +6,4 @@
 
 export { ClassBrowser } from './class-browser';
 export { ClassPicker } from './class-picker';
+export { D3FENDInferencePanel as InferencePanel } from './inference-panel';

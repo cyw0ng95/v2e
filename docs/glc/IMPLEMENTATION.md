@@ -25,7 +25,7 @@
 | 3 | Advanced Features | 8 weeks | ✅ COMPLETE |
 | 4 | UI Polish & Testing | 12 weeks | ✅ COMPLETE |
 | 5 | Backend Integration | 12 weeks | ✅ COMPLETE |
-| **Total** | | **48 weeks** | **100% Complete** |
+| **Total** | | **48 weeks** | **~97% Complete** |
 
 ---
 
@@ -167,13 +167,15 @@
 ### Jobs
 
 #### J3.1 D3FEND Ontology Integration ✅ COMPLETE
-**Files**: `lib/glc/d3fend/ontology.ts`, `lib/glc/d3fend/loader.ts`, `lib/glc/d3fend/types.ts`, `components/glc/d3fend/class-browser.tsx`, `components/glc/d3fend/class-picker.tsx`
+**Files**: `lib/glc/d3fend/ontology.ts`, `lib/glc/d3fend/loader.ts`, `lib/glc/d3fend/types.ts`, `components/glc/d3fend/class-browser.tsx`, `components/glc/d3fend/class-picker.tsx`, `lib/glc/d3fend/inference-engine.ts`, `components/glc/d3fend/inference-panel.tsx`, `components/glc/context-menu/d3fend-context-menu.tsx`
 - ✅ Simplified D3FEND class hierarchy
 - ✅ Search, ancestors, children helpers
 - ✅ Lazy loading full D3FEND data from assets
 - ✅ Virtualized tree for class browser component
 - ✅ Class picker UI component
-- ❌ TODO: Inference engine (sensors, defensive techniques, weakness)
+- ✅ Inference engine (sensors, defensive techniques, weakness mapping)
+- ✅ D3FEND context menu for node-level inferences
+- ✅ Inference panel showing sensor coverage and analysis
 
 #### J3.2 Graph Save/Load ✅ COMPLETE
 **Files**: `lib/glc/io/graph-io.ts`
@@ -187,21 +189,15 @@
 **Files**: `lib/glc/io/exporters.ts`, `components/glc/export/export-dialog.tsx`
 - ✅ PNG export (html-to-image)
 - ✅ SVG export (html-to-image)
-- ✅ PDF export (jsPDF) - not implemented
+- ⏳ TODO: PDF export (jsPDF) - not implemented
 - ✅ Export dialog with options
 
-#### J3.4 STIX 2.1 Import ✅ COMPLETE
-**Files**: `lib/glc/stix/types.ts`, `lib/glc/stix/import-engine.ts`, `components/glc/stix/stix-import-dialog.tsx`
-- ✅ Parse STIX 2.1 JSON format
-- ✅ Validate STIX objects with Zod schemas
-- ✅ Map STIX types to GLC node types
-- ✅ Map STIX to D3FEND ontology
-- ✅ Convert STIX relationships to GLC edges
-- ✅ Filter objects by include/exclude types
-- ✅ Extract properties and external references
-- ✅ Drag-and-drop file upload
-- ✅ Import dialog with validation results
-- ✅ Unit tests for import engine
+#### J3.4 STIX 2.1 Import ❌ NOT STARTED
+**Files**: `lib/glc/stix/*.ts`, `components/glc/stix/stix-import-dialog.tsx`
+- ❌ TODO: Parse STIX JSON
+- ❌ TODO: Validate objects and relationships
+- ❌ TODO: Map to GLC graph structure
+- ❌ TODO: Map to D3FEND ontology
 
 #### J3.5 Custom Preset Editor ❌ NOT STARTED
 **Files**: `components/glc/preset-editor/*.tsx`
@@ -531,24 +527,21 @@ website/assets/
 
 ## Open TODO Items
 
-### Phase 3 Remaining Work (J3.5-J3.7)
+### Phase 3 Remaining Work (J3.4-J3.7)
 
 | Job | Priority | Effort | Description |
 |-----|----------|--------|-------------|
+| J3.4 | MEDIUM | 2 weeks | STIX 2.1 import with validation and mapping |
 | J3.5 | LOW | 3 weeks | Custom preset editor wizard (5-step) |
 | J3.6 | LOW | 1 week | Example graphs and gallery |
 | J3.7 | LOW | 1 week | Smart edge routing (A* pathfinding) |
 
-### Phase 4 Remaining Work (J4.8)
+### Phase 4 Remaining Work (J4.3, J4.8)
 
 | Job | Priority | Effort | Description |
 |-----|----------|--------|-------------|
-| J4.8 | HIGH | 1 week | Additional component/integration/E2E tests (>80% coverage) |
-
-**Recent Progress (Feb 2026)**:
-- ✅ Added D3FEND inference engine tests
-- ✅ Added STIX import engine tests
-- ✅ Added component tests (DynamicNode, NodePalette, CanvasToolbar, InferencePanel)
+| J4.3 | MEDIUM | 1 week | Responsive design (mobile/tablet layouts) |
+| J4.8 | HIGH | 2 weeks | Unit/component/E2E tests (>80% coverage) |
 
 ### Phase 5 Remaining Work (J5.4-J5.8)
 

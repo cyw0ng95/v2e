@@ -22,3 +22,20 @@ export {
   searchClasses,
   resetLoader,
 } from './loader';
+
+// Inference engine
+export {
+  D3FENDInferenceEngine,
+  createInferenceEngine,
+  getNodeInferences,
+  getGraphInferences,
+  getSensorCoverage,
+} from './inference-engine';
+export type {
+  InferenceResult,
+  InferenceType,
+  Severity,
+  SensorDetection,
+  MitigationSuggestion,
+  WeaknessMapping,
+} from './inference-engine';

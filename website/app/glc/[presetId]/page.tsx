@@ -29,6 +29,8 @@ import { DynamicEdge } from '@/components/glc/canvas/dynamic-edge';
 import { NodeDetailsSheet } from '@/components/glc/canvas/node-details-sheet';
 import { EdgeDetailsSheet } from '@/components/glc/canvas/edge-details-sheet';
 import { CanvasContextMenu, EdgeContextMenu } from '@/components/glc/context-menu/canvas-context-menu';
+import { D3FENDContextMenu } from '@/components/glc/context-menu/d3fend-context-menu';
+import { InferencePanel } from '@/components/glc/d3fend';
 import { useShortcuts, ShortcutsDialog } from '@/lib/glc/shortcuts';
 import { ExportDialog } from '@/components/glc/export';
 import { ShareDialog } from '@/components/glc/share';
@@ -72,10 +74,18 @@ export default function GLCCanvasPage() {
     y: number;
   } | null>(null);
 
+  // D3FEND context menu state
+  const [d3fendContextMenu, setD3fendContextMenu] = useState<{
+    nodeId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Dialog state
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showInferences, setShowInferences] = useState(false);
 
   // Find and set the preset
   useEffect(() => {
@@ -164,6 +174,7 @@ export default function GLCCanvasPage() {
     setSelectedNode(null);
     setSelectedEdge(null);
     setEdgeContextMenu(null);
+    setD3fendContextMenu(null);
   }, []);
 
   // Handle edge context menu
@@ -175,6 +186,19 @@ export default function GLCCanvasPage() {
       y: event.clientY,
     });
   }, []);
+
+  // Handle node context menu for D3FEND inferences
+  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    // Only show D3FEND context menu for D3FEND preset
+    if (currentPreset?.meta.id === 'd3fend' && currentPreset?.behavior.enableInference) {
+      event.preventDefault();
+      setD3fendContextMenu({
+        nodeId: node.id,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    }
+  }, [currentPreset]);
 
   // Close edge context menu
   const closeEdgeContextMenu = useCallback(() => {
@@ -302,6 +326,7 @@ export default function GLCCanvasPage() {
             onEdgeClick={onEdgeClick}
             onPaneClick={onPaneClick}
             onEdgeContextMenu={onEdgeContextMenu}
+            onNodeContextMenu={onNodeContextMenu}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             style={flowStyle}
@@ -331,6 +356,7 @@ export default function GLCCanvasPage() {
                 onShowShortcuts={() => setShowShortcuts(true)}
                 onShowExport={() => setShowExport(true)}
                 onShowShare={() => setShowShare(true)}
+                onShowInferences={() => setShowInferences(true)}
               />
             </Panel>
           </ReactFlow>
@@ -353,6 +379,21 @@ export default function GLCCanvasPage() {
             >
               <div className="w-0 h-0" />
             </EdgeContextMenu>
+          </div>
+        )}
+
+        {/* D3FEND Context Menu (positioned absolutely) */}
+        {d3fendContextMenu && (
+          <div
+            className="fixed z-50"
+            style={{ left: d3fendContextMenu.x, top: d3fendContextMenu.y }}
+          >
+            <D3FENDContextMenu
+              nodeId={d3fendContextMenu.nodeId}
+              nodes={nodes}
+              position={{ x: d3fendContextMenu.x, y: d3fendContextMenu.y }}
+              onClose={() => setD3fendContextMenu(null)}
+            />
           </div>
         )}
       </div>
@@ -391,6 +432,18 @@ export default function GLCCanvasPage() {
         open={showShare}
         onOpenChange={setShowShare}
       />
+
+      {/* Inference Panel */}
+      {showInferences && (
+        <div className="fixed top-20 right-4 z-40">
+          <InferencePanel
+            nodes={nodes}
+            edges={edges}
+            isOpen={showInferences}
+            onClose={() => setShowInferences(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
