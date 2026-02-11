@@ -57,9 +57,9 @@ type BaseProviderFSM struct {
 	eventQueue     chan *Event
 
 	// Common configuration for all providers
-	batchSize    int
-	maxRetries   int
-	retryDelay   time.Duration
+	batchSize  int
+	maxRetries int
+	retryDelay time.Duration
 
 	// Dependencies: list of provider IDs that must complete before this provider can start
 	dependencies []string
@@ -76,9 +76,9 @@ type ProviderConfig struct {
 	Dependencies []string
 
 	// Common configuration (defaults applied if zero)
-	BatchSize    int           // Default: 100
-	MaxRetries   int           // Default: 3
-	RetryDelay   time.Duration // Default: 5 * time.Second
+	BatchSize  int           // Default: 100
+	MaxRetries int           // Default: 3
+	RetryDelay time.Duration // Default: 5 * time.Second
 }
 
 // NewBaseProviderFSM creates a new base provider FSM

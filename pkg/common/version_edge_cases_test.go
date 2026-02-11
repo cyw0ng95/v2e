@@ -1,14 +1,16 @@
 package common
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestVersion_ConcurrentAccess tests concurrent access to the Version function

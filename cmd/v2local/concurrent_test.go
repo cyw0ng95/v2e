@@ -8,12 +8,13 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 )
 
 // TestCVEHandlers_ConcurrentAccess tests concurrent access to CVE database operations
@@ -52,16 +53,16 @@ func TestCVEHandlers_ConcurrentAccess(t *testing.T) {
 					for j := 0; j < numItemsPerGoroutine; j++ {
 						id := fmt.Sprintf("CVE-2024-%04d", goroutineID*100+j)
 						item := cve.CVEItem{
-							ID: id,
+							ID:           id,
 							Descriptions: []cve.Description{{Lang: "en", Value: fmt.Sprintf("Test %d", j)}},
 						}
 						payload, _ := subprocess.MarshalFast(item)
 						msg := &subprocess.Message{
-							Type: subprocess.MessageTypeRequest,
-							ID: fmt.Sprintf("create-%s", id),
+							Type:    subprocess.MessageTypeRequest,
+							ID:      fmt.Sprintf("create-%s", id),
 							Payload: payload,
-							Source: "test",
-							Target: "local",
+							Source:  "test",
+							Target:  "local",
 						}
 						resp, err := createH(ctx, msg)
 						if err != nil || resp == nil || resp.Type != subprocess.MessageTypeResponse {
@@ -101,13 +102,13 @@ func TestCVEHandlers_ConcurrentAccess(t *testing.T) {
 		t.Run("ConcurrentReads", func(t *testing.T) {
 			// First, create a CVE to read
 			item := cve.CVEItem{
-				ID: "CVE-2024-5000",
+				ID:           "CVE-2024-5000",
 				Descriptions: []cve.Description{{Lang: "en", Value: "Concurrent test"}},
 			}
 			payload, _ := subprocess.MarshalFast(item)
 			createMsg := &subprocess.Message{
-				Type: subprocess.MessageTypeRequest,
-				ID: "create-5000",
+				Type:    subprocess.MessageTypeRequest,
+				ID:      "create-5000",
 				Payload: payload,
 			}
 			createH(ctx, createMsg)
@@ -125,8 +126,8 @@ func TestCVEHandlers_ConcurrentAccess(t *testing.T) {
 					for j := 0; j < readsPerGoroutine; j++ {
 						getPayload, _ := subprocess.MarshalFast(map[string]string{"cve_id": "CVE-2024-5000"})
 						getMsg := &subprocess.Message{
-							Type: subprocess.MessageTypeRequest,
-							ID: fmt.Sprintf("get-%d", j),
+							Type:    subprocess.MessageTypeRequest,
+							ID:      fmt.Sprintf("get-%d", j),
 							Payload: getPayload,
 						}
 						resp, err := getH(ctx, getMsg)
@@ -167,13 +168,13 @@ func TestCVEHandlers_ConcurrentAccess(t *testing.T) {
 					for j := 0; j < operationsPerGoroutine; j++ {
 						id := fmt.Sprintf("CVE-2025-%04d", writerID*1000+j)
 						item := cve.CVEItem{
-							ID: id,
+							ID:           id,
 							Descriptions: []cve.Description{{Lang: "en", Value: fmt.Sprintf("Writer %d item %d", writerID, j)}},
 						}
 						payload, _ := subprocess.MarshalFast(item)
 						msg := &subprocess.Message{
-							Type: subprocess.MessageTypeRequest,
-							ID: fmt.Sprintf("write-%d", j),
+							Type:    subprocess.MessageTypeRequest,
+							ID:      fmt.Sprintf("write-%d", j),
 							Payload: payload,
 						}
 						resp, err := createH(ctx, msg)
@@ -194,8 +195,8 @@ func TestCVEHandlers_ConcurrentAccess(t *testing.T) {
 						id := fmt.Sprintf("CVE-2025-%04d", (j%20)*1000+(j%10))
 						getPayload, _ := subprocess.MarshalFast(map[string]string{"cve_id": id})
 						getMsg := &subprocess.Message{
-							Type: subprocess.MessageTypeRequest,
-							ID: fmt.Sprintf("read-%d-%d", readerID, j),
+							Type:    subprocess.MessageTypeRequest,
+							ID:      fmt.Sprintf("read-%d-%d", readerID, j),
 							Payload: getPayload,
 						}
 						resp, err := getH(ctx, getMsg)
@@ -233,12 +234,12 @@ func TestCVEHandlers_ConcurrentAccess(t *testing.T) {
 				go func(goroutineID int) {
 					defer wg.Done()
 					for j := 0; j < listsPerGoroutine; j++ {
-						offset := (goroutineID * listsPerGoroutine + j) % 100
+						offset := (goroutineID*listsPerGoroutine + j) % 100
 						limit := 10
 						payload, _ := subprocess.MarshalFast(map[string]int{"offset": offset, "limit": limit})
 						msg := &subprocess.Message{
-							Type: subprocess.MessageTypeRequest,
-							ID: fmt.Sprintf("list-%d-%d", goroutineID, j),
+							Type:    subprocess.MessageTypeRequest,
+							ID:      fmt.Sprintf("list-%d-%d", goroutineID, j),
 							Payload: payload,
 						}
 						resp, err := listH(ctx, msg)
@@ -297,13 +298,13 @@ func TestCVEHandlers_ConcurrentUpdates(t *testing.T) {
 				go func(updateID int) {
 					defer wg.Done()
 					updated := cve.CVEItem{
-						ID: "CVE-2024-9999",
+						ID:           "CVE-2024-9999",
 						Descriptions: []cve.Description{{Lang: "en", Value: fmt.Sprintf("Update %d", updateID)}},
 					}
 					payload, _ := subprocess.MarshalFast(updated)
 					msg := &subprocess.Message{
-						Type: subprocess.MessageTypeRequest,
-						ID: fmt.Sprintf("update-%d", updateID),
+						Type:    subprocess.MessageTypeRequest,
+						ID:      fmt.Sprintf("update-%d", updateID),
 						Payload: payload,
 					}
 					resp, err := updateH(ctx, msg)

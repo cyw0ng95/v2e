@@ -1,10 +1,12 @@
 package main
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"strings"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestGenerateBuildFlags(t *testing.T) {

@@ -1,12 +1,14 @@
 package mq
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"fmt"
 	"sync"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )

@@ -2,10 +2,11 @@ package notes
 
 import (
 	"context"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"gorm.io/gorm"
 )

@@ -11,7 +11,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"

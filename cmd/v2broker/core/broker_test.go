@@ -1,14 +1,16 @@
 package core
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"bytes"
 	"os"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 )
@@ -63,7 +65,7 @@ func TestBroker_SetLogger(t *testing.T) {
 
 		// Spawn a process to generate logs
 		_, _ = broker.Spawn("test", "echo", "hello")
-	
+
 		// Poll for process to start and generate logs
 		deadline := time.Now().Add(500 * time.Millisecond)
 		for time.Now().Before(deadline) {
@@ -111,7 +113,7 @@ func TestBroker_Shutdown(t *testing.T) {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-	
+
 		if !processStarted {
 			t.Fatal("Process did not start within timeout")
 		}

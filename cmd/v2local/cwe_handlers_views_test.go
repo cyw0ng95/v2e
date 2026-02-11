@@ -1,13 +1,15 @@
 package main
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cwe"

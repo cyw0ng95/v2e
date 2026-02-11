@@ -6,17 +6,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/ratelimit"
-	"github.com/gin-gonic/gin"
 )
 
 // Rate limit configuration constants
 const (
-	defaultMaxTokens    = 100               // Maximum requests per window
-	defaultRefillRate   = time.Second       // Add one token per second
-	defaultCleanupIntvl = time.Minute * 5   // Cleanup interval
-	maxTokensPerClient  = 50                // Per-client burst limit
+	defaultMaxTokens    = 100             // Maximum requests per window
+	defaultRefillRate   = time.Second     // Add one token per second
+	defaultCleanupIntvl = time.Minute * 5 // Cleanup interval
+	maxTokensPerClient  = 50              // Per-client burst limit
 )
 
 // RateLimiterConfig holds configuration for the rate limiter middleware

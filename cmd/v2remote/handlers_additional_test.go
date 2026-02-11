@@ -1,8 +1,6 @@
 package main
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -11,10 +9,15 @@ import (
 	"testing"
 	"unsafe"
 
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+
+	"github.com/go-resty/resty/v2"
+
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	"github.com/go-resty/resty/v2"
 )
 
 // newTestFetcher returns a fetcher configured to talk to serverURL by rewriting

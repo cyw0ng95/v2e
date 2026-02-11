@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+
 	"github.com/cyw0ng95/v2e/pkg/ssg"
 )
 

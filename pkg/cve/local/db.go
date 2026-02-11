@@ -4,11 +4,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/cve"
-	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 // DB represents the database connection

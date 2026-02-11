@@ -160,7 +160,7 @@ func listMemoryCardsHandler(service *notes.MemoryCardService, logger *common.Log
 func rateMemoryCardHandler(service *notes.MemoryCardService, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params struct {
-			CardID uint            `json:"card_id"`
+			CardID uint             `json:"card_id"`
 			Rating notes.CardRating `json:"rating"`
 		}
 		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {

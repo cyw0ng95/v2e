@@ -5,12 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/cve/local"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 )
 
 // TestCVEHandlers_DatabaseOperations tests complete CRUD operations on CVE database
@@ -67,7 +68,7 @@ func TestCVEHandlers_DatabaseOperations(t *testing.T) {
 			updateH := createUpdateCVEHandler(db, logger)
 
 			updated := cve.CVEItem{
-				ID: "CVE-2024-1001",
+				ID:           "CVE-2024-1001",
 				Descriptions: []cve.Description{{Lang: "en", Value: "Updated description"}},
 			}
 			payload, _ := subprocess.MarshalFast(updated)

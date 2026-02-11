@@ -18,9 +18,9 @@ import (
 
 // FSM infrastructure globals
 var (
-	macroFSM     *fsm.MacroFSMManager
-	fsmProviders map[string]fsm.ProviderFSM
-	storageDB    *storage.Store
+	macroFSM      *fsm.MacroFSMManager
+	fsmProviders  map[string]fsm.ProviderFSM
+	storageDB     *storage.Store
 	fsmSubprocess *subprocess.Subprocess
 )
 

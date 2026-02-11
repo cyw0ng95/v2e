@@ -1,11 +1,13 @@
 package jsonutil
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"strings"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestUnmarshalFunctionality tests the Unmarshal function with various data types

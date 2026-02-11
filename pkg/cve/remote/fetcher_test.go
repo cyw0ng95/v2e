@@ -2,12 +2,13 @@ package remote
 
 import (
 	"errors"
-	"sync"
-	"time"
-	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 )

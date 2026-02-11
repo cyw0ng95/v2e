@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestNewParser(t *testing.T) {

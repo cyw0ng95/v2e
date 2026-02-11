@@ -1,10 +1,12 @@
 package core
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"sync"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/cmd/v2broker/transport"
 	"github.com/cyw0ng95/v2e/pkg/proc"

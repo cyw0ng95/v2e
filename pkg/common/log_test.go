@@ -2,12 +2,14 @@ package common
 
 import (
 	"bytes"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestLogLevel_String(t *testing.T) {

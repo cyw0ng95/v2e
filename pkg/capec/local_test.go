@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -247,16 +248,16 @@ func TestUtilityFunctions(t *testing.T) {
 		assert.True(t, utf8.ValidString(truncated), "truncated emoji string should be valid UTF-8")
 
 		// Test truncation in middle of multi-byte sequence
-		mixedText := "ABC日本語XYZ" // ABC (3) + 日本語 (9) + XYZ (3) = 15 bytes
+		mixedText := "ABC日本語XYZ"                 // ABC (3) + 日本語 (9) + XYZ (3) = 15 bytes
 		truncated = truncateString(mixedText, 8) // Should cut after "ABC" (6 bytes) + 2 bytes of "日"
 		// Should only include "ABC" to avoid cutting the multi-byte character
 		assert.Equal(t, "ABC", truncated)
 		assert.True(t, utf8.ValidString(truncated), "truncated mixed string should be valid UTF-8")
 
 		// Test edge case: single byte past a multi-byte boundary
-		chineseText := "测试文本" // Each Chinese character is 3 bytes
+		chineseText := "测试文本"                      // Each Chinese character is 3 bytes
 		truncated = truncateString(chineseText, 4) // 1 char (3 bytes) + 1 byte
-		assert.Equal(t, "测", truncated) // Should be 1 complete character
+		assert.Equal(t, "测", truncated)            // Should be 1 complete character
 		assert.True(t, utf8.ValidString(truncated), "truncated Chinese string should be valid UTF-8")
 	})
 

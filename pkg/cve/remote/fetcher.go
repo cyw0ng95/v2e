@@ -3,16 +3,18 @@ package remote
 import (
 	"errors"
 	"fmt"
-	"golang.org/x/net/http2"
 	"net"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
+	"golang.org/x/net/http2"
+
+	"github.com/go-resty/resty/v2"
+
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
-	"github.com/go-resty/resty/v2"
 )
 
 // ErrRateLimited is returned when the NVD API returns a 429 status

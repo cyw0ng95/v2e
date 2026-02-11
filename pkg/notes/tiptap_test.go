@@ -167,33 +167,33 @@ func TestValidateTipTapJSON_InvalidDocuments(t *testing.T) {
 
 func TestIsTipTapJSONEmpty(t *testing.T) {
 	tests := []struct {
-		name     string
-		content  string
+		name      string
+		content   string
 		wantEmpty bool
 	}{
 		{
-			name:     "empty string",
-			content:  "",
+			name:      "empty string",
+			content:   "",
 			wantEmpty: true,
 		},
 		{
-			name:     "empty doc",
-			content:  `{"type":"doc","content":[]}`,
+			name:      "empty doc",
+			content:   `{"type":"doc","content":[]}`,
 			wantEmpty: true,
 		},
 		{
-			name:     "doc with empty paragraph",
-			content:  `{"type":"doc","content":[{"type":"paragraph"}]}`,
+			name:      "doc with empty paragraph",
+			content:   `{"type":"doc","content":[{"type":"paragraph"}]}`,
 			wantEmpty: false, // Paragraph node exists, so not empty
 		},
 		{
-			name:     "doc with text",
-			content:  `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hello"}]}]}`,
+			name:      "doc with text",
+			content:   `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hello"}]}]}`,
 			wantEmpty: false,
 		},
 		{
-			name:     "invalid JSON",
-			content:  `not json`,
+			name:      "invalid JSON",
+			content:   `not json`,
 			wantEmpty: true,
 		},
 	}

@@ -1,15 +1,18 @@
 package local
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/cve"
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cyw0ng95/v2e/pkg/cve"
 )
 
 func TestNewDB_ErrorCases(t *testing.T) {
@@ -380,9 +383,9 @@ func TestGetCVERaw(t *testing.T) {
 		defer db.Close()
 
 		cveItem := &cve.CVEItem{
-			ID:           "CVE-2021-RAWTEST",
-			SourceID:     "test",
-			VulnStatus:   "Analyzed",
+			ID:         "CVE-2021-RAWTEST",
+			SourceID:   "test",
+			VulnStatus: "Analyzed",
 		}
 		saveErr := db.SaveCVE(cveItem)
 		require.NoError(t, saveErr)

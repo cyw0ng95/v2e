@@ -25,9 +25,9 @@ type serviceToSpawn struct {
 // allowedCommandPrefixes defines secure command prefixes that are whitelisted.
 // Commands must start with one of these prefixes to prevent path traversal.
 var allowedCommandPrefixes = []string{
-	"./",           // Current directory relative paths
-	"../",          // Parent directory relative paths (for build directories)
-	"",             // Simple command names (looked up in PATH)
+	"./",  // Current directory relative paths
+	"../", // Parent directory relative paths (for build directories)
+	"",    // Simple command names (looked up in PATH)
 }
 
 // validateCommandPath validates that a command path is safe to execute.

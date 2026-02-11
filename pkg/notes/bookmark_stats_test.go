@@ -1,10 +1,11 @@
 package notes
 
 import (
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

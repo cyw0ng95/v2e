@@ -5,11 +5,12 @@ import (
 	"os"
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/graph"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/cyw0ng95/v2e/pkg/urn"
-	"gorm.io/gorm"
 )
 
 func BenchmarkSaveGraph(b *testing.B) {

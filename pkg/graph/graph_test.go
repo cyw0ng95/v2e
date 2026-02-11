@@ -3,9 +3,10 @@ package graph
 import (
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/cyw0ng95/v2e/pkg/urn"
-	"gorm.io/gorm"
 )
 
 func TestGraphBasicOperations(t *testing.T) {

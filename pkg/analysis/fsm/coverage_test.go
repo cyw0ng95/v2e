@@ -5,9 +5,10 @@ import (
 	"os"
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 )
 
 func TestAnalyzeFSM_CanProcess(t *testing.T) {

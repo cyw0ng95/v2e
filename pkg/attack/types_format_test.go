@@ -3,10 +3,12 @@ package attack
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"strings"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestAttackTechnique_JSONMarshalUnmarshal covers ATT&CK technique JSON serialization.

@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestAttackPatternValidation tests attack pattern validation functionality

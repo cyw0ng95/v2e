@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // BenchmarkAdaptiveRetry_Success benchmarks successful requests without retry

@@ -1,9 +1,11 @@
 package subprocess
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestUnmarshalFast_InvalidJSON(t *testing.T) {

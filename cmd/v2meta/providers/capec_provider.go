@@ -1,10 +1,11 @@
 package providers
 
 import (
-	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/cve/taskflow"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"

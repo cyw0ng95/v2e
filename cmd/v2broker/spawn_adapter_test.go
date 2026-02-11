@@ -3,9 +3,10 @@ package main
 import (
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/cmd/v2broker/core"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 )
 
 func TestSetSpawnerAndToResult(t *testing.T) {

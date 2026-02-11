@@ -11,11 +11,11 @@ import (
 // Tokens are added at a fixed rate until the bucket is full.
 // Each request consumes one token; requests are denied when the bucket is empty.
 type TokenBucket struct {
-	mu          sync.Mutex
-	tokens      int
-	maxTokens   int
-	refillRate  time.Duration
-	lastRefill  time.Time
+	mu         sync.Mutex
+	tokens     int
+	maxTokens  int
+	refillRate time.Duration
+	lastRefill time.Time
 }
 
 // NewTokenBucket creates a new token bucket rate limiter.
@@ -64,9 +64,9 @@ func (tb *TokenBucket) Allow() bool {
 
 // ClientLimiter tracks rate limits per client IP address.
 type ClientLimiter struct {
-	mu        sync.RWMutex
-	limiters  map[string]*TokenBucket
-	maxTokens int
+	mu         sync.RWMutex
+	limiters   map[string]*TokenBucket
+	maxTokens  int
 	refillRate time.Duration
 }
 

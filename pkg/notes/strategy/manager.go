@@ -5,8 +5,9 @@ import (
 	"log"
 	"sync"
 
-	"github.com/cyw0ng95/v2e/pkg/notes"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/notes"
 )
 
 // Manager handles automatic strategy switching based on user behavior

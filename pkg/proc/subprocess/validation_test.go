@@ -20,7 +20,7 @@ func TestValidator_ValidateRequired(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateRequired(tt.value, "field")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateRequired() hasError = %v, want %v", v.HasErrors(), tt.wantError)
 			}
 		})
@@ -45,7 +45,7 @@ func TestValidator_ValidateCVEID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateCVEID(tt.value, "cve_id")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateCVEID(%s) hasError = %v, want %v", tt.value, v.HasErrors(), tt.wantError)
 			}
 		})
@@ -69,7 +69,7 @@ func TestValidator_ValidateCWEID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateCWEID(tt.value, "cwe_id")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateCWEID(%s) hasError = %v, want %v", tt.value, v.HasErrors(), tt.wantError)
 			}
 		})
@@ -91,7 +91,7 @@ func TestValidator_ValidateCAPECID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateCAPECID(tt.value, "capec_id")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateCAPECID(%s) hasError = %v, want %v", tt.value, v.HasErrors(), tt.wantError)
 			}
 		})
@@ -117,7 +117,7 @@ func TestValidator_ValidateIntRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateIntRange(tt.value, tt.min, tt.max, "count")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateIntRange() hasError = %v, want %v", v.HasErrors(), tt.wantError)
 			}
 		})
@@ -141,7 +141,7 @@ func TestValidator_ValidatePath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidatePath(tt.value, "file_path")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidatePath() hasError = %v, want %v", v.HasErrors(), tt.wantError)
 			}
 		})
@@ -166,7 +166,7 @@ func TestValidator_ValidateStringInSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateStringInSet(tt.value, allowed, "status")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateStringInSet() hasError = %v, want %v", v.HasErrors(), tt.wantError)
 			}
 		})
@@ -205,7 +205,7 @@ func TestParseAndValidateInt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, v := ParseAndValidateInt(tt.value, "count", 0, 10)
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ParseAndValidateInt() hasError = %v, want %v", v.HasErrors(), tt.wantError)
 			}
 			if !tt.wantError && result != tt.want {
@@ -245,7 +245,7 @@ func TestValidator_ValidateAttackID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateAttackID(tt.value, "attack_id")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateAttackID() hasError = %v, want %v", v.HasErrors(), tt.wantError)
 			}
 		})
@@ -268,7 +268,7 @@ func TestValidator_ValidateASVSID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator()
 			v.ValidateASVSID(tt.value, "asvs_id")
-			if (v.HasErrors() != tt.wantError) {
+			if v.HasErrors() != tt.wantError {
 				t.Errorf("ValidateASVSID() hasError = %v, want %v", v.HasErrors(), tt.wantError)
 			}
 		})

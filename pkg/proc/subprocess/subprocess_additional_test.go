@@ -1,8 +1,6 @@
 package subprocess
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -12,6 +10,10 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 )

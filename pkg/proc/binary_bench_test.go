@@ -249,10 +249,10 @@ func BenchmarkGOBvsJSON_RoundTrip(b *testing.B) {
 
 			data, _ := MarshalBinaryWithEncoding(msg, EncodingGOB)
 			decoded, _ := UnmarshalBinary(data)
-			
+
 			var result TestPayload
 			_ = decoded.UnmarshalPayload(&result)
-			
+
 			PutMessage(msg)
 			PutMessage(decoded)
 		}
@@ -268,10 +268,10 @@ func BenchmarkGOBvsJSON_RoundTrip(b *testing.B) {
 
 			data, _ := MarshalBinaryWithEncoding(msg, EncodingJSON)
 			decoded, _ := UnmarshalBinary(data)
-			
+
 			var result TestPayload
 			_ = decoded.UnmarshalPayload(&result)
-			
+
 			PutMessage(msg)
 			PutMessage(decoded)
 		}
@@ -287,10 +287,10 @@ func BenchmarkGOBvsJSON_RoundTrip(b *testing.B) {
 
 			data, _ := msg.Marshal()
 			decoded, _ := Unmarshal(data)
-			
+
 			var result TestPayload
 			_ = decoded.UnmarshalPayload(&result)
-			
+
 			PutMessage(msg)
 		}
 	})
@@ -380,4 +380,3 @@ func BenchmarkLinuxOptimizations(b *testing.B) {
 		}
 	})
 }
-

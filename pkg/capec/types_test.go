@@ -2,9 +2,11 @@ package capec
 
 import (
 	"encoding/xml"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestCAPECAttackPattern_Unmarshal(t *testing.T) {

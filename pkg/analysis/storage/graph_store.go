@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	bolt "go.etcd.io/bbolt"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/graph"
 	"github.com/cyw0ng95/v2e/pkg/urn"
-	bolt "go.etcd.io/bbolt"
 )
 
 // Bucket names for graph data

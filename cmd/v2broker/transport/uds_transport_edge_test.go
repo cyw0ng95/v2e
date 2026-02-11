@@ -1,12 +1,14 @@
 package transport
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
@@ -38,15 +40,15 @@ func TestUDSTransport_EdgeCases(t *testing.T) {
 				if transport == nil {
 					t.Fatal("NewUDSTransport returned nil")
 				}
-			
+
 				if transport.socketPath != tt.socketPath {
 					t.Errorf("socketPath = %v, want %v", transport.socketPath, tt.socketPath)
 				}
-			
+
 				if transport.isServer != tt.isServer {
 					t.Errorf("isServer = %v, want %v", transport.isServer, tt.isServer)
 				}
-			
+
 				// Cleanup
 				if transport.isServer {
 					transport.Close()
@@ -83,7 +85,7 @@ func TestUDSTransport_ReconnectOptions(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				transport := NewUDSTransport(filepath.Join(t.TempDir(), "test.sock"), true)
 				transport.SetReconnectOptions(tt.maxAttempts, tt.delay)
-			
+
 				transport.mu.RLock()
 				if transport.maxReconnectAttempts != tt.maxAttempts {
 					t.Errorf("maxReconnectAttempts = %v, want %v", transport.maxReconnectAttempts, tt.maxAttempts)
@@ -102,20 +104,20 @@ func TestUDSTransport_ReconnectOptions(t *testing.T) {
 func TestUDSTransport_CallbackConfiguration(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestUDSTransport_CallbackConfiguration", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "test.sock"), true)
-	
+
 		transport.SetReconnectCallback(func(err error) {
 			// Callback function
 		})
-	
+
 		transport.SetErrorHandler(func(err error) {
 			// Error handler function
 		})
-	
+
 		transport.mu.RLock()
 		hasReconnectCb := transport.reconnectCb != nil
 		hasErrorHandler := transport.errorHandler != nil
 		transport.mu.RUnlock()
-	
+
 		if !hasReconnectCb {
 			t.Error("reconnect callback not set")
 		}
@@ -130,10 +132,10 @@ func TestUDSTransport_CallbackConfiguration(t *testing.T) {
 func TestUDSTransport_ConcurrentSetters(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestUDSTransport_ConcurrentSetters", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "test.sock"), true)
-	
+
 		var wg sync.WaitGroup
 		iterations := 100
-	
+
 		// Concurrent SetReconnectOptions
 		for i := 0; i < iterations; i++ {
 			wg.Add(1)
@@ -142,7 +144,7 @@ func TestUDSTransport_ConcurrentSetters(t *testing.T) {
 				transport.SetReconnectOptions(attempts, time.Duration(attempts)*time.Millisecond)
 			}(i)
 		}
-	
+
 		// Concurrent SetReconnectCallback
 		for i := 0; i < iterations; i++ {
 			wg.Add(1)
@@ -151,7 +153,7 @@ func TestUDSTransport_ConcurrentSetters(t *testing.T) {
 				transport.SetReconnectCallback(func(err error) {})
 			}()
 		}
-	
+
 		// Concurrent SetErrorHandler
 		for i := 0; i < iterations; i++ {
 			wg.Add(1)
@@ -160,13 +162,13 @@ func TestUDSTransport_ConcurrentSetters(t *testing.T) {
 				transport.SetErrorHandler(func(err error) {})
 			}()
 		}
-	
+
 		wg.Wait()
-	
+
 		// Verify no panic occurred and fields are set
 		transport.mu.RLock()
 		defer transport.mu.RUnlock()
-	
+
 		if transport.reconnectCb == nil {
 			t.Error("reconnect callback is nil after concurrent sets")
 		}
@@ -219,7 +221,7 @@ func TestUDSTransport_MessageSendEdgeCases(t *testing.T) {
 func TestUDSTransport_PathValidation(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestUDSTransport_PathValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		tempDir := t.TempDir()
-	
+
 		tests := []struct {
 			name        string
 			path        string
@@ -248,11 +250,11 @@ func TestUDSTransport_PathValidation(t *testing.T) {
 				if transport == nil {
 					t.Fatal("NewUDSTransport returned nil")
 				}
-			
+
 				if transport.socketPath != tt.path {
 					t.Errorf("socketPath = %v, want %v", transport.socketPath, tt.path)
 				}
-			
+
 				t.Cleanup(func() {
 					transport.Close()
 				})
@@ -266,7 +268,7 @@ func TestUDSTransport_PathValidation(t *testing.T) {
 func TestUDSTransport_StateValidation(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestUDSTransport_StateValidation", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "state.sock"), true)
-	
+
 		// Initial state checks
 		transport.mu.RLock()
 		if transport.connected {
@@ -282,15 +284,15 @@ func TestUDSTransport_StateValidation(t *testing.T) {
 			t.Error("scanner should be nil initially")
 		}
 		transport.mu.RUnlock()
-	
+
 		// Test double close (should not panic)
 		_ = transport.Close()
 		_ = transport.Close()
-	
+
 		transport.mu.RLock()
 		stillConnected := transport.connected
 		transport.mu.RUnlock()
-	
+
 		if stillConnected {
 			t.Error("transport should not be connected after close")
 		}
@@ -302,7 +304,7 @@ func TestUDSTransport_StateValidation(t *testing.T) {
 func TestUDSTransport_DefaultValues(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestUDSTransport_DefaultValues", nil, func(t *testing.T, tx *gorm.DB) {
 		transport := NewUDSTransport(filepath.Join(t.TempDir(), "defaults.sock"), true)
-	
+
 		tests := []struct {
 			name     string
 			getValue func() interface{}
@@ -346,12 +348,12 @@ func TestUDSTransport_BoundaryConditions(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				transport := NewUDSTransport(filepath.Join(t.TempDir(), "boundary.sock"), true)
 				transport.SetReconnectOptions(tt.maxAttempts, tt.delay)
-			
+
 				transport.mu.RLock()
 				got1 := transport.maxReconnectAttempts
 				got2 := transport.reconnectDelay
 				transport.mu.RUnlock()
-			
+
 				if got1 != tt.maxAttempts {
 					t.Errorf("maxReconnectAttempts = %v, want %v", got1, tt.maxAttempts)
 				}

@@ -1,8 +1,6 @@
 package main
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -11,9 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+
+	"github.com/gin-gonic/gin"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	"github.com/gin-gonic/gin"
 )
 
 // TODO: Tests disabled - access service is currently a stub

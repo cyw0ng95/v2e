@@ -2,10 +2,12 @@ package attack
 
 import (
 	"context"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"path/filepath"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/xuri/excelize/v2"
 )

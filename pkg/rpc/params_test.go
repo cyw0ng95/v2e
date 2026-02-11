@@ -1,10 +1,12 @@
 package rpc
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/json"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestFetchCVEsParams_JSON(t *testing.T) {

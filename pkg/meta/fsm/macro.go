@@ -382,7 +382,9 @@ func (m *MacroFSMManager) ValidateProviderDependencies() error {
 
 	// Check each provider's dependencies
 	for _, p := range m.providers {
-		if bp, ok := p.(interface{ CheckDependencies(map[string]ProviderState) error }); ok {
+		if bp, ok := p.(interface {
+			CheckDependencies(map[string]ProviderState) error
+		}); ok {
 			if err := bp.CheckDependencies(states); err != nil {
 				return err
 			}
@@ -412,7 +414,9 @@ func (m *MacroFSMManager) StartProviderWithDependencyCheck(providerID string) er
 	m.mu.RUnlock()
 
 	// Check dependencies using BaseProviderFSM's CheckDependencies method
-	if bp, ok := provider.(interface{ CheckDependencies(map[string]ProviderState) error }); ok {
+	if bp, ok := provider.(interface {
+		CheckDependencies(map[string]ProviderState) error
+	}); ok {
 		if err := bp.CheckDependencies(states); err != nil {
 			return fmt.Errorf("dependency check failed for provider %s: %w", providerID, err)
 		}
@@ -454,7 +458,9 @@ func (m *MacroFSMManager) StartAllProvidersInOrder() map[string]error {
 		}
 
 		// Check dependencies before starting
-		if bp, ok := provider.(interface{ CheckDependencies(map[string]ProviderState) error }); ok {
+		if bp, ok := provider.(interface {
+			CheckDependencies(map[string]ProviderState) error
+		}); ok {
 			if err := bp.CheckDependencies(states); err != nil {
 				errors[providerID] = fmt.Errorf("dependency check failed: %w", err)
 				continue

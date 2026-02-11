@@ -10,8 +10,9 @@ import (
 	"unsafe"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/cyw0ng95/v2e/pkg/ssg"
 	"golang.org/x/sys/unix"
+
+	"github.com/cyw0ng95/v2e/pkg/ssg"
 )
 
 // applyHTMLSequentialHint applies madvise hints for sequential read-ahead on HTML buffers.

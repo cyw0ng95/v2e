@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/proc"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"golang.org/x/sys/unix"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/proc"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestCPUAffinitySetup verifies that CPU affinity can be set without errors

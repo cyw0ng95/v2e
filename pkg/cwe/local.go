@@ -6,10 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // LocalCWEStore manages a local database of CWE items.

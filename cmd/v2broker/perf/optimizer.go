@@ -9,11 +9,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/cyw0ng95/v2e/cmd/v2broker/routing"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/sched"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
-	"golang.org/x/sys/unix"
 )
 
 // OptimizedRouter provides optimized message routing

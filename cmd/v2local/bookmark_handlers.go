@@ -209,10 +209,10 @@ func createAddNoteHandler(service *notes.NoteService, logger *common.Logger) sub
 		logger.Debug("RPCAddNote handler invoked")
 
 		var params struct {
-			BookmarkID uint   `json:"bookmark_id"`
-			Content    string `json:"content"`
+			BookmarkID uint    `json:"bookmark_id"`
+			Content    string  `json:"content"`
 			Author     *string `json:"author"`
-			IsPrivate  bool   `json:"is_private"`
+			IsPrivate  bool    `json:"is_private"`
 		}
 
 		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {

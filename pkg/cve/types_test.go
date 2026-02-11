@@ -2,10 +2,12 @@ package cve
 
 import (
 	"encoding/json"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestNVDTime_UnmarshalJSON(t *testing.T) {

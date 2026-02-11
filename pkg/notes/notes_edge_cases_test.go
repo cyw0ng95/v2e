@@ -1,7 +1,6 @@
 package notes
 
 import (
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -9,6 +8,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

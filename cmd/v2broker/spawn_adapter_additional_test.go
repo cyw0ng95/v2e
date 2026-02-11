@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // stubSpawnBroker returns errors without creating processes, used to verify error propagation.

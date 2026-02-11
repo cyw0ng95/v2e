@@ -108,10 +108,10 @@ func TestGetBufferSaturation(t *testing.T) {
 	mc := NewMetricsCollector(100, 1000)
 
 	tests := []struct {
-		name         string
-		bufferSize   int
-		wantSatMin   float64
-		wantSatMax   float64
+		name       string
+		bufferSize int
+		wantSatMin float64
+		wantSatMax float64
 	}{
 		{
 			name:       "empty buffer",

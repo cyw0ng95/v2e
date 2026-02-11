@@ -1,14 +1,16 @@
 package core
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"fmt"
 	"math/rand"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestBroker_ConcurrentSpawn stresses the processes map lock by spawning many short-lived processes concurrently.

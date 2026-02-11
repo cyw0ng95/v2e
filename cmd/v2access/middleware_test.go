@@ -14,8 +14,8 @@ func TestRateLimiterMiddleware_BasicLimiting(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	config := &RateLimiterConfig{
-		MaxTokens:       3,                   // Only allow 3 requests
-		RefillInterval:  time.Second * 10,     // Slow refill
+		MaxTokens:       3,                // Only allow 3 requests
+		RefillInterval:  time.Second * 10, // Slow refill
 		CleanupInterval: time.Minute,
 		TrustedProxies:  []string{},
 		ExcludedPaths:   []string{},
@@ -230,11 +230,11 @@ func TestRateLimiterMiddleware_Concurrent(t *testing.T) {
 
 func TestGetClientIP(t *testing.T) {
 	tests := []struct {
-		name         string
-		xForwarded   string
-		xReal        string
-		remoteAddr   string
-		expectedIP   string
+		name       string
+		xForwarded string
+		xReal      string
+		remoteAddr string
+		expectedIP string
 	}{
 		{
 			name:       "use remote addr",
@@ -295,8 +295,8 @@ func TestIsTrustedProxy(t *testing.T) {
 	trusted := []string{"127.0.0.1", "::1", "10.0.0.1"}
 
 	tests := []struct {
-		ip       string
-		trusted  bool
+		ip      string
+		trusted bool
 	}{
 		{"127.0.0.1", true},
 		{"::1", true},

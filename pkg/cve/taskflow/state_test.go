@@ -1,9 +1,11 @@
 package taskflow
 
 import (
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestJobState_IsTerminal(t *testing.T) {
