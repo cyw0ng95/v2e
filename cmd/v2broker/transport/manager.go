@@ -104,16 +104,15 @@ func (tm *TransportManager) SetUdsBasePath(path string) {
 }
 
 // CloseAll closes all registered transports. This should be called during broker shutdown.
-// Any errors encountered while closing individual transports are logged.
-func (tm *TransportManager) CloseAll() {
+// Returns an error if any transport close failed, with all errors aggregated.
+func (tm *TransportManager) CloseAll() error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
-	var closeErrors []string
+	var closeErrors []error
 	for processID, transport := range tm.transports {
 		if err := transport.Close(); err != nil {
-			errMsg := fmt.Sprintf("process '%s': %v", processID, err)
-			closeErrors = append(closeErrors, errMsg)
+			closeErrors = append(closeErrors, fmt.Errorf("process '%s': %w", processID, err))
 			log.Printf("[TransportManager] Error closing transport for %s: %v", processID, err)
 		}
 		delete(tm.transports, processID)
@@ -121,7 +120,22 @@ func (tm *TransportManager) CloseAll() {
 
 	if len(closeErrors) > 0 {
 		log.Printf("[TransportManager] Completed CloseAll with %d error(s)", len(closeErrors))
+		return fmt.Errorf("failed to close %d transport(s): %w", len(closeErrors), joinErrors(closeErrors))
 	}
+
+	return nil
+}
+
+// joinErrors combines multiple errors into a single error message
+func joinErrors(errs []error) error {
+	var errMsg string
+	for i, err := range errs {
+		if i > 0 {
+			errMsg += "; "
+		}
+		errMsg += err.Error()
+	}
+	return fmt.Errorf("%s", errMsg)
 }
 
 // IsTransportConnected checks if a transport is connected for a given process.
