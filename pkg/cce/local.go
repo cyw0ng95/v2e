@@ -59,6 +59,8 @@ func NewLocalCCEStore(dbPath string, logger *common.Logger) (*LocalCCEStore, err
 
 	db.Exec("PRAGMA journal_mode=WAL")
 	db.Exec("PRAGMA synchronous=NORMAL")
+	// Set busy_timeout to handle lock contention when multiple services access the database
+	db.Exec("PRAGMA busy_timeout=30000")
 
 	if err := db.AutoMigrate(&CCEModel{}); err != nil {
 		return nil, err

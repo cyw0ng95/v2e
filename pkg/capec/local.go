@@ -21,38 +21,13 @@ import (
 	"github.com/lestrrat-go/libxml2/parser"
 )
 
-// LocalCAPECStore manages a local database of CAPEC items.
-type LocalCAPECStore struct {
-	db *gorm.DB
-}
+// capecImportCallback is called after successful CAPEC import.
+// Implementations can use this to invalidate caches or perform other cleanup.
+type capecImportCallback func()
 
-// NewLocalCAPECStore creates or opens a local CAPEC database at dbPath.
-func NewLocalCAPECStore(dbPath string) (*LocalCAPECStore, error) {
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-
-	sqlDB, err := db.DB()
-	if err == nil {
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetConnMaxLifetime(0)
-		db.Exec("PRAGMA journal_mode=WAL")
-		db.Exec("PRAGMA synchronous=NORMAL")
-		db.Exec("PRAGMA cache_size=-40000")
-		// Set busy_timeout to handle lock contention when multiple services access the database
-		db.Exec("PRAGMA busy_timeout=30000")
-	}
-
-	if err := db.AutoMigrate(&CAPECItemModel{}, &CAPECRelatedWeaknessModel{}, &CAPECExampleModel{}, &CAPECMitigationModel{}, &CAPECReferenceModel{}, &CAPECCatalogMeta{}); err != nil {
-		return nil, err
-	}
-	return &LocalCAPECStore{db: db}, nil
-}
-
-// ImportFromXML imports CAPEC items from XML into DB without XSD validation.
-func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
+// importCAPECFromXML performs the actual CAPEC XML import logic.
+// The callback is invoked after successful transaction commit.
+func importCAPECFromXML(db *gorm.DB, xmlPath string, force bool, callback capecImportCallback) error {
 	common.Info("Importing CAPEC data from XML file: %s", xmlPath)
 
 	// Parse XML file into a libxml2 document using the parser package
@@ -89,7 +64,7 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 	// Check existing catalog meta: if same version already imported, skip import unless forced.
 	if !force && catalogVersion != "" {
 		var meta CAPECCatalogMeta
-		if err := s.db.First(&meta).Error; err == nil {
+		if err := db.First(&meta).Error; err == nil {
 			if meta.Version == catalogVersion {
 				common.Info(LogMsgImportSkipped, catalogVersion)
 				return nil
@@ -109,7 +84,7 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 
 	decoder := xml.NewDecoder(f)
 
-	tx := s.db.Begin()
+	tx := db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -215,11 +190,52 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 		// Use a fixed primary key to ensure a single-row metadata table.
 		meta := CAPECCatalogMeta{ID: 1, Version: catalogVersion, Source: xmlPath, ImportedAtUTC: time.Now().UTC().Unix()}
 		// upsert single-row meta by primary key
-		if err := s.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "id"}}, UpdateAll: true}).Create(&meta).Error; err != nil {
+		if err := db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "id"}}, UpdateAll: true}).Create(&meta).Error; err != nil {
 			return err
 		}
 	}
+
+	// Invoke callback if provided (e.g., for cache invalidation)
+	if callback != nil {
+		callback()
+	}
+
 	return nil
+}
+
+// LocalCAPECStore manages a local database of CAPEC items.
+type LocalCAPECStore struct {
+	db *gorm.DB
+}
+
+// NewLocalCAPECStore creates or opens a local CAPEC database at dbPath.
+func NewLocalCAPECStore(dbPath string) (*LocalCAPECStore, error) {
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetConnMaxLifetime(0)
+		db.Exec("PRAGMA journal_mode=WAL")
+		db.Exec("PRAGMA synchronous=NORMAL")
+		db.Exec("PRAGMA cache_size=-40000")
+		// Set busy_timeout to handle lock contention when multiple services access the database
+		db.Exec("PRAGMA busy_timeout=30000")
+	}
+
+	if err := db.AutoMigrate(&CAPECItemModel{}, &CAPECRelatedWeaknessModel{}, &CAPECExampleModel{}, &CAPECMitigationModel{}, &CAPECReferenceModel{}, &CAPECCatalogMeta{}); err != nil {
+		return nil, err
+	}
+	return &LocalCAPECStore{db: db}, nil
+}
+
+// ImportFromXML imports CAPEC items from XML into DB without XSD validation.
+func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
+	return importCAPECFromXML(s.db, xmlPath, force, nil)
 }
 
 // GetByID returns a CAPEC item by its textual ID (e.g. "CAPEC-123" or "123").
