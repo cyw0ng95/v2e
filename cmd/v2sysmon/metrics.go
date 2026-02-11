@@ -1,6 +1,9 @@
 package main
 
 import (
+	"sync"
+	"time"
+
 	"github.com/cyw0ng95/v2e/pkg/common/procfs"
 )
 
@@ -11,6 +14,81 @@ type metricCollector func(m map[string]interface{}) error
 // If the collector fails, the error is logged but the metric is simply omitted from the result.
 func collectMetric(m map[string]interface{}, collector metricCollector) {
 	collector(m)
+}
+
+// Metric sampling configuration
+
+// metricSampler tracks the last collection time for each metric type.
+type metricSampler struct {
+	mu            sync.RWMutex
+	lastCollected map[string]time.Time
+	samplingIntervals map[string]time.Duration
+}
+
+// Global metric sampler instance.
+var sampler = &metricSampler{
+	lastCollected: make(map[string]time.Time),
+	samplingIntervals: map[string]time.Duration{
+		// CPU and memory are collected every time (0 interval = always collect)
+		"cpu":      0,
+		"memory":   0,
+		// Load average can be sampled every 5 seconds
+		"load_avg": 5 * time.Second,
+		// Uptime changes infrequently - sample every 30 seconds
+		"uptime":   30 * time.Second,
+		// Disk usage changes slowly - sample every 60 seconds
+		"disk":     60 * time.Second,
+		// Swap usage changes slowly - sample every 30 seconds
+		"swap":     30 * time.Second,
+		// Network stats change rapidly - collect every time
+		"network":  0,
+	},
+}
+
+// shouldCollect returns true if the metric should be collected based on sampling interval.
+func (ms *metricSampler) shouldCollect(metricName string) bool {
+	ms.mu.RLock()
+	interval, exists := ms.samplingIntervals[metricName]
+	ms.mu.RUnlock()
+
+	// If no interval is configured, always collect
+	if !exists || interval == 0 {
+		return true
+	}
+
+	ms.mu.RLock()
+	last, exists := ms.lastCollected[metricName]
+	ms.mu.RUnlock()
+
+	// Never collected before, collect now
+	if !exists {
+		return true
+	}
+
+	// Check if enough time has passed since last collection
+	return time.Since(last) >= interval
+}
+
+// markCollected records the collection time for a metric.
+func (ms *metricSampler) markCollected(metricName string) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	ms.lastCollected[metricName] = time.Now()
+}
+
+// setSamplingInterval sets the sampling interval for a metric.
+// This allows runtime configuration of metric sampling rates.
+func setSamplingInterval(metricName string, interval time.Duration) {
+	sampler.mu.Lock()
+	defer sampler.mu.Unlock()
+	sampler.samplingIntervals[metricName] = interval
+}
+
+// getSamplingInterval gets the current sampling interval for a metric.
+func getSamplingInterval(metricName string) time.Duration {
+	sampler.mu.RLock()
+	defer sampler.mu.RUnlock()
+	return sampler.samplingIntervals[metricName]
 }
 
 // Metric collectors
@@ -126,11 +204,18 @@ var requiredMetricCollectors = map[string]bool{
 
 // collectAllMetrics collects all metrics using the registered collectors.
 // Returns a map of metric names to values, or an error if a required metric collection fails.
+// Metrics are sampled based on configured sampling intervals to reduce CPU overhead.
 func collectAllMetrics() (map[string]interface{}, error) {
 	metrics := make(map[string]interface{})
 	var firstErr error
 
 	for _, mc := range metricCollectors {
+		// Skip collection if sampling interval hasn't elapsed
+		if !sampler.shouldCollect(mc.name) {
+			// Skip this metric but don't fail
+			continue
+		}
+
 		err := mc.fn(metrics)
 		if err != nil {
 			// Log and continue for optional metrics
@@ -142,6 +227,9 @@ func collectAllMetrics() (map[string]interface{}, error) {
 				firstErr = err
 			}
 		}
+
+		// Mark this metric as collected
+		sampler.markCollected(mc.name)
 	}
 
 	if firstErr != nil {
