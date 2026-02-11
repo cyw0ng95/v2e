@@ -209,7 +209,9 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		// Fetch CVE from NVD
 		response, err := fetcher.FetchCVEByID(req.CVEID)
 		if err != nil {
-			if errMsg := checkRateLimitError(msg, err); errMsg != nil {
+			var errMsg *subprocess.Message
+			errMsg, _ = checkRateLimitError(msg, err)
+			if errMsg != nil {
 				return errMsg, nil
 			}
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedFetchCVE, err)), nil

@@ -9,88 +9,9 @@ Central process manager and message router for the v2e system. Spawns and manage
 
 ## Available RPC Methods
 
-### Process Management
-
-#### 1. RPCSpawn
-- **Description**: Spawns a new subprocess with specified command and arguments
-- **Request Parameters**:
-  - `id` (string, required): Unique identifier for the process
-  - `command` (string, required): Command to execute
-  - `args` ([]string, optional): Command arguments
-- **Response**:
-  - `id` (string): Process identifier
-  - `pid` (int): Process ID
-  - `status` (string): Process status ("running", "exited", "failed")
-  - `command` (string): The command that was executed
-  - `args` ([]string): The arguments passed to the command
-  - `exit_code` (int, optional): Exit code if process has exited
-- **Errors**:
-  - Missing ID: Process ID is required
-  - Duplicate ID: Process with this ID already exists
-  - Spawn failure: Failed to start the process
-
-#### 2. RPCSpawnRPC
-- **Description**: Spawns a subprocess with RPC support (custom file descriptors for message passing)
-- **Request Parameters**:
-  - `id` (string, required): Unique identifier for the process
-  - `command` (string, required): Command to execute
-  - `args` ([]string, optional): Command arguments
-- **Response**:
-  - `id` (string): Process identifier
-  - `pid` (int): Process ID
-  - `status` (string): Process status ("running", "exited", "failed")
-  - `command` (string): The command that was executed
-  - `args` ([]string): The arguments passed to the command
-- **Errors**:
-  - Missing ID: Process ID is required
-  - Duplicate ID: Process with this ID already exists
-  - Spawn failure: Failed to start the process
-
-#### 3. RPCSpawnWithRestart
-- **Description**: Spawns a subprocess with auto-restart capability
-- **Request Parameters**:
-  - `id` (string, required): Unique identifier for the process
-  - `command` (string, required): Command to execute
-  - `max_restarts` (int, optional): Maximum number of restart attempts (-1 for unlimited, default: -1)
-  - `restart_delay` (int, optional): Delay before restart in seconds (default: 1, 0 or negative values use default)
-  - `args` ([]string, optional): Command arguments
-- **Response**:
-  - `id` (string): Process identifier
-  - `pid` (int): Process ID
-  - `status` (string): Process status ("running", "exited", "failed")
-  - `command` (string): The command that was executed
-  - `restart_config` (object): Restart configuration
-    - `max_restarts` (int): Maximum restart attempts
-    - `restart_delay` (int): Delay before restart in seconds
-- **Errors**:
-  - Missing ID: Process ID is required
-  - Duplicate ID: Process with this ID already exists
-  - Spawn failure: Failed to start the process
-
-#### 4. RPCSpawnRPCWithRestart
-- **Description**: Spawns a subprocess with RPC support and auto-restart capability
-- **Request Parameters**:
-  - `id` (string, required): Unique identifier for the process
-  - `command` (string, required): Command to execute
-  - `max_restarts` (int, optional): Maximum number of restart attempts (-1 for unlimited, default: -1)
-  - `restart_delay` (int, optional): Delay before restart in seconds (default: 1, 0 or negative values use default)
-  - `args` ([]string, optional): Command arguments
-- **Response**:
-  - `id` (string): Process identifier
-  - `pid` (int): Process ID
-  - `status` (string): Process status ("running", "exited", "failed")
-  - `command` (string): The command that was executed
-  - `restart_config` (object): Restart configuration
-    - `max_restarts` (int): Maximum restart attempts
-    - `restart_delay` (int): Delay before restart in seconds
-- **Errors**:
-  - Missing ID: Process ID is required
-  - Duplicate ID: Process with this ID already exists
-  - Spawn failure: Failed to start the process
-
 ### Message Statistics
 
-#### 5. RPCGetMessageStats
+#### 1. RPCGetMessageStats
 - **Description**: Retrieves message statistics for the broker and all managed processes
 - **Request Parameters**: None
 - **Response**:
@@ -106,7 +27,7 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `per_process` (object): Message statistics broken down by process ID
 - **Errors**: None
 
-#### 6. RPCGetMessageCount
+#### 2. RPCGetMessageCount
 - **Description**: Retrieves the total number of messages processed by the broker
 - **Request Parameters**: None
 - **Response**:
@@ -115,7 +36,7 @@ Central process manager and message router for the v2e system. Spawns and manage
 
 ### Permit Management
 
-#### 7. RPCRequestPermits
+#### 3. RPCRequestPermits
 - **Description**: Requests worker permits from the broker's global pool for concurrent execution
 - **Request Parameters**:
   - `provider_id` (string, required): Unique identifier for the requesting provider
@@ -129,7 +50,7 @@ Central process manager and message router for the v2e system. Spawns and manage
   - Permit manager not initialized: Permit management is not enabled
   - No permits available: No permits currently available in the pool
 
-#### 8. RPCReleasePermits
+#### 4. RPCReleasePermits
 - **Description**: Returns worker permits to the broker's global pool
 - **Request Parameters**:
   - `provider_id` (string, required): Unique identifier for the provider releasing permits
@@ -145,7 +66,7 @@ Central process manager and message router for the v2e system. Spawns and manage
 
 ### Kernel Metrics
 
-#### 9. RPCGetKernelMetrics
+#### 5. RPCGetKernelMetrics
 - **Description**: Retrieves current kernel performance metrics from the broker
 - **Request Parameters**: None
 - **Response**:
@@ -160,12 +81,12 @@ Central process manager and message router for the v2e system. Spawns and manage
 - **Errors**:
   - Optimizer not initialized: Performance optimization is not enabled
 
-### Event Broadcasting
+---
 
-#### 10. RPCOnQuotaUpdate
+## Events Broadcast by Broker
+
+### RPCOnQuotaUpdate
 - **Description**: Event broadcast from broker to providers when permits are revoked due to kernel metrics breaches
-- **Request Parameters**: None (this is a broker-initiated event)
-- **Response**: Not applicable (event only)
 - **Event Payload**:
   - `revoked_permits` (int): Number of permits being revoked globally
   - `reason` (string): Reason for revocation (e.g., "P99 latency exceeded 50ms")
@@ -182,6 +103,7 @@ Central process manager and message router for the v2e system. Spawns and manage
 - **Optimizer**: Batch size and performance tuning parameters configurable
 
 ## Notes
+- **Process spawning is NOT an RPC API** - The broker's `Spawn`, `SpawnRPC`, `SpawnWithRestart`, and `SpawnRPCWithRestart` methods are internal Go interfaces used by the broker to create subprocesses. They are NOT exposed as RPC methods. Processes are spawned based on configuration files during broker startup.
 - Uses custom file descriptors (typically fd 3 and 4) for RPC communication to avoid conflicts with stdio
 - Manages subprocess lifecycles with optional auto-restart capability
 - Maintains message statistics for monitoring and debugging

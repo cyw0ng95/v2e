@@ -55,6 +55,8 @@ const (
 	EventGraphAnalysisStarted EventType = "GRAPH_ANALYSIS_STARTED"
 	// EventGraphAnalysisCompleted - Graph analysis has completed
 	EventGraphAnalysisCompleted EventType = "GRAPH_ANALYSIS_COMPLETED"
+	// EventGraphAnalysisFailed - Graph analysis has failed
+	EventGraphAnalysisFailed EventType = "GRAPH_ANALYSIS_FAILED"
 	// EventGraphPersistStarted - Graph persistence has started
 	EventGraphPersistStarted EventType = "GRAPH_PERSIST_STARTED"
 	// EventGraphPersistCompleted - Graph persistence has completed
@@ -109,6 +111,9 @@ type GraphFSM interface {
 
 	// CompleteAnalysis marks analysis as complete
 	CompleteAnalysis() error
+
+	// FailAnalysis marks analysis as failed
+	FailAnalysis(err error) error
 
 	// StartPersist initiates graph persistence
 	StartPersist() error

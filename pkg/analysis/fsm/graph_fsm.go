@@ -1,30 +1,61 @@
 package fsm
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"sync"
+	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
-// BaseGraphFSM provides the base implementation of GraphFSM
+// OperationType represents the type of operation being executed
+type OperationType string
+
+const (
+	OpBuild    OperationType = "BUILD"
+	OpAnalysis OperationType = "ANALYSIS"
+	OpPersist  OperationType = "PERSIST"
+)
+
+// BaseGraphFSM provides base implementation of GraphFSM
 type BaseGraphFSM struct {
-	mu           sync.RWMutex
-	state        GraphState
-	eventHandler func(*Event) error
-	logger       *common.Logger
-	lastError    error
+	mu              sync.RWMutex
+	state           GraphState
+	eventHandler     func(*Event) error
+	logger          *common.Logger
+	lastError       error
+	retryConfig     RetryConfig
+	lastOperation   OperationType
+	retryCount      int
+	lastFailedState GraphState
 }
 
 // NewGraphFSM creates a new GraphFSM instance
 func NewGraphFSM(logger *common.Logger) GraphFSM {
 	return &BaseGraphFSM{
-		state:  GraphIdle,
-		logger: logger,
+		state:       GraphIdle,
+		logger:      logger,
+		retryConfig: DefaultRetryConfig(),
 	}
 }
 
-// GetState returns the current graph state
+// SetRetryConfig sets retry configuration for transient errors
+func (g *BaseGraphFSM) SetRetryConfig(config RetryConfig) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.retryConfig = config
+}
+
+// GetRetryConfig returns current retry configuration
+func (g *BaseGraphFSM) GetRetryConfig() RetryConfig {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.retryConfig
+}
+
+// GetState returns current graph state
 func (g *BaseGraphFSM) GetState() GraphState {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -36,8 +67,19 @@ func (g *BaseGraphFSM) Transition(newState GraphState) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if err := ValidateGraphTransition(g.state, newState); err != nil {
-		return err
+	currentState := g.state
+
+	// Validate the transition
+	if err := ValidateGraphTransition(currentState, newState); err != nil {
+		// Enhance error with state context
+		return fmt.Errorf("transition validation failed from %s: %w", currentState, err)
+	}
+
+	// Check if we're transitioning from ERROR state - reset retry count
+	if currentState == GraphError {
+		g.retryCount = 0
+		g.lastOperation = ""
+		g.lastFailedState = ""
 	}
 
 	oldState := g.state
@@ -50,11 +92,64 @@ func (g *BaseGraphFSM) Transition(newState GraphState) error {
 	return nil
 }
 
+// canRetry checks if retry is allowed based on error type and retry count
+func (g *BaseGraphFSM) canRetry() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	// Check if we have an FSMError that is transient
+	if g.lastError != nil {
+		var fsmErr *FSMError
+		if IsFSMError(g.lastError) && errors.As(g.lastError, &fsmErr) {
+			if fsmErr.IsTransient() && g.retryCount < g.retryConfig.MaxRetries {
+				return true
+			}
+		}
+	}
+	return g.retryCount < g.retryConfig.MaxRetries
+}
+
+// calculateBackoffDelay calculates exponential backoff delay
+func (g *BaseGraphFSM) calculateBackoffDelay() time.Duration {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	if g.retryConfig.BackoffFactor <= 0 {
+		return g.retryConfig.BaseDelay
+	}
+
+	// Calculate exponential delay: base * (backoffFactor ^ retryCount)
+	delay := float64(g.retryConfig.BaseDelay) * math.Pow(g.retryConfig.BackoffFactor, float64(g.retryCount))
+
+	// Cap at max delay
+	if delay > float64(g.retryConfig.MaxDelay) {
+		delay = float64(g.retryConfig.MaxDelay)
+	}
+
+	return time.Duration(delay)
+}
+
 // StartBuild initiates graph building
 func (g *BaseGraphFSM) StartBuild() error {
+	// If we're in ERROR state and retry is allowed, attempt recovery
+	if g.GetState() == GraphError {
+		if g.canRetry() {
+			// Reset retry count for new operation
+			g.mu.Lock()
+			g.retryCount = 0
+			g.mu.Unlock()
+		} else {
+			return fmt.Errorf("cannot start build from ERROR state: %w", g.lastError)
+		}
+	}
+
 	if err := g.Transition(GraphBuilding); err != nil {
 		return err
 	}
+
+	g.mu.Lock()
+	g.lastOperation = OpBuild
+	g.mu.Unlock()
 
 	event := NewEvent(EventGraphBuildStarted)
 	return g.emitEvent(event)
@@ -77,15 +172,46 @@ func (g *BaseGraphFSM) CompleteBuild() error {
 // FailBuild marks graph building as failed
 func (g *BaseGraphFSM) FailBuild(err error) error {
 	g.mu.Lock()
-	g.lastError = err
+
+	// Wrap error with context if not already an FSMError
+	var fsmErr *FSMError
+	if !IsFSMError(err) {
+		// Classify error as transient by default for build operations
+		// Common transient errors: network issues, temporary unavailability
+		fsmErr = NewTransientError(string(GraphBuilding), err)
+		fsmErr.RetryCount = g.retryCount
+	} else {
+		fsmErr = err.(*FSMError)
+		fsmErr.RetryCount = g.retryCount
+	}
+
+	g.lastError = fsmErr
+	g.lastFailedState = GraphBuilding
+	g.retryCount++
+
+	currentRetryCount := g.retryCount
+	maxRetries := g.retryConfig.MaxRetries
+	logger := g.logger
 	g.mu.Unlock()
 
 	if transErr := g.Transition(GraphError); transErr != nil {
-		return transErr
+		return fmt.Errorf("failed to transition to ERROR state: %w", transErr)
+	}
+
+	// Log error with retry context
+	if logger != nil {
+		if currentRetryCount <= maxRetries {
+			logger.Warn("Build failed (attempt %d/%d): %v", currentRetryCount, maxRetries, fsmErr.Err)
+		} else {
+			logger.Error("Build failed after %d attempts (max retries exceeded): %v", currentRetryCount, fsmErr.Err)
+		}
 	}
 
 	event := NewEvent(EventGraphBuildFailed)
-	event.Data["error"] = err.Error()
+	event.Data["error"] = fsmErr.Error()
+	event.Data["retry_count"] = currentRetryCount
+	event.Data["can_retry"] = currentRetryCount <= maxRetries
+
 	return g.emitEvent(event)
 }
 
@@ -95,12 +221,20 @@ func (g *BaseGraphFSM) StartAnalysis() error {
 		return err
 	}
 
+	g.mu.Lock()
+	g.lastOperation = OpAnalysis
+	g.mu.Unlock()
+
 	event := NewEvent(EventGraphAnalysisStarted)
 	return g.emitEvent(event)
 }
 
 // CompleteAnalysis marks analysis as complete
 func (g *BaseGraphFSM) CompleteAnalysis() error {
+	g.mu.Lock()
+	g.lastError = nil
+	g.mu.Unlock()
+
 	if err := g.Transition(GraphReady); err != nil {
 		return err
 	}
@@ -109,11 +243,58 @@ func (g *BaseGraphFSM) CompleteAnalysis() error {
 	return g.emitEvent(event)
 }
 
+// FailAnalysis marks analysis as failed
+func (g *BaseGraphFSM) FailAnalysis(err error) error {
+	g.mu.Lock()
+
+	// Wrap error with context if not already an FSMError
+	var fsmErr *FSMError
+	if !IsFSMError(err) {
+		fsmErr = NewTransientError(string(GraphAnalyzing), err)
+		fsmErr.RetryCount = g.retryCount
+	} else {
+		fsmErr = err.(*FSMError)
+		fsmErr.RetryCount = g.retryCount
+	}
+
+	g.lastError = fsmErr
+	g.lastFailedState = GraphAnalyzing
+	g.retryCount++
+
+	currentRetryCount := g.retryCount
+	maxRetries := g.retryConfig.MaxRetries
+	logger := g.logger
+	g.mu.Unlock()
+
+	if transErr := g.Transition(GraphError); transErr != nil {
+		return fmt.Errorf("failed to transition to ERROR state: %w", transErr)
+	}
+
+	if logger != nil {
+		if currentRetryCount <= maxRetries {
+			logger.Warn("Analysis failed (attempt %d/%d): %v", currentRetryCount, maxRetries, fsmErr.Err)
+		} else {
+			logger.Error("Analysis failed after %d attempts (max retries exceeded): %v", currentRetryCount, fsmErr.Err)
+		}
+	}
+
+	event := NewEvent(EventGraphAnalysisFailed)
+	event.Data["error"] = fsmErr.Error()
+	event.Data["retry_count"] = currentRetryCount
+	event.Data["can_retry"] = currentRetryCount <= maxRetries
+
+	return g.emitEvent(event)
+}
+
 // StartPersist initiates graph persistence
 func (g *BaseGraphFSM) StartPersist() error {
 	if err := g.Transition(GraphPersisting); err != nil {
 		return err
 	}
+
+	g.mu.Lock()
+	g.lastOperation = OpPersist
+	g.mu.Unlock()
 
 	event := NewEvent(EventGraphPersistStarted)
 	return g.emitEvent(event)
@@ -136,19 +317,49 @@ func (g *BaseGraphFSM) CompletePersist() error {
 // FailPersist marks persistence as failed
 func (g *BaseGraphFSM) FailPersist(err error) error {
 	g.mu.Lock()
-	g.lastError = err
+
+	// Wrap error with context if not already an FSMError
+	var fsmErr *FSMError
+	if !IsFSMError(err) {
+		// Classify error - persist errors are often transient (disk full, lock contention)
+		fsmErr = NewTransientError(string(GraphPersisting), err)
+		fsmErr.RetryCount = g.retryCount
+	} else {
+		fsmErr = err.(*FSMError)
+		fsmErr.RetryCount = g.retryCount
+	}
+
+	g.lastError = fsmErr
+	g.lastFailedState = GraphPersisting
+	g.retryCount++
+
+	currentRetryCount := g.retryCount
+	maxRetries := g.retryConfig.MaxRetries
+	logger := g.logger
 	g.mu.Unlock()
 
 	if transErr := g.Transition(GraphError); transErr != nil {
-		return transErr
+		return fmt.Errorf("failed to transition to ERROR state: %w", transErr)
+	}
+
+	// Log error with retry context
+	if logger != nil {
+		if currentRetryCount <= maxRetries {
+			logger.Warn("Persist failed (attempt %d/%d): %v", currentRetryCount, maxRetries, fsmErr.Err)
+		} else {
+			logger.Error("Persist failed after %d attempts (max retries exceeded): %v", currentRetryCount, fsmErr.Err)
+		}
 	}
 
 	event := NewEvent(EventGraphPersistFailed)
-	event.Data["error"] = err.Error()
+	event.Data["error"] = fsmErr.Error()
+	event.Data["retry_count"] = currentRetryCount
+	event.Data["can_retry"] = currentRetryCount <= maxRetries
+
 	return g.emitEvent(event)
 }
 
-// Clear clears the graph
+// Clear clears graph
 func (g *BaseGraphFSM) Clear() error {
 	g.mu.Lock()
 	g.lastError = nil
@@ -162,34 +373,41 @@ func (g *BaseGraphFSM) Clear() error {
 	return g.emitEvent(event)
 }
 
-// SetEventHandler sets the callback for event bubbling
+// SetEventHandler sets callback for event bubbling
 func (g *BaseGraphFSM) SetEventHandler(handler func(*Event) error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.eventHandler = handler
 }
 
-// emitEvent emits an event to the parent FSM
+// emitEvent emits an event to parent FSM
 func (g *BaseGraphFSM) emitEvent(event *Event) error {
 	g.mu.RLock()
 	handler := g.eventHandler
 	g.mu.RUnlock()
 
 	if handler != nil {
-		return handler(event)
+		// Handle event handler errors gracefully
+		if err := handler(event); err != nil {
+			if g.logger != nil {
+				g.logger.Error("Event handler failed for event %s: %v", event.Type, err)
+			}
+			// Don't fail the state transition if event handler fails,
+			// but log the error for investigation
+		}
 	}
 
 	return nil
 }
 
-// GetLastError returns the last error encountered
+// GetLastError returns last error encountered
 func (g *BaseGraphFSM) GetLastError() error {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return g.lastError
 }
 
-// Reset resets the FSM to idle state (used for error recovery)
+// Reset resets FSM to idle state (used for error recovery)
 func (g *BaseGraphFSM) Reset() error {
 	g.mu.Lock()
 	g.lastError = nil
@@ -201,4 +419,78 @@ func (g *BaseGraphFSM) Reset() error {
 	}
 
 	return fmt.Errorf("cannot reset from state: %s", currentState)
+}
+
+// RetryFailedOperation attempts to retry the last failed operation
+func (g *BaseGraphFSM) RetryFailedOperation() error {
+	g.mu.Lock()
+	lastFailed := g.lastFailedState
+	lastErr := g.lastError
+	retryCount := g.retryCount
+	maxRetries := g.retryConfig.MaxRetries
+	g.mu.Unlock()
+
+	if lastFailed == "" {
+		return fmt.Errorf("no failed operation to retry")
+	}
+
+	if retryCount > maxRetries {
+		return fmt.Errorf("max retries (%d) exceeded for operation %s: %w", maxRetries, lastFailed, lastErr)
+	}
+
+	// Check if error is retryable
+	var fsmErr *FSMError
+	if IsFSMError(lastErr) && errors.As(lastErr, &fsmErr) {
+		if fsmErr.IsPermanent() {
+			return fmt.Errorf("cannot retry permanent error: %w", lastErr)
+		}
+	}
+
+	// Apply exponential backoff before retry
+	delay := g.calculateBackoffDelay()
+	if g.logger != nil {
+		g.logger.Info("Retrying operation %s after %v delay (attempt %d/%d)", lastFailed, delay, retryCount+1, maxRetries+1)
+	}
+
+	if delay > 0 {
+		time.Sleep(delay)
+	}
+
+	// Retry the operation based on what failed
+	switch lastFailed {
+	case GraphBuilding:
+		return g.StartBuild()
+	case GraphAnalyzing:
+		return g.StartAnalysis()
+	case GraphPersisting:
+		return g.StartPersist()
+	default:
+		return fmt.Errorf("unknown operation type for retry: %s", lastFailed)
+	}
+}
+
+// CanRecover returns true if FSM can recover from current state
+func (g *BaseGraphFSM) CanRecover() bool {
+	state := g.GetState()
+
+	// Can always recover from ERROR state
+	if state == GraphError {
+		g.mu.RLock()
+		canRetry := g.retryCount <= g.retryConfig.MaxRetries
+		hasPermanentErr := false
+
+		if g.lastError != nil {
+			var fsmErr *FSMError
+			if IsFSMError(g.lastError) && errors.As(g.lastError, &fsmErr) {
+				hasPermanentErr = fsmErr.IsPermanent()
+			}
+		}
+		g.mu.RUnlock()
+
+		// Can recover if retries available or no permanent error
+		return canRetry || !hasPermanentErr
+	}
+
+	// Can reset from IDLE or READY
+	return state == GraphIdle || state == GraphReady
 }

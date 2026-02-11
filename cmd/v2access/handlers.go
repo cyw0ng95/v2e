@@ -80,7 +80,12 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 		case <-requestCtx.Done():
 			err := requestCtx.Err()
 			common.Error("HTTP request context already canceled before RPC call: %v", err)
-			httpErrorResponse(c, http.StatusOK, fmt.Sprintf("Request context canceled: %v", err))
+			// Use appropriate status code for context cancellation
+			statusCode := http.StatusRequestTimeout
+			if err == context.Canceled {
+				statusCode = http.StatusServiceUnavailable
+			}
+			httpErrorResponse(c, statusCode, fmt.Sprintf("Request context canceled: %v", err))
 			return
 		default:
 			// Context is not done, proceed with RPC

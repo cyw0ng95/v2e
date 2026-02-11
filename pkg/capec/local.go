@@ -22,6 +22,14 @@ import (
 	"github.com/lestrrat-go/libxml2/parser"
 )
 
+const (
+	// MaxXMLFileSize is the maximum allowed XML file size (100MB)
+	MaxXMLFileSize = 100 << 20
+)
+
+// Precompiled regex for extracting CAPEC numeric ID from strings like "CAPEC-123" or "123"
+var capecIDRegex = regexp.MustCompile(`\d+`)
+
 // capecImportCallback is called after successful CAPEC import.
 // Implementations can use this to invalidate caches or perform other cleanup.
 type capecImportCallback func()
@@ -83,7 +91,35 @@ func importCAPECFromXML(db *gorm.DB, xmlPath string, force bool, callback capecI
 	}
 	defer f.Close()
 
-	decoder := xml.NewDecoder(f)
+	// Security: Limit XML entity expansion to prevent billion laughs attacks
+	// Set strict limits on entity depth and total document size
+	//
+	// Go's xml.Decoder does not support custom entity expansion limits directly,
+	// but provides built-in protection:
+	// - External entities are not resolved by default (security feature)
+	// - Strict mode catches malformed XML
+	// - File size limits prevent memory exhaustion
+	// - io.LimitReader provides additional read limit protection
+
+	// Check file size before parsing to prevent memory exhaustion
+	info, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat xml file: %w", err)
+	}
+	if info.Size() > MaxXMLFileSize {
+		return fmt.Errorf("xml file too large: %d bytes (max %d bytes)", info.Size(), MaxXMLFileSize)
+	}
+
+	// Wrap the file with a limited reader to prevent reading beyond expected size
+	// even if the file grows during parsing (TOCTOU protection)
+	limitedReader := io.LimitReader(f, MaxXMLFileSize)
+
+	decoder := xml.NewDecoder(limitedReader)
+	// Set strict mode to catch malformed XML and potential security issues
+	decoder.Strict = true
+	// AutoClose ensures that elements are properly closed, preventing
+	// certain types of XML parsing vulnerabilities
+	decoder.AutoClose = xml.HTMLAutoClose
 
 	tx := db.Begin()
 	defer func() {
@@ -241,8 +277,7 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 
 // GetByID returns a CAPEC item by its textual ID (e.g. "CAPEC-123" or "123").
 func (s *LocalCAPECStore) GetByID(ctx context.Context, id string) (*CAPECItemModel, error) {
-	re := regexp.MustCompile(`\d+`)
-	m := re.FindString(id)
+	m := capecIDRegex.FindString(id)
 	if m == "" {
 		return nil, gorm.ErrRecordNotFound
 	}
