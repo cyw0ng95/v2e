@@ -146,16 +146,6 @@
 | TODO-187 | website | Documentation | Document component prop interfaces in components/ with JSDoc comments describing required and optional props | 200 | Low | |
 | TODO-188 | website | Feature | Connect navbar search to actual search functionality querying across CVEs, CWEs, CAPECs, and ATT&CK data | 150 | Medium | |
 | TODO-189 | website | Feature | Add settings functionality for settings button - create dialog/page for user preferences (theme, API endpoints, data refresh) | 180 | Low | |
-| TODO-190 | cwe | Refactor | Extract duplicate nested field loading logic in GetByID and ListCWEsPaginated - both functions share 90% identical code for loading RelatedWeaknesses, WeaknessOrdinalities, DetectionMethods, Mitigations, DemonstrativeExamples, ObservedExamples, TaxonomyMappings, Notes, ContentHistory | 200 | High | |
-| TODO-191 | capec | Refactor | Eliminate ImportFromXML duplication between LocalCAPECStore and CachedLocalCAPECStore - extract shared logic into base struct or use composition with cache invalidation hook | 150 | High | |
-| TODO-192 | cve | Refactor | Consolidate duplicate database lock retry logic in ListCVEs and Count functions - both have identical "database is locked" retry pattern with exponential backoff | 50 | Medium | |
-| TODO-193 | v2access | Refactor | Group and namespace 65 log constants in constants.go by functionality (Service Lifecycle, Configuration, RPC Client, Server Operations, HTTP Request, RPC Forwarding, Static File, Rate Limiting) using nested struct or enum pattern | 80 | Low | |
-| TODO-194 | v2local | Refactor | Extract common handler patterns from cve_handlers.go, cwe_handlers.go, capec_handlers.go, attack_handlers.go into reusable handler functions - patterns include: param validation, JSON marshaling, error responses, pagination | 180 | Medium | |
-| TODO-195 | meta | Refactor | Consolidate GetStats() method implementations across BaseProviderFSM and MacroFSMManager - share common stats collection logic | 60 | Low | |
-| TODO-196 | notes | Refactor | Compact LearningFSM code by extracting common save state patterns into helper function (duplicate state save logic exists in multiple state transition methods) | 80 | Medium | |
-| TODO-197 | all | Refactor | Remove unused imports across all packages - run goimports or go mod tidy to identify and remove unused imports | 100 | Low | |
-| TODO-198 | all | Refactor | Consolidate error message formatting patterns - multiple packages have similar error wrapping with fmt.Errorf that could use centralized error wrapper | 120 | Medium | |
-| TODO-199 | website | Refactor | Consolidate duplicate ErrorBoundary components in lib/error-handler.tsx and components/error-boundary.tsx into single reusable component | 50 | Low | |
 
 ## TODO Management Guidelines
 
