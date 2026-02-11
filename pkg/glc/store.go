@@ -383,20 +383,48 @@ func (s *Store) GetShareLink(ctx context.Context, linkID string) (*ShareLinkMode
 
 // GetGraphByShareLink retrieves a graph via share link
 func (s *Store) GetGraphByShareLink(ctx context.Context, linkID, password string) (*GraphModel, error) {
-	link, err := s.GetShareLink(ctx, linkID)
+	var graph GraphModel
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Get and validate share link
+		var link ShareLinkModel
+		if err := tx.Where("link_id = ?", linkID).First(&link).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("share link not found: %s", linkID)
+			}
+			return fmt.Errorf("failed to get share link: %w", err)
+		}
+
+		// Check expiration
+		if link.ExpiresAt != nil && time.Now().After(*link.ExpiresAt) {
+			return fmt.Errorf("share link expired")
+		}
+
+		// Validate password if set
+		if link.Password != "" && link.Password != password {
+			return fmt.Errorf("invalid password")
+		}
+
+		// Increment view count within transaction
+		if err := tx.Model(&link).Update("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+			return fmt.Errorf("failed to increment view count: %w", err)
+		}
+
+		// Get graph within same transaction
+		if err := tx.Where("graph_id = ?", link.GraphID).First(&graph).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("graph not found: %s", link.GraphID)
+			}
+			return fmt.Errorf("failed to get graph: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate password if set
-	if link.Password != "" && link.Password != password {
-		return nil, fmt.Errorf("invalid password")
-	}
-
-	// Increment view count
-	s.db.WithContext(ctx).Model(link).Update("view_count", gorm.Expr("view_count + 1"))
-
-	return s.GetGraph(ctx, link.GraphID)
+	return &graph, nil
 }
 
 // IncrementViewCount increments the view count for a share link
