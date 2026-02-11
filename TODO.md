@@ -77,7 +77,6 @@
 | TODO-088 | cmd/v2remote | Refactor | Simplify HTTP client configuration by extracting into shared package with retry logic and timeout handling | 100 | Medium | |
 | TODO-091 | cmd/v2remote | Optimization | Implement response caching for frequently accessed API endpoints (e.g., CVE by ID lookup) to reduce API calls | 120 | Medium | |
 | TODO-093 | cmd/v2sysmon | Feature | Add alert threshold configuration with webhook or email notifications when metrics exceed defined limits | 150 | Medium | |
-| TODO-095 | cmd/v2sysmon | Optimization | Reduce CPU overhead in metric collection by sampling metrics at configurable intervals instead of every poll cycle | 100 | Medium | |
 | TODO-096 | notes | Refactor | Compact LearningFSM code by extracting common save state patterns into helper function | 50 | Medium | |
 | TODO-097 | notes | Test | Add concurrent stress test for LearningFSM state transitions with multiple goroutines | 100 | Medium | |
 | TODO-098 | all | Refactor | Remove duplicate error handling patterns across cmd/* services with centralized error wrapper | 150 | Medium | |
