@@ -146,6 +146,13 @@
 | TODO-197 | rpc-client | Bug Fix | Add proper cleanup strategy for pendingRequests Map to prevent memory leaks from failed requests | 60 | Medium | |
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
 | TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
+| TODO-200 | glc | Bug Fix | Fix UpdateGraph version snapshot logic - incorrect condition creates snapshots when nodes/edges keys exist in updates map regardless of value, should check if key exists OR if edges value is not nil | 80 | High | |
+| TODO-201 | glc | Bug Fix | Fix foreign key type mismatch between GraphModel.GraphID (string) and GraphVersionModel.GraphID (uint) - breaks version relationship, change to consistent types | 60 | High | |
+| TODO-202 | glc | Bug Fix | Add missing foreign key constraint to ShareLinkModel.GraphID for CASCADE delete on graph deletion - prevents orphaned share links | 40 | Medium | |
+| TODO-203 | glc | Bug Fix | Fix JSON field name inconsistency - struct has Relations but JSON tag is relationships, causes frontend/backend communication failure | 30 | Medium | |
+| TODO-204 | glc | Bug Fix | Implement password hashing with bcrypt or argon2 for CreateShareLink - currently stores plaintext which is security vulnerability | 60 | High | |
+| TODO-205 | glc | Bug Fix | Fix race condition in GetGraphByShareLink - view count update happens after graph return, should update in transaction before return | 50 | Medium | |
+| TODO-206 | glc | Bug Fix | Fix generateLinkID length calculation - requesting 8 bytes but only taking first 4 hex characters due to [:8] slice, should use [:length*2] or uuid.New().String()[:8] | 20 | Low | |
 
 ## TODO Management Guidelines
 
