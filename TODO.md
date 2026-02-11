@@ -142,7 +142,6 @@
 | TODO-187 | website | Documentation | Document component prop interfaces in components/ with JSDoc comments describing required and optional props | 200 | Low | |
 | TODO-188 | website | Feature | Connect navbar search to actual search functionality querying across CVEs, CWEs, CAPECs, and ATT&CK data | 150 | Medium | |
 | TODO-189 | website | Feature | Add settings functionality for settings button - create dialog/page for user preferences (theme, API endpoints, data refresh) | 180 | Low | |
-| TODO-190 | analysis | Optimization | Replace encoding/json with sonic for graph serialization in graph_store.go to achieve 2-3x performance improvement | 50 | High | |
 | TODO-191 | analysis | Optimization | Add sync.Pool buffer pool for JSON serialization in graph_store.go to reduce GC pressure | 80 | Medium | |
 | TODO-192 | analysis | Optimization | Replace fmt.Sprintf with optimized byte array conversion for edge key generation in SaveGraph | 30 | Low | |
 | TODO-193 | analysis | Feature | Implement incremental graph save to avoid clearing entire bucket on each SaveGraph call | 200 | Medium | |

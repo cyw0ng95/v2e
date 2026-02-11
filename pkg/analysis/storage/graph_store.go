@@ -1,12 +1,12 @@
 package storage
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
 
+	"github.com/bytedance/sonic"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/graph"
 	"github.com/cyw0ng95/v2e/pkg/urn"
@@ -113,7 +113,7 @@ func (s *GraphStore) SaveGraph(g *graph.Graph) error {
 				Properties: node.Properties,
 			}
 
-			data, err := json.Marshal(nodeData)
+			data, err := sonic.Marshal(nodeData)
 			if err != nil {
 				return fmt.Errorf("failed to marshal node %s: %w", node.URN.String(), err)
 			}
@@ -136,7 +136,7 @@ func (s *GraphStore) SaveGraph(g *graph.Graph) error {
 				Properties: edge.Properties,
 			}
 
-			data, err := json.Marshal(edgeData)
+			data, err := sonic.Marshal(edgeData)
 			if err != nil {
 				return fmt.Errorf("failed to marshal edge: %w", err)
 			}
@@ -183,7 +183,7 @@ func (s *GraphStore) LoadGraph() (*graph.Graph, error) {
 		// Load all nodes
 		err := nodesBucket.ForEach(func(k, v []byte) error {
 			var nodeData NodeData
-			if err := json.Unmarshal(v, &nodeData); err != nil {
+			if err := sonic.Unmarshal(v, &nodeData); err != nil {
 				return fmt.Errorf("failed to unmarshal node: %w", err)
 			}
 
@@ -202,7 +202,7 @@ func (s *GraphStore) LoadGraph() (*graph.Graph, error) {
 		// Load all edges
 		err = edgesBucket.ForEach(func(k, v []byte) error {
 			var edgeData EdgeData
-			if err := json.Unmarshal(v, &edgeData); err != nil {
+			if err := sonic.Unmarshal(v, &edgeData); err != nil {
 				return fmt.Errorf("failed to unmarshal edge: %w", err)
 			}
 
@@ -255,7 +255,7 @@ func (s *GraphStore) GetMetadata() (*GraphMetadata, error) {
 		if v == nil {
 			return fmt.Errorf("metadata not found")
 		}
-		return json.Unmarshal(v, &metadata)
+		return sonic.Unmarshal(v, &metadata)
 	})
 
 	if err != nil {
@@ -276,7 +276,7 @@ func (s *GraphStore) SaveCheckpoint(checkpointID string, data map[string]interfa
 			"data":      data,
 		}
 
-		jsonData, err := json.Marshal(checkpointData)
+		jsonData, err := sonic.Marshal(checkpointData)
 		if err != nil {
 			return err
 		}
@@ -295,7 +295,7 @@ func (s *GraphStore) GetCheckpoint(checkpointID string) (map[string]interface{},
 		if v == nil {
 			return fmt.Errorf("checkpoint not found: %s", checkpointID)
 		}
-		return json.Unmarshal(v, &result)
+		return sonic.Unmarshal(v, &result)
 	})
 
 	return result, err
@@ -332,7 +332,7 @@ func (s *GraphStore) clearBucket(tx *bolt.Tx, bucketName []byte) error {
 func (s *GraphStore) saveMetadata(tx *bolt.Tx, metadata GraphMetadata) error {
 	b := tx.Bucket(BucketMetadata)
 
-	data, err := json.Marshal(metadata)
+	data, err := sonic.Marshal(metadata)
 	if err != nil {
 		return err
 	}
