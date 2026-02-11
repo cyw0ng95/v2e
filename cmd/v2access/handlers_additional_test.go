@@ -84,7 +84,7 @@ func (e *errorWriter) Write(p []byte) (int, error) { return 0, errors.New("write
 
 // Test missing method produces 400
 func TestRPCHandler_MissingMethod(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestRPCHandler_MissingMethod", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestRPCHandler_MissingMethod", nil, func(t *testing.T, tx *gorm.DB) {
 		gin.SetMode(gin.TestMode)
 		sp := subprocess.New("test-client")
 		logger := common.NewLogger(os.Stderr, "[ACCESS] ", common.InfoLevel)
@@ -106,7 +106,7 @@ func TestRPCHandler_MissingMethod(t *testing.T) {
 
 // Test RPC forward when SendMessage fails (simulate transport error)
 func TestRPCHandler_RPCSendError(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestRPCHandler_RPCSendError", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestRPCHandler_RPCSendError", nil, func(t *testing.T, tx *gorm.DB) {
 		gin.SetMode(gin.TestMode)
 		r := gin.Default()
 		rg := r.Group("/restful")

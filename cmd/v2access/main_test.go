@@ -40,7 +40,7 @@ func TestNewRPCClient_Access(t *testing.T) {
 }
 
 func TestRPCClient_HandleResponse_UnknownCorrelation(t *testing.T) {
-	testutils.Run(t, testutils.Level2, "TestRPCClient_HandleResponse_UnknownCorrelation", nil, func(t *testing.T, tx *gorm.DB) {
+	testutils.Run(t, testutils.Level1, "TestRPCClient_HandleResponse_UnknownCorrelation", nil, func(t *testing.T, tx *gorm.DB) {
 		client := NewRPCClient("test-access-2", common.DefaultRPCTimeout)
 		msg := &subprocess.Message{
 			Type:          subprocess.MessageTypeResponse,
