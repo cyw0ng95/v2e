@@ -108,7 +108,7 @@ func BenchmarkBackoff_Calculation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for attempt := 0; attempt < 10; attempt++ {
-			_ = ar.calculateBackoff(attempt)
+			_ = ar.calculateBackoff(attempt, nil)
 		}
 	}
 }
@@ -124,7 +124,7 @@ func BenchmarkExponentialBackoff(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for attempt := 0; attempt < 10; attempt++ {
-			_ = ar.calculateBackoff(attempt)
+			_ = ar.calculateBackoff(attempt, nil)
 		}
 	}
 }
@@ -140,7 +140,7 @@ func BenchmarkLinearBackoff(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for attempt := 0; attempt < 10; attempt++ {
-			_ = ar.calculateBackoff(attempt)
+			_ = ar.calculateBackoff(attempt, nil)
 		}
 	}
 }
@@ -156,7 +156,7 @@ func BenchmarkFixedBackoff(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for attempt := 0; attempt < 10; attempt++ {
-			_ = ar.calculateBackoff(attempt)
+			_ = ar.calculateBackoff(attempt, nil)
 		}
 	}
 }
@@ -171,7 +171,7 @@ func BenchmarkBackoff_WithJitter(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for attempt := 0; attempt < 10; attempt++ {
-			_ = ar.calculateBackoff(attempt)
+			_ = ar.calculateBackoff(attempt, nil)
 		}
 	}
 }
