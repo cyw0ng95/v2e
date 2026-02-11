@@ -122,7 +122,6 @@
 | TODO-172 | website | Optimization | Implement virtualization for horizontal tab lists when there are 10+ tabs | 100 | Low | |
 | TODO-173 | website | Optimization | Add route-based code splitting for major pages using Next.js dynamic imports | 60 | Medium | |
 | TODO-174 | website | Refactor | Extract duplicate severity utility functions from cve-table.tsx and cve-detail-modal.tsx to lib/utils.ts | 40 | Low | |
-| TODO-175 | website | Refactor | Consolidate duplicate ErrorBoundary components in lib/error-handler.tsx and components/error-boundary.tsx | 50 | Low | |
 | TODO-176 | website | Refactor | Replace any types with proper TypeScript interfaces in lib/hooks.ts, components/notes-framework.tsx, app/page.tsx | 100 | Medium | |
 | TODO-177 | website | Test | Add unit tests for RPC client (lib/rpc-client.ts) covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
 | TODO-178 | website | Test | Add unit tests for custom hooks (lib/hooks.ts) using React Testing Library for critical hooks: useCVEList, useSessionStatus, useStartSession, useMemoryCards | 300 | High | |
