@@ -6,6 +6,7 @@ import (
 	"golang.org/x/net/http2"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -19,6 +20,63 @@ var ErrRateLimited = errors.New("NVD API rate limit exceeded")
 
 // ErrResponseTooLarge is returned when the API response body exceeds the maximum allowed size
 var ErrResponseTooLarge = errors.New("API response body exceeds maximum allowed size")
+
+// RateLimitError wraps ErrRateLimited with retry-after information
+type RateLimitError struct {
+	RetryAfter time.Duration
+}
+
+// Error returns the error message
+func (e *RateLimitError) Error() string {
+	return fmt.Sprintf("NVD API rate limit exceeded, retry after %v", e.RetryAfter)
+}
+
+// Unwrap returns the underlying error
+func (e *RateLimitError) Unwrap() error {
+	return ErrRateLimited
+}
+
+// parseRetryAfter parses the Retry-After header from an HTTP response.
+// Returns the duration to wait before retrying, or a default duration if the header is invalid.
+func parseRetryAfter(resp *resty.Response) time.Duration {
+	// Default retry-after duration if header is not present or invalid
+	const defaultRetryAfter = 5 * time.Second
+
+	retryAfterHeader := resp.Header().Get("Retry-After")
+	if retryAfterHeader == "" {
+		return defaultRetryAfter
+	}
+
+	// Try to parse as seconds (integer)
+	if seconds, err := strconv.Atoi(retryAfterHeader); err == nil {
+		duration := time.Duration(seconds) * time.Second
+		// Limit the retry-after to a reasonable maximum (1 hour)
+		if duration > time.Hour {
+			return time.Hour
+		}
+		if duration < time.Second {
+			return time.Second
+		}
+		return duration
+	}
+
+	// Try to parse as HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
+	if t, err := http.ParseTime(retryAfterHeader); err == nil {
+		duration := time.Until(t)
+		// Handle cases where the time is in the past
+		if duration <= 0 {
+			return time.Second
+		}
+		// Limit the retry-after to a reasonable maximum (1 hour)
+		if duration > time.Hour {
+			return time.Hour
+		}
+		return duration
+	}
+
+	// If parsing fails, return default
+	return defaultRetryAfter
+}
 
 const (
 	// MaxResponseSize is the maximum allowed response body size (10 MB)
@@ -92,7 +150,7 @@ func (f *Fetcher) FetchCVEByID(cveID string) (*cve.CVEResponse, error) {
 
 	if resp.IsError() {
 		if resp.StatusCode() == 429 {
-			return nil, ErrRateLimited
+			return nil, &RateLimitError{RetryAfter: parseRetryAfter(resp)}
 		}
 		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
 	}
@@ -135,7 +193,7 @@ func (f *Fetcher) FetchCVEs(startIndex, resultsPerPage int) (*cve.CVEResponse, e
 
 	if resp.IsError() {
 		if resp.StatusCode() == 429 {
-			return nil, ErrRateLimited
+			return nil, &RateLimitError{RetryAfter: parseRetryAfter(resp)}
 		}
 		return nil, fmt.Errorf("API returned error status: %d", resp.StatusCode())
 	}

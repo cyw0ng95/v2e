@@ -87,40 +87,33 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 // createGetCVEByIDHandler creates a handler for RPCGetCVEByID
 func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug(LogMsgProcessingGetCVE, msg.ID, msg.CorrelationID)
 		var req struct {
 			CVEID string `json:"cve_id"`
 		}
-		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
-			logger.Warn(LogMsgFailedParseGetCVEReq, msg.ID, msg.CorrelationID, errResp.Error)
-			logger.Debug(LogMsgProcessingGetCVEFailed, msg.ID, string(msg.Payload))
-			return errResp, nil
-		}
-		if errResp := subprocess.RequireField(msg, req.CVEID, "cve_id"); errResp != nil {
-			logger.Warn(LogMsgCVEIDRequiredGet, msg.ID, msg.CorrelationID)
-			logger.Debug(LogMsgProcessingGetCVEFailedID, msg.ID)
-			return errResp, nil
-		}
-		// Validate CVE ID format for security
-		validator := subprocess.NewValidator()
-		validator.ValidateCVEID(req.CVEID, "cve_id")
-		if validator.HasErrors() {
-			return subprocess.NewErrorResponse(msg, validator.Error()), nil
-		}
-		cveItem, err := db.GetCVE(req.CVEID)
-		if err != nil {
-			logger.Warn(LogMsgFailedGetCVE, msg.ID, msg.CorrelationID, req.CVEID, err)
-			logger.Debug(LogMsgProcessingGetCVEFailedErr, req.CVEID, msg.ID, err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf(LogMsgCVEIDNotFound, err)), nil
-		}
-		logger.Info(LogMsgSuccessGetCVE, msg.ID, msg.CorrelationID, req.CVEID)
-		logger.Debug(LogMsgProcessingGetCVECompleted, msg.ID, req.CVEID)
-		resp, err := subprocess.NewSuccessResponse(msg, cveItem)
-		if err != nil {
-			logger.Warn(LogMsgFailedMarshalGetCVEResp, msg.ID, msg.CorrelationID, err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to marshal result: %v", err)), nil
-		}
-		return resp, nil
+
+		return executeWithValidation(ctx, msg, logger, "GetCVEByID",
+			func() error {
+				if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
+					return errResp
+				}
+				return nil
+			},
+			func() error {
+				if errResp := subprocess.RequireField(msg, req.CVEID, "cve_id"); errResp != nil {
+					return errResp
+				}
+				// Validate CVE ID format for security
+				validator := subprocess.NewValidator()
+				validator.ValidateCVEID(req.CVEID, "cve_id")
+				if validator.HasErrors() {
+					return validator
+				}
+				return nil
+			},
+			func() (interface{}, error) {
+				return db.GetCVE(req.CVEID)
+			},
+		)
 	}
 }
 
