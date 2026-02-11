@@ -151,7 +151,6 @@
 | TODO-204 | glc | Bug Fix | Implement password hashing with bcrypt or argon2 for CreateShareLink - currently stores plaintext which is security vulnerability | 60 | High | |
 | TODO-205 | glc | Bug Fix | Fix race condition in GetGraphByShareLink - view count update happens after graph return, should update in transaction before return | 50 | Medium | |
 | TODO-206 | glc | Bug Fix | Fix generateLinkID length calculation - requesting 8 bytes but only taking first 4 hex characters due to [:8] slice, should use [:length*2] or uuid.New().String()[:8] | 20 | Low | |
-| TODO-207 | ume | Bug Fix | Fix Router interface signature mismatch - LockFreeRouter expects Route(msg *proc.Message, sourceProcess string) but implementation only takes msg parameter, preventing LockFreeRouter from correctly implementing Router interface | 100 | High | |
 | TODO-208 | ume | Refactor | Add backpressure mechanism to message routing - when route channels are full, messages are dropped with "channel full" error instead of blocking send, implement proper queue or buffer | 200 | High | |
 | TODO-209 | ume | Feature | Add message batching support to router - group multiple messages and route them in batches to improve throughput for high-volume scenarios | 250 | Medium | |
 | TODO-210 | ume | Feature | Add message delivery tracking - track whether messages were successfully delivered or dropped for observability and debugging | 150 | Medium | |
