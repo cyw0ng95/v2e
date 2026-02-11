@@ -382,8 +382,10 @@ func (m *MacroFSMManager) ValidateProviderDependencies() error {
 
 	// Check each provider's dependencies
 	for _, p := range m.providers {
-		if err := p.CheckDependencies(states); err != nil {
-			return err
+		if bp, ok := p.(interface{ CheckDependencies(map[string]ProviderState) error }); ok {
+			if err := bp.CheckDependencies(states); err != nil {
+				return err
+			}
 		}
 	}
 

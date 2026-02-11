@@ -37,6 +37,7 @@ func (m *MockProviderFSM) Execute() error                               { return
 func (m *MockProviderFSM) SetEventHandler(handler func(*Event) error)   { m.eventHandler = handler }
 func (m *MockProviderFSM) Initialize(ctx context.Context) error          { return nil }
 func (m *MockProviderFSM) GetStats() map[string]interface{}            { return map[string]interface{}{"id": m.id, "type": m.providerType} }
+func (m *MockProviderFSM) GetDependencies() []string                    { return nil }
 
 func (m *MockProviderFSM) EmitEvent(eventType EventType) error {
 	if m.eventHandler == nil {
