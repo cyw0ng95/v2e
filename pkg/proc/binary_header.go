@@ -110,22 +110,30 @@ func (h *BinaryHeader) EncodeHeader(buf []byte) error {
 	// MessageID (32 bytes) - use optimized copy
 	srcMsgID := h.MessageID[:]
 	dstMsgID := buf[12:44]
-	Memcpy(dstMsgID, srcMsgID)
+	if err := Memcpy(dstMsgID, srcMsgID); err != nil {
+		return fmt.Errorf("failed to copy MessageID: %w", err)
+	}
 
 	// SourceID (32 bytes) - use optimized copy
 	srcSourceID := h.SourceID[:]
 	dstSourceID := buf[44:76]
-	Memcpy(dstSourceID, srcSourceID)
+	if err := Memcpy(dstSourceID, srcSourceID); err != nil {
+		return fmt.Errorf("failed to copy SourceID: %w", err)
+	}
 
 	// TargetID (32 bytes) - use optimized copy
 	srcTargetID := h.TargetID[:]
 	dstTargetID := buf[76:108]
-	Memcpy(dstTargetID, srcTargetID)
+	if err := Memcpy(dstTargetID, srcTargetID); err != nil {
+		return fmt.Errorf("failed to copy TargetID: %w", err)
+	}
 
 	// CorrelationID (20 bytes) - use optimized copy
 	srcCorrID := h.CorrelationID[:]
 	dstCorrID := buf[108:128]
-	Memcpy(dstCorrID, srcCorrID)
+	if err := Memcpy(dstCorrID, srcCorrID); err != nil {
+		return fmt.Errorf("failed to copy CorrelationID: %w", err)
+	}
 
 	return nil
 }

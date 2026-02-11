@@ -3,6 +3,7 @@
 package proc
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
 
@@ -98,18 +99,20 @@ func GetCPUCount() int {
 	return mask.Count()
 }
 
-// Memcpy performs optimized memory copy using memmove
-func Memcpy(dst, src []byte) {
+// Memcpy performs optimized memory copy using memmove.
+// Returns an error if the destination and source lengths don't match.
+func Memcpy(dst, src []byte) error {
 	if len(dst) != len(src) {
-		panic("memcpy: length mismatch")
+		return fmt.Errorf("memcpy: length mismatch: dst=%d, src=%d", len(dst), len(src))
 	}
 	if len(dst) == 0 {
-		return
+		return nil
 	}
 
 	// Use unsafe pointer conversion for direct memory copy
 	// This bypasses Go's bounds checking for maximum performance
 	memmove(unsafe.Pointer(&dst[0]), unsafe.Pointer(&src[0]), uintptr(len(dst)))
+	return nil
 }
 
 //go:linkname memmove runtime.memmove
