@@ -125,8 +125,6 @@
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
 | TODO-161 | cmd/v2meta | Test | Add tests for FSM recovery scenarios | 150 | Medium | |
-| TODO-164 | cmd/v2local | Test | Add integration tests for database operations | 150 | Medium | |
-| TODO-165 | cmd/v2local | Test | Add tests for concurrent access scenarios | 100 | Medium | |
 | TODO-166 | cmd/v2local | Documentation | Document database schema and access patterns | 60 | Low | |
 | TODO-167 | cmd/v2local | Documentation | Document RPC handlers in cmd/v2local/service.md | 80 | Low | |
 | TODO-168 | website | Bug Fix | Add global error boundary for RPC failures - implement in app/layout.tsx to catch errors and show user-friendly messages with retry options | 100 | High | |
