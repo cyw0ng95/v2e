@@ -59,8 +59,6 @@
 | TODO-063 | build.sh | Refactor | Simplify build_and_package() parallel build logic to extract into reusable function with better error handling | 100 | Medium | |
 | TODO-064 | build.sh | Feature | Add build artifact signing or checksum generation for reproducible builds | 100 | Low | |
 | TODO-065 | build.sh | Test | Add unit tests for build script helper functions (version_ge, check_go_version, check_node_version) using shunit2 or bats | 200 | Low | |
-| TODO-066 | build.sh | Documentation | Add inline comments explaining incremental build detection logic and file timestamp comparison in build_project() | 60 | Low | |
-| TODO-067 | runenv.sh | Refactor | Extract Podman container image building logic into separate function to avoid code duplication between macOS and Linux paths | 100 | Medium | |
 | TODO-068 | runenv.sh | Feature | Add Docker container support as alternative to Podman for environments without Podman | 150 | Medium | |
 | TODO-070 | runenv.sh | Feature | Add container health check with retry logic to ensure container is fully initialized before executing commands | 120 | Medium | |
 | TODO-071 | runenv.sh | Refactor | Simplify environment variable passing by using environment file instead of long -e flag chain in run_container_env() | 80 | Medium | |
