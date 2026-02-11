@@ -159,7 +159,6 @@
 | TODO-213 | ume | Feature | Remove or complete shared memory transport - current implementation is incomplete and cannot be used for cross-process communication, should either implement actual fd passing or remove entirely | 150 | High | |
 | TODO-214 | ume | Bug Fix | Fix ring buffer calculation in shared_memory.go - remaining := shm.header.Capacity - (shm.header.WritePos % shm.header.Capacity) doesn't correctly calculate remaining space in ring buffer, needs to account for ReadPos and handle wrap-around properly | 60 | Medium | |
 | TODO-215 | ume | Bug Fix | Fix response buffer pool statistics miscount - ResponseBufferPool.Get() always counts as "hit" even for new allocations which inflates hit rate and makes statistics inaccurate | 80 | Medium | |
-| TODO-216 | ume | Bug Fix | Fix unsafe Memcpy panic on length mismatch - Memcpy operations don't validate buffer sizes, could panic on length mismatch, should return error instead | 100 | High | |
 | TODO-217 | ume | Bug Fix | Fix fixedBytesToString edge case inconsistency - behavior inconsistent for all-zero byte arrays between different functions, needs unified handling | 40 | Low | |
 | TODO-218 | ume | Bug Fix | Fix SetSocketOptions ignoring TCP_QUICKACK error - TCP_QUICKACK socket option error is explicitly ignored, masking legitimate socket configuration failures | 60 | Medium | |
 | TODO-219 | ume | Feature | Add connection pooling to UDS transport - UDS transport uses single connection per pair, not a pool for efficiency, should implement connection reuse | 180 | High | |
