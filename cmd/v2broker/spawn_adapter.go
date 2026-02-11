@@ -1,14 +1,16 @@
 package main
 
 import (
+	"time"
+
 	"github.com/cyw0ng95/v2e/cmd/v2broker/core"
 )
 
 type spawnBroker interface {
 	Spawn(id, command string, args ...string) (*core.ProcessInfo, error)
 	SpawnRPC(id, command string, args ...string) (*core.ProcessInfo, error)
-	SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*core.ProcessInfo, error)
-	SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*core.ProcessInfo, error)
+	SpawnWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*core.ProcessInfo, error)
+	SpawnRPCWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*core.ProcessInfo, error)
 }
 
 // SpawnAdapter delegates to existing in-process Broker spawn methods.
@@ -46,12 +48,12 @@ func (s *SpawnAdapter) SpawnRPC(id, command string, args ...string) (*core.Spawn
 	return toResult(info), err
 }
 
-func (s *SpawnAdapter) SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*core.SpawnResult, error) {
-	info, err := s.b.SpawnWithRestart(id, command, maxRestarts, args...)
+func (s *SpawnAdapter) SpawnWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*core.SpawnResult, error) {
+	info, err := s.b.SpawnWithRestart(id, command, maxRestarts, restartDelay, args...)
 	return toResult(info), err
 }
 
-func (s *SpawnAdapter) SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*core.SpawnResult, error) {
-	info, err := s.b.SpawnRPCWithRestart(id, command, maxRestarts, args...)
+func (s *SpawnAdapter) SpawnRPCWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*core.SpawnResult, error) {
+	info, err := s.b.SpawnRPCWithRestart(id, command, maxRestarts, restartDelay, args...)
 	return toResult(info), err
 }

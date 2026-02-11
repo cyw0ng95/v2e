@@ -7,10 +7,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
-	"github.com/stretchr/testify/assert"
 )
 
 // MockMetricsCollector simulates the collectMetrics function

@@ -1,11 +1,13 @@
 package rpc
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestFetchCVEsParams_Validation tests parameter validation
@@ -37,18 +39,18 @@ func TestFetchCVEsParams_Validation(t *testing.T) {
 				StartIndex:     tt.startIndex,
 				ResultsPerPage: tt.resultsPerPage,
 			}
-			
+
 			// Marshal and unmarshal to test JSON handling
 			data, err := json.Marshal(params)
 			if err != nil {
 				t.Fatalf("marshal error: %v", err)
 			}
-			
+
 			var decoded FetchCVEsParams
 			if err := json.Unmarshal(data, &decoded); err != nil {
 				t.Fatalf("unmarshal error: %v", err)
 			}
-			
+
 			if decoded.StartIndex != tt.startIndex {
 				t.Errorf("StartIndex = %v, want %v", decoded.StartIndex, tt.startIndex)
 			}
@@ -91,17 +93,17 @@ func TestImportParams_PathValidation(t *testing.T) {
 				XSD:   tt.xsd,
 				Force: tt.force,
 			}
-			
+
 			data, err := json.Marshal(params)
 			if err != nil {
 				t.Fatalf("marshal error: %v", err)
 			}
-			
+
 			var decoded ImportParams
 			if err := json.Unmarshal(data, &decoded); err != nil {
 				t.Fatalf("unmarshal error: %v", err)
 			}
-			
+
 			if decoded.Path != tt.path {
 				t.Errorf("Path = %v, want %v", decoded.Path, tt.path)
 			}
@@ -140,17 +142,17 @@ func TestGetByIDParams_IDFormats(t *testing.T) {
 	for i, id := range tests {
 		t.Run(fmt.Sprintf("id_%d", i), func(t *testing.T) {
 			params := GetByIDParams{ID: id}
-			
+
 			data, err := json.Marshal(params)
 			if err != nil {
 				t.Fatalf("marshal error: %v", err)
 			}
-			
+
 			var decoded GetByIDParams
 			if err := json.Unmarshal(data, &decoded); err != nil {
 				t.Fatalf("unmarshal error: %v", err)
 			}
-			
+
 			if decoded.ID != id {
 				t.Errorf("ID = %v, want %v", decoded.ID, id)
 			}
@@ -165,7 +167,7 @@ func TestCVEIDParams_FormatVariations(t *testing.T) {
 		"CVE-2020-00001",
 		"CVE-2024-99999",
 	}
-	
+
 	invalidFormats := []string{
 		"",
 		"NOT-A-CVE",
@@ -175,7 +177,7 @@ func TestCVEIDParams_FormatVariations(t *testing.T) {
 		"CVE-2021",
 		"2021-12345",
 	}
-	
+
 	for _, cveID := range validFormats {
 		t.Run("valid_"+cveID, func(t *testing.T) {
 			params := CVEIDParams{CVEID: cveID}
@@ -189,7 +191,7 @@ func TestCVEIDParams_FormatVariations(t *testing.T) {
 			}
 		})
 	}
-	
+
 	for _, cveID := range invalidFormats {
 		t.Run("invalid_"+cveID, func(t *testing.T) {
 			params := CVEIDParams{CVEID: cveID}
@@ -231,17 +233,17 @@ func TestListParams_PaginationScenarios(t *testing.T) {
 				Offset: tt.offset,
 				Limit:  tt.limit,
 			}
-			
+
 			data, err := json.Marshal(params)
 			if err != nil {
 				t.Fatalf("marshal error: %v", err)
 			}
-			
+
 			var decoded ListParams
 			if err := json.Unmarshal(data, &decoded); err != nil {
 				t.Fatalf("unmarshal error: %v", err)
 			}
-			
+
 			if decoded.Offset != tt.offset {
 				t.Errorf("Offset = %v, want %v", decoded.Offset, tt.offset)
 			}
@@ -260,20 +262,20 @@ func TestRPCParams_JSONRoundTrip(t *testing.T) {
 			data, _ := json.Marshal(original)
 			var decoded FetchCVEsParams
 			json.Unmarshal(data, &decoded)
-			
+
 			if decoded != original {
 				t.Errorf("round trip failed: got %+v, want %+v", decoded, original)
 			}
 		}
 	})
-	
+
 	testutils.Run(t, testutils.Level1, "ListParams", nil, func(t *testing.T, tx *gorm.DB) {
 		for i := 0; i < 50; i++ {
 			original := ListParams{Offset: i * 100, Limit: i + 1}
 			data, _ := json.Marshal(original)
 			var decoded ListParams
 			json.Unmarshal(data, &decoded)
-			
+
 			if decoded != original {
 				t.Errorf("round trip failed: got %+v, want %+v", decoded, original)
 			}
@@ -304,7 +306,7 @@ func TestRPCParams_MalformedJSON(t *testing.T) {
 			var params3 GetByIDParams
 			var params4 CVEIDParams
 			var params5 ImportParams
-			
+
 			// These should not panic, just return errors
 			_ = json.Unmarshal(data, &params1)
 			_ = json.Unmarshal(data, &params2)

@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+// isRateLimitWithRetryAfter checks if error is a RateLimitError and returns the retry duration
+func isRateLimitWithRetryAfter(err error) (time.Duration, bool) {
+	var rateLimitErr *RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		return rateLimitErr.RetryAfter, true
+	}
+	return 0, false
+}
+
 var (
 	// ErrCircuitBreakerOpen is returned when circuit breaker is open
 	ErrCircuitBreakerOpen = errors.New("circuit breaker is open")
@@ -343,7 +352,7 @@ func (ar *AdaptiveRetry) Execute(fn func() error, priority RequestPriority) erro
 		}
 
 		// Calculate backoff
-		backoff := ar.calculateBackoff(attempt)
+		backoff := ar.calculateBackoff(attempt, err)
 		ar.metrics.RecordRetry(backoff)
 
 		time.Sleep(backoff)
@@ -365,7 +374,18 @@ func (ar *AdaptiveRetry) isRetryable(err error) bool {
 }
 
 // calculateBackoff calculates backoff delay
-func (ar *AdaptiveRetry) calculateBackoff(attempt int) time.Duration {
+func (ar *AdaptiveRetry) calculateBackoff(attempt int, err error) time.Duration {
+	// Check if error is a RateLimitError with retry-after duration
+	if retryAfter, ok := isRateLimitWithRetryAfter(err); ok {
+		// Use the server-provided retry-after duration
+		// Add a small amount of jitter to avoid thundering herd
+		if ar.config.JitterEnabled {
+			jitter := ar.rand.Float64() * 0.1 * float64(retryAfter)
+			retryAfter = time.Duration(float64(retryAfter) + jitter)
+		}
+		return retryAfter
+	}
+
 	var delay time.Duration
 
 	switch ar.config.Strategy {

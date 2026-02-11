@@ -4,16 +4,38 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/cve"
-	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/cyw0ng95/v2e/pkg/cve"
+	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 )
 
 // DB represents the database connection
 type DB struct {
 	db *gorm.DB
+}
+
+// retryOnLocked executes a database operation with retry logic for lock errors.
+// It will retry up to 2 times (3 total attempts) with exponential backoff
+// (10ms, 20ms) when encountering "database is locked" errors.
+func retryOnLocked(fn func() error) error {
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+		// If it's a database lock error, wait and retry
+		if strings.Contains(err.Error(), "database is locked") && attempt < 2 {
+			time.Sleep(time.Millisecond * time.Duration(10*(attempt+1))) // Exponential backoff
+			continue
+		}
+		// For other errors or final attempt, return immediately
+		return err
+	}
+	return nil
 }
 
 // GormDB returns the underlying GORM database instance
@@ -257,19 +279,10 @@ func (d *DB) GetCVE(cveID string) (*cve.CVEItem, error) {
 func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 	var records []CVERecord
 
-	// Retry logic for database locking issues
-	var err error
-	for attempt := 0; attempt < 3; attempt++ {
-		err = d.db.Offset(offset).Limit(limit).Order("published desc").Find(&records).Error
-		if err == nil {
-			break
-		}
-		// If it's a database lock error, wait and retry
-		if strings.Contains(err.Error(), "database is locked") && attempt < 2 {
-			time.Sleep(time.Millisecond * time.Duration(10*(attempt+1))) // Exponential backoff
-			continue
-		}
-		// For other errors or final attempt, return immediately
+	err := retryOnLocked(func() error {
+		return d.db.Offset(offset).Limit(limit).Order("published desc").Find(&records).Error
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -288,19 +301,10 @@ func (d *DB) ListCVEs(offset, limit int) ([]cve.CVEItem, error) {
 func (d *DB) Count() (int64, error) {
 	var count int64
 
-	// Retry logic for database locking issues
-	var err error
-	for attempt := 0; attempt < 3; attempt++ {
-		err = d.db.Model(&CVERecord{}).Count(&count).Error
-		if err == nil {
-			return count, nil
-		}
-		// If it's a database lock error, wait and retry
-		if strings.Contains(err.Error(), "database is locked") && attempt < 2 {
-			time.Sleep(time.Millisecond * time.Duration(10*(attempt+1))) // Exponential backoff
-			continue
-		}
-		// For other errors or final attempt, return immediately
+	err := retryOnLocked(func() error {
+		return d.db.Model(&CVERecord{}).Count(&count).Error
+	})
+	if err != nil {
 		return 0, err
 	}
 

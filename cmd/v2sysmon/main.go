@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/common/procfs"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
@@ -89,51 +88,5 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *rpc.Client) su
 }
 
 func collectMetrics() (map[string]interface{}, error) {
-	cpuUsage, err := procfs.ReadCPUUsage()
-	if err != nil {
-		return nil, err
-	}
-	memoryUsage, err := procfs.ReadMemoryUsage()
-	if err != nil {
-		return nil, err
-	}
-	m := map[string]interface{}{
-		"cpu_usage":    cpuUsage,
-		"memory_usage": memoryUsage,
-	}
-
-	if loadAvg, err := procfs.ReadLoadAvg(); err == nil {
-		m["load_avg"] = loadAvg
-	}
-	if up, err := procfs.ReadUptime(); err == nil {
-		m["uptime"] = up
-	}
-	if used, total, err := procfs.ReadDiskUsage("/"); err == nil {
-		// provide object-style disk info keyed by mount path, and keep totals for compatibility
-		m["disk"] = map[string]map[string]uint64{"/": {"used": used, "total": total}}
-		m["disk_usage"] = used
-		m["disk_total"] = total
-	}
-	if swap, err := procfs.ReadSwapUsage(); err == nil {
-		m["swap_usage"] = swap
-	}
-	if netMap, err := procfs.ReadNetDevDetailed(); err == nil {
-		// also provide totals for compatibility
-		var totalRx, totalTx uint64
-		for ifName, s := range netMap {
-			if ifName == "lo" {
-				continue
-			}
-			if v, ok := s["rx"]; ok {
-				totalRx += v
-			}
-			if v, ok := s["tx"]; ok {
-				totalTx += v
-			}
-		}
-		m["network"] = netMap
-		m["net_rx"] = totalRx
-		m["net_tx"] = totalTx
-	}
-	return m, nil
+	return collectAllMetrics()
 }

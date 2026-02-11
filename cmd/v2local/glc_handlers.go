@@ -441,8 +441,8 @@ func listGLCPresetsHandler(store *glc.Store, logger *common.Logger) subprocess.H
 func createGLCShareLinkHandler(store *glc.Store, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
 		var params struct {
-			GraphID  string  `json:"graph_id"`
-			Password string  `json:"password"`
+			GraphID   string   `json:"graph_id"`
+			Password  string   `json:"password"`
 			ExpiresIn *float64 `json:"expires_in_hours"`
 		}
 		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {

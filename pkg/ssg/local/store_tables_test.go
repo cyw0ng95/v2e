@@ -1,10 +1,12 @@
 package local
 
 import (
+	"testing"
+
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/ssg"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"testing"
-	"gorm.io/gorm"
 )
 
 func TestStore_SaveTable(t *testing.T) {

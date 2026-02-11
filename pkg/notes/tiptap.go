@@ -27,46 +27,46 @@ type TipTapDocument struct {
 
 // TipTapNode represents a generic TipTap node
 type TipTapNode struct {
-	Type    string        `json:"type"`
-	Content []TipTapNode  `json:"content,omitempty"`
-	Attrs   interface{}   `json:"attrs,omitempty"`
-	Text    string        `json:"text,omitempty"`
-	Marks   []TipTapMark  `json:"marks,omitempty"`
+	Type    string       `json:"type"`
+	Content []TipTapNode `json:"content,omitempty"`
+	Attrs   interface{}  `json:"attrs,omitempty"`
+	Text    string       `json:"text,omitempty"`
+	Marks   []TipTapMark `json:"marks,omitempty"`
 }
 
 // TipTapMark represents text formatting marks (bold, italic, etc.)
 type TipTapMark struct {
-	Type string `json:"type"`
+	Type  string            `json:"type"`
 	Attrs map[string]string `json:"attrs,omitempty"`
 }
 
 // ValidTipTapNodeTypes defines the allowed TipTap node types
 var ValidTipTapNodeTypes = map[string]bool{
 	// Document structure
-	"doc":       true,
-	"paragraph": true,
-	"heading":   true,
-	"codeBlock": true,
-	"blockquote": true,
-	"listItem":  true,
-	"bulletList": true,
+	"doc":         true,
+	"paragraph":   true,
+	"heading":     true,
+	"codeBlock":   true,
+	"blockquote":  true,
+	"listItem":    true,
+	"bulletList":  true,
 	"orderedList": true,
-	"text":      true,
-	"hardBreak": true,
+	"text":        true,
+	"hardBreak":   true,
 
 	// Formatting
-	"bold":      true,
-	"italic":    true,
-	"strike":    true,
-	"code":      true,
-	"link":      true,
+	"bold":   true,
+	"italic": true,
+	"strike": true,
+	"code":   true,
+	"link":   true,
 
 	// Task lists
-	"taskList":      true,
-	"taskItem":      true,
+	"taskList": true,
+	"taskItem": true,
 
 	// Common extensions
-	"image":     true,
+	"image":          true,
 	"horizontalRule": true,
 }
 

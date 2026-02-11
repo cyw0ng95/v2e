@@ -444,6 +444,27 @@ RESTful API gateway service that provides external access to the v2e system. For
 - **Static Directory**: Configurable via `config.json` under `access.static_dir` (default: "website")
 - **Server Address**: Configurable via `config.json` under `server.address` (default: "0.0.0.0:8080")
 
+## Security Features
+
+### Rate Limiting
+All REST endpoints (except `/restful/health`) are protected by token-bucket rate limiting to prevent DoS attacks:
+- **Per-Client Limit**: 50 requests per client with 1 request/second refill rate
+- **Client Identification**: Based on IP address (supports X-Forwarded-For and X-Real-IP headers)
+- **Trusted Proxies**: Localhost (127.0.0.1, ::1) bypasses rate limiting
+- **Excluded Paths**: `/restful/health` is excluded from rate limiting
+- **Response Headers**: Rate limited requests return HTTP 429 with:
+  - `X-RateLimit-Limit`: Maximum tokens allowed
+  - `X-RateLimit-Refill`: Refill interval in seconds
+  - `Retry-After`: Suggested retry delay
+
+### Input Validation
+- All RPC requests are validated for required fields and data types
+- CVE IDs must match format `CVE-YYYY-NNNN...` (e.g., CVE-2021-44228)
+- CWE IDs must match format `CWE-NNN` (e.g., CWE-79)
+- CAPEC IDs must match format `CAPEC-NNN` (e.g., CAPEC-123)
+- Pagination parameters are validated to be within acceptable ranges
+- File paths are validated to prevent directory traversal attacks
+
 ## Notes
 - Forwards all RPC calls to the broker for routing
 - Handles authentication and request validation

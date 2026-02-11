@@ -24,7 +24,7 @@ func NewStore(dbPath string) (*Store, error) {
 	}
 
 	// Open database with WAL mode for better performance
-	dsn := fmt.Sprintf("%s?_pragma=journal_mode=WAL&_pragma=synchronous=NORMAL&_pragma=foreign_keys=on", dbPath)
+	dsn := fmt.Sprintf("%s?_pragma=journal_mode=WAL&_pragma=synchronous=NORMAL&_pragma=foreign_keys=on&_pragma=busy_timeout=30000", dbPath)
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})

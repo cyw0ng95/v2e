@@ -1,11 +1,13 @@
 package parser
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestParseManifestFile(t *testing.T) {
@@ -31,79 +33,79 @@ func TestParseManifestFile(t *testing.T) {
 	  }
 	}`
 
-	// Write to temp file
-	tmpFile, err := os.CreateTemp("", "manifest-test-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
+		// Write to temp file
+		tmpFile, err := os.CreateTemp("", "manifest-test-*.json")
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
 
-	if _, err := tmpFile.Write([]byte(testJSON)); err != nil {
-		t.Fatalf("Failed to write temp file: %v", err)
-	}
-	tmpFile.Close()
+		if _, err := tmpFile.Write([]byte(testJSON)); err != nil {
+			t.Fatalf("Failed to write temp file: %v", err)
+		}
+		tmpFile.Close()
 
-	// Parse the file
-	manifest, profiles, profileRules, err := ParseManifestFile(tmpFile.Name())
-	if err != nil {
-		t.Fatalf("ParseManifestFile failed: %v", err)
-	}
+		// Parse the file
+		manifest, profiles, profileRules, err := ParseManifestFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseManifestFile failed: %v", err)
+		}
 
-	// Verify manifest
-	if manifest == nil {
-		t.Fatal("manifest is nil")
-	}
-	if manifest.Product != "test-product" {
-		t.Errorf("manifest.Product = %v, want test-product", manifest.Product)
-	}
+		// Verify manifest
+		if manifest == nil {
+			t.Fatal("manifest is nil")
+		}
+		if manifest.Product != "test-product" {
+			t.Errorf("manifest.Product = %v, want test-product", manifest.Product)
+		}
 
-	// Verify profiles
-	if len(profiles) != 2 {
-		t.Fatalf("expected 2 profiles, got %d", len(profiles))
-	}
+		// Verify profiles
+		if len(profiles) != 2 {
+			t.Fatalf("expected 2 profiles, got %d", len(profiles))
+		}
 
-	// Check CIS profile
-	var cisProfile *struct {
-		ID        string
-		ProfileID string
-		RuleCount int
-	}
-	for i := range profiles {
-		if profiles[i].ProfileID == "cis" {
-			cisProfile = &struct {
-				ID        string
-				ProfileID string
-				RuleCount int
-			}{
-				ID:        profiles[i].ID,
-				ProfileID: profiles[i].ProfileID,
-				RuleCount: profiles[i].RuleCount,
+		// Check CIS profile
+		var cisProfile *struct {
+			ID        string
+			ProfileID string
+			RuleCount int
+		}
+		for i := range profiles {
+			if profiles[i].ProfileID == "cis" {
+				cisProfile = &struct {
+					ID        string
+					ProfileID string
+					RuleCount int
+				}{
+					ID:        profiles[i].ID,
+					ProfileID: profiles[i].ProfileID,
+					RuleCount: profiles[i].RuleCount,
+				}
+				break
 			}
-			break
 		}
-	}
-	if cisProfile == nil {
-		t.Fatal("CIS profile not found")
-	}
-	if cisProfile.RuleCount != 3 {
-		t.Errorf("CIS profile RuleCount = %d, want 3", cisProfile.RuleCount)
-	}
-
-	// Verify profile rules
-	if len(profileRules) != 5 { // 3 from cis + 2 from stig
-		t.Fatalf("expected 5 profile rules, got %d", len(profileRules))
-	}
-
-	// Count rules for CIS profile
-	cisRuleCount := 0
-	for _, pr := range profileRules {
-		if pr.ProfileID == cisProfile.ID {
-			cisRuleCount++
+		if cisProfile == nil {
+			t.Fatal("CIS profile not found")
 		}
-	}
-	if cisRuleCount != 3 {
-		t.Errorf("expected 3 rules for CIS profile, got %d", cisRuleCount)
-	}
+		if cisProfile.RuleCount != 3 {
+			t.Errorf("CIS profile RuleCount = %d, want 3", cisProfile.RuleCount)
+		}
+
+		// Verify profile rules
+		if len(profileRules) != 5 { // 3 from cis + 2 from stig
+			t.Fatalf("expected 5 profile rules, got %d", len(profileRules))
+		}
+
+		// Count rules for CIS profile
+		cisRuleCount := 0
+		for _, pr := range profileRules {
+			if pr.ProfileID == cisProfile.ID {
+				cisRuleCount++
+			}
+		}
+		if cisRuleCount != 3 {
+			t.Errorf("expected 3 rules for CIS profile, got %d", cisRuleCount)
+		}
 	})
 }
 
@@ -111,7 +113,7 @@ func TestParseManifestFile_RealFile(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestParseManifestFile_RealFile", nil, func(t *testing.T, tx *gorm.DB) {
 		// Test with a real manifest file from submodule if available
 		manifestPath := filepath.Join("..", "..", "..", "assets", "ssg-static", "manifests", "manifest-al2023.json")
-	
+
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 			t.Skip("Skipping test: manifest file not found (submodule not initialized)")
 		}

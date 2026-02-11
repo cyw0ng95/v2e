@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing

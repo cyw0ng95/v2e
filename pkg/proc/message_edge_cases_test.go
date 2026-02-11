@@ -1,14 +1,16 @@
 package proc
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestMessageSerialization_Deserialization tests message serialization and deserialization with various payloads

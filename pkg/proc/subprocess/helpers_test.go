@@ -1,10 +1,12 @@
 package subprocess
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"strings"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
@@ -102,11 +104,11 @@ func TestNewErrorResponse(t *testing.T) {
 func TestNewErrorResponseWithPrefix(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestNewErrorResponseWithPrefix", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
-			name              string
-			msg               *Message
-			prefix            string
-			errMsg            string
-			wantError         string
+			name      string
+			msg       *Message
+			prefix    string
+			errMsg    string
+			wantError string
 		}{
 			{
 				name: "error with service prefix",
@@ -116,9 +118,9 @@ func TestNewErrorResponseWithPrefix(t *testing.T) {
 					Source:        "broker",
 					Target:        "local",
 				},
-				prefix:            "local",
-				errMsg:            "database connection failed",
-				wantError:         "[local] database connection failed",
+				prefix:    "local",
+				errMsg:    "database connection failed",
+				wantError: "[local] database connection failed",
 			},
 			{
 				name: "error with multi-word prefix",
@@ -128,9 +130,9 @@ func TestNewErrorResponseWithPrefix(t *testing.T) {
 					Source:        "access",
 					Target:        "remote",
 				},
-				prefix:            "remote-fetcher",
-				errMsg:            "timeout after 30s",
-				wantError:         "[remote-fetcher] timeout after 30s",
+				prefix:    "remote-fetcher",
+				errMsg:    "timeout after 30s",
+				wantError: "[remote-fetcher] timeout after 30s",
 			},
 			{
 				name: "error with empty prefix",
@@ -140,9 +142,9 @@ func TestNewErrorResponseWithPrefix(t *testing.T) {
 					Source:        "meta",
 					Target:        "local",
 				},
-				prefix:            "",
-				errMsg:            "job not found",
-				wantError:         "[] job not found",
+				prefix:    "",
+				errMsg:    "job not found",
+				wantError: "[] job not found",
 			},
 			{
 				name: "error with prefix containing special chars",
@@ -152,9 +154,9 @@ func TestNewErrorResponseWithPrefix(t *testing.T) {
 					Source:        "sysmon",
 					Target:        "broker",
 				},
-				prefix:            "sys.mon",
-				errMsg:            "metrics collection failed",
-				wantError:         "[sys.mon] metrics collection failed",
+				prefix:    "sys.mon",
+				errMsg:    "metrics collection failed",
+				wantError: "[sys.mon] metrics collection failed",
 			},
 		}
 
@@ -338,10 +340,10 @@ func TestNewSuccessResponse(t *testing.T) {
 func TestIsErrorResponse(t *testing.T) {
 	testutils.Run(t, testutils.Level2, "TestIsErrorResponse", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
-			name          string
-			msg           *Message
-			wantIsError   bool
-			wantErrMsg    string
+			name        string
+			msg         *Message
+			wantIsError bool
+			wantErrMsg  string
 		}{
 			{
 				name: "error response message",
@@ -700,4 +702,3 @@ func TestRequireField(t *testing.T) {
 	})
 
 }
-

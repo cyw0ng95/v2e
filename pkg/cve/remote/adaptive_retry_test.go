@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestAdaptiveRetry_Success(t *testing.T) {
@@ -278,9 +279,9 @@ func TestExponentialBackoff(t *testing.T) {
 		config.JitterEnabled = false
 		ar := NewAdaptiveRetry(config, DefaultCircuitBreakerConfig())
 
-		backoff0 := ar.calculateBackoff(0)
-		backoff1 := ar.calculateBackoff(1)
-		backoff2 := ar.calculateBackoff(2)
+		backoff0 := ar.calculateBackoff(0, nil)
+		backoff1 := ar.calculateBackoff(1, nil)
+		backoff2 := ar.calculateBackoff(2, nil)
 
 		if backoff0 != ar.config.InitialDelay {
 			t.Errorf("Expected backoff0 %v, got %v", ar.config.InitialDelay, backoff0)
@@ -303,7 +304,7 @@ func TestExponentialBackoffWithJitter(t *testing.T) {
 
 		backoffs := make(map[time.Duration]bool)
 		for i := 0; i < 10; i++ {
-			backoff := ar.calculateBackoff(1)
+			backoff := ar.calculateBackoff(1, nil)
 			backoffs[backoff] = true
 		}
 
@@ -320,9 +321,9 @@ func TestLinearBackoff(t *testing.T) {
 		config.JitterEnabled = false
 		ar := NewAdaptiveRetry(config, DefaultCircuitBreakerConfig())
 
-		backoff0 := ar.calculateBackoff(0)
-		backoff1 := ar.calculateBackoff(1)
-		backoff2 := ar.calculateBackoff(2)
+		backoff0 := ar.calculateBackoff(0, nil)
+		backoff1 := ar.calculateBackoff(1, nil)
+		backoff2 := ar.calculateBackoff(2, nil)
 
 		if backoff0 != ar.config.InitialDelay {
 			t.Errorf("Expected backoff0 %v, got %v", ar.config.InitialDelay, backoff0)
@@ -343,9 +344,9 @@ func TestFixedBackoff(t *testing.T) {
 		config.JitterEnabled = false
 		ar := NewAdaptiveRetry(config, DefaultCircuitBreakerConfig())
 
-		backoff0 := ar.calculateBackoff(0)
-		backoff1 := ar.calculateBackoff(1)
-		backoff2 := ar.calculateBackoff(2)
+		backoff0 := ar.calculateBackoff(0, nil)
+		backoff1 := ar.calculateBackoff(1, nil)
+		backoff2 := ar.calculateBackoff(2, nil)
 
 		if backoff0 != ar.config.InitialDelay {
 			t.Errorf("Expected backoff0 %v, got %v", ar.config.InitialDelay, backoff0)

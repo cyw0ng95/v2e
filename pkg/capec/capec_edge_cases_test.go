@@ -1,8 +1,6 @@
 package capec
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"fmt"
 	"os"
@@ -11,6 +9,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestDatabaseConnectionFailure tests handling of database connection failures

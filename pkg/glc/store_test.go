@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing

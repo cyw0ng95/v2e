@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 var (
@@ -46,6 +47,8 @@ func NewLocalASVSStore(dbPath string) (*LocalASVSStore, error) {
 		db.Exec("PRAGMA journal_mode=WAL")
 		db.Exec("PRAGMA synchronous=NORMAL")
 		db.Exec("PRAGMA cache_size=-40000")
+		// Set busy_timeout to handle lock contention when multiple services access the database
+		db.Exec("PRAGMA busy_timeout=30000")
 	}
 
 	// Auto-migrate the schema

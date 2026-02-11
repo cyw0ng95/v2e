@@ -39,8 +39,16 @@ func main() {
 	broker.SetSpawner(spawnAdapter)
 	defer broker.Shutdown()
 
+	// Configure graceful shutdown with drain period
+	// The drain period allows in-flight requests to complete before shutdown
+	drainPeriod := 30 * time.Second
+	broker.SetDrainPeriod(drainPeriod)
+
 	// Use the subprocess logger as the broker logger
 	broker.SetLogger(logger)
+
+	// Start health monitoring for subprocesses
+	broker.StartHealthMonitoring()
 
 	// Load processes from configuration
 	if err := broker.LoadProcessesFromConfig(nil); err != nil {

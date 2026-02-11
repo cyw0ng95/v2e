@@ -1,11 +1,13 @@
 package jsonutil
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"fmt"
 	"reflect"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // typedStruct is used for round-trip marshaling tests.

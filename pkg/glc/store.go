@@ -90,10 +90,10 @@ func (s *Store) UpdateGraph(ctx context.Context, graphID string, updates map[str
 		// Create version snapshot before update (if nodes/edges changed)
 		if _, ok := updates["nodes"]; ok || updates["edges"] != nil {
 			version := &GraphVersionModel{
-				GraphID: graph.ID,
-				Version: graph.Version,
-				Nodes:   graph.Nodes,
-				Edges:   graph.Edges,
+				GraphID:  graph.ID,
+				Version:  graph.Version,
+				Nodes:    graph.Nodes,
+				Edges:    graph.Edges,
 				Viewport: graph.Viewport,
 			}
 			if err := tx.Create(version).Error; err != nil {

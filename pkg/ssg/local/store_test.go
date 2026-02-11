@@ -2,9 +2,11 @@
 package local
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/ssg"
 )
@@ -257,23 +259,23 @@ func TestStore_SaveRule(t *testing.T) {
 		}
 
 		group := &ssg.SSGGroup{
-			ID:      "test-group",
-			GuideID: "test-guide",
+			ID:       "test-group",
+			GuideID:  "test-guide",
 			ParentID: "",
-			Title:   "Test Group",
-			Level:   0,
+			Title:    "Test Group",
+			Level:    0,
 		}
 		if err := store.SaveGroup(group); err != nil {
 			t.Fatalf("SaveGroup() error = %v", err)
 		}
 
 		rule := &ssg.SSGRule{
-			ID:        "test-rule",
-			GuideID:   "test-guide",
-			GroupID:   "test-group",
-			ShortID:   "test_rule",
-			Title:     "Install AIDE",
-			Severity:  "medium",
+			ID:       "test-rule",
+			GuideID:  "test-guide",
+			GroupID:  "test-group",
+			ShortID:  "test_rule",
+			Title:    "Install AIDE",
+			Severity: "medium",
 			References: []ssg.SSGReference{
 				{Href: "https://example.com", Label: "cis-csc", Value: "1, 2, 3"},
 				{Href: "https://nist.gov", Label: "nist", Value: "CM-6"},
@@ -321,11 +323,11 @@ func TestStore_GetChildRules(t *testing.T) {
 		}
 
 		group := &ssg.SSGGroup{
-			ID:      "test-group",
-			GuideID: "test-guide",
+			ID:       "test-group",
+			GuideID:  "test-guide",
 			ParentID: "",
-			Title:   "Test Group",
-			Level:   0,
+			Title:    "Test Group",
+			Level:    0,
 		}
 		if err := store.SaveGroup(group); err != nil {
 			t.Fatalf("SaveGroup() error = %v", err)
@@ -333,22 +335,22 @@ func TestStore_GetChildRules(t *testing.T) {
 
 		rules := []*ssg.SSGRule{
 			{
-				ID:        "rule1",
-				GuideID:   "test-guide",
-				GroupID:   "test-group",
-				ShortID:   "rule1",
-				Title:     "Rule 1",
-				Severity:  "low",
-				Level:     1,
+				ID:       "rule1",
+				GuideID:  "test-guide",
+				GroupID:  "test-group",
+				ShortID:  "rule1",
+				Title:    "Rule 1",
+				Severity: "low",
+				Level:    1,
 			},
 			{
-				ID:        "rule2",
-				GuideID:   "test-guide",
-				GroupID:   "test-group",
-				ShortID:   "rule2",
-				Title:     "Rule 2",
-				Severity:  "high",
-				Level:     1,
+				ID:       "rule2",
+				GuideID:  "test-guide",
+				GroupID:  "test-group",
+				ShortID:  "rule2",
+				Title:    "Rule 2",
+				Severity: "high",
+				Level:    1,
 			},
 		}
 
@@ -546,33 +548,33 @@ func TestStore_ListRules(t *testing.T) {
 		}
 
 		tests := []struct {
-			name     string
-			groupID  string
-			severity string
+			name      string
+			groupID   string
+			severity  string
 			wantCount int
 		}{
 			{
-				name:     "all rules",
-				groupID:  "",
-				severity: "",
+				name:      "all rules",
+				groupID:   "",
+				severity:  "",
 				wantCount: 3,
 			},
 			{
-				name:     "filter by severity",
-				groupID:  "",
-				severity: "high",
+				name:      "filter by severity",
+				groupID:   "",
+				severity:  "high",
 				wantCount: 1,
 			},
 			{
-				name:     "filter by group",
-				groupID:  "g1",
-				severity: "",
+				name:      "filter by group",
+				groupID:   "g1",
+				severity:  "",
 				wantCount: 3,
 			},
 			{
-				name:     "filter by both",
-				groupID:  "g1",
-				severity: "low",
+				name:      "filter by both",
+				groupID:   "g1",
+				severity:  "low",
 				wantCount: 1,
 			},
 		}

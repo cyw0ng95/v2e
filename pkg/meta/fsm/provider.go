@@ -27,6 +27,17 @@ var (
 	}
 )
 
+// buildBaseStats builds common statistics map with id, state, and timestamps.
+// This is a shared helper for both BaseProviderFSM and MacroFSMManager GetStats().
+func buildBaseStats(id string, state string, createdAt, updatedAt time.Time) map[string]interface{} {
+	return map[string]interface{}{
+		"id":         id,
+		"state":      state,
+		"created_at": createdAt.Format(time.RFC3339),
+		"updated_at": updatedAt.Format(time.RFC3339),
+	}
+}
+
 // BaseProviderFSM provides a base implementation of ProviderFSM
 // Concrete providers (CVE, CWE, etc.) can embed this and override Execute()
 type BaseProviderFSM struct {
@@ -46,9 +57,9 @@ type BaseProviderFSM struct {
 	eventQueue     chan *Event
 
 	// Common configuration for all providers
-	batchSize    int
-	maxRetries   int
-	retryDelay   time.Duration
+	batchSize  int
+	maxRetries int
+	retryDelay time.Duration
 
 	// Dependencies: list of provider IDs that must complete before this provider can start
 	dependencies []string
@@ -65,9 +76,9 @@ type ProviderConfig struct {
 	Dependencies []string
 
 	// Common configuration (defaults applied if zero)
-	BatchSize    int           // Default: 100
-	MaxRetries   int           // Default: 3
-	RetryDelay   time.Duration // Default: 5 * time.Second
+	BatchSize  int           // Default: 100
+	MaxRetries int           // Default: 3
+	RetryDelay time.Duration // Default: 5 * time.Second
 }
 
 // NewBaseProviderFSM creates a new base provider FSM
@@ -209,17 +220,13 @@ func (p *BaseProviderFSM) GetStats() map[string]interface{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	return map[string]interface{}{
-		"id":              p.id,
-		"provider_type":   p.providerType,
-		"state":           string(p.state),
-		"last_checkpoint": p.lastCheckpoint,
-		"processed_count": atomic.LoadInt64(&p.processedCount),
-		"error_count":     atomic.LoadInt64(&p.errorCount),
-		"permits_held":    atomic.LoadInt32(&p.permitsHeld),
-		"created_at":      p.createdAt.Format(time.RFC3339),
-		"updated_at":      p.updatedAt.Format(time.RFC3339),
-	}
+	stats := buildBaseStats(p.id, string(p.state), p.createdAt, p.updatedAt)
+	stats["provider_type"] = p.providerType
+	stats["last_checkpoint"] = p.lastCheckpoint
+	stats["processed_count"] = atomic.LoadInt64(&p.processedCount)
+	stats["error_count"] = atomic.LoadInt64(&p.errorCount)
+	stats["permits_held"] = atomic.LoadInt32(&p.permitsHeld)
+	return stats
 }
 
 // Transition attempts to transition to a new state
@@ -301,19 +308,11 @@ func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderSt
 }
 
 // Start begins execution (IDLE -> ACQUIRING -> RUNNING)
-// Optional dependencyChecker can be provided to verify dependencies before starting
-func (p *BaseProviderFSM) Start(dependencyChecker func(map[string]ProviderState) error) error {
+func (p *BaseProviderFSM) Start() error {
 	currentState := p.GetState()
 
 	if currentState != ProviderIdle {
 		return fmt.Errorf("cannot start from state %s, must be IDLE", currentState)
-	}
-
-	// Check dependencies if a checker is provided
-	if dependencyChecker != nil {
-		if err := dependencyChecker(map[string]ProviderState{}); err != nil {
-			return fmt.Errorf("dependency check failed: %w", err)
-		}
 	}
 
 	// Transition to ACQUIRING (waiting for permits)

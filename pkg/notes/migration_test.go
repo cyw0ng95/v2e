@@ -1,9 +1,10 @@
 package notes
 
 import (
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"os"
 	"testing"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

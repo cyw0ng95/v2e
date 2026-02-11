@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/notes/fsm"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/notes/fsm"
 )
 
 // CreateMemoryCardFull creates a new memory card with all fields

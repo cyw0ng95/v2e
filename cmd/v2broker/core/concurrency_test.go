@@ -1,14 +1,16 @@
 package core
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"fmt"
 	"math/rand"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestBroker_ConcurrentSpawn stresses the processes map lock by spawning many short-lived processes concurrently.
@@ -148,7 +150,7 @@ func TestBroker_ConcurrentRestart(t *testing.T) {
 				defer wg.Done()
 				// Spawn with restart. The process (echo) will exit immediately, triggering restart.
 				// This causes rapid delete/insert in the map.
-				_, err := broker.SpawnWithRestart(idStr, cmd, maxRestarts, args...)
+				_, err := broker.SpawnWithRestart(idStr, cmd, maxRestarts, 0, args...)
 				if err != nil {
 					t.Errorf("Failed to spawn %s: %v", idStr, err)
 				}

@@ -18,19 +18,23 @@ import (
 
 // FSM infrastructure globals
 var (
-	macroFSM     *fsm.MacroFSMManager
-	fsmProviders map[string]fsm.ProviderFSM
-	storageDB    *storage.Store
+	macroFSM      *fsm.MacroFSMManager
+	fsmProviders  map[string]fsm.ProviderFSM
+	storageDB     *storage.Store
+	fsmSubprocess *subprocess.Subprocess
 )
 
 // initFSMInfrastructure initializes the UEE FSM infrastructure
-func initFSMInfrastructure(logger *common.Logger, runDBPath string) error {
+func initFSMInfrastructure(logger *common.Logger, runDBPath string, sp *subprocess.Subprocess) error {
 	// Initialize storage
 	var err error
 	storageDB, err = storage.NewStore(runDBPath, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create FSM storage: %w", err)
 	}
+
+	// Store subprocess for provider initialization
+	fsmSubprocess = sp
 
 	// Create macro FSM manager
 	macroFSM, err = fsm.NewMacroFSMManager("uee-orchestrator", storageDB)
@@ -56,9 +60,12 @@ func initFSMInfrastructure(logger *common.Logger, runDBPath string) error {
 }
 
 // initFSMProviders initializes all FSM-based providers and registers them with macro FSM
+// Provider dependencies are configured to ensure correct startup order:
+// - CAPEC depends on CWE (CAPEC data references CWE weaknesses)
+// - ATT&CK depends on CAPEC (ATT&CK techniques may reference CAPEC patterns)
 func initFSMProviders(logger *common.Logger) error {
-	// CVE Provider
-	cveProv, err := provider.NewCVEProvider("", storageDB)
+	// CVE Provider (no dependencies)
+	cveProv, err := provider.NewCVEProvider("", storageDB, fsmSubprocess)
 	if err != nil {
 		logger.Warn("Failed to create CVE provider (skipping): %v", err)
 	} else {
@@ -68,8 +75,8 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// CWE Provider
-	cweProv, err := cweprovider.NewCWEProvider("", storageDB)
+	// CWE Provider (no dependencies)
+	cweProv, err := cweprovider.NewCWEProvider("", storageDB, fsmSubprocess)
 	if err != nil {
 		logger.Warn("Failed to create CWE provider (skipping): %v", err)
 	} else {
@@ -79,8 +86,9 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// CAPEC Provider
-	capecProv, err := capecprovider.NewCAPECProvider("", storageDB)
+	// CAPEC Provider (depends on CWE)
+	capecDependencies := []string{"cwe"}
+	capecProv, err := capecprovider.NewCAPECProvider("", storageDB, fsmSubprocess, capecDependencies)
 	if err != nil {
 		logger.Warn("Failed to create CAPEC provider (skipping): %v", err)
 	} else {
@@ -90,8 +98,9 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// ATT&CK Provider
-	attackProv, err := attackprovider.NewATTACKProvider("", storageDB)
+	// ATT&CK Provider (depends on CAPEC)
+	attackDependencies := []string{"capec"}
+	attackProv, err := attackprovider.NewATTACKProvider("", storageDB, attackDependencies)
 	if err != nil {
 		logger.Warn("Failed to create ATT&CK provider (skipping): %v", err)
 	} else {
@@ -101,7 +110,7 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// CCE Provider
+	// CCE Provider (no dependencies)
 	cceProv, err := cceprovider.NewCCEProvider("", storageDB)
 	if err != nil {
 		logger.Warn("Failed to create CCE provider (skipping): %v", err)
@@ -230,16 +239,12 @@ func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 			return subprocess.NewErrorResponse(msg, "provider_id parameter required"), nil
 		}
 
-		provider := GetFSMProvider(providerID)
-		if provider == nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID)), nil
-		}
-
-		if err := provider.Start(); err != nil {
+		// Use macro FSM's dependency-aware startup
+		if err := macroFSM.StartProviderWithDependencyCheck(providerID); err != nil {
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to start provider: %v", err)), nil
 		}
 
-		logger.Info("Started provider: %s", providerID)
+		logger.Info("Started provider with dependency check: %s", providerID)
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"success":     true,
 			"provider_id": providerID,

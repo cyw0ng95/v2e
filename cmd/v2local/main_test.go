@@ -1,12 +1,14 @@
 package main
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"fmt"
 	"os"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/cyw0ng95/v2e/pkg/attack"
 	"github.com/cyw0ng95/v2e/pkg/capec"
@@ -104,7 +106,7 @@ func TestRPCIsCVEStoredByID(t *testing.T) {
 
 	// Save a test CVE
 	testCVE := &cve.CVEItem{
-		ID:           "CVE-2021-EXISTS",
+		ID:           "CVE-2021-44228", // Valid CVE ID format
 		SourceID:     "test@example.com",
 		VulnStatus:   "Test",
 		Descriptions: []cve.Description{{Lang: "en", Value: "Test CVE"}},
@@ -119,8 +121,8 @@ func TestRPCIsCVEStoredByID(t *testing.T) {
 		cveID    string
 		expected bool
 	}{
-		{"Existing CVE", "CVE-2021-EXISTS", true},
-		{"Non-existing CVE", "CVE-2021-NOTFOUND", false},
+		{"Existing CVE", "CVE-2021-44228", true},
+		{"Non-existing CVE", "CVE-2021-99999", false},
 	}
 
 	for _, tt := range tests {

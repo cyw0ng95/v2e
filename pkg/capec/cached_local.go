@@ -4,21 +4,13 @@ package capec
 
 import (
 	"context"
-	"encoding/xml"
-	"fmt"
-	"io"
-	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/lestrrat-go/libxml2/parser"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // cacheItem holds cached CAPEC data with timestamp for cache invalidation
@@ -140,176 +132,7 @@ func (s *CachedLocalCAPECStore) invalidateCachedCAPEC(capecID int) {
 // ImportFromXML imports CAPEC items from XML into DB without XSD validation.
 // This method invalidates the cache after import since data has changed.
 func (s *CachedLocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
-	common.Info("Importing CAPEC data from XML file: %s", xmlPath)
-
-	// Parse XML file into a libxml2 document using the parser package
-	xf, err := os.Open(xmlPath)
-	if err != nil {
-		return fmt.Errorf("failed to open xml: %w", err)
-	}
-	defer xf.Close()
-	p := parser.New()
-	doc, err := p.ParseReader(xf)
-	if err != nil {
-		return fmt.Errorf("failed to parse xml: %w", err)
-	}
-	defer func() {
-		if doc != nil {
-			doc.Free()
-		}
-	}()
-
-	// Extract catalog version from root element attribute (if present) to decide
-	// whether import is needed. Use doc.DocumentElement() which returns (node, error).
-	catalogVersion := ""
-	root, err := doc.DocumentElement()
-	if err == nil && root != nil {
-		if xr, xerr := root.Find("@Version"); xerr == nil {
-			if v := xr.String(); v != "" {
-				catalogVersion = v
-			}
-			xr.Free()
-		}
-		// if a Name or other source is desired, capture it too
-	}
-
-	// Check existing catalog meta: if same version already imported, skip import unless forced.
-	if !force && catalogVersion != "" {
-		var meta CAPECCatalogMeta
-		if err := s.db.First(&meta).Error; err == nil {
-			if meta.Version == catalogVersion {
-				common.Info("CAPEC catalog version %s already imported; skipping import", catalogVersion)
-				return nil
-			}
-		}
-	}
-
-	// Skip XSD validation entirely - this ensures imports work without XSD schema
-	common.Info("Skipping XSD validation as per security requirement; continuing with permissive import")
-
-	// Parse XML into attack pattern structs (streaming)
-	f, err := os.Open(xmlPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	decoder := xml.NewDecoder(f)
-
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	for {
-		t, err := decoder.Token()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		switch se := t.(type) {
-		case xml.StartElement:
-			if se.Name.Local == "Attack_Pattern" {
-				var ap CAPECAttackPattern
-				if err := decoder.DecodeElement(&ap, &se); err != nil {
-					tx.Rollback()
-					return err
-				}
-				// Upsert CAPEC item; ensure we populate Abstraction/Status and compute a
-				// summary fallback when Summary is empty.
-				summary := ap.Summary
-				if strings.TrimSpace(summary) == "" {
-					summary = truncateString(strings.TrimSpace(ap.Description.XML), 200)
-				}
-				item := CAPECItemModel{
-					CAPECID:         ap.ID,
-					Name:            ap.Name,
-					Summary:         summary,
-					Description:     ap.Description.XML,
-					Status:          ap.Status,
-					Abstraction:     ap.Abstraction,
-					Likelihood:      ap.Likelihood,
-					TypicalSeverity: ap.TypicalSeverity,
-				}
-				if err := tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&item).Error; err != nil {
-					tx.Rollback()
-					return err
-				}
-				// Related weaknesses
-				tx.Where("capec_id = ?", ap.ID).Delete(&CAPECRelatedWeaknessModel{})
-				// Deduplicate related weaknesses to avoid unique constraint violations
-				seenCWEs := make(map[string]bool)
-				for _, cwe := range ap.RelatedWeaknesses {
-					if cwe.CWEID != "" && !seenCWEs[cwe.CWEID] {
-						seenCWEs[cwe.CWEID] = true
-						r := CAPECRelatedWeaknessModel{CAPECID: ap.ID, CWEID: cwe.CWEID}
-						if err := tx.Create(&r).Error; err != nil {
-							tx.Rollback()
-							return err
-						}
-					}
-				}
-
-				// Examples
-				tx.Where("capec_id = ?", ap.ID).Delete(&CAPECExampleModel{})
-				for _, ex := range ap.Examples {
-					e := strings.TrimSpace(ex.XML)
-					if err := tx.Create(&CAPECExampleModel{CAPECID: ap.ID, ExampleText: e}).Error; err != nil {
-						tx.Rollback()
-						return err
-					}
-				}
-
-				// Mitigations
-				tx.Where("capec_id = ?", ap.ID).Delete(&CAPECMitigationModel{})
-				for _, m := range ap.Mitigations {
-					mm := strings.TrimSpace(m.XML)
-					if err := tx.Create(&CAPECMitigationModel{CAPECID: ap.ID, MitigationText: mm}).Error; err != nil {
-						tx.Rollback()
-						return err
-					}
-				}
-
-				// References
-				tx.Where("capec_id = ?", ap.ID).Delete(&CAPECReferenceModel{})
-				// Deduplicate references to avoid unique constraint violations
-				seenRefs := make(map[string]bool)
-				for _, rref := range ap.References {
-					ref := rref.ExternalRef
-					if ref != "" && !seenRefs[ref] {
-						seenRefs[ref] = true
-						if err := tx.Create(&CAPECReferenceModel{CAPECID: ap.ID, ExternalReference: ref, URL: ""}).Error; err != nil {
-							tx.Rollback()
-							return err
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return err
-	}
-	// persist catalog metadata
-	if catalogVersion != "" {
-		// Use a fixed primary key to ensure a single-row metadata table.
-		meta := CAPECCatalogMeta{ID: 1, Version: catalogVersion, Source: xmlPath, ImportedAtUTC: time.Now().UTC().Unix()}
-		// upsert single-row meta by primary key
-		if err := s.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "id"}}, UpdateAll: true}).Create(&meta).Error; err != nil {
-			return err
-		}
-	}
-
-	// Invalidate entire cache after import since data has changed
-	s.invalidateAllCache()
-
-	return nil
+	return importCAPECFromXML(s.db, xmlPath, force, s.invalidateAllCache)
 }
 
 // invalidateAllCache removes all entries from the cache

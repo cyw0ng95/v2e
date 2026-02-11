@@ -1,8 +1,6 @@
 package cwe
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"encoding/json"
 	"os"
@@ -11,6 +9,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestViewRendering tests view rendering functionality

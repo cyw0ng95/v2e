@@ -76,9 +76,20 @@ type RestartConfig struct {
 	Enabled      bool
 	MaxRestarts  int
 	RestartCount int
+	RestartDelay time.Duration
 	Command      string
 	Args         []string
 	IsRPC        bool
+	// HealthCheckEnabled enables periodic health monitoring for this process
+	HealthCheckEnabled bool
+	// HealthCheckInterval is the interval between health checks
+	HealthCheckInterval time.Duration
+	// HealthCheckTimeout is the timeout for each health check
+	HealthCheckTimeout time.Duration
+	// UnhealthyThreshold is the number of consecutive failed health checks before restart
+	UnhealthyThreshold int
+	// consecutiveFailures tracks the number of consecutive health check failures
+	consecutiveFailures int
 }
 
 // MessageStats aliases mq.MessageStats for compatibility.

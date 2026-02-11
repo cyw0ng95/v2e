@@ -382,12 +382,98 @@ func (m *MacroFSMManager) ValidateProviderDependencies() error {
 
 	// Check each provider's dependencies
 	for _, p := range m.providers {
-		if err := p.CheckDependencies(states); err != nil {
-			return err
+		if bp, ok := p.(interface {
+			CheckDependencies(map[string]ProviderState) error
+		}); ok {
+			if err := bp.CheckDependencies(states); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
+}
+
+// StartProviderWithDependencyCheck starts a provider after validating its dependencies
+// Returns an error if any dependency is not in TERMINATED state
+func (m *MacroFSMManager) StartProviderWithDependencyCheck(providerID string) error {
+	m.mu.Lock()
+	provider, exists := m.providers[providerID]
+	m.mu.Unlock()
+
+	if !exists {
+		return fmt.Errorf("provider %s not found", providerID)
+	}
+
+	// Collect current provider states
+	states := make(map[string]ProviderState)
+	m.mu.RLock()
+	for _, p := range m.providers {
+		states[p.GetID()] = p.GetState()
+	}
+	m.mu.RUnlock()
+
+	// Check dependencies using BaseProviderFSM's CheckDependencies method
+	if bp, ok := provider.(interface {
+		CheckDependencies(map[string]ProviderState) error
+	}); ok {
+		if err := bp.CheckDependencies(states); err != nil {
+			return fmt.Errorf("dependency check failed for provider %s: %w", providerID, err)
+		}
+	}
+
+	// Start the provider
+	return provider.Start()
+}
+
+// StartAllProvidersInOrder starts all providers in dependency order
+// Providers with no dependencies are started first, then their dependents, etc.
+// Returns a map of provider ID to error for any providers that failed to start
+func (m *MacroFSMManager) StartAllProvidersInOrder() map[string]error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Get providers in startup order
+	providers := m.GetProviderStartupOrder()
+	errors := make(map[string]error)
+
+	// Start each provider in order
+	for _, provider := range providers {
+		providerID := provider.GetID()
+		currentState := provider.GetState()
+
+		// Skip if already running or terminated
+		if currentState == ProviderRunning || currentState == ProviderAcquiring {
+			continue
+		}
+		if currentState == ProviderTerminated {
+			errors[providerID] = fmt.Errorf("provider already terminated")
+			continue
+		}
+
+		// Collect current states for dependency check
+		states := make(map[string]ProviderState)
+		for _, p := range m.providers {
+			states[p.GetID()] = p.GetState()
+		}
+
+		// Check dependencies before starting
+		if bp, ok := provider.(interface {
+			CheckDependencies(map[string]ProviderState) error
+		}); ok {
+			if err := bp.CheckDependencies(states); err != nil {
+				errors[providerID] = fmt.Errorf("dependency check failed: %w", err)
+				continue
+			}
+		}
+
+		// Start the provider
+		if err := provider.Start(); err != nil {
+			errors[providerID] = err
+		}
+	}
+
+	return errors
 }
 
 // Stop gracefully stops the macro FSM manager
@@ -447,14 +533,9 @@ func (m *MacroFSMManager) GetStats() map[string]interface{} {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	stats := map[string]interface{}{
-		"id":              m.id,
-		"state":           string(m.state),
-		"provider_count":  len(m.providers),
-		"created_at":      m.createdAt.Format(time.RFC3339),
-		"updated_at":      m.updatedAt.Format(time.RFC3339),
-		"event_queue_len": len(m.eventChan),
-	}
+	stats := buildBaseStats(m.id, string(m.state), m.createdAt, m.updatedAt)
+	stats["provider_count"] = len(m.providers)
+	stats["event_queue_len"] = len(m.eventChan)
 
 	// Count providers by state
 	stateCount := make(map[string]int)

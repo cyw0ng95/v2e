@@ -120,7 +120,7 @@ func main() {
 
 	// Initialize UEE FSM infrastructure
 	logger.Info("Initializing UEE FSM infrastructure...")
-	if err := initFSMInfrastructure(logger, runDBPath); err != nil {
+	if err := initFSMInfrastructure(logger, runDBPath, sp); err != nil {
 		logger.Error("Failed to initialize UEE FSM infrastructure: %v", err)
 		// Continue without FSM infrastructure for now
 	} else {
@@ -213,17 +213,30 @@ func main() {
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)
 
+	// Create a shared context for import control goroutines that gets cancelled on shutdown
+	importCtx, importCancel := context.WithCancel(context.Background())
+	defer importCancel()
+
 	// --- CWE Import Control ---
 	go func() {
 		logger.Info("Starting CWE import control routine...")
-		time.Sleep(2 * time.Second)
-		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		select {
+		case <-time.After(2 * time.Second):
+		case <-importCtx.Done():
+			logger.Info("CWE import control cancelled during initial delay")
+			return
+		}
+		ctx, cancel := context.WithTimeout(importCtx, 120*time.Second)
 		defer cancel()
 		params := &rpc.ImportParams{Path: "assets/cwe-raw.json"}
 		logger.Info(LogMsgCWEImportTriggered, params.Path)
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCWEs", params)
 		if err != nil {
-			logger.Warn("Failed to import CWE on local: %v", err)
+			if ctx.Err() == context.Canceled {
+				logger.Info("CWE import cancelled")
+			} else {
+				logger.Warn("Failed to import CWE on local: %v", err)
+			}
 		} else if resp.Type == subprocess.MessageTypeError {
 			logger.Warn("CWE import error: %s", resp.Error)
 		} else {
@@ -234,13 +247,22 @@ func main() {
 	// --- CAPEC Import Control ---
 	go func() {
 		logger.Info("Starting CAPEC import control routine...")
-		time.Sleep(2 * time.Second)
-		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		select {
+		case <-time.After(2 * time.Second):
+		case <-importCtx.Done():
+			logger.Info("CAPEC import control cancelled during initial delay")
+			return
+		}
+		ctx, cancel := context.WithTimeout(importCtx, 120*time.Second)
 		defer cancel()
 		// First check whether local already has CAPEC catalog metadata
 		logger.Info("Checking for existing CAPEC catalog metadata...")
 		metaResp, err := rpcClient.InvokeRPC(ctx, "local", "RPCGetCAPECCatalogMeta", nil)
 		if err != nil {
+			if ctx.Err() == context.Canceled {
+				logger.Info("CAPEC metadata check cancelled")
+				return
+			}
 			logger.Warn("Failed to query CAPEC catalog meta on local: %v", err)
 			// fall back to attempting import
 		} else if metaResp.Type == subprocess.MessageTypeResponse {
@@ -252,7 +274,11 @@ func main() {
 		logger.Info(LogMsgCAPECImportTriggered, params.Path)
 		resp, err := rpcClient.InvokeRPC(ctx, "local", "RPCImportCAPECs", params)
 		if err != nil {
-			logger.Warn("Failed to import CAPEC on local: %v", err)
+			if ctx.Err() == context.Canceled {
+				logger.Info("CAPEC import cancelled")
+			} else {
+				logger.Warn("Failed to import CAPEC on local: %v", err)
+			}
 		} else if resp.Type == subprocess.MessageTypeError {
 			logger.Warn("CAPEC import error: %s", resp.Error)
 		} else {

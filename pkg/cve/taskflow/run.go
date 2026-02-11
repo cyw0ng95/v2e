@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // JobRun is defined in models.go; reuse that definition here.

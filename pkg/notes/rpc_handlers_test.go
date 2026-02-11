@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
-	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestRPCHandlersHandleCreateBookmark(t *testing.T) {
@@ -632,12 +633,12 @@ func TestRPCHandlersHandleCreateCrossReference(t *testing.T) {
 		handlers := NewRPCHandlers(container, sp, logger)
 
 		params := map[string]interface{}{
-			"source_item_id":     "CVE-2023-8888",
-			"target_item_id":     "CVE-2023-9999",
-			"source_type":        "cve",
-			"target_type":        "cve",
-			"relationship_type":  "related-to",
-			"strength":           float64(1.0),
+			"source_item_id":    "CVE-2023-8888",
+			"target_item_id":    "CVE-2023-9999",
+			"source_type":       "cve",
+			"target_type":       "cve",
+			"relationship_type": "related-to",
+			"strength":          float64(1.0),
 		}
 		payload, err := subprocess.MarshalFast(params)
 		require.NoError(t, err)

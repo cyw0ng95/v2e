@@ -52,6 +52,7 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `id` (string, required): Unique identifier for the process
   - `command` (string, required): Command to execute
   - `max_restarts` (int, optional): Maximum number of restart attempts (-1 for unlimited, default: -1)
+  - `restart_delay` (int, optional): Delay before restart in seconds (default: 1, 0 or negative values use default)
   - `args` ([]string, optional): Command arguments
 - **Response**:
   - `id` (string): Process identifier
@@ -60,6 +61,7 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `command` (string): The command that was executed
   - `restart_config` (object): Restart configuration
     - `max_restarts` (int): Maximum restart attempts
+    - `restart_delay` (int): Delay before restart in seconds
 - **Errors**:
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists
@@ -71,6 +73,7 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `id` (string, required): Unique identifier for the process
   - `command` (string, required): Command to execute
   - `max_restarts` (int, optional): Maximum number of restart attempts (-1 for unlimited, default: -1)
+  - `restart_delay` (int, optional): Delay before restart in seconds (default: 1, 0 or negative values use default)
   - `args` ([]string, optional): Command arguments
 - **Response**:
   - `id` (string): Process identifier
@@ -79,6 +82,7 @@ Central process manager and message router for the v2e system. Spawns and manage
   - `command` (string): The command that was executed
   - `restart_config` (object): Restart configuration
     - `max_restarts` (int): Maximum restart attempts
+    - `restart_delay` (int): Delay before restart in seconds
 - **Errors**:
   - Missing ID: Process ID is required
   - Duplicate ID: Process with this ID already exists

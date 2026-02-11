@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
+	"gorm.io/gorm"
+
 	"github.com/cyw0ng95/v2e/pkg/ssg"
 	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 )
 
 func TestExtractIDFromPath(t *testing.T) {
@@ -140,16 +141,16 @@ func TestNormalizeParentID(t *testing.T) {
 func TestParseReferences(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "TestParseReferences", nil, func(t *testing.T, tx *gorm.DB) {
 		tests := []struct {
-			name     string
-			html     string
-			ruleID   string
-			wantLen  int
+			name      string
+			html      string
+			ruleID    string
+			wantLen   int
 			wantFirst ssg.SSGReference
 		}{
 			{
-				name:   "single reference",
-				html:   `<table class="identifiers"><tr><td><a href="https://example.com/nist">nist</a></td><td>CM-6(a)</td></tr></table>`,
-				ruleID: "test-rule",
+				name:    "single reference",
+				html:    `<table class="identifiers"><tr><td><a href="https://example.com/nist">nist</a></td><td>CM-6(a)</td></tr></table>`,
+				ruleID:  "test-rule",
 				wantLen: 1,
 				wantFirst: ssg.SSGReference{
 					RuleID: "test-rule",
@@ -159,9 +160,9 @@ func TestParseReferences(t *testing.T) {
 				},
 			},
 			{
-				name:   "multiple references",
-				html:   `<table class="identifiers"><tr><td><a href="https://example.com/nist">nist</a></td><td>CM-6(a)</td></tr><tr><td><a href="https://example.com/cis">cis</a></td><td>1.3.1</td></tr></table>`,
-				ruleID: "test-rule",
+				name:    "multiple references",
+				html:    `<table class="identifiers"><tr><td><a href="https://example.com/nist">nist</a></td><td>CM-6(a)</td></tr><tr><td><a href="https://example.com/cis">cis</a></td><td>1.3.1</td></tr></table>`,
+				ruleID:  "test-rule",
 				wantLen: 2,
 				wantFirst: ssg.SSGReference{
 					RuleID: "test-rule",

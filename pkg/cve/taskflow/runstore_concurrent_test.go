@@ -1,10 +1,12 @@
 package taskflow
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"sync"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // Test concurrent UpdateProgress calls aggregate correctly.

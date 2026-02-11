@@ -62,6 +62,12 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			logger.Warn(LogMsgCVEIDRequiredSimple)
 			return errResp, nil
 		}
+		// Validate CVE ID format for security
+		validator := subprocess.NewValidator()
+		validator.ValidateCVEID(req.CVEID, "cve_id")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
+		}
 		_, err := db.GetCVE(req.CVEID)
 		stored := err == nil
 		logger.Debug(LogMsgProcessingIsCVECompleted, req.CVEID, stored)
@@ -81,34 +87,35 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 // createGetCVEByIDHandler creates a handler for RPCGetCVEByID
 func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug(LogMsgProcessingGetCVE, msg.ID, msg.CorrelationID)
 		var req struct {
 			CVEID string `json:"cve_id"`
 		}
-		if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
-			logger.Warn(LogMsgFailedParseGetCVEReq, msg.ID, msg.CorrelationID, errResp.Error)
-			logger.Debug(LogMsgProcessingGetCVEFailed, msg.ID, string(msg.Payload))
-			return errResp, nil
-		}
-		if errResp := subprocess.RequireField(msg, req.CVEID, "cve_id"); errResp != nil {
-			logger.Warn(LogMsgCVEIDRequiredGet, msg.ID, msg.CorrelationID)
-			logger.Debug(LogMsgProcessingGetCVEFailedID, msg.ID)
-			return errResp, nil
-		}
-		cveItem, err := db.GetCVE(req.CVEID)
-		if err != nil {
-			logger.Warn(LogMsgFailedGetCVE, msg.ID, msg.CorrelationID, req.CVEID, err)
-			logger.Debug(LogMsgProcessingGetCVEFailedErr, req.CVEID, msg.ID, err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf(LogMsgCVEIDNotFound, err)), nil
-		}
-		logger.Info(LogMsgSuccessGetCVE, msg.ID, msg.CorrelationID, req.CVEID)
-		logger.Debug(LogMsgProcessingGetCVECompleted, msg.ID, req.CVEID)
-		resp, err := subprocess.NewSuccessResponse(msg, cveItem)
-		if err != nil {
-			logger.Warn(LogMsgFailedMarshalGetCVEResp, msg.ID, msg.CorrelationID, err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to marshal result: %v", err)), nil
-		}
-		return resp, nil
+
+		return executeWithValidation(ctx, msg, logger, "GetCVEByID",
+			func() error {
+				errResp := subprocess.ParseRequest(msg, &req)
+				if errResp != nil {
+					return fmt.Errorf("parse error: %s", errResp.Error)
+				}
+				return nil
+			},
+			func() error {
+				errResp := subprocess.RequireField(msg, req.CVEID, "cve_id")
+				if errResp != nil {
+					return fmt.Errorf("validation error: %s", errResp.Error)
+				}
+				// Validate CVE ID format for security
+				validator := subprocess.NewValidator()
+				validator.ValidateCVEID(req.CVEID, "cve_id")
+				if validator.HasErrors() {
+					return validator
+				}
+				return nil
+			},
+			func() (interface{}, error) {
+				return db.GetCVE(req.CVEID)
+			},
+		)
 	}
 }
 
@@ -127,6 +134,12 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 			logger.Warn("cve_id is required")
 			logger.Debug("Processing DeleteCVEByID request failed: CVE ID missing in payload")
 			return errResp, nil
+		}
+		// Validate CVE ID format for security
+		validator := subprocess.NewValidator()
+		validator.ValidateCVEID(req.CVEID, "cve_id")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
 		}
 		if err := db.DeleteCVE(req.CVEID); err != nil {
 			logger.Warn("Failed to delete CVE from database: %v", err)
@@ -165,6 +178,13 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 				return errResp, nil
 			}
 		}
+		// Validate pagination parameters for security
+		validator := subprocess.NewValidator()
+		validator.ValidateIntPositive(req.Offset, "offset")
+		validator.ValidateIntRange(req.Limit, 1, 1000, "limit")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
+		}
 		logger.Info("Processing ListCVEs request - Message ID: %s, Correlation ID: %s, Offset: %d, Limit: %d", msg.ID, msg.CorrelationID, req.Offset, req.Limit)
 		cves, err := db.ListCVEs(req.Offset, req.Limit)
 		if err != nil {
@@ -200,20 +220,13 @@ func createCountCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Hand
 		count, err := db.Count()
 		if err != nil {
 			logger.Warn("Failed to count CVEs in database: %v", err)
-			logger.Debug("Processing CountCVEs request failed: %v", err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to count CVEs: %v", err)), nil
+			return sendErrorResponse(msg, "failed to count CVEs: %v", err)
 		}
 		logger.Info("CVE count: %d", count)
-		logger.Debug("Processing CountCVEs request completed successfully: count %d", count)
 		result := map[string]interface{}{
 			"count": count,
 		}
-		resp, err := subprocess.NewSuccessResponse(msg, result)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to marshal result: %v", err)), nil
-		}
-		return resp, nil
+		return sendSuccessResponse(msg, result)
 	}
 }
 

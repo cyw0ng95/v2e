@@ -57,9 +57,9 @@ func (r *Registry) HandleRPCGetMessageStats(reqMsg *proc.Message) (*proc.Message
 
 	result := map[string]interface{}{
 		"total": map[string]interface{}{
-			"total_sent":     r.sentCount,
-			"total_received": r.receivedCount,
-			"total_messages": r.messageCount,
+			"total_sent":       r.sentCount,
+			"total_received":   r.receivedCount,
+			"total_messages":   r.messageCount,
 			"total_wire_bytes": r.totalWireSize,
 		},
 		"encoding_distribution": r.encodingDistribution,

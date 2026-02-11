@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/v2broker/metrics"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/mq"
@@ -21,8 +22,8 @@ import (
 type Spawner interface {
 	Spawn(id, command string, args ...string) (*SpawnResult, error)
 	SpawnRPC(id, command string, args ...string) (*SpawnResult, error)
-	SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*SpawnResult, error)
-	SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*SpawnResult, error)
+	SpawnWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*SpawnResult, error)
+	SpawnRPCWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*SpawnResult, error)
 }
 
 // SpawnResult is a lightweight DTO returned by Spawner implementations.
@@ -59,6 +60,12 @@ type Broker struct {
 	transportManager *transport.TransportManager
 	// permitManager manages the global worker permit pool (Phase 2 UEE)
 	permitManager *permits.PermitManager
+	// drainPeriod is the time to wait for in-flight requests to complete during shutdown
+	drainPeriod time.Duration
+	// healthCheckTicker triggers periodic health checks
+	healthCheckTicker *time.Ticker
+	// healthCheckWg waits for health check goroutine to finish
+	healthCheckWg sync.WaitGroup
 }
 
 // NewBroker creates a new Broker instance.
@@ -164,6 +171,171 @@ func (b *Broker) SetPermitManager(pm *permits.PermitManager) {
 	b.mu.Unlock()
 	if pm != nil && b.logger != nil {
 		b.logger.Info("PermitManager attached")
+	}
+}
+
+// SetDrainPeriod sets the drain period for graceful shutdown.
+// The drain period is the maximum time to wait for in-flight requests to complete
+// before forcibly shutting down processes.
+func (b *Broker) SetDrainPeriod(drainPeriod time.Duration) {
+	b.mu.Lock()
+	b.drainPeriod = drainPeriod
+	b.mu.Unlock()
+	if b.logger != nil {
+		b.logger.Info("Drain period set to: %v", drainPeriod)
+	}
+}
+
+// GetDrainPeriod returns the configured drain period.
+func (b *Broker) GetDrainPeriod() time.Duration {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.drainPeriod
+}
+
+// HasPendingRequests returns true if there are any pending RPC requests being processed.
+func (b *Broker) HasPendingRequests() bool {
+	return b.PendingRequestCount() > 0
+}
+
+// StartHealthMonitoring starts the health monitoring goroutine that periodically
+// checks the health of all subprocesses with health check enabled.
+func (b *Broker) StartHealthMonitoring() {
+	b.mu.Lock()
+	if b.healthCheckTicker != nil {
+		b.mu.Unlock()
+		return // Already running
+	}
+	// Use a default interval of 30 seconds for health checks
+	b.healthCheckTicker = time.NewTicker(30 * time.Second)
+	b.mu.Unlock()
+
+	b.healthCheckWg.Add(1)
+	go b.healthCheckLoop()
+	b.logger.Info("Health monitoring started")
+}
+
+// StopHealthMonitoring stops the health monitoring goroutine.
+func (b *Broker) StopHealthMonitoring() {
+	b.mu.Lock()
+	if b.healthCheckTicker != nil {
+		b.healthCheckTicker.Stop()
+		b.healthCheckTicker = nil
+	}
+	b.mu.Unlock()
+	b.healthCheckWg.Wait()
+	b.logger.Info("Health monitoring stopped")
+}
+
+// healthCheckLoop runs periodic health checks on all subprocesses.
+func (b *Broker) healthCheckLoop() {
+	defer b.healthCheckWg.Done()
+
+	for {
+		var ticker *time.Ticker
+		b.mu.Lock()
+		if b.healthCheckTicker == nil {
+			b.mu.Unlock()
+			return
+		}
+		ticker = b.healthCheckTicker
+		b.mu.Unlock()
+
+		select {
+		case <-b.ctx.Done():
+			return
+		case <-ticker.C:
+			b.performHealthChecks()
+		}
+	}
+}
+
+// performHealthChecks checks the health of all subprocesses with health check enabled.
+func (b *Broker) performHealthChecks() {
+	b.processes.Range(func(key, value interface{}) bool {
+		processID := key.(string)
+		proc := value.(*Process)
+
+		proc.mu.Lock()
+		healthCheckEnabled := proc.restartConfig != nil && proc.restartConfig.HealthCheckEnabled
+		proc.mu.Unlock()
+
+		if healthCheckEnabled {
+			healthy := b.performHealthCheck(processID)
+			if !healthy {
+				b.handleUnhealthyProcess(processID, proc)
+			}
+		}
+		return true
+	})
+}
+
+// performHealthCheck performs a health check on a single process.
+// It returns true if the process is healthy, false otherwise.
+func (b *Broker) performHealthCheck(processID string) bool {
+	value, exists := b.processes.Load(processID)
+	if !exists {
+		return false
+	}
+
+	proc := value.(*Process)
+	proc.mu.Lock()
+	status := proc.info.Status
+	pid := proc.info.PID
+	// Note: healthCheckTimeout is captured for future use with ping-based health checks
+	// Currently we only check process status and transport connectivity
+	_ = proc.restartConfig != nil && proc.restartConfig.HealthCheckTimeout > 0
+	proc.mu.Unlock()
+
+	// Check if process is still running
+	if status != ProcessStatusRunning {
+		b.logger.Warn("Process %s (pid=%d) is not running (status=%s)", processID, pid, status)
+		return false
+	}
+
+	// Check if process is still alive by looking it up
+	// On Unix systems, we can send signal 0 to check if process is alive
+	// For simplicity, we just check if the transport is still connected
+	if b.transportManager != nil {
+		if !b.transportManager.IsTransportConnected(processID) {
+			b.logger.Warn("Process %s (pid=%d) transport is not connected", processID, pid)
+			return false
+		}
+	}
+
+	return true
+}
+
+// handleUnhealthyProcess handles a process that failed health check.
+func (b *Broker) handleUnhealthyProcess(processID string, proc *Process) {
+	proc.mu.Lock()
+	if proc.restartConfig == nil {
+		proc.mu.Unlock()
+		return
+	}
+
+	proc.restartConfig.consecutiveFailures++
+	threshold := proc.restartConfig.UnhealthyThreshold
+	if threshold <= 0 {
+		threshold = 3 // Default threshold
+	}
+
+	consecutiveFailures := proc.restartConfig.consecutiveFailures
+	proc.mu.Unlock()
+
+	b.logger.Warn("Process %s failed health check (%d/%d)", processID, consecutiveFailures, threshold)
+
+	if consecutiveFailures >= threshold {
+		b.logger.Error("Process %s exceeded unhealthy threshold, restarting", processID)
+		// Reset consecutive failures counter
+		proc.mu.Lock()
+		if proc.restartConfig != nil {
+			proc.restartConfig.consecutiveFailures = 0
+		}
+		proc.mu.Unlock()
+
+		// Kill the process to trigger restart
+		_ = b.Kill(processID)
 	}
 }
 

@@ -2,11 +2,13 @@ package workerpool
 
 import (
 	"context"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestWorkerPoolCreation(t *testing.T) {

@@ -1,8 +1,6 @@
 package common
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"bytes"
 	"io"
 	"os"
@@ -10,6 +8,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestConcurrentLogging tests concurrent logging to ensure thread safety

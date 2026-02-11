@@ -7,12 +7,13 @@ import (
 	"sync"
 	"time"
 
+	gotaskflow "github.com/noneback/go-taskflow"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/cve"
 	"github.com/cyw0ng95/v2e/pkg/jsonutil"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
-	gotaskflow "github.com/noneback/go-taskflow"
 )
 
 // RPCInvoker is an interface for making RPC calls to other services

@@ -123,6 +123,14 @@ func createGetFilePathHandler(gitClient *GitClient) subprocess.Handler {
 			return errMsg, nil
 		}
 
+		// Validate filename for security - prevent directory traversal
+		validator := subprocess.NewValidator()
+		validator.ValidatePath(req.Filename, "filename")
+		validator.ValidateMaxLength(req.Filename, 255, "filename")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
+		}
+
 		path := gitClient.GetFilePath(req.Filename)
 
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{

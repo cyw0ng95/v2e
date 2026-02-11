@@ -23,13 +23,11 @@
 | TODO-021 | graph | Test | Add property-based tests using testing/quick | 150 | Medium | |
 | TODO-022 | jsonutil | Refactor | Unify error handling across jsonutil functions | 80 | Low | |
 | TODO-023 | jsonutil | Feature | Add JSON schema validation support | 200 | Low | |
-| TODO-024 | meta | Feature | Implement provider dependency management | 180 | High | |
 | TODO-025 | meta | Refactor | Extract FSM transition logic into strategy pattern | 150 | Medium | |
 | TODO-026 | meta | Test | Add chaos testing for provider coordination | 250 | Medium | |
 | TODO-027 | notes | Feature | Add memory card export/import functionality | 200 | Low | |
 | TODO-029 | notes | Refactor | Simplify bookmark service with repository pattern | 120 | Medium | |
 | TODO-030 | notes | Test | Add performance benchmarks for FSM operations | 100 | Medium | |
-| TODO-031 | proc | Feature | Implement subprocess health monitoring and auto-restart | 200 | High | |
 | TODO-032 | proc | Optimization | Add message prioritization and backpressure handling | 150 | Medium | |
 | TODO-033 | proc | Test | Add fuzz testing for message serialization/deserialization | 150 | Medium | |
 | TODO-035 | rpc | Feature | Add request retry with exponential backoff | 120 | Medium | |
@@ -71,21 +69,14 @@
 | TODO-074 | cmd/v2access | Feature | Add request timeout configuration per RPC method to override DefaultRPCTimeout for long-running operations | 120 | Medium | |
 | TODO-076 | cmd/v2access | Optimization | Add connection pooling for HTTP clients to reduce connection overhead for repeated requests | 100 | Medium | |
 | TODO-077 | cmd/v2broker | Refactor | Extract subprocess lifecycle management into core package to improve testability and separation of concerns | 200 | Medium | |
-| TODO-078 | cmd/v2broker | Feature | Add graceful shutdown with drain period to allow in-flight requests to complete before terminating | 180 | High | |
 | TODO-080 | cmd/v2broker | Optimization | Implement request batching for frequently called RPC methods to reduce context switching overhead | 150 | Medium | |
 | TODO-081 | cmd/v2local | Refactor | Simplify database connection pooling by using generic pool wrapper instead of repeated SetMaxIdleConns/SetMaxOpenConns calls | 80 | Medium | |
 | TODO-082 | cmd/v2local | Feature | Add database query logging with execution time tracking to identify slow queries | 100 | Low | |
-| TODO-083 | cmd/v2local | Bug Fix | Fix potential SQLite database lock contention when multiple services access same database file simultaneously | 120 | High | |
 | TODO-084 | cmd/v2meta | Refactor | Extract provider FSM state transition logic into shared package to reduce code duplication across CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider | 250 | Medium | |
-| TODO-085 | cmd/v2meta | Feature | Add provider dependency graph to automatically determine provider startup order based on data dependencies (CWE before CAPEC, CAPEC before ATT&CK) | 200 | High | |
 | TODO-087 | cmd/v2meta | Optimization | Add provider health checks with automatic restart for providers in TERMINATED state that should be running | 120 | Medium | |
 | TODO-088 | cmd/v2remote | Refactor | Simplify HTTP client configuration by extracting into shared package with retry logic and timeout handling | 100 | Medium | |
-| TODO-089 | cmd/v2remote | Feature | Add rate limit detection with adaptive backoff using Retry-After header from HTTP responses | 150 | High | |
-| TODO-090 | cmd/v2remote | Bug Fix | Fix potential memory leak when streaming large responses from NVD API without properly closing response body | 80 | High | |
 | TODO-091 | cmd/v2remote | Optimization | Implement response caching for frequently accessed API endpoints (e.g., CVE by ID lookup) to reduce API calls | 120 | Medium | |
-| TODO-092 | cmd/v2sysmon | Refactor | Extract metric collection logic into reusable functions to reduce code duplication for CPU, memory, and disk monitoring | 80 | Medium | |
 | TODO-093 | cmd/v2sysmon | Feature | Add alert threshold configuration with webhook or email notifications when metrics exceed defined limits | 150 | Medium | |
-| TODO-095 | cmd/v2sysmon | Optimization | Reduce CPU overhead in metric collection by sampling metrics at configurable intervals instead of every poll cycle | 100 | Medium | |
 | TODO-096 | notes | Refactor | Compact LearningFSM code by extracting common save state patterns into helper function | 50 | Medium | |
 | TODO-097 | notes | Test | Add concurrent stress test for LearningFSM state transitions with multiple goroutines | 100 | Medium | |
 | TODO-098 | all | Refactor | Remove duplicate error handling patterns across cmd/* services with centralized error wrapper | 150 | Medium | |
@@ -111,6 +102,50 @@
 | TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) | 150 | High | |
 | TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) | 200 | High | |
 | TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) | 150 | High | |
+| TODO-121 | cve | Bug Fix | Fix NVDTime UnmarshalJSON not handling timezone offsets in timestamp format - may fail parsing for timestamps with timezone info | 40 | Medium | |
+| TODO-124 | cve | Refactor | Consolidate duplicate retry logic in ListCVEs and Count functions - both have identical database lock retry pattern | 50 | Low | |
+| TODO-126 | cve | Test | Add tests for CVEProvider.execute() checkpoint saving logic when RPC calls fail | 80 | Medium | |
+| TODO-127 | cve | Documentation | Document exported types in pkg/cve/types.go - CVSSDataV40, CVSSMetricV40 lack comments explaining v4.0 differences | 60 | Low | |
+| TODO-129 | cwe | Refactor | Reduce massive code duplication in local.go - GetByID and ListCWEsPaginated share 90% identical nested field loading logic | 150 | Medium | |
+| TODO-130 | cwe | Optimization | Use Preload or eager loading for nested relations instead of N+1 queries in GetByID/ListCWEsPaginated | 100 | Medium | |
+| TODO-133 | cwe | Documentation | Document LocalCWEStore.SaveView nested array deletion order and why it's safe | 40 | Low | |
+| TODO-135 | capec | Bug Fix | Fix GetByID uses regex.MustCompile on every call - compile regex once at package init | 30 | Low | |
+| TODO-136 | capec | Refactor | Eliminate code duplication between LocalCAPECStore and CachedLocalCAPECStore - share ImportFromXML logic via base struct | 180 | Medium | |
+| TODO-138 | capec | Security | Add XML entity explosion protection to ImportFromXML - limit entity expansion depth | 100 | High | |
+| TODO-139 | capec | Optimization | Cache compiled regex in GetByID across all calls instead of creating new on each request | 30 | Low | |
+| TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
+| TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
+| TODO-146 | cmd/v2access | Bug Fix | Fix handlers.go:82 returns http.StatusOK when context is canceled instead of appropriate error status code | 20 | Medium | |
+| TODO-148 | cmd/v2access | Optimization | Use sync.Pool for context creation in handlers.go:90 instead of creating new context per RPC call | 60 | Low | |
+| TODO-149 | cmd/v2access | Refactor | Group and namespace 65 log constants in constants.go by functionality or use enum | 80 | Low | |
+| TODO-150 | cmd/v2access | Documentation | Document ACCESS_STATIC_DIR environment variable in cmd/v2access/service.md | 10 | Low | |
+| TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
+| TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
+| TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
+| TODO-161 | cmd/v2meta | Test | Add tests for FSM recovery scenarios | 150 | Medium | |
+| TODO-166 | cmd/v2local | Documentation | Document database schema and access patterns | 60 | Low | |
+| TODO-167 | cmd/v2local | Documentation | Document RPC handlers in cmd/v2local/service.md | 80 | Low | |
+| TODO-168 | website | Bug Fix | Add global error boundary for RPC failures - implement in app/layout.tsx to catch errors and show user-friendly messages with retry options | 100 | High | |
+| TODO-169 | website | Bug Fix | Fix race conditions in hooks during rapid unmount - add AbortController usage and cleanup functions to data-fetching hooks in lib/hooks.ts | 150 | High | |
+| TODO-170 | website | Bug Fix | Add timeout handling to all long-running operations with configurable timeout options and user-facing progress indicators | 120 | Medium | |
+| TODO-171 | website | Optimization | Implement React.memo optimization for table row components to improve scroll performance for large datasets | 80 | Medium | |
+| TODO-172 | website | Optimization | Implement virtualization for horizontal tab lists when there are 10+ tabs | 100 | Low | |
+| TODO-173 | website | Optimization | Add route-based code splitting for major pages using Next.js dynamic imports | 60 | Medium | |
+| TODO-174 | website | Refactor | Extract duplicate severity utility functions from cve-table.tsx and cve-detail-modal.tsx to lib/utils.ts | 40 | Low | |
+| TODO-175 | website | Refactor | Consolidate duplicate ErrorBoundary components in lib/error-handler.tsx and components/error-boundary.tsx | 50 | Low | |
+| TODO-176 | website | Refactor | Replace any types with proper TypeScript interfaces in lib/hooks.ts, components/notes-framework.tsx, app/page.tsx | 100 | Medium | |
+| TODO-177 | website | Test | Add unit tests for RPC client (lib/rpc-client.ts) covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
+| TODO-178 | website | Test | Add unit tests for custom hooks (lib/hooks.ts) using React Testing Library for critical hooks: useCVEList, useSessionStatus, useStartSession, useMemoryCards | 300 | High | |
+| TODO-179 | website | Test | Add integration tests for main page tabs verifying navigation, view/learn mode switching, and data display | 200 | Medium | |
+| TODO-180 | website | Test | Add accessibility tests for UI components using jest-axe for Button, Table, Dialog, Form components | 150 | Medium | |
+| TODO-182 | website | Security | Sanitize user-generated content in notes-framework.tsx using DOMPurify to prevent XSS attacks | 60 | Medium | |
+| TODO-183 | website | Accessibility | Add keyboard navigation support to main page tabs with Arrow keys, Home/End, and proper focus management | 80 | Medium | |
+| TODO-184 | website | Accessibility | Add live region announcements for async operations to communicate loading states, errors, and success messages | 100 | Medium | |
+| TODO-185 | website | Accessibility | Add proper ARIA labels to graph visualization in graph-viewer.tsx and graph-analysis-page.tsx | 120 | Medium | |
+| TODO-186 | website | Documentation | Add JSDoc to all public API functions in lib/rpc-client.ts, lib/hooks.ts, and lib/utils.ts | 150 | Low | |
+| TODO-187 | website | Documentation | Document component prop interfaces in components/ with JSDoc comments describing required and optional props | 200 | Low | |
+| TODO-188 | website | Feature | Connect navbar search to actual search functionality querying across CVEs, CWEs, CAPECs, and ATT&CK data | 150 | Medium | |
+| TODO-189 | website | Feature | Add settings functionality for settings button - create dialog/page for user preferences (theme, API endpoints, data refresh) | 180 | Low | |
 
 ## TODO Management Guidelines
 

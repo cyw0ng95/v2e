@@ -6,10 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // LocalCWEStore manages a local database of CWE items.
@@ -156,6 +157,8 @@ func NewLocalCWEStore(dbPath string) (*LocalCWEStore, error) {
 		db.Exec("PRAGMA journal_mode=WAL")
 		db.Exec("PRAGMA synchronous=NORMAL")
 		db.Exec("PRAGMA cache_size=-40000")
+		// Set busy_timeout to handle lock contention when multiple services access the database
+		db.Exec("PRAGMA busy_timeout=30000")
 	}
 	if err := db.AutoMigrate(
 		&CWEItemModel{},
@@ -180,6 +183,7 @@ func NewLocalCWEStore(dbPath string) (*LocalCWEStore, error) {
 }
 
 // ImportFromJSON imports CWE records from a JSON file (array of CWEItem).
+// Wraps the entire import in a database transaction for atomicity.
 func (s *LocalCWEStore) ImportFromJSON(jsonPath string) error {
 	common.Info(LogMsgImportingJSON, jsonPath)
 	f, err := os.Open(jsonPath)
@@ -202,192 +206,180 @@ func (s *LocalCWEStore) ImportFromJSON(jsonPath string) error {
 			return nil
 		}
 	}
-	for _, item := range items {
-		m := CWEItemModel{
-			ID:                  item.ID,
-			Name:                item.Name,
-			Abstraction:         item.Abstraction,
-			Structure:           item.Structure,
-			Status:              item.Status,
-			Description:         item.Description,
-			ExtendedDescription: item.ExtendedDescription,
-			LikelihoodOfExploit: item.LikelihoodOfExploit,
-		}
-		if err := s.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&m).Error; err != nil {
-			return err
-		}
-		// RelatedWeaknesses
-		s.db.Where("cwe_id = ?", item.ID).Delete(&RelatedWeaknessModel{})
-		for _, rw := range item.RelatedWeaknesses {
-			rwm := RelatedWeaknessModel{
-				CWEID:   item.ID,
-				Nature:  rw.Nature,
-				CweID:   rw.CweID,
-				ViewID:  rw.ViewID,
-				Ordinal: rw.Ordinal,
+	// Wrap import in transaction for atomicity - if any part fails, all changes are rolled back
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, item := range items {
+			m := CWEItemModel{
+				ID:                  item.ID,
+				Name:                item.Name,
+				Abstraction:         item.Abstraction,
+				Structure:           item.Structure,
+				Status:              item.Status,
+				Description:         item.Description,
+				ExtendedDescription: item.ExtendedDescription,
+				LikelihoodOfExploit: item.LikelihoodOfExploit,
 			}
-			if err := s.db.Create(&rwm).Error; err != nil {
+			if err := tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&m).Error; err != nil {
 				return err
 			}
-		}
-		// WeaknessOrdinalities
-		s.db.Where("cwe_id = ?", item.ID).Delete(&WeaknessOrdinalityModel{})
-		for _, wo := range item.WeaknessOrdinalities {
-			wom := WeaknessOrdinalityModel{
-				CWEID:       item.ID,
-				Ordinality:  wo.Ordinality,
-				Description: wo.Description,
-			}
-			if err := s.db.Create(&wom).Error; err != nil {
-				return err
-			}
-		}
-		// DetectionMethods
-		s.db.Where("cwe_id = ?", item.ID).Delete(&DetectionMethodModel{})
-		for _, dm := range item.DetectionMethods {
-			dmm := DetectionMethodModel{
-				CWEID:              item.ID,
-				DetectionMethodID:  dm.DetectionMethodID,
-				Method:             dm.Method,
-				Description:        dm.Description,
-				Effectiveness:      dm.Effectiveness,
-				EffectivenessNotes: dm.EffectivenessNotes,
-			}
-			if err := s.db.Create(&dmm).Error; err != nil {
-				return err
-			}
-		}
-		// Mitigations
-		s.db.Where("cwe_id = ?", item.ID).Delete(&MitigationModel{})
-		for _, mt := range item.PotentialMitigations {
-			mtm := MitigationModel{
-				CWEID:              item.ID,
-				MitigationID:       mt.MitigationID,
-				Phase:              "", // flatten []string as needed
-				Strategy:           mt.Strategy,
-				Description:        mt.Description,
-				Effectiveness:      mt.Effectiveness,
-				EffectivenessNotes: mt.EffectivenessNotes,
-			}
-			if err := s.db.Create(&mtm).Error; err != nil {
-				return err
-			}
-		}
-		// DemonstrativeExamples
-		s.db.Where("cwe_id = ?", item.ID).Delete(&DemonstrativeExampleModel{})
-		for _, de := range item.DemonstrativeExamples {
-			for _, entry := range de.Entries {
-				dem := DemonstrativeExampleModel{
-					CWEID:       item.ID,
-					EntryID:     de.ID,
-					IntroText:   entry.IntroText,
-					BodyText:    entry.BodyText,
-					Nature:      entry.Nature,
-					Language:    entry.Language,
-					ExampleCode: entry.ExampleCode,
-					Reference:   entry.Reference,
+			// RelatedWeaknesses
+			tx.Where("cwe_id = ?", item.ID).Delete(&RelatedWeaknessModel{})
+			for _, rw := range item.RelatedWeaknesses {
+				rwm := RelatedWeaknessModel{
+					CWEID:   item.ID,
+					Nature:  rw.Nature,
+					CweID:   rw.CweID,
+					ViewID:  rw.ViewID,
+					Ordinal: rw.Ordinal,
 				}
-				if err := s.db.Create(&dem).Error; err != nil {
+				if err := tx.Create(&rwm).Error; err != nil {
+					return err
+				}
+			}
+			// WeaknessOrdinalities
+			tx.Where("cwe_id = ?", item.ID).Delete(&WeaknessOrdinalityModel{})
+			for _, wo := range item.WeaknessOrdinalities {
+				wom := WeaknessOrdinalityModel{
+					CWEID:       item.ID,
+					Ordinality:  wo.Ordinality,
+					Description: wo.Description,
+				}
+				if err := tx.Create(&wom).Error; err != nil {
+					return err
+				}
+			}
+			// DetectionMethods
+			tx.Where("cwe_id = ?", item.ID).Delete(&DetectionMethodModel{})
+			for _, dm := range item.DetectionMethods {
+				dmm := DetectionMethodModel{
+					CWEID:              item.ID,
+					DetectionMethodID:  dm.DetectionMethodID,
+					Method:             dm.Method,
+					Description:        dm.Description,
+					Effectiveness:      dm.Effectiveness,
+					EffectivenessNotes: dm.EffectivenessNotes,
+				}
+				if err := tx.Create(&dmm).Error; err != nil {
+					return err
+				}
+			}
+			// Mitigations
+			tx.Where("cwe_id = ?", item.ID).Delete(&MitigationModel{})
+			for _, mt := range item.PotentialMitigations {
+				mtm := MitigationModel{
+					CWEID:              item.ID,
+					MitigationID:       mt.MitigationID,
+					Phase:              "", // flatten []string as needed
+					Strategy:           mt.Strategy,
+					Description:        mt.Description,
+					Effectiveness:      mt.Effectiveness,
+					EffectivenessNotes: mt.EffectivenessNotes,
+				}
+				if err := tx.Create(&mtm).Error; err != nil {
+					return err
+				}
+			}
+			// DemonstrativeExamples
+			tx.Where("cwe_id = ?", item.ID).Delete(&DemonstrativeExampleModel{})
+			for _, de := range item.DemonstrativeExamples {
+				for _, entry := range de.Entries {
+					dem := DemonstrativeExampleModel{
+						CWEID:       item.ID,
+						EntryID:     de.ID,
+						IntroText:   entry.IntroText,
+						BodyText:    entry.BodyText,
+						Nature:      entry.Nature,
+						Language:    entry.Language,
+						ExampleCode: entry.ExampleCode,
+						Reference:   entry.Reference,
+					}
+					if err := tx.Create(&dem).Error; err != nil {
+						return err
+					}
+				}
+			}
+			// ObservedExamples
+			tx.Where("cwe_id = ?", item.ID).Delete(&ObservedExampleModel{})
+			for _, oe := range item.ObservedExamples {
+				oem := ObservedExampleModel{
+					CWEID:       item.ID,
+					Reference:   oe.Reference,
+					Description: oe.Description,
+					Link:        oe.Link,
+				}
+				if err := tx.Create(&oem).Error; err != nil {
+					return err
+				}
+			}
+			// TaxonomyMappings
+			tx.Where("cwe_id = ?", item.ID).Delete(&TaxonomyMappingModel{})
+			for _, tm := range item.TaxonomyMappings {
+				tmm := TaxonomyMappingModel{
+					CWEID:        item.ID,
+					TaxonomyName: tm.TaxonomyName,
+					EntryName:    tm.EntryName,
+					EntryID:      tm.EntryID,
+					MappingFit:   tm.MappingFit,
+				}
+				if err := tx.Create(&tmm).Error; err != nil {
+					return err
+				}
+			}
+			// Notes
+			tx.Where("cwe_id = ?", item.ID).Delete(&NoteModel{})
+			for _, n := range item.Notes {
+				nm := NoteModel{
+					CWEID: item.ID,
+					Type:  n.Type,
+					Note:  n.Note,
+				}
+				if err := tx.Create(&nm).Error; err != nil {
+					return err
+				}
+			}
+			// ContentHistory
+			tx.Where("cwe_id = ?", item.ID).Delete(&ContentHistoryModel{})
+			for _, ch := range item.ContentHistory {
+				chm := ContentHistoryModel{
+					CWEID:                    item.ID,
+					Type:                     ch.Type,
+					SubmissionName:           ch.SubmissionName,
+					SubmissionOrganization:   ch.SubmissionOrganization,
+					SubmissionDate:           ch.SubmissionDate,
+					SubmissionVersion:        ch.SubmissionVersion,
+					SubmissionReleaseDate:    ch.SubmissionReleaseDate,
+					SubmissionComment:        ch.SubmissionComment,
+					ModificationName:         ch.ModificationName,
+					ModificationOrganization: ch.ModificationOrganization,
+					ModificationDate:         ch.ModificationDate,
+					ModificationVersion:      ch.ModificationVersion,
+					ModificationReleaseDate:  ch.ModificationReleaseDate,
+					ModificationComment:      ch.ModificationComment,
+					ContributionName:         ch.ContributionName,
+					ContributionOrganization: ch.ContributionOrganization,
+					ContributionDate:         ch.ContributionDate,
+					ContributionVersion:      ch.ContributionVersion,
+					ContributionReleaseDate:  ch.ContributionReleaseDate,
+					ContributionComment:      ch.ContributionComment,
+					ContributionType:         ch.ContributionType,
+					PreviousEntryName:        ch.PreviousEntryName,
+					Date:                     ch.Date,
+					Version:                  ch.Version,
+				}
+				if err := tx.Create(&chm).Error; err != nil {
 					return err
 				}
 			}
 		}
-		// ObservedExamples
-		s.db.Where("cwe_id = ?", item.ID).Delete(&ObservedExampleModel{})
-		for _, oe := range item.ObservedExamples {
-			oem := ObservedExampleModel{
-				CWEID:       item.ID,
-				Reference:   oe.Reference,
-				Description: oe.Description,
-				Link:        oe.Link,
-			}
-			if err := s.db.Create(&oem).Error; err != nil {
-				return err
-			}
-		}
-		// TaxonomyMappings
-		s.db.Where("cwe_id = ?", item.ID).Delete(&TaxonomyMappingModel{})
-		for _, tm := range item.TaxonomyMappings {
-			tmm := TaxonomyMappingModel{
-				CWEID:        item.ID,
-				TaxonomyName: tm.TaxonomyName,
-				EntryName:    tm.EntryName,
-				EntryID:      tm.EntryID,
-				MappingFit:   tm.MappingFit,
-			}
-			if err := s.db.Create(&tmm).Error; err != nil {
-				return err
-			}
-		}
-		// Notes
-		s.db.Where("cwe_id = ?", item.ID).Delete(&NoteModel{})
-		for _, n := range item.Notes {
-			nm := NoteModel{
-				CWEID: item.ID,
-				Type:  n.Type,
-				Note:  n.Note,
-			}
-			if err := s.db.Create(&nm).Error; err != nil {
-				return err
-			}
-		}
-		// ContentHistory
-		s.db.Where("cwe_id = ?", item.ID).Delete(&ContentHistoryModel{})
-		for _, ch := range item.ContentHistory {
-			chm := ContentHistoryModel{
-				CWEID:                    item.ID,
-				Type:                     ch.Type,
-				SubmissionName:           ch.SubmissionName,
-				SubmissionOrganization:   ch.SubmissionOrganization,
-				SubmissionDate:           ch.SubmissionDate,
-				SubmissionVersion:        ch.SubmissionVersion,
-				SubmissionReleaseDate:    ch.SubmissionReleaseDate,
-				SubmissionComment:        ch.SubmissionComment,
-				ModificationName:         ch.ModificationName,
-				ModificationOrganization: ch.ModificationOrganization,
-				ModificationDate:         ch.ModificationDate,
-				ModificationVersion:      ch.ModificationVersion,
-				ModificationReleaseDate:  ch.ModificationReleaseDate,
-				ModificationComment:      ch.ModificationComment,
-				ContributionName:         ch.ContributionName,
-				ContributionOrganization: ch.ContributionOrganization,
-				ContributionDate:         ch.ContributionDate,
-				ContributionVersion:      ch.ContributionVersion,
-				ContributionReleaseDate:  ch.ContributionReleaseDate,
-				ContributionComment:      ch.ContributionComment,
-				ContributionType:         ch.ContributionType,
-				PreviousEntryName:        ch.PreviousEntryName,
-				Date:                     ch.Date,
-				Version:                  ch.Version,
-			}
-			if err := s.db.Create(&chm).Error; err != nil {
-				return err
-			}
-		}
-		// Add similar logic for other nested fields as needed
-	}
-	return nil
+		return nil
+	})
 }
 
-// GetByID retrieves a CWEItem by ID.
-func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error) {
-	var m CWEItemModel
-	if err := s.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-	item := &CWEItem{
-		ID:                  m.ID,
-		Name:                m.Name,
-		Abstraction:         m.Abstraction,
-		Structure:           m.Structure,
-		Status:              m.Status,
-		Description:         m.Description,
-		ExtendedDescription: m.ExtendedDescription,
-		LikelihoodOfExploit: m.LikelihoodOfExploit,
-	}
+// loadCWEFields loads all nested fields for a CWE item.
+func (s *LocalCWEStore) loadCWEFields(ctx context.Context, cweID string, item *CWEItem) {
 	// RelatedWeaknesses
 	var rws []RelatedWeaknessModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&rws)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&rws)
 	for _, rw := range rws {
 		item.RelatedWeaknesses = append(item.RelatedWeaknesses, RelatedWeakness{
 			Nature:  rw.Nature,
@@ -398,7 +390,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// WeaknessOrdinalities
 	var wos []WeaknessOrdinalityModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&wos)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&wos)
 	for _, wo := range wos {
 		item.WeaknessOrdinalities = append(item.WeaknessOrdinalities, WeaknessOrdinality{
 			Ordinality:  wo.Ordinality,
@@ -407,7 +399,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// DetectionMethods
 	var dms []DetectionMethodModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&dms)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&dms)
 	for _, dm := range dms {
 		item.DetectionMethods = append(item.DetectionMethods, DetectionMethod{
 			DetectionMethodID:  dm.DetectionMethodID,
@@ -419,7 +411,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// Mitigations
 	var mts []MitigationModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&mts)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&mts)
 	for _, mt := range mts {
 		phase := []string{}
 		if mt.Phase != "" {
@@ -436,7 +428,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// DemonstrativeExamples
 	var des []DemonstrativeExampleModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&des)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&des)
 	entriesByID := make(map[string][]DemonstrativeEntry)
 	for _, de := range des {
 		entriesByID[de.EntryID] = append(entriesByID[de.EntryID], DemonstrativeEntry{
@@ -456,7 +448,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// ObservedExamples
 	var oes []ObservedExampleModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&oes)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&oes)
 	for _, oe := range oes {
 		item.ObservedExamples = append(item.ObservedExamples, ObservedExample{
 			Reference:   oe.Reference,
@@ -466,7 +458,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// TaxonomyMappings
 	var tms []TaxonomyMappingModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&tms)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&tms)
 	for _, tm := range tms {
 		item.TaxonomyMappings = append(item.TaxonomyMappings, TaxonomyMapping{
 			TaxonomyName: tm.TaxonomyName,
@@ -477,7 +469,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// Notes
 	var ns []NoteModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&ns)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&ns)
 	for _, n := range ns {
 		item.Notes = append(item.Notes, Note{
 			Type: n.Type,
@@ -486,7 +478,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// ContentHistory
 	var chs []ContentHistoryModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&chs)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&chs)
 	for _, ch := range chs {
 		item.ContentHistory = append(item.ContentHistory, ContentHistory{
 			Type:                     ch.Type,
@@ -514,7 +506,25 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 			Version:                  ch.Version,
 		})
 	}
-	// Add similar logic for other nested fields as needed
+}
+
+// GetByID retrieves a CWEItem by ID.
+func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error) {
+	var m CWEItemModel
+	if err := s.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	item := &CWEItem{
+		ID:                  m.ID,
+		Name:                m.Name,
+		Abstraction:         m.Abstraction,
+		Structure:           m.Structure,
+		Status:              m.Status,
+		Description:         m.Description,
+		ExtendedDescription: m.ExtendedDescription,
+		LikelihoodOfExploit: m.LikelihoodOfExploit,
+	}
+	s.loadCWEFields(ctx, id, item)
 	return item, nil
 }
 
@@ -522,7 +532,10 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 func (s *LocalCWEStore) ListCWEsPaginated(ctx context.Context, offset, limit int) ([]CWEItem, int64, error) {
 	var models []CWEItemModel
 	var total int64
-	s.db.Model(&CWEItemModel{}).Count(&total)
+	// Check Count error before proceeding with Find
+	if err := s.db.Model(&CWEItemModel{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	if err := s.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&models).Error; err != nil {
 		return nil, 0, err
 	}
@@ -538,136 +551,7 @@ func (s *LocalCWEStore) ListCWEsPaginated(ctx context.Context, offset, limit int
 			ExtendedDescription: m.ExtendedDescription,
 			LikelihoodOfExploit: m.LikelihoodOfExploit,
 		}
-		// RelatedWeaknesses
-		var rws []RelatedWeaknessModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&rws)
-		for _, rw := range rws {
-			item.RelatedWeaknesses = append(item.RelatedWeaknesses, RelatedWeakness{
-				Nature:  rw.Nature,
-				CweID:   rw.CweID,
-				ViewID:  rw.ViewID,
-				Ordinal: rw.Ordinal,
-			})
-		}
-		// WeaknessOrdinalities
-		var wos []WeaknessOrdinalityModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&wos)
-		for _, wo := range wos {
-			item.WeaknessOrdinalities = append(item.WeaknessOrdinalities, WeaknessOrdinality{
-				Ordinality:  wo.Ordinality,
-				Description: wo.Description,
-			})
-		}
-		// DetectionMethods
-		var dms []DetectionMethodModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&dms)
-		for _, dm := range dms {
-			item.DetectionMethods = append(item.DetectionMethods, DetectionMethod{
-				DetectionMethodID:  dm.DetectionMethodID,
-				Method:             dm.Method,
-				Description:        dm.Description,
-				Effectiveness:      dm.Effectiveness,
-				EffectivenessNotes: dm.EffectivenessNotes,
-			})
-		}
-		// Mitigations
-		var mts []MitigationModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&mts)
-		for _, mt := range mts {
-			phase := []string{}
-			if mt.Phase != "" {
-				phase = strings.Split(strings.TrimSpace(mt.Phase), ",")
-			}
-			item.PotentialMitigations = append(item.PotentialMitigations, Mitigation{
-				MitigationID:       mt.MitigationID,
-				Phase:              phase,
-				Strategy:           mt.Strategy,
-				Description:        mt.Description,
-				Effectiveness:      mt.Effectiveness,
-				EffectivenessNotes: mt.EffectivenessNotes,
-			})
-		}
-		// DemonstrativeExamples (group by EntryID)
-		var des []DemonstrativeExampleModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&des)
-		entriesByID := make(map[string][]DemonstrativeEntry)
-		for _, de := range des {
-			entriesByID[de.EntryID] = append(entriesByID[de.EntryID], DemonstrativeEntry{
-				IntroText:   de.IntroText,
-				BodyText:    de.BodyText,
-				Nature:      de.Nature,
-				Language:    de.Language,
-				ExampleCode: de.ExampleCode,
-				Reference:   de.Reference,
-			})
-		}
-		for entryID, entries := range entriesByID {
-			item.DemonstrativeExamples = append(item.DemonstrativeExamples, DemonstrativeExample{
-				ID:      entryID,
-				Entries: entries,
-			})
-		}
-		// ObservedExamples
-		var oes []ObservedExampleModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&oes)
-		for _, oe := range oes {
-			item.ObservedExamples = append(item.ObservedExamples, ObservedExample{
-				Reference:   oe.Reference,
-				Description: oe.Description,
-				Link:        oe.Link,
-			})
-		}
-		// TaxonomyMappings
-		var tms []TaxonomyMappingModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&tms)
-		for _, tm := range tms {
-			item.TaxonomyMappings = append(item.TaxonomyMappings, TaxonomyMapping{
-				TaxonomyName: tm.TaxonomyName,
-				EntryName:    tm.EntryName,
-				EntryID:      tm.EntryID,
-				MappingFit:   tm.MappingFit,
-			})
-		}
-		// Notes
-		var ns []NoteModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&ns)
-		for _, n := range ns {
-			item.Notes = append(item.Notes, Note{
-				Type: n.Type,
-				Note: n.Note,
-			})
-		}
-		// ContentHistory
-		var chs []ContentHistoryModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&chs)
-		for _, ch := range chs {
-			item.ContentHistory = append(item.ContentHistory, ContentHistory{
-				Type:                     ch.Type,
-				SubmissionName:           ch.SubmissionName,
-				SubmissionOrganization:   ch.SubmissionOrganization,
-				SubmissionDate:           ch.SubmissionDate,
-				SubmissionVersion:        ch.SubmissionVersion,
-				SubmissionReleaseDate:    ch.SubmissionReleaseDate,
-				SubmissionComment:        ch.SubmissionComment,
-				ModificationName:         ch.ModificationName,
-				ModificationOrganization: ch.ModificationOrganization,
-				ModificationDate:         ch.ModificationDate,
-				ModificationVersion:      ch.ModificationVersion,
-				ModificationReleaseDate:  ch.ModificationReleaseDate,
-				ModificationComment:      ch.ModificationComment,
-				ContributionName:         ch.ContributionName,
-				ContributionOrganization: ch.ContributionOrganization,
-				ContributionDate:         ch.ContributionDate,
-				ContributionVersion:      ch.ContributionVersion,
-				ContributionReleaseDate:  ch.ContributionReleaseDate,
-				ContributionComment:      ch.ContributionComment,
-				ContributionType:         ch.ContributionType,
-				PreviousEntryName:        ch.PreviousEntryName,
-				Date:                     ch.Date,
-				Version:                  ch.Version,
-			})
-		}
-		// Add similar logic for other nested fields as needed
+		s.loadCWEFields(ctx, m.ID, &item)
 		items = append(items, item)
 	}
 	return items, total, nil

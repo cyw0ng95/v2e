@@ -3,10 +3,12 @@ package cwe
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cyw0ng95/v2e/pkg/testutils"
-	"gorm.io/gorm"
 	"strings"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestCWEItem_JSONMarshalUnmarshal covers CWE JSON serialization edge cases.

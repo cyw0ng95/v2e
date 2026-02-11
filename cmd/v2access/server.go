@@ -6,10 +6,12 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"github.com/cyw0ng95/v2e/pkg/common"
 )
 
 // Default timeout and shutdown constants are now in pkg/common/defaults.go
@@ -32,6 +34,16 @@ func setupRouter(rpcClient *RPCClient, _ int, staticDir string) *gin.Engine {
 	// Add CORS middleware
 	router.Use(cors.Default())
 	common.Info(LogMsgCORSMiddlewareAdded)
+
+	// Add rate limiting middleware to prevent DoS attacks
+	rateLimitConfig := &RateLimiterConfig{
+		MaxTokens:       50,              // 50 requests per client
+		RefillInterval:  time.Second,     // 1 request per second refill
+		CleanupInterval: 5 * time.Minute, // Cleanup stale limiters every 5 minutes
+		TrustedProxies:  []string{"127.0.0.1", "::1"},
+		ExcludedPaths:   []string{"/restful/health"},
+	}
+	router.Use(RateLimiterMiddleware(rateLimitConfig))
 
 	// Create RESTful API group
 	restful := router.Group("/restful")

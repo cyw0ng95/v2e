@@ -3,8 +3,9 @@ package notes
 import (
 	"testing"
 
-	"github.com/cyw0ng95/v2e/pkg/testutils"
 	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 func TestCardStatus(t *testing.T) {

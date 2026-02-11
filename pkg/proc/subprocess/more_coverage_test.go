@@ -1,12 +1,14 @@
 package subprocess
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"bytes"
 	"os"
 	"strings"
 	"testing"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 )
 
 // TestNewInvalidFDsFallback ensures New falls back to stdio and logs a warning

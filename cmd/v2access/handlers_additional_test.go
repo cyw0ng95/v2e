@@ -1,8 +1,6 @@
 package main
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -14,9 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
+
+	"github.com/gin-gonic/gin"
+
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
-	"github.com/gin-gonic/gin"
 )
 
 // mockSubprocessForRPC helps simulate broker replies by calling back into RPCClient

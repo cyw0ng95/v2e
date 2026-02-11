@@ -1,11 +1,14 @@
 package capec
 
 import (
-"gorm.io/gorm"
-"github.com/cyw0ng95/v2e/pkg/testutils"
 	"context"
 	"path/filepath"
 	"testing"
+	"unicode/utf8"
+
+	"gorm.io/gorm"
+
+	"github.com/cyw0ng95/v2e/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -228,6 +231,34 @@ func TestUtilityFunctions(t *testing.T) {
 		emptyStr := ""
 		truncated = truncateString(emptyStr, 10)
 		assert.Equal(t, "", truncated)
+
+		// Test UTF-8 multi-byte character truncation (fixes TODO-134)
+		// Japanese text: "これは日本語のテキストです" (This is Japanese text)
+		japaneseText := "これは日本語のテキストです"
+		// Each character is 3 bytes in UTF-8
+		truncated = truncateString(japaneseText, 10) // 10 bytes = 3 chars + 1 byte of 4th char
+		// Should truncate to 3 complete characters (9 bytes) to avoid invalid UTF-8
+		assert.Equal(t, "これ", truncated)
+		assert.True(t, utf8.ValidString(truncated), "truncated string should be valid UTF-8")
+
+		// Test with emoji (4-byte UTF-8 sequences)
+		emojiText := "Hello 👋 World 🌍 Test 🎉"
+		truncated = truncateString(emojiText, 12) // "Hello 👋" is 12 bytes
+		assert.Equal(t, "Hello 👋", truncated)
+		assert.True(t, utf8.ValidString(truncated), "truncated emoji string should be valid UTF-8")
+
+		// Test truncation in middle of multi-byte sequence
+		mixedText := "ABC日本語XYZ"                 // ABC (3) + 日本語 (9) + XYZ (3) = 15 bytes
+		truncated = truncateString(mixedText, 8) // Should cut after "ABC" (6 bytes) + 2 bytes of "日"
+		// Should only include "ABC" to avoid cutting the multi-byte character
+		assert.Equal(t, "ABC", truncated)
+		assert.True(t, utf8.ValidString(truncated), "truncated mixed string should be valid UTF-8")
+
+		// Test edge case: single byte past a multi-byte boundary
+		chineseText := "测试文本"                      // Each Chinese character is 3 bytes
+		truncated = truncateString(chineseText, 4) // 1 char (3 bytes) + 1 byte
+		assert.Equal(t, "测", truncated)            // Should be 1 complete character
+		assert.True(t, utf8.ValidString(truncated), "truncated Chinese string should be valid UTF-8")
 	})
 
 }
