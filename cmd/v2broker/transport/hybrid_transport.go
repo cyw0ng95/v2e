@@ -275,13 +275,90 @@ func (ht *HybridTransport) transferPendingDataLocked() {
 			break
 		}
 
-		// Store the data in pending buffer
+		// Parse individual JSON messages from the raw data
+		// Messages are written as complete JSON objects without delimiters
+		// We need to split them by finding JSON object boundaries
+		messages := ht.extractJSONMessages(buf[:n])
+
 		ht.pendingMu.Lock()
-		ht.pendingMessages = append(ht.pendingMessages, buf[:n])
+		for _, msg := range messages {
+			ht.pendingMessages = append(ht.pendingMessages, msg)
+		}
 		ht.pendingMu.Unlock()
 
-		log.Printf("[HybridTransport] Transferred %d bytes from shared memory to pending buffer", n)
+		log.Printf("[HybridTransport] Transferred %d bytes (%d messages) from shared memory to pending buffer", n, len(messages))
 	}
+}
+
+// extractJSONMessages splits raw bytes into individual JSON messages
+// by finding complete JSON object boundaries
+func (ht *HybridTransport) extractJSONMessages(data []byte) [][]byte {
+	var messages [][]byte
+	offset := 0
+
+	for offset < len(data) {
+		// Skip leading whitespace
+		for offset < len(data) && (data[offset] == ' ' || data[offset] == '\t' || data[offset] == '\n' || data[offset] == '\r') {
+			offset++
+		}
+		if offset >= len(data) {
+			break
+		}
+
+		// Find the end of the JSON object
+		// JSON objects start with '{' and end with '}'
+		if data[offset] != '{' {
+			// Not a JSON object, skip to next '{'
+			offset++
+			continue
+		}
+
+		depth := 0
+		inString := false
+		escaped := false
+		end := -1
+
+		for i := offset; i < len(data); i++ {
+			c := data[i]
+
+			if escaped {
+				escaped = false
+				continue
+			}
+
+			if c == '\\' {
+				escaped = true
+				continue
+			}
+
+			if c == '"' {
+				inString = !inString
+				continue
+			}
+
+			if !inString {
+				if c == '{' {
+					depth++
+				} else if c == '}' {
+					depth--
+					if depth == 0 {
+						end = i + 1
+						break
+					}
+				}
+			}
+		}
+
+		if end > 0 {
+			messages = append(messages, data[offset:end])
+			offset = end
+		} else {
+			// Incomplete JSON object, stop parsing
+			break
+		}
+	}
+
+	return messages
 }
 
 // HasPendingMessages returns true if there are pending messages
