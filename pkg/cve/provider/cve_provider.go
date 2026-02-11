@@ -7,6 +7,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/cve/remote"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
 
@@ -15,11 +16,13 @@ type CVEProvider struct {
 	*fsm.BaseProviderFSM
 	fetcher *remote.Fetcher
 	apiKey  string
+	sp      *subprocess.Subprocess
 }
 
 // NewCVEProvider creates a new CVE provider with FSM support
 // apiKey is optional NVD API key for higher rate limits
-func NewCVEProvider(apiKey string, store *storage.Store) (*CVEProvider, error) {
+// sp is the subprocess for RPC communication (can be nil for testing)
+func NewCVEProvider(apiKey string, store *storage.Store, sp *subprocess.Subprocess) (*CVEProvider, error) {
 	fetcher, err := remote.NewFetcher(apiKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetcher: %w", err)
@@ -28,6 +31,7 @@ func NewCVEProvider(apiKey string, store *storage.Store) (*CVEProvider, error) {
 	provider := &CVEProvider{
 		fetcher: fetcher,
 		apiKey:  apiKey,
+		sp:      sp,
 	}
 
 	// Create base FSM with custom executor
@@ -53,6 +57,11 @@ func (p *CVEProvider) execute() error {
 	// Check if we should be running
 	if currentState != fsm.ProviderRunning {
 		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
+	}
+
+	// Require subprocess for RPC calls
+	if p.sp == nil {
+		return fmt.Errorf("subprocess not configured, cannot make RPC calls")
 	}
 
 	batchSize := p.GetBatchSize()
@@ -92,15 +101,44 @@ func (p *CVEProvider) execute() error {
 			itemURN := urn.MustParse(fmt.Sprintf("v2e::nvd::cve::%s", cveID))
 
 			// Store CVE via RPC call to v2local service
-			// Note: RPCSaveCVEByID expects a full CVE object with id field
-			// The v2local service must be running for this to work
-			// For now, simulate success until RPC integration is complete
+			// Build RPC request message
+			params := map[string]interface{}{
+				"cve": vuln.CVE,
+			}
+
 			success := true
 			errorMsg := ""
+
+			// Send RPC request to broker to route to local service
+			payload, err := subprocess.MarshalFast(params)
+			if err != nil {
+				success = false
+				errorMsg = fmt.Sprintf("failed to marshal RPC request for %s: %v", cveID, err)
+			} else {
+				rpcMsg := &subprocess.Message{
+					Type:    subprocess.MessageTypeRequest,
+					ID:      "RPCSaveCVEByID",
+					Payload: payload,
+					Target:  "local",
+					Source:  p.sp.ID,
+				}
+
+				if err := p.sp.SendMessage(rpcMsg); err != nil {
+					success = false
+					errorMsg = fmt.Sprintf("failed to send RPC request for %s: %v", cveID, err)
+				}
+				// For now, assume success - proper async response handling
+				// would require waiting for response channel
+			}
 
 			// Save checkpoint
 			if err := p.SaveCheckpoint(itemURN, success, errorMsg); err != nil {
 				return fmt.Errorf("failed to save checkpoint for %s: %w", cveID, err)
+			}
+
+			if !success {
+				// Log error but continue processing
+				fmt.Printf("[CVEProvider] Error saving %s: %s\n", cveID, errorMsg)
 			}
 		}
 

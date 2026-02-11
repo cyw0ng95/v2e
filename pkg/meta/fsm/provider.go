@@ -301,19 +301,11 @@ func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderSt
 }
 
 // Start begins execution (IDLE -> ACQUIRING -> RUNNING)
-// Optional dependencyChecker can be provided to verify dependencies before starting
-func (p *BaseProviderFSM) Start(dependencyChecker func(map[string]ProviderState) error) error {
+func (p *BaseProviderFSM) Start() error {
 	currentState := p.GetState()
 
 	if currentState != ProviderIdle {
 		return fmt.Errorf("cannot start from state %s, must be IDLE", currentState)
-	}
-
-	// Check dependencies if a checker is provided
-	if dependencyChecker != nil {
-		if err := dependencyChecker(map[string]ProviderState{}); err != nil {
-			return fmt.Errorf("dependency check failed: %w", err)
-		}
 	}
 
 	// Transition to ACQUIRING (waiting for permits)

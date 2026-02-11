@@ -21,16 +21,20 @@ var (
 	macroFSM     *fsm.MacroFSMManager
 	fsmProviders map[string]fsm.ProviderFSM
 	storageDB    *storage.Store
+	fsmSubprocess *subprocess.Subprocess
 )
 
 // initFSMInfrastructure initializes the UEE FSM infrastructure
-func initFSMInfrastructure(logger *common.Logger, runDBPath string) error {
+func initFSMInfrastructure(logger *common.Logger, runDBPath string, sp *subprocess.Subprocess) error {
 	// Initialize storage
 	var err error
 	storageDB, err = storage.NewStore(runDBPath, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create FSM storage: %w", err)
 	}
+
+	// Store subprocess for provider initialization
+	fsmSubprocess = sp
 
 	// Create macro FSM manager
 	macroFSM, err = fsm.NewMacroFSMManager("uee-orchestrator", storageDB)
@@ -58,7 +62,7 @@ func initFSMInfrastructure(logger *common.Logger, runDBPath string) error {
 // initFSMProviders initializes all FSM-based providers and registers them with macro FSM
 func initFSMProviders(logger *common.Logger) error {
 	// CVE Provider
-	cveProv, err := provider.NewCVEProvider("", storageDB)
+	cveProv, err := provider.NewCVEProvider("", storageDB, fsmSubprocess)
 	if err != nil {
 		logger.Warn("Failed to create CVE provider (skipping): %v", err)
 	} else {
@@ -69,7 +73,7 @@ func initFSMProviders(logger *common.Logger) error {
 	}
 
 	// CWE Provider
-	cweProv, err := cweprovider.NewCWEProvider("", storageDB)
+	cweProv, err := cweprovider.NewCWEProvider("", storageDB, fsmSubprocess)
 	if err != nil {
 		logger.Warn("Failed to create CWE provider (skipping): %v", err)
 	} else {
@@ -80,7 +84,7 @@ func initFSMProviders(logger *common.Logger) error {
 	}
 
 	// CAPEC Provider
-	capecProv, err := capecprovider.NewCAPECProvider("", storageDB)
+	capecProv, err := capecprovider.NewCAPECProvider("", storageDB, fsmSubprocess)
 	if err != nil {
 		logger.Warn("Failed to create CAPEC provider (skipping): %v", err)
 	} else {

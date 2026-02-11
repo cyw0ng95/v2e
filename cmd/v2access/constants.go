@@ -62,4 +62,8 @@ const (
 	LogMsgStaticFileServed   = "[ACCESS] Static file served: %s"
 	LogMsgStaticDirNotFound  = "[ACCESS] Static directory not found, skipping static file serving: %s"
 	LogMsgStaticFallbackSPA  = "[ACCESS] SPA fallback triggered, serving index.html for route: %s"
+
+	// Rate Limiting Log Messages
+	LogMsgRateLimiterStarted  = "[ACCESS] Rate limiter started: max_tokens=%d, refill_interval=%v"
+	LogMsgRateLimitExceeded   = "[ACCESS] Rate limit exceeded for client: %s"
 )

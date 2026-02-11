@@ -303,9 +303,24 @@ func firstNonEmpty(a, b string) string {
 	return b
 }
 
+// truncateString safely truncates a string to at most n bytes,
+// ensuring valid UTF-8 by cutting at the last complete rune.
+// If truncation would cut a multi-byte UTF-8 sequence, it cuts
+// before the incomplete rune instead.
 func truncateString(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}
-	return s[:n]
+	// Find the last complete UTF-8 rune boundary before position n
+	// UTF-8 continuation bytes have the form 10xxxxxx (0x80-0xBF)
+	// We need to find the last byte that is NOT a continuation byte
+	for i := n; i > 0; i-- {
+		// Check if byte i is not a UTF-8 continuation byte
+		// UTF-8 continuation bytes have top two bits set to 10
+		if s[i] < 0x80 || s[i] >= 0xC0 {
+			return s[:i]
+		}
+	}
+	// If no valid boundary found, return empty string to avoid invalid UTF-8
+	return ""
 }

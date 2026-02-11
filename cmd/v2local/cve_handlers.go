@@ -62,6 +62,12 @@ func createIsCVEStoredByIDHandler(db *local.DB, logger *common.Logger) subproces
 			logger.Warn(LogMsgCVEIDRequiredSimple)
 			return errResp, nil
 		}
+		// Validate CVE ID format for security
+		validator := subprocess.NewValidator()
+		validator.ValidateCVEID(req.CVEID, "cve_id")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
+		}
 		_, err := db.GetCVE(req.CVEID)
 		stored := err == nil
 		logger.Debug(LogMsgProcessingIsCVECompleted, req.CVEID, stored)
@@ -95,6 +101,12 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 			logger.Debug(LogMsgProcessingGetCVEFailedID, msg.ID)
 			return errResp, nil
 		}
+		// Validate CVE ID format for security
+		validator := subprocess.NewValidator()
+		validator.ValidateCVEID(req.CVEID, "cve_id")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
+		}
 		cveItem, err := db.GetCVE(req.CVEID)
 		if err != nil {
 			logger.Warn(LogMsgFailedGetCVE, msg.ID, msg.CorrelationID, req.CVEID, err)
@@ -127,6 +139,12 @@ func createDeleteCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.
 			logger.Warn("cve_id is required")
 			logger.Debug("Processing DeleteCVEByID request failed: CVE ID missing in payload")
 			return errResp, nil
+		}
+		// Validate CVE ID format for security
+		validator := subprocess.NewValidator()
+		validator.ValidateCVEID(req.CVEID, "cve_id")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
 		}
 		if err := db.DeleteCVE(req.CVEID); err != nil {
 			logger.Warn("Failed to delete CVE from database: %v", err)
@@ -164,6 +182,13 @@ func createListCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Handl
 				logger.Debug("Processing ListCVEs request failed due to malformed payload - Message ID: %s, Payload: %s", msg.ID, string(msg.Payload))
 				return errResp, nil
 			}
+		}
+		// Validate pagination parameters for security
+		validator := subprocess.NewValidator()
+		validator.ValidateIntPositive(req.Offset, "offset")
+		validator.ValidateIntRange(req.Limit, 1, 1000, "limit")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
 		}
 		logger.Info("Processing ListCVEs request - Message ID: %s, Correlation ID: %s, Offset: %d, Limit: %d", msg.ID, msg.CorrelationID, req.Offset, req.Limit)
 		cves, err := db.ListCVEs(req.Offset, req.Limit)

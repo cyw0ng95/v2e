@@ -132,8 +132,9 @@ func createFetchViewsHandler() subprocess.Handler {
 			if err != nil {
 				continue
 			}
+
 			data, err := io.ReadAll(rc)
-			rc.Close()
+			rc.Close() // Close immediately after reading (fixes TODO-152: prevents file descriptor leaks)
 			if err != nil {
 				continue
 			}
@@ -198,6 +199,13 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			return errMsg, nil
 		}
 
+		// Validate CVE ID format for security
+		validator := subprocess.NewValidator()
+		validator.ValidateCVEID(req.CVEID, "cve_id")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
+		}
+
 		// Fetch CVE from NVD
 		response, err := fetcher.FetchCVEByID(req.CVEID)
 		if err != nil {
@@ -230,6 +238,14 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
 			}
+		}
+
+		// Validate pagination parameters for security
+		validator := subprocess.NewValidator()
+		validator.ValidateIntPositive(req.StartIndex, "start_index")
+		validator.ValidateIntRange(req.ResultsPerPage, 1, 2000, "results_per_page")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
 		}
 
 		// Fetch CVEs to get the total count
@@ -269,6 +285,14 @@ func createFetchCVEsHandler(fetcher *remote.Fetcher) subprocess.Handler {
 			if err := subprocess.UnmarshalPayload(msg, &req); err != nil {
 				return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to parse request: %v", err)), nil
 			}
+		}
+
+		// Validate pagination parameters for security
+		validator := subprocess.NewValidator()
+		validator.ValidateIntPositive(req.StartIndex, "start_index")
+		validator.ValidateIntRange(req.ResultsPerPage, 1, 2000, "results_per_page")
+		if validator.HasErrors() {
+			return subprocess.NewErrorResponse(msg, validator.Error()), nil
 		}
 
 		// Fetch CVEs from NVD

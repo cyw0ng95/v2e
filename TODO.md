@@ -133,18 +133,15 @@
 | TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
 | TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
 | TODO-146 | cmd/v2access | Bug Fix | Fix handlers.go:82 returns http.StatusOK when context is canceled instead of appropriate error status code | 20 | Medium | |
-| TODO-147 | cmd/v2access | Security | Add request rate limiting to /restful/rpc endpoint to prevent DoS attacks | 100 | High | |
 | TODO-148 | cmd/v2access | Optimization | Use sync.Pool for context creation in handlers.go:90 instead of creating new context per RPC call | 60 | Low | |
 | TODO-149 | cmd/v2access | Refactor | Group and namespace 65 log constants in constants.go by functionality or use enum | 80 | Low | |
 | TODO-150 | cmd/v2access | Documentation | Document ACCESS_STATIC_DIR environment variable in cmd/v2access/service.md | 10 | Low | |
 | TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
 | TODO-152 | cmd/v2remote | Bug Fix | Fix file descriptor leak in zip handling - ensure zip files are properly closed after processing | 60 | High | |
-| TODO-155 | cmd/v2remote | Bug Fix | Fix missing input validation for security - validate all RPC handler inputs | 80 | High | |
 | TODO-156 | cmd/v2remote | Refactor | Extract common import control logic into reusable functions | 100 | Medium | |
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
 | TODO-161 | cmd/v2meta | Test | Add tests for FSM recovery scenarios | 150 | Medium | |
-| TODO-162 | cmd/v2local | Bug Fix | Fix missing input validation for security - validate all RPC handler inputs | 80 | High | |
 | TODO-163 | cmd/v2local | Refactor | Extract common handler patterns into reusable functions | 80 | Medium | |
 | TODO-164 | cmd/v2local | Test | Add integration tests for database operations | 150 | Medium | |
 | TODO-165 | cmd/v2local | Test | Add tests for concurrent access scenarios | 100 | Medium | |
@@ -163,7 +160,6 @@
 | TODO-178 | website | Test | Add unit tests for custom hooks (lib/hooks.ts) using React Testing Library for critical hooks: useCVEList, useSessionStatus, useStartSession, useMemoryCards | 300 | High | |
 | TODO-179 | website | Test | Add integration tests for main page tabs verifying navigation, view/learn mode switching, and data display | 200 | Medium | |
 | TODO-180 | website | Test | Add accessibility tests for UI components using jest-axe for Button, Table, Dialog, Form components | 150 | Medium | |
-| TODO-181 | website | Security | Add CSP headers to restrict script sources, object sources, and form actions in next.config.ts | 40 | High | |
 | TODO-182 | website | Security | Sanitize user-generated content in notes-framework.tsx using DOMPurify to prevent XSS attacks | 60 | Medium | |
 | TODO-183 | website | Accessibility | Add keyboard navigation support to main page tabs with Arrow keys, Home/End, and proper focus management | 80 | Medium | |
 | TODO-184 | website | Accessibility | Add live region announcements for async operations to communicate loading states, errors, and success messages | 100 | Medium | |

@@ -12,6 +12,7 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/capec"
 	"github.com/cyw0ng95/v2e/pkg/meta/fsm"
 	"github.com/cyw0ng95/v2e/pkg/meta/storage"
+	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
 
@@ -22,12 +23,14 @@ type CAPECProvider struct {
 	batchSize  int
 	maxRetries int
 	retryDelay time.Duration
+	sp         *subprocess.Subprocess
 	mu         sync.RWMutex
 }
 
 // NewCAPECProvider creates a new CAPEC provider with FSM support
 // localPath is the path to CAPEC XML file
-func NewCAPECProvider(localPath string, store *storage.Store) (*CAPECProvider, error) {
+// sp is the subprocess for RPC communication (can be nil for testing)
+func NewCAPECProvider(localPath string, store *storage.Store, sp *subprocess.Subprocess) (*CAPECProvider, error) {
 	if localPath == "" {
 		localPath = "assets/capec_contents_latest.xml"
 	}
@@ -37,6 +40,7 @@ func NewCAPECProvider(localPath string, store *storage.Store) (*CAPECProvider, e
 		batchSize:  50,
 		maxRetries: 3,
 		retryDelay: 5 * time.Second,
+		sp:         sp,
 	}
 
 	// Create base FSM with custom executor
@@ -66,6 +70,11 @@ func (p *CAPECProvider) execute() error {
 	// Check if we should be running
 	if currentState != fsm.ProviderRunning {
 		return fmt.Errorf("cannot execute in state %s, must be RUNNING", currentState)
+	}
+
+	// Require subprocess for RPC calls
+	if p.sp == nil {
+		return fmt.Errorf("subprocess not configured, cannot make RPC calls")
 	}
 
 	p.mu.RLock()
@@ -100,10 +109,8 @@ func (p *CAPECProvider) execute() error {
 		capecID := attackPattern.ID
 		itemURN := urn.MustParse(fmt.Sprintf("v2e::mitre::capec::%d", capecID))
 
-		// Store CAPEC via RPC call to v2local service
-		// Note: The v2local service provides RPCImportCAPECs for bulk import
-		// For now, marshal the item until RPC integration is complete
-		_, err := json.Marshal(attackPattern)
+		// Marshal CAPEC data for RPC call
+		capecJSON, err := json.Marshal(attackPattern)
 		if err != nil {
 			return fmt.Errorf("failed to marshal CAPEC item: %w", err)
 		}
@@ -113,12 +120,48 @@ func (p *CAPECProvider) execute() error {
 			time.Sleep(1 * time.Second)
 		}
 
+		// Store CAPEC via RPC call to v2local service
+		// Use RPCImportCAPEC for individual CAPEC import
+
+		params := map[string]interface{}{
+			"capecData": capecJSON,
+		}
+
+		// Send RPC request to broker to route to local service
+		payload, merr := subprocess.MarshalFast(params)
+		if merr != nil {
+			success := false
+			errorMsg := fmt.Sprintf("failed to marshal RPC request: %v", merr)
+			if err := p.SaveCheckpoint(itemURN, success, errorMsg); err != nil {
+				return fmt.Errorf("failed to save checkpoint for %d: %w", capecID, err)
+			}
+			return fmt.Errorf("marshal error: %w", merr)
+		}
+
+		rpcMsg := &subprocess.Message{
+			Type:    subprocess.MessageTypeRequest,
+			ID:      "RPCImportCAPEC",
+			Payload: payload,
+			Target:  "local",
+			Source:  p.sp.ID,
+		}
+
+		err = p.sp.SendMessage(rpcMsg)
+
 		success := true
 		errorMsg := ""
+		if err != nil {
+			success = false
+			errorMsg = fmt.Sprintf("failed to send RPC request: %v", err)
+		}
 
 		// Save checkpoint
 		if err := p.SaveCheckpoint(itemURN, success, errorMsg); err != nil {
 			return fmt.Errorf("failed to save checkpoint for %d: %w", capecID, err)
+		}
+
+		if !success {
+			return fmt.Errorf("failed to store CAPEC %d: %s", capecID, errorMsg)
 		}
 	}
 
