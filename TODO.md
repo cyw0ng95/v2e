@@ -23,7 +23,6 @@
 | TODO-021 | graph | Test | Add property-based tests using testing/quick | 150 | Medium | |
 | TODO-022 | jsonutil | Refactor | Unify error handling across jsonutil functions | 80 | Low | |
 | TODO-023 | jsonutil | Feature | Add JSON schema validation support | 200 | Low | |
-| TODO-024 | meta | Feature | Implement provider dependency management | 180 | High | |
 | TODO-025 | meta | Refactor | Extract FSM transition logic into strategy pattern | 150 | Medium | |
 | TODO-026 | meta | Test | Add chaos testing for provider coordination | 250 | Medium | |
 | TODO-027 | notes | Feature | Add memory card export/import functionality | 200 | Low | |

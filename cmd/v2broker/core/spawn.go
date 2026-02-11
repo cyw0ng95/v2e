@@ -122,25 +122,37 @@ func (b *Broker) SpawnRPC(id, command string, args ...string) (*ProcessInfo, err
 }
 
 // SpawnWithRestart starts a new subprocess with auto-restart capability.
-func (b *Broker) SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error) {
+// restartDelay is the delay to wait before restarting the process (default 1 second if 0).
+func (b *Broker) SpawnWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*ProcessInfo, error) {
+	// Default to 1 second if delay is 0 or negative
+	if restartDelay <= 0 {
+		restartDelay = 1 * time.Second
+	}
 	restartConfig := &RestartConfig{
-		Enabled:     true,
-		MaxRestarts: maxRestarts,
-		Command:     command,
-		Args:        args,
-		IsRPC:       false,
+		Enabled:      true,
+		MaxRestarts:  maxRestarts,
+		RestartDelay: restartDelay,
+		Command:      command,
+		Args:         args,
+		IsRPC:        false,
 	}
 	return b.spawnInternal(id, command, args, restartConfig)
 }
 
 // SpawnRPCWithRestart starts a new RPC subprocess with auto-restart capability using custom file descriptors.
-func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error) {
+// restartDelay is the delay to wait before restarting the process (default 1 second if 0).
+func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*ProcessInfo, error) {
+	// Default to 1 second if delay is 0 or negative
+	if restartDelay <= 0 {
+		restartDelay = 1 * time.Second
+	}
 	restartConfig := &RestartConfig{
-		Enabled:     true,
-		MaxRestarts: maxRestarts,
-		Command:     command,
-		Args:        args,
-		IsRPC:       true,
+		Enabled:      true,
+		MaxRestarts:  maxRestarts,
+		RestartDelay: restartDelay,
+		Command:      command,
+		Args:         args,
+		IsRPC:        true,
 	}
 	return b.spawnInternal(id, command, args, restartConfig)
 }
@@ -370,8 +382,8 @@ func (b *Broker) isExecutable(path string) bool {
 // startService starts a service by name with RPC capability.
 func (b *Broker) startService(serviceName string) error {
 	// Start the service with RPC and auto-restart
-	// Default to unlimited restarts (-1)
-	info, err := b.SpawnRPCWithRestart(serviceName, "./"+serviceName, -1)
+	// Default to unlimited restarts (-1) and 1 second restart delay
+	info, err := b.SpawnRPCWithRestart(serviceName, "./"+serviceName, -1, 1*time.Second)
 	if err != nil {
 		return err
 	}
@@ -425,7 +437,7 @@ func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
 				cancel:        cancel,
 				done:          make(chan struct{}),
 				ready:         make(chan struct{}),
-				restartConfig: &RestartConfig{Enabled: true, MaxRestarts: -1, Command: "./" + s.name, IsRPC: true},
+				restartConfig: &RestartConfig{Enabled: true, MaxRestarts: -1, RestartDelay: 1 * time.Second, Command: "./" + s.name, IsRPC: true},
 			}
 
 			// Register UDS transport before starting using the process ID (not binary name)

@@ -10,8 +10,8 @@ import (
 type ProcessManager interface {
 	Spawn(id, command string, args ...string) (*ProcessInfo, error)
 	SpawnRPC(id, command string, args ...string) (*ProcessInfo, error)
-	SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error)
-	SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*ProcessInfo, error)
+	SpawnWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*ProcessInfo, error)
+	SpawnRPCWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*ProcessInfo, error)
 	Kill(id string) error
 	GetProcess(id string) (*ProcessInfo, error)
 	ListProcesses() []*ProcessInfo
@@ -44,6 +44,7 @@ type RestartConfig struct {
 	Enabled      bool
 	MaxRestarts  int
 	RestartCount int
+	RestartDelay time.Duration
 	Command      string
 	Args         []string
 	IsRPC        bool

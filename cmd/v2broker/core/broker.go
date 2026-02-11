@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/cyw0ng95/v2e/cmd/v2broker/metrics"
 	"github.com/cyw0ng95/v2e/cmd/v2broker/mq"
@@ -21,8 +22,8 @@ import (
 type Spawner interface {
 	Spawn(id, command string, args ...string) (*SpawnResult, error)
 	SpawnRPC(id, command string, args ...string) (*SpawnResult, error)
-	SpawnWithRestart(id, command string, maxRestarts int, args ...string) (*SpawnResult, error)
-	SpawnRPCWithRestart(id, command string, maxRestarts int, args ...string) (*SpawnResult, error)
+	SpawnWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*SpawnResult, error)
+	SpawnRPCWithRestart(id, command string, maxRestarts int, restartDelay time.Duration, args ...string) (*SpawnResult, error)
 }
 
 // SpawnResult is a lightweight DTO returned by Spawner implementations.

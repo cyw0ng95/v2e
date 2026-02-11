@@ -76,6 +76,7 @@ type RestartConfig struct {
 	Enabled      bool
 	MaxRestarts  int
 	RestartCount int
+	RestartDelay time.Duration
 	Command      string
 	Args         []string
 	IsRPC        bool

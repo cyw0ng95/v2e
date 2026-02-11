@@ -148,7 +148,7 @@ func TestBroker_ConcurrentRestart(t *testing.T) {
 				defer wg.Done()
 				// Spawn with restart. The process (echo) will exit immediately, triggering restart.
 				// This causes rapid delete/insert in the map.
-				_, err := broker.SpawnWithRestart(idStr, cmd, maxRestarts, args...)
+				_, err := broker.SpawnWithRestart(idStr, cmd, maxRestarts, 0, args...)
 				if err != nil {
 					t.Errorf("Failed to spawn %s: %v", idStr, err)
 				}

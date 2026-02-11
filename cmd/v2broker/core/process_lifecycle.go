@@ -107,23 +107,24 @@ func (b *Broker) restartProcess(p *Process) {
 	isRPC := p.restartConfig.IsRPC
 	maxRestarts := p.restartConfig.MaxRestarts
 	restartCount := p.restartConfig.RestartCount
+	restartDelay := p.restartConfig.RestartDelay
 
 	p.mu.Unlock()
 
-	b.logger.Info("Restarting process %s: attempt %d/%d", processID, restartCount, maxRestarts)
+	b.logger.Info("Restarting process %s: attempt %d/%d (delay: %v)", processID, restartCount, maxRestarts, restartDelay)
 
 	// Delete old process from map
 	b.processes.Delete(processID)
 
-	// Delay before restart
-	time.Sleep(1 * time.Second)
+	// Delay before restart using configured delay
+	time.Sleep(restartDelay)
 
 	// Spawn new process
 	var restartErr error
 	if isRPC {
-		_, restartErr = b.SpawnRPCWithRestart(processID, command, maxRestarts, args...)
+		_, restartErr = b.SpawnRPCWithRestart(processID, command, maxRestarts, restartDelay, args...)
 	} else {
-		_, restartErr = b.SpawnWithRestart(processID, command, maxRestarts, args...)
+		_, restartErr = b.SpawnWithRestart(processID, command, maxRestarts, restartDelay, args...)
 	}
 
 	if restartErr != nil {
