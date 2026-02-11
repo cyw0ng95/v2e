@@ -121,7 +121,6 @@
 | TODO-136 | capec | Refactor | Eliminate code duplication between LocalCAPECStore and CachedLocalCAPECStore - share ImportFromXML logic via base struct | 180 | Medium | |
 | TODO-138 | capec | Security | Add XML entity explosion protection to ImportFromXML - limit entity expansion depth | 100 | High | |
 | TODO-139 | capec | Optimization | Cache compiled regex in GetByID across all calls instead of creating new on each request | 30 | Low | |
-| TODO-142 | cmd/v2broker | Feature | Make restart delay configurable instead of hardcoded 1 second in process_lifecycle.go:119 | 60 | Medium | |
 | TODO-143 | cmd/v2broker | Refactor | Extract duplicate parameter parsing and validation logic in permits_rpc.go HandleRPCRequestPermits and HandleRPCReleasePermits | 50 | Low | |
 | TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
 | TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
