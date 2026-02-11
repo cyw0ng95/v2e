@@ -131,7 +131,6 @@
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
 | TODO-161 | cmd/v2meta | Test | Add tests for FSM recovery scenarios | 150 | Medium | |
-| TODO-163 | cmd/v2local | Refactor | Extract common handler patterns into reusable functions | 80 | Medium | |
 | TODO-164 | cmd/v2local | Test | Add integration tests for database operations | 150 | Medium | |
 | TODO-165 | cmd/v2local | Test | Add tests for concurrent access scenarios | 100 | Medium | |
 | TODO-166 | cmd/v2local | Documentation | Document database schema and access patterns | 60 | Low | |
