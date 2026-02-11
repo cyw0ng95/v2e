@@ -359,6 +359,44 @@ function convertKeysToSnakeCase<T>(obj: unknown): T {
 // Track pending requests to prevent duplicates
 const pendingRequests = new Map<string, Promise<RPCResponse<unknown>>>();
 
+// Cleanup strategy for pending requests
+// Prevents memory leaks from failed/aborted requests
+const PENDING_REQUEST_CLEANUP_INTERVAL = 60000; // 1 minute
+const MAX_PENDING_REQUEST_AGE = 300000; // 5 minutes - requests older than this are cleaned up
+
+// Timestamps for tracking request age
+const requestTimestamps = new Map<string, number>();
+
+/**
+ * Cleanup stale pending requests
+ * Removes requests that have been pending longer than MAX_PENDING_REQUEST_AGE
+ */
+function cleanupStaleRequests(): void {
+  const now = Date.now();
+  const staleKeys: string[] = [];
+
+  for (const [key, timestamp] of requestTimestamps.entries()) {
+    if (now - timestamp > MAX_PENDING_REQUEST_AGE) {
+      staleKeys.push(key);
+    }
+  }
+
+  for (const key of staleKeys) {
+    pendingRequests.delete(key);
+    requestTimestamps.delete(key);
+    logger.warn('Cleaned up stale pending request', { requestKey: key });
+  }
+
+  if (staleKeys.length > 0) {
+    logger.debug('Cleaned up stale pending requests', { count: staleKeys.length });
+  }
+}
+
+// Start periodic cleanup
+if (typeof window !== 'undefined') {
+  setInterval(cleanupStaleRequests, PENDING_REQUEST_CLEANUP_INTERVAL);
+}
+
 // Create a cache for RPC calls to deduplicate requests
 const cachedCall = React.cache(async function (
   baseUrl: string,
@@ -370,17 +408,22 @@ const cachedCall = React.cache(async function (
 ): Promise<RPCResponse<unknown>> {
   // Create a unique key for this request
   const requestKey = `${method}:${JSON.stringify(params || {})}:${target}`;
-  
+
   // Check if we already have a pending request for this key
   if (pendingRequests.has(requestKey)) {
     logger.debug('Deduplicating request', { requestKey });
     return pendingRequests.get(requestKey)!;
   }
-  
+
+  // Track request timestamp for cleanup
+  requestTimestamps.set(requestKey, Date.now());
+
   if (useMock) {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
     const result = getMockResponseForCache(method, params);
-    pendingRequests.delete(requestKey); // Clean up
+    // Clean up both maps
+    pendingRequests.delete(requestKey);
+    requestTimestamps.delete(requestKey);
     return result;
   }
 
@@ -488,8 +531,9 @@ const cachedCall = React.cache(async function (
         payload: null,
       };
     } finally {
-      // Clean up pending request
+      // Clean up pending request and timestamp
       pendingRequests.delete(requestKey);
+      requestTimestamps.delete(requestKey);
     }
   })();
   

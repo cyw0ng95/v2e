@@ -1,10 +1,102 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { rpcClient } from './rpc-client';
 import { createLogger } from './logger';
 import { AttackListResponse, AttackTechnique } from './types';
 
 // Create logger for hooks
 const logger = createLogger('hooks');
+
+/**
+ * Common options for abortable data fetching
+ */
+interface AbortableFetchOptions {
+  signal?: AbortSignal;
+}
+
+/**
+ * Hook cleanup tracker - ensures we only update state if component is still mounted
+ * and prevents race conditions during rapid unmount/remount
+ */
+function useMountedState() {
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  return {
+    isMounted: () => isMountedRef.current,
+    setStateIfMounted: <T>(setter: React.Dispatch<React.SetStateAction<T>>) => {
+      if (isMountedRef.current) {
+        setter(undefined as T);
+      }
+    },
+  };
+}
+
+/**
+ * Generic hook factory for abortable data fetching
+ * Prevents race conditions during rapid unmount by:
+ * 1. Using AbortController to cancel pending requests
+ * 2. Tracking mount state to prevent state updates after unmount
+ * 3. Checking signal state before processing responses
+ */
+function createAbortableDataHook<TData, TParams>(
+  fetchFn: (params: TParams, signal: AbortSignal) => Promise<{ retcode: number; message: string; payload: TData }>,
+  errorMessage: string
+) {
+  return (params: TParams) => {
+    const [data, setData] = useState<TData | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [error, setError] = useState<Error | null>(null);
+    const { isMounted, setStateIfMounted } = useMountedState();
+
+    useEffect(() => {
+      const abortController = new AbortController();
+      const { signal } = abortController;
+
+      const fetchData = async () => {
+        if (signal.aborted) return;
+
+        try {
+          setIsLoading(true);
+          const response = await fetchFn(params, signal);
+
+          if (signal.aborted || !isMounted()) return;
+
+          if (response.retcode !== 0) {
+            throw new Error(response.message || errorMessage);
+          }
+
+          setData(response.payload);
+          setError(null);
+        } catch (err: unknown) {
+          if (signal.aborted) return;
+
+          const errorObj = err instanceof Error ? err : new Error(String(err));
+          setStateIfMounted<Error | null>(() => setError(errorObj));
+          logger.error(errorMessage, err, { params });
+        } finally {
+          if (!signal.aborted) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      fetchData();
+
+      return () => {
+        abortController.abort();
+      };
+    }, [params, fetchFn, errorMessage, isMounted, setStateIfMounted]);
+
+    return { data, isLoading, error };
+  };
+}
 
 interface AttackQueryParams {
   offset?: number;
@@ -18,32 +110,52 @@ export function useAttackTechniques(params: AttackQueryParams = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    // Use AbortController to cancel pending requests on unmount
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      // Don't fetch if already aborted
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listAttackTechniques(offset, limit);
-        
+
+        // Check if component was unmounted or request was aborted
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK techniques');
         }
-        
+
         setData(response.payload);
         setError(null);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err : new Error(String(err)));
+        // Don't set error if request was aborted
+        if (signal.aborted) return;
+
+        const error = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(error));
         logger.error('Error fetching ATT&CK techniques', err, { offset, limit });
       } finally {
-        setIsLoading(false);
+        // Only update loading state if not aborted
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit, search]);
+    // Cleanup function - abort request and prevent state updates
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, search, isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -54,32 +166,46 @@ export function useAttackTactics(params: AttackQueryParams = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listAttackTactics(offset, limit);
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK tactics');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching ATT&CK tactics', err, { offset, limit });
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit, search]);
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, search, isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -90,32 +216,46 @@ export function useAttackMitigations(params: AttackQueryParams = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listAttackMitigations(offset, limit);
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ATT&CK mitigations');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching ATT&CK mitigations', err, { offset, limit });
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit, search]);
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, search, isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -164,32 +304,46 @@ export function useCAPECList(offset: number = 0, limit: number = 100) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listCAPECs(offset, limit);
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch CAPEC list');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching CAPEC list', err, { offset, limit });
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit]);
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -199,32 +353,46 @@ export function useSessionStatus() {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.getSessionStatus();
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch session status');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching session status', err);
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, []);
+    return () => {
+      abortController.abort();
+    };
+  }, [isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -501,51 +669,83 @@ export function useCWEViews(offset: number = 0, limit: number = 100) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listCWEViews(offset, limit);
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch CWE views');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching CWE views', err, { offset, limit });
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit]);
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, isMounted, setStateIfMounted]);
 
-  const refetch = async () => {
+  // Track refetch abort controller separately
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const refetch = useCallback(async () => {
+    // Cancel any in-progress refetch
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+
     try {
       setIsLoading(true);
       const response = await rpcClient.listCWEViews(offset, limit);
-      
+
+      if (signal.aborted || !isMounted()) return;
+
       if (response.retcode !== 0) {
         throw new Error(response.message || 'Failed to fetch CWE views');
       }
-      
+
       setData(response.payload);
       setError(null);
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      if (signal.aborted) return;
+
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      setStateIfMounted<Error | null>(() => setError(errorObj));
       console.error('Error fetching CWE views:', err);
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [offset, limit, isMounted, setStateIfMounted]);
 
   return { data, isLoading, error, refetch };
 }
@@ -660,32 +860,46 @@ export function useSysMetrics() {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.getSysMetrics();
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch system metrics');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching system metrics', err);
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, []);
+    return () => {
+      abortController.abort();
+    };
+  }, [isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -695,32 +909,46 @@ export function useCVEList(offset: number = 0, limit: number = 100) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listCVEs(offset, limit);
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch CVE list');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching CVE list', err, { offset, limit });
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit]);
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, isMounted, setStateIfMounted]);
 
   // Derive derived state to prevent unnecessary re-renders
   const derivedState = useMemo(() => ({
@@ -849,32 +1077,46 @@ export function useCWEList(params: { offset?: number; limit?: number; search?: s
   const [error, setError] = useState<Error | null>(null);
 
   const { offset = 0, limit = 100, search = '' } = params;
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listCWEs({ offset, limit, search });
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch CWE list');
         }
-        
+
         setData(response.payload);
         setError(null);
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching CWE list', err, { offset, limit, search });
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit, search]);
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, search, isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -2419,4 +2661,218 @@ export function useProviderCheckpoints(
 
 // Re-export graph analysis hooks
 export * from './hooks/useAnalysisGraph';
+
+// ============================================================================
+// Timeout and Progress Utilities
+// ============================================================================
+
+/**
+ * Configuration for timeout behavior
+ */
+export interface TimeoutOptions {
+  /** Timeout in milliseconds (default: 120000 = 2 minutes) */
+  timeout?: number;
+  /** Callback when timeout is about to occur (warning threshold) */
+  onTimeoutWarning?: (timeRemaining: number) => void;
+  /** Warning threshold in milliseconds before timeout (default: 10000 = 10 seconds) */
+  warningThreshold?: number;
+  /** Whether to show progress to user (default: false) */
+  showProgress?: boolean;
+}
+
+/**
+ * Progress state for long-running operations
+ */
+export interface ProgressState {
+  /** Whether operation is in progress */
+  isPending: boolean;
+  /** Elapsed time in milliseconds */
+  elapsed: number;
+  /** Estimated remaining time (null if unknown) */
+  remaining: number | null;
+  /** Progress percentage (0-100, null if unknown) */
+  progress: number | null;
+  /** Whether timeout warning should be shown */
+  isNearTimeout: boolean;
+}
+
+/**
+ * Hook for handling long-running operations with timeout and progress
+ *
+ * Provides automatic timeout handling, progress tracking, and user-facing
+ * indicators for operations that may take a long time to complete.
+ *
+ * @example
+ * ```tsx
+ * const { execute, state, cancel } = useLongRunningOperation({
+ *   timeout: 300000, // 5 minutes
+ *   warningThreshold: 30000, // warn at 30 seconds remaining
+ *   showProgress: true,
+ * });
+ * ```
+ */
+export function useLongRunningOperation<T = unknown>(
+  options: TimeoutOptions = {}
+) {
+  const {
+    timeout = 120000, // 2 minutes default
+    warningThreshold = 10000, // 10 seconds warning
+    showProgress = false,
+  } = options;
+
+  const [state, setState] = useState<ProgressState>({
+    isPending: false,
+    elapsed: 0,
+    remaining: null,
+    progress: null,
+    isNearTimeout: false,
+  });
+
+  const startTimeRef = useRef<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Update progress state
+  useEffect(() => {
+    if (!state.isPending || !startTimeRef.current) return;
+
+    const updateProgress = () => {
+      const elapsed = Date.now() - (startTimeRef.current || 0);
+      const remaining = Math.max(0, timeout - elapsed);
+      const progress = Math.min(100, (elapsed / timeout) * 100);
+
+      setState({
+        isPending: true,
+        elapsed,
+        remaining,
+        progress,
+        isNearTimeout: remaining <= warningThreshold,
+      });
+    };
+
+    // Update progress every 100ms for smooth UI
+    progressTimerRef.current = setInterval(updateProgress, 100);
+
+    return () => {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+    };
+  }, [state.isPending, timeout, warningThreshold]);
+
+  /**
+   * Execute a long-running operation with timeout handling
+   */
+  const execute = useCallback(
+    async (
+      operation: (signal?: AbortSignal) => Promise<T>,
+      operationTimeout?: number
+    ): Promise<T> => {
+      // Cancel any existing operation
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      abortControllerRef.current = new AbortController();
+      startTimeRef.current = Date.now();
+
+      const actualTimeout = operationTimeout ?? timeout;
+
+      setState({
+        isPending: true,
+        elapsed: 0,
+        remaining: actualTimeout,
+        progress: 0,
+        isNearTimeout: false,
+      });
+
+      // Set up timeout warning
+      if (warningThreshold > 0) {
+        timerRef.current = setTimeout(() => {
+          const elapsed = Date.now() - (startTimeRef.current || 0);
+          const remaining = actualTimeout - elapsed;
+
+          if (remaining > 0 && remaining <= warningThreshold) {
+            setState((prev) => ({ ...prev, isNearTimeout: true }));
+          }
+        }, actualTimeout - warningThreshold);
+      }
+
+      // Set up operation timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          abortControllerRef.current?.abort();
+          reject(new Error(`Operation timed out after ${actualTimeout}ms`));
+        }, actualTimeout);
+      });
+
+      try {
+        const result = await Promise.race([
+          operation(abortControllerRef.current.signal),
+          timeoutPromise,
+        ]);
+
+        return result;
+      } finally {
+        // Cleanup
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+
+        setState({
+          isPending: false,
+          elapsed: Date.now() - (startTimeRef.current || 0),
+          remaining: 0,
+          progress: 100,
+          isNearTimeout: false,
+        });
+
+        abortControllerRef.current = null;
+        startTimeRef.current = null;
+      }
+    },
+    [timeout, warningThreshold]
+  );
+
+  /**
+   * Cancel the current operation
+   */
+  const cancel = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setState({
+      isPending: false,
+      elapsed: 0,
+      remaining: null,
+      progress: null,
+      isNearTimeout: false,
+    });
+
+    startTimeRef.current = null;
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cancel();
+    };
+  }, [cancel]);
+
+  return {
+    execute,
+    cancel,
+    state,
+  };
+}
 

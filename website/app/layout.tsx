@@ -5,6 +5,7 @@ import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { Navbar } from "@/components/navbar";
 import { ViewLearnProvider } from "@/contexts/ViewLearnContext";
+import GlobalErrorBoundary from "@/components/global-error-boundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,15 +33,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased transition-colors duration-300 ease-in-out`}
         suppressHydrationWarning
       >
-        <Providers>
-          <ViewLearnProvider>
-            <div className="min-h-screen min-w-screen flex flex-col bg-background">
-              <Navbar />
-              <main className="flex-1 overflow-auto">{children}</main>
-              <Toaster />
-            </div>
-          </ViewLearnProvider>
-        </Providers>
+        <GlobalErrorBoundary>
+          <Providers>
+            <ViewLearnProvider>
+              <div className="min-h-screen min-w-screen flex flex-col bg-background">
+                <Navbar />
+                <main className="flex-1 overflow-auto">{children}</main>
+                <Toaster />
+              </div>
+            </ViewLearnProvider>
+          </Providers>
+        </GlobalErrorBoundary>
 
       </body>
     </html>

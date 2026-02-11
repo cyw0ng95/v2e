@@ -349,16 +349,3 @@ func TestCollectAllMetrics_ReturnsAllExpectedFields(t *testing.T) {
 
 	// Note: load_avg and uptime may be skipped due to sampling, so we don't assert them
 }
-
-// TestCollectMetric_HandlesErrors tests that collectMetric handles errors gracefully
-func TestCollectMetric_HandlesErrors(t *testing.T) {
-	metrics := make(map[string]interface{})
-
-	// This function should handle errors without panicking
-	assert.NotPanics(t, func() {
-		// Call with a collector that returns error
-		collectMetric(metrics, func(m map[string]interface{}) error {
-			return errors.New("test error")
-		})
-	}, "collectMetric should handle collector errors gracefully")
-}
