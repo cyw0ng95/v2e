@@ -415,10 +415,10 @@ function applyV4EnvironmentalAdjustments(
   const mui = getEnvValue(environmental.MUI, baseMetrics.UI, baseMetrics.UI);
 
   const modifiedIQ =
-    10 * av[mav] * ac[mac] * at[mat] * cr * ir * ar;
+    10 * V4_MAPS.av[mav] * V4_MAPS.ac[mac] * V4_MAPS.at[mat] * cr * ir * ar;
 
   const modifiedSS =
-    10 * pr[mpr] * ui[mui] * cr * ir * ar;
+    10 * V4_MAPS.pr[mpr] * V4_MAPS.ui[mui] * cr * ir * ar;
 
   // Get modified I:E values
   const hasVC = isMetricPresent(environmental.MVC);
