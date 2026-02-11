@@ -24,13 +24,13 @@ type GraphModel struct {
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// Relationships
-	Versions []GraphVersionModel `gorm:"foreignKey:GraphID;constraint:OnDelete:CASCADE" json:"versions,omitempty"`
+	Versions []GraphVersionModel `gorm:"foreignKey:GraphDBID;references:ID;constraint:OnDelete:CASCADE" json:"versions,omitempty"`
 }
 
 // GraphVersionModel stores version history for undo/restore functionality
 type GraphVersionModel struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	GraphID   uint           `gorm:"index;not null" json:"graph_id"`
+	GraphDBID uint           `gorm:"column:graph_id;index;not null" json:"-"` // Foreign key to GraphModel.ID (not GraphModel.GraphID which is a UUID string). JSON field omitted to avoid confusion with GraphModel.GraphID
 	Version   int            `gorm:"not null" json:"version"`
 	Nodes     string         `gorm:"type:text;not null" json:"nodes"`
 	Edges     string         `gorm:"type:text;not null" json:"edges"`

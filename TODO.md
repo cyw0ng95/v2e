@@ -100,8 +100,6 @@
 | TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) | 150 | High | |
 | TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) | 200 | High | |
 | TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) | 150 | High | |
-| TODO-121 | cve | Bug Fix | Fix NVDTime UnmarshalJSON not handling timezone offsets in timestamp format - may fail parsing for timestamps with timezone info | 40 | Medium | |
-| TODO-124 | cve | Refactor | Consolidate duplicate retry logic in ListCVEs and Count functions - both have identical database lock retry pattern | 50 | Low | |
 | TODO-126 | cve | Test | Add tests for CVEProvider.execute() checkpoint saving logic when RPC calls fail | 80 | Medium | |
 | TODO-127 | cve | Documentation | Document exported types in pkg/cve/types.go - CVSSDataV40, CVSSMetricV40 lack comments explaining v4.0 differences | 60 | Low | |
 | TODO-129 | cwe | Refactor | Reduce massive code duplication in local.go - GetByID and ListCWEsPaginated share 90% identical nested field loading logic | 150 | Medium | |
@@ -147,29 +145,22 @@
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
 | TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
 | TODO-200 | glc | Bug Fix | Fix UpdateGraph version snapshot logic - incorrect condition creates snapshots when nodes/edges keys exist in updates map regardless of value, should check if key exists OR if edges value is not nil | 80 | High | |
-| TODO-201 | glc | Bug Fix | Fix foreign key type mismatch between GraphModel.GraphID (string) and GraphVersionModel.GraphID (uint) - breaks version relationship, change to consistent types | 60 | High | |
 | TODO-202 | glc | Bug Fix | Add missing foreign key constraint to ShareLinkModel.GraphID for CASCADE delete on graph deletion - prevents orphaned share links | 40 | Medium | |
 | TODO-203 | glc | Bug Fix | Fix JSON field name inconsistency - struct has Relations but JSON tag is relationships, causes frontend/backend communication failure | 30 | Medium | |
 | TODO-204 | glc | Bug Fix | Implement password hashing with bcrypt or argon2 for CreateShareLink - currently stores plaintext which is security vulnerability | 60 | High | |
 | TODO-205 | glc | Bug Fix | Fix race condition in GetGraphByShareLink - view count update happens after graph return, should update in transaction before return | 50 | Medium | |
 | TODO-206 | glc | Bug Fix | Fix generateLinkID length calculation - requesting 8 bytes but only taking first 4 hex characters due to [:8] slice, should use [:length*2] or uuid.New().String()[:8] | 20 | Low | |
-| TODO-207 | ume | Bug Fix | Fix Router interface signature mismatch - LockFreeRouter expects Route(msg *proc.Message, sourceProcess string) but implementation only takes msg parameter, preventing LockFreeRouter from correctly implementing Router interface | 100 | High | |
 | TODO-208 | ume | Refactor | Add backpressure mechanism to message routing - when route channels are full, messages are dropped with "channel full" error instead of blocking send, implement proper queue or buffer | 200 | High | |
 | TODO-209 | ume | Feature | Add message batching support to router - group multiple messages and route them in batches to improve throughput for high-volume scenarios | 250 | Medium | |
 | TODO-210 | ume | Feature | Add message delivery tracking - track whether messages were successfully delivered or dropped for observability and debugging | 150 | Medium | |
-| TODO-211 | ume | Bug Fix | Fix server reconnect logic in uds_transport - server-side reconnect tries to dial socket which is incorrect, server should wait for acceptLoop to establish new connection, not dial itself, will eventually cause max reconnect attempts exceeded | 80 | High | |
 | TODO-212 | ume | Bug Fix | Fix shared memory transport non-functional - SharedMemoryTransport uses memfd_create which only creates memory accessible within same process, there's no actual fd sharing with subprocesses, SendFd returns "not implemented" error | 200 | High | |
 | TODO-213 | ume | Feature | Remove or complete shared memory transport - current implementation is incomplete and cannot be used for cross-process communication, should either implement actual fd passing or remove entirely | 150 | High | |
 | TODO-214 | ume | Bug Fix | Fix ring buffer calculation in shared_memory.go - remaining := shm.header.Capacity - (shm.header.WritePos % shm.header.Capacity) doesn't correctly calculate remaining space in ring buffer, needs to account for ReadPos and handle wrap-around properly | 60 | Medium | |
-| TODO-215 | ume | Bug Fix | Fix response buffer pool statistics miscount - ResponseBufferPool.Get() always counts as "hit" even for new allocations which inflates hit rate and makes statistics inaccurate | 80 | Medium | |
-| TODO-216 | ume | Bug Fix | Fix unsafe Memcpy panic on length mismatch - Memcpy operations don't validate buffer sizes, could panic on length mismatch, should return error instead | 100 | High | |
 | TODO-217 | ume | Bug Fix | Fix fixedBytesToString edge case inconsistency - behavior inconsistent for all-zero byte arrays between different functions, needs unified handling | 40 | Low | |
 | TODO-218 | ume | Bug Fix | Fix SetSocketOptions ignoring TCP_QUICKACK error - TCP_QUICKACK socket option error is explicitly ignored, masking legitimate socket configuration failures | 60 | Medium | |
 | TODO-219 | ume | Feature | Add connection pooling to UDS transport - UDS transport uses single connection per pair, not a pool for efficiency, should implement connection reuse | 180 | High | |
 | TODO-220 | ume | Feature | Add message delivery guarantees - router currently provides no delivery confirmation, messages can be silently dropped, should implement ack/nack mechanism | 200 | High | |
-| TODO-221 | ume | Bug Fix | Fix hybrid transport synchronization missing - when falling back from shared memory to UDS, there's no mechanism to transfer pending data, messages could be lost | 120 | High | |
 | TODO-222 | ume | Bug Fix | Fix transport manager CloseAll ignoring errors - errors from individual transport Close() calls are silently discarded, making debugging difficult, should be logged or aggregated | 80 | Medium | |
-| TODO-223 | ume | Bug Fix | Fix shared memory write overflow handling - ring buffer should wrap around when reaching end instead of returning "ring buffer full" error which causes data loss | 100 | High | |
 | TODO-224 | ume | Feature | Implement actual fd passing to subprocesses - shared memory transport needs mechanism to pass file descriptors to subprocesses for true IPC, not memfd_create which is same-process only | 250 | High | |
 | TODO-225 | ume | Feature | Implement SelectTarget method in Router interface - task description mentioned SelectTarget method but router interface doesn't define it, routing cannot select targets dynamically | 150 | High | |
 | TODO-226 | ume | Refactor | Add pool statistics for Message Pool - ResponseBufferPool is missing hit/miss tracking which is needed for optimization and debugging | 80 | Medium | |
@@ -182,7 +173,6 @@
 | TODO-233 | sysmon | Feature | Add historical data storage - metrics are collected with sampling intervals but no persistent storage for trend analysis or historical querying | 150 | Medium | |
 | TODO-234 | sysmon | Feature | Add shutdown timeout - Stop() method waits indefinitely via wg.Wait(), in production a timeout would prevent hanging if a handler is stuck | 120 | Medium | |
 | TODO-235 | sysmon | Feature | Add graceful shutdown hook for handlers - handlers cannot register cleanup functions to run when shutdown is signaled, no way to do cleanup on shutdown | 150 | High | |
-| TODO-236 | sysmon | Bug Fix | Fix connection.Close missing on error - when scanner returns an error in Run(), connection is not explicitly closed before returning, could leak file descriptors | 100 | High | |
 | TODO-237 | sysmon | Cleanup | Remove unused log constants - many log constants in constants.go are defined but never used (LogMsgCPUUsageCollected, LogMsgMemoryUsageCollected, LogMsgPerformanceMetricsCollected), should be removed or implemented | 20 | Low | |
 | TODO-238 | sysmon | Feature | Move goroutine and connection metrics to sysmon - broker's scaling module tracks goroutine count and connections but doesn't actually collect these values, it receives them via AddMetric() calls, sysmon could add RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
 
@@ -192,7 +182,7 @@ For detailed guidelines on managing TODO items, see the **TODO Management** sect
 
 ### Quick Reference
 
-**Adding Tasks**: Use next available ID, include test code in LoC estimates, write detailed actionable descriptions
+**Adding Tasks**: Use next available ID (continue from last TODO-NNN), include test code in LoC estimates, write detailed actionable descriptions. **NEVER reuse existing task IDs** - always find the highest current ID and increment by 1.
 
 **Completing Tasks**:
 1. Verify all acceptance criteria are met

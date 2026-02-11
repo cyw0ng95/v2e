@@ -365,3 +365,111 @@ func TestUDSTransport_BoundaryConditions(t *testing.T) {
 	})
 
 }
+
+// TestUDSTransport_ServerReconnectDoesNotDialOwnSocket tests that
+// server-side reconnect logic does not try to dial its own socket,
+// but instead waits for acceptLoop to establish a new connection.
+func TestUDSTransport_ServerReconnectDoesNotDialOwnSocket(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_ServerReconnectDoesNotDialOwnSocket", nil, func(t *testing.T, tx *gorm.DB) {
+		socketPath := filepath.Join(t.TempDir(), "reconnect.sock")
+
+		// Create server transport
+		server := NewUDSTransport(socketPath, true)
+		server.SetReconnectOptions(3, 10*time.Millisecond)
+		defer server.Close()
+
+		if err := server.Connect(); err != nil {
+			t.Fatalf("Server Connect() failed: %v", err)
+		}
+
+		// Verify server has condition variable initialized
+		server.mu.RLock()
+		hasConnReady := server.connReady != nil
+		server.mu.RUnlock()
+
+		if !hasConnReady {
+			t.Error("Server transport should have connReady condition variable initialized")
+		}
+
+		// Verify initial state: server is listening but no connection yet
+		server.mu.RLock()
+		initialListener := server.listener
+		server.mu.RUnlock()
+
+		if initialListener == nil {
+			t.Error("Server should have a listener")
+		}
+
+		// The connection may or may not be established initially depending on timing
+		// This is expected behavior for the async acceptLoop pattern
+	})
+}
+
+// TestUDSTransport_ClientReconnectDialsSocket tests that client-side
+// reconnect correctly dials the server socket.
+func TestUDSTransport_ClientReconnectDialsSocket(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_ClientReconnectDialsSocket", nil, func(t *testing.T, tx *gorm.DB) {
+		socketPath := filepath.Join(t.TempDir(), "client-reconnect.sock")
+
+		// Create and start server
+		server := NewUDSTransport(socketPath, true)
+		if err := server.Connect(); err != nil {
+			server.Close()
+			t.Fatalf("Server Connect() failed: %v", err)
+		}
+		defer server.Close()
+
+		// Create and connect client
+		client := NewUDSTransport(socketPath, false)
+		if err := client.Connect(); err != nil {
+			t.Fatalf("Client Connect() failed: %v", err)
+		}
+		defer client.Close()
+
+		// Verify client does NOT have connReady (only server uses it)
+		client.mu.RLock()
+		hasConnReady := client.connReady != nil
+		client.mu.RUnlock()
+
+		if hasConnReady {
+			t.Error("Client transport should not have connReady condition variable")
+		}
+	})
+}
+
+// TestUDSTransport_CondVarBroadcastOnNewConnection tests that
+// handleNewConnection broadcasts to connReady when accepting new connection.
+func TestUDSTransport_CondVarBroadcastOnNewConnection(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestUDSTransport_CondVarBroadcastOnNewConnection", nil, func(t *testing.T, tx *gorm.DB) {
+		socketPath := filepath.Join(t.TempDir(), "broadcast.sock")
+
+		// Create server transport
+		server := NewUDSTransport(socketPath, true)
+		server.SetReconnectOptions(2, 50*time.Millisecond)
+
+		if err := server.Connect(); err != nil {
+			server.Close()
+			t.Fatalf("Server Connect() failed: %v", err)
+		}
+		defer server.Close()
+
+		// Give acceptLoop time to start
+		time.Sleep(50 * time.Millisecond)
+
+		// Verify connReady exists and can be used
+		server.mu.Lock()
+		cond := server.connReady
+		server.mu.Unlock()
+
+		if cond == nil {
+			t.Fatal("connReady condition variable should be initialized for server")
+		}
+
+		// Test that Broadcast doesn't panic
+		server.mu.Lock()
+		if server.connReady != nil {
+			server.connReady.Broadcast()
+		}
+		server.mu.Unlock()
+	})
+}

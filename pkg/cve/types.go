@@ -25,17 +25,29 @@ func (t *NVDTime) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
-	// Try parsing with the NVD format first
-	parsed, err := time.Parse(nvdTimeFormat, s)
-	if err != nil {
-		// Fallback to RFC3339 format for compatibility
-		parsed, err = time.Parse(time.RFC3339, s)
-		if err != nil {
-			return err
+	// Try multiple time formats in order of most likely to least likely
+	// NVD API can return timestamps in various formats
+	formats := []string{
+		// NVD format with timezone offset (e.g., "2021-12-10T10:15:09.143+00:00")
+		"2006-01-02T15:04:05.999-07:00",
+		// NVD format with Z suffix (e.g., "2021-12-10T10:15:09.143Z")
+		"2006-01-02T15:04:05.999Z",
+		// Standard NVD format without timezone (assumes UTC)
+		"2006-01-02T15:04:05.999",
+		// RFC3339 for broader compatibility
+		time.RFC3339,
+	}
+
+	var parsed time.Time
+	var err error
+	for _, format := range formats {
+		parsed, err = time.Parse(format, s)
+		if err == nil {
+			t.Time = parsed
+			return nil
 		}
 	}
-	t.Time = parsed
-	return nil
+	return err
 }
 
 // MarshalJSON implements json.Marshaler for NVDTime

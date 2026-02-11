@@ -19,8 +19,10 @@ func NewLockFreeRouter() *LockFreeRouter {
 	}
 }
 
-// Route performs lock-free message routing with timeout
-func (r *LockFreeRouter) Route(msg *proc.Message) error {
+// Route performs lock-free message routing with timeout.
+// The sourceProcess parameter is provided for routing policies and audit trails,
+// though the current implementation routes based solely on msg.Target.
+func (r *LockFreeRouter) Route(msg *proc.Message, sourceProcess string) error {
 	value, ok := r.routes.Load(msg.Target)
 	if !ok {
 		return fmt.Errorf("no route for target: %s", msg.Target)

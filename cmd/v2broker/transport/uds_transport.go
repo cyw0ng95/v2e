@@ -31,6 +31,7 @@ type UDSTransport struct {
 	errorHandler         func(error)
 	done                 chan struct{}  // Signals acceptLoop to exit
 	acceptLoopWg         sync.WaitGroup // Tracks acceptLoop goroutine
+	connReady            *sync.Cond     // Condition variable for waiting on new connection (server only)
 }
 
 // NewUDSTransport creates a new UDSTransport with the specified socket path
@@ -41,6 +42,10 @@ func NewUDSTransport(socketPath string, isServer bool) *UDSTransport {
 		maxReconnectAttempts: 5,
 		reconnectDelay:       1 * time.Second,
 		done:                 make(chan struct{}),
+	}
+	// Initialize condition variable for server-side reconnect waiting
+	if isServer {
+		transport.connReady = sync.NewCond(transport.mu.RLocker())
 	}
 	return transport
 }
@@ -255,41 +260,57 @@ func (t *UDSTransport) reconnect() error {
 	// Wait before attempting to reconnect (without holding the lock)
 	time.Sleep(t.reconnectDelay)
 
-	// Try to establish a new connection
-	var conn net.Conn
-	var err error
 	if t.isServer {
-		// Server side: check if acceptLoop has established a connection
-		t.mu.Lock()
-		if t.connection != nil {
-			// Connection established by acceptLoop
-			t.reconnectAttempts = 0
-			t.mu.Unlock()
-			return nil
+		// Server side: wait for acceptLoop to establish a new connection
+		// Server should NOT dial its own socket - wait for client to reconnect
+		// Use a polling approach with condition variable to avoid deadlock
+
+		// Create a timeout channel
+		timeout := time.After(t.reconnectDelay * 2)
+		pollInterval := time.NewTicker(10 * time.Millisecond)
+		defer pollInterval.Stop()
+
+		for {
+			select {
+			case <-timeout:
+				// Timeout waiting for connection
+				t.mu.Lock()
+				attempts := t.reconnectAttempts
+				t.mu.Unlock()
+				return fmt.Errorf("server waiting for client connection timed out after %d attempts", attempts)
+			case <-pollInterval.C:
+				// Poll to check if connection is ready
+				t.mu.Lock()
+				if t.connection != nil {
+					// Connection established by acceptLoop
+					t.reconnectAttempts = 0
+					t.mu.Unlock()
+					return nil
+				}
+				t.mu.Unlock()
+			}
 		}
-		t.mu.Unlock()
-		return fmt.Errorf("server waiting for client connection")
 	} else {
 		// Client side: dial the socket again
-		conn, err = net.Dial("unix", t.socketPath)
+		conn, err := net.Dial("unix", t.socketPath)
 		if err != nil {
 			return fmt.Errorf("failed to dial UDS for reconnection: %w", err)
 		}
+
+		// Acquire lock again to update state
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		t.connection = conn
+		t.scanner = bufio.NewScanner(conn)
+		t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
+		t.connected = true
+
+		// Reset reconnect attempts counter on successful reconnection
+		t.reconnectAttempts = 0
+
+		return nil
 	}
-
-	// Acquire lock again to update state
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	t.connection = conn
-	t.scanner = bufio.NewScanner(conn)
-	t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
-	t.connected = true
-
-	// Reset reconnect attempts counter on successful reconnection
-	t.reconnectAttempts = 0
-
-	return nil
 }
 
 // IsConnected returns whether the transport is currently connected
@@ -523,4 +544,9 @@ func (t *UDSTransport) handleNewConnection(conn net.Conn) {
 	t.scanner.Buffer(make([]byte, 0, proc.DefaultBufferSize), proc.MaxBufferSize)
 	t.connected = true
 	t.reconnectAttempts = 0
+
+	// Signal any waiting reconnect() that connection is ready
+	if t.connReady != nil {
+		t.connReady.Broadcast()
+	}
 }

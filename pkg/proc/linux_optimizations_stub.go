@@ -2,6 +2,8 @@
 
 package proc
 
+import "fmt"
+
 // LinuxOptimizations provides platform-specific performance optimizations
 // On non-Linux platforms, these are no-ops
 type LinuxOptimizations struct {
@@ -47,9 +49,14 @@ func GetCPUCount() int {
 	return 1
 }
 
-// Memcpy performs standard memory copy
-func Memcpy(dst, src []byte) {
+// Memcpy performs standard memory copy.
+// Returns an error if the destination and source lengths don't match.
+func Memcpy(dst, src []byte) error {
+	if len(dst) != len(src) {
+		return fmt.Errorf("memcpy: length mismatch: dst=%d, src=%d", len(dst), len(src))
+	}
 	copy(dst, src)
+	return nil
 }
 
 // PrefetchRead is a no-op on non-Linux platforms

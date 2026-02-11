@@ -382,3 +382,120 @@ func TestBinaryMessage_LongStrings(t *testing.T) {
 		}
 	})
 }
+
+func TestMemcpy_LengthMismatch(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestMemcpy_LengthMismatch", nil, func(t *testing.T, tx *gorm.DB) {
+		tests := []struct {
+			name    string
+			dst     []byte
+			src     []byte
+			wantErr bool
+		}{
+			{
+				name:    "equal lengths",
+				dst:     make([]byte, 10),
+				src:     []byte("0123456789"),
+				wantErr: false,
+			},
+			{
+				name:    "dst shorter than src",
+				dst:     make([]byte, 5),
+				src:     []byte("0123456789"),
+				wantErr: true,
+			},
+			{
+				name:    "dst longer than src",
+				dst:     make([]byte, 15),
+				src:     []byte("0123456789"),
+				wantErr: true,
+			},
+			{
+				name:    "both empty",
+				dst:     []byte{},
+				src:     []byte{},
+				wantErr: false,
+			},
+			{
+				name:    "empty dst non-empty src",
+				dst:     []byte{},
+				src:     []byte("data"),
+				wantErr: true,
+			},
+			{
+				name:    "non-empty dst empty src",
+				dst:     make([]byte, 4),
+				src:     []byte{},
+				wantErr: true,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := Memcpy(tt.dst, tt.src)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("Memcpy() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				if tt.wantErr && err != nil {
+					// Verify error message contains useful information
+					if !containsSubstring(err.Error(), "length mismatch") {
+						t.Errorf("Error message should contain 'length mismatch', got: %v", err)
+					}
+				}
+			})
+		}
+	})
+}
+
+func TestMemcpy_SuccessfulCopy(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestMemcpy_SuccessfulCopy", nil, func(t *testing.T, tx *gorm.DB) {
+		src := []byte("hello world")
+		dst := make([]byte, len(src))
+
+		err := Memcpy(dst, src)
+		if err != nil {
+			t.Fatalf("Memcpy() unexpected error: %v", err)
+		}
+
+		if string(dst) != string(src) {
+			t.Errorf("Memcpy() dst = %q, want %q", dst, src)
+		}
+	})
+}
+
+func TestMemcpy_LargeBuffer(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestMemcpy_LargeBuffer", nil, func(t *testing.T, tx *gorm.DB) {
+		size := 64 * 1024 // 64KB
+		src := make([]byte, size)
+		for i := range src {
+			src[i] = byte(i % 256)
+		}
+		dst := make([]byte, size)
+
+		err := Memcpy(dst, src)
+		if err != nil {
+			t.Fatalf("Memcpy() unexpected error: %v", err)
+		}
+
+		// Verify all bytes were copied correctly
+		for i := 0; i < size; i++ {
+			if dst[i] != src[i] {
+				t.Errorf("Mismatch at index %d: got %d, want %d", i, dst[i], src[i])
+				break
+			}
+		}
+	})
+}
+
+// containsSubstring checks if s contains substr
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstringHelper(s, substr))
+}
+
+func containsSubstringHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

@@ -611,3 +611,338 @@ func TestBatchAckFlushInterval(t *testing.T) {
 		t.Error("Should flush after interval even when not full")
 	}
 }
+
+func TestSharedMemoryRingBufferWrapAround(t *testing.T) {
+	// Use a small buffer to test wrap-around behavior
+	config := SharedMemConfig{
+		Size:     8192, // 8KB total, capacity will be ~8064 bytes after header
+		IsServer: true,
+	}
+
+	shm, err := NewSharedMemory(config)
+	if err != nil {
+		t.Fatalf("Failed to create shared memory: %v", err)
+	}
+	defer shm.Close()
+
+	capacity := shm.Available()
+	headerOverhead := 8192 - int(capacity) // header size
+
+	// Write data that fills most of the buffer, then read it to advance ReadPos
+	writeSize := capacity - 100 // leave some space
+	firstWrite := make([]byte, writeSize)
+	for i := range firstWrite {
+		firstWrite[i] = byte(i % 256)
+	}
+
+	if err := shm.Write(firstWrite); err != nil {
+		t.Fatalf("First write failed: %v", err)
+	}
+
+	// Read the data to advance ReadPos
+	readBuf := make([]byte, writeSize)
+	n, err := shm.Read(readBuf)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+	if n != int(writeSize) {
+		t.Fatalf("Read %d bytes, want %d", n, writeSize)
+	}
+
+	// Verify data integrity
+	for i := range readBuf {
+		if readBuf[i] != firstWrite[i] {
+			t.Fatalf("Data mismatch at index %d: got %d, want %d", i, readBuf[i], firstWrite[i])
+		}
+	}
+
+	// Now available space should be back to full capacity
+	if shm.Available() != capacity {
+		t.Errorf("Available space after read = %d, want %d", shm.Available(), capacity)
+	}
+
+	// Write data that will wrap around - the previous WritePos is near the end
+	// and we need to write enough to wrap
+	wrapWriteSize := capacity - 50 // slightly less than full capacity
+	secondWrite := make([]byte, wrapWriteSize)
+	for i := range secondWrite {
+		secondWrite[i] = byte((i + 100) % 256)
+	}
+
+	if err := shm.Write(secondWrite); err != nil {
+		t.Fatalf("Second write (wrap-around) failed: %v", err)
+	}
+
+	// Read and verify the wrapped data
+	readBuf2 := make([]byte, wrapWriteSize)
+	n, err = shm.Read(readBuf2)
+	if err != nil {
+		t.Fatalf("Second read failed: %v", err)
+	}
+	if n != int(wrapWriteSize) {
+		t.Fatalf("Read %d bytes, want %d", n, wrapWriteSize)
+	}
+
+	// Verify data integrity after wrap-around
+	for i := range readBuf2 {
+		if readBuf2[i] != secondWrite[i] {
+			t.Fatalf("Data mismatch at index %d after wrap: got %d, want %d", i, readBuf2[i], secondWrite[i])
+		}
+	}
+
+	t.Logf("Ring buffer wrap-around test passed with %d header overhead", headerOverhead)
+}
+
+func TestSharedMemoryMultipleWrapArounds(t *testing.T) {
+	// Use a small buffer for multiple wrap-around cycles
+	config := SharedMemConfig{
+		Size:     4096, // minimum size
+		IsServer: true,
+	}
+
+	shm, err := NewSharedMemory(config)
+	if err != nil {
+		t.Fatalf("Failed to create shared memory: %v", err)
+	}
+	defer shm.Close()
+
+	capacity := shm.Available()
+
+	// Use a chunk size that's about 1/3 of capacity to force multiple wraps
+	chunkSize := capacity / 3
+
+	for round := 0; round < 10; round++ {
+		// Write data
+		writeData := make([]byte, chunkSize)
+		for i := range writeData {
+			writeData[i] = byte((round*10 + i) % 256)
+		}
+
+		if err := shm.Write(writeData); err != nil {
+			t.Fatalf("Round %d: write failed: %v", round, err)
+		}
+
+		// Read and verify
+		readBuf := make([]byte, chunkSize)
+		n, err := shm.Read(readBuf)
+		if err != nil {
+			t.Fatalf("Round %d: read failed: %v", round, err)
+		}
+		if n != int(chunkSize) {
+			t.Fatalf("Round %d: read %d bytes, want %d", round, n, chunkSize)
+		}
+
+		for i := range readBuf {
+			if readBuf[i] != writeData[i] {
+				t.Fatalf("Round %d: data mismatch at index %d: got %d, want %d",
+					round, i, readBuf[i], writeData[i])
+			}
+		}
+	}
+
+	t.Log("Multiple wrap-around cycles completed successfully")
+}
+
+func TestSharedMemoryWrapAroundSplitWrite(t *testing.T) {
+	// Test case where write must be split across buffer boundary
+	config := SharedMemConfig{
+		Size:     4096,
+		IsServer: true,
+	}
+
+	shm, err := NewSharedMemory(config)
+	if err != nil {
+		t.Fatalf("Failed to create shared memory: %v", err)
+	}
+	defer shm.Close()
+
+	capacity := shm.Available()
+
+	// Fill buffer partially to set up a specific write position
+	fillSize := capacity / 2
+	fillData := make([]byte, fillSize)
+	if err := shm.Write(fillData); err != nil {
+		t.Fatalf("Fill write failed: %v", err)
+	}
+
+	// Read to advance ReadPos, creating space but leaving WritePos at midpoint
+	readBuf := make([]byte, fillSize)
+	if _, err := shm.Read(readBuf); err != nil {
+		t.Fatalf("Fill read failed: %v", err)
+	}
+
+	// Now WritePos is at midpoint. Write enough to wrap around.
+	// We need to write > capacity/2 bytes to force wrap
+	wrapSize := capacity - fillSize + 100 // This should wrap
+	wrapData := make([]byte, wrapSize)
+	for i := range wrapData {
+		wrapData[i] = byte(i % 256)
+	}
+
+	if err := shm.Write(wrapData); err != nil {
+		t.Fatalf("Wrap write failed: %v", err)
+	}
+
+	// Read and verify the wrapped data
+	wrapReadBuf := make([]byte, wrapSize)
+	n, err := shm.Read(wrapReadBuf)
+	if err != nil {
+		t.Fatalf("Wrap read failed: %v", err)
+	}
+	if n != int(wrapSize) {
+		t.Fatalf("Read %d bytes, want %d", n, wrapSize)
+	}
+
+	for i := range wrapReadBuf {
+		if wrapReadBuf[i] != wrapData[i] {
+			t.Fatalf("Data mismatch at index %d: got %d, want %d", i, wrapReadBuf[i], wrapData[i])
+		}
+	}
+
+	t.Log("Split write wrap-around test passed")
+}
+
+func TestSharedMemoryWrapAroundReadBoundary(t *testing.T) {
+	// Test read that wraps across buffer boundary
+	config := SharedMemConfig{
+		Size:     4096,
+		IsServer: true,
+	}
+
+	shm, err := NewSharedMemory(config)
+	if err != nil {
+		t.Fatalf("Failed to create shared memory: %v", err)
+	}
+	defer shm.Close()
+
+	capacity := shm.Available()
+
+	// Write full capacity worth of data in two parts
+	// Part 1: fills to near end
+	// Part 2: wraps to beginning
+
+	// First, write 3/4 of capacity
+	part1Size := capacity * 3 / 4
+	part1Data := make([]byte, part1Size)
+	for i := range part1Data {
+		part1Data[i] = byte(i % 256)
+	}
+	if err := shm.Write(part1Data); err != nil {
+		t.Fatalf("Part 1 write failed: %v", err)
+	}
+
+	// Read it back to free space
+	readBuf1 := make([]byte, part1Size)
+	if _, err := shm.Read(readBuf1); err != nil {
+		t.Fatalf("Part 1 read failed: %v", err)
+	}
+
+	// Now write data that will wrap - this will be split
+	// WritePos is at 3/4 capacity, so any write > 1/4 capacity will wrap
+	wrapWriteSize := capacity/2 + 50
+	wrapData := make([]byte, wrapWriteSize)
+	for i := range wrapData {
+		wrapData[i] = byte((i + 50) % 256)
+	}
+
+	if err := shm.Write(wrapData); err != nil {
+		t.Fatalf("Wrap write failed: %v", err)
+	}
+
+	// Read and verify - this tests wrap-around read
+	wrapReadBuf := make([]byte, wrapWriteSize)
+	n, err := shm.Read(wrapReadBuf)
+	if err != nil {
+		t.Fatalf("Wrap read failed: %v", err)
+	}
+	if n != int(wrapWriteSize) {
+		t.Fatalf("Read %d bytes, want %d", n, wrapWriteSize)
+	}
+
+	for i := range wrapReadBuf {
+		if wrapReadBuf[i] != wrapData[i] {
+			t.Fatalf("Data mismatch at index %d: got %d, want %d", i, wrapReadBuf[i], wrapData[i])
+		}
+	}
+
+	t.Log("Read boundary wrap-around test passed")
+}
+
+func TestSharedMemoryFullCapacityUsage(t *testing.T) {
+	// Verify that the full capacity can be used through wrap-around
+	config := SharedMemConfig{
+		Size:     8192,
+		IsServer: true,
+	}
+
+	shm, err := NewSharedMemory(config)
+	if err != nil {
+		t.Fatalf("Failed to create shared memory: %v", err)
+	}
+	defer shm.Close()
+
+	capacity := shm.Available()
+
+	// Write full capacity
+	fullData := make([]byte, capacity)
+	for i := range fullData {
+		fullData[i] = byte(i % 256)
+	}
+
+	if err := shm.Write(fullData); err != nil {
+		t.Fatalf("Full capacity write failed: %v", err)
+	}
+
+	// Verify no more space available
+	if shm.Available() != 0 {
+		t.Errorf("Available = %d, want 0 after full write", shm.Available())
+	}
+
+	// Read half
+	halfRead := make([]byte, capacity/2)
+	if _, err := shm.Read(halfRead); err != nil {
+		t.Fatalf("Half read failed: %v", err)
+	}
+
+	// Now we should be able to write half capacity again
+	halfWrite := make([]byte, capacity/2)
+	for i := range halfWrite {
+		halfWrite[i] = byte((i + 128) % 256)
+	}
+
+	if err := shm.Write(halfWrite); err != nil {
+		t.Fatalf("Write after partial read failed: %v", err)
+	}
+
+	// Read remaining and verify
+	// First, read the second half of original data
+	remainingOriginal := make([]byte, int(capacity)/2)
+	if _, err := shm.Read(remainingOriginal); err != nil {
+		t.Fatalf("Read remaining original failed: %v", err)
+	}
+
+	// Verify original data integrity
+	for i := range remainingOriginal {
+		expected := byte((int(capacity)/2 + i) % 256)
+		if remainingOriginal[i] != expected {
+			t.Fatalf("Original data mismatch at index %d: got %d, want %d",
+				i, remainingOriginal[i], expected)
+		}
+	}
+
+	// Then read the new data that wrapped
+	wrappedRead := make([]byte, int(capacity)/2)
+	if _, err := shm.Read(wrappedRead); err != nil {
+		t.Fatalf("Read wrapped data failed: %v", err)
+	}
+
+	// Verify wrapped data integrity
+	for i := range wrappedRead {
+		if wrappedRead[i] != halfWrite[i] {
+			t.Fatalf("Wrapped data mismatch at index %d: got %d, want %d",
+				i, wrappedRead[i], halfWrite[i])
+		}
+	}
+
+	t.Log("Full capacity usage test passed")
+}
