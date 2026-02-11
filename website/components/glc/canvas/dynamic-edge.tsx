@@ -42,7 +42,7 @@ export const DynamicEdge = memo(function DynamicEdge({
 
   if (!currentPreset || !data) return null;
 
-  const relationship = currentPreset.relationships.find((r) => r.id === data.relationshipId);
+  const relationship = currentPreset.relations.find((r) => r.id === data.relationshipId);
   const theme = currentPreset.theme;
 
   const style = relationship?.style || {};

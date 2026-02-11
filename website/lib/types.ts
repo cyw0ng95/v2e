@@ -2096,7 +2096,7 @@ export interface GLCUserPreset {
   theme: string; // JSON CanvasPresetTheme
   behavior: string; // JSON CanvasPresetBehavior
   node_types: string; // JSON array of NodeTypeDefinition
-  relationships: string; // JSON array of RelationshipDefinition
+  relations: string; // JSON array of RelationshipDefinition
   created_at: string;
   updated_at: string;
 }
@@ -2110,7 +2110,7 @@ export interface CreateGLCPresetRequest {
   theme: object;
   behavior: object;
   node_types: object[];
-  relationships: object[];
+  relations: object[];
 }
 
 export interface CreateGLCPresetResponse {

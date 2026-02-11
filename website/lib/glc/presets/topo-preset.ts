@@ -169,7 +169,7 @@ export const topoPreset: CanvasPreset = {
     },
   ],
 
-  relationships: [
+  relations: [
     {
       id: 'connects',
       label: 'connects',

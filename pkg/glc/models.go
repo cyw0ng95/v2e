@@ -50,7 +50,7 @@ type UserPresetModel struct {
 	Theme       string         `gorm:"type:text;not null" json:"theme"`         // JSON object for CanvasPresetTheme
 	Behavior    string         `gorm:"type:text;not null" json:"behavior"`      // JSON object for CanvasPresetBehavior
 	NodeTypes   string         `gorm:"type:text;not null" json:"node_types"`    // JSON array of NodeTypeDefinition
-	Relations   string         `gorm:"type:text;not null" json:"relationships"` // JSON array of RelationshipDefinition
+	Relations   string         `gorm:"type:text;not null" json:"relations"` // JSON array of RelationshipDefinition
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`

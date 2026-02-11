@@ -105,7 +105,7 @@ export interface CanvasPreset {
   theme: CanvasPresetTheme;
   behavior: CanvasPresetBehavior;
   nodeTypes: NodeTypeDefinition[];
-  relationships: RelationshipDefinition[];
+  relations: RelationshipDefinition[];
 }
 
 // ============================================================================
