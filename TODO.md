@@ -20,7 +20,6 @@
 | TODO-019 | graph | Feature | Add graph metrics (centrality, clustering coefficient) | 250 | Low | |
 | TODO-020 | graph | Optimization | Implement graph compression for large-scale deployments | 300 | Low | |
 | TODO-021 | graph | Test | Add property-based tests using testing/quick | 150 | Medium | |
-| TODO-022 | jsonutil | Refactor | Unify error handling across jsonutil functions | 80 | Low | |
 | TODO-023 | jsonutil | Feature | Add JSON schema validation support | 200 | Low | |
 | TODO-025 | meta | Refactor | Extract FSM transition logic into strategy pattern | 150 | Medium | |
 | TODO-026 | meta | Test | Add chaos testing for provider coordination | 250 | Medium | |
