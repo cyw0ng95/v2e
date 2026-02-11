@@ -102,6 +102,16 @@
 | TODO-108 | website | Refactor | Review and optimize website/app/page.tsx for bundle size and performance | 80 | Medium | |
 | TODO-109 | website | Test | Add unit tests for website/lib/utils.ts utility functions | 100 | Medium | |
 | TODO-110 | website | Refactor | Review and optimize website/components/cve-detail-modal.tsx for UX and performance | 80 | Medium | |
+| TODO-111 | test | Review | Review and add missing test cases for pkg/common package (66.5% coverage) | 150 | Medium | |
+| TODO-112 | test | Review | Review and add missing test cases for pkg/analysis package (85.1% coverage) | 100 | Low | |
+| TODO-113 | test | Review | Review and add missing test cases for pkg/capec package (0% coverage) | 200 | High | |
+| TODO-114 | test | Review | Review and add missing test cases for pkg/attack provider package (0% coverage) | 200 | High | |
+| TODO-115 | test | Review | Review and add missing test cases for pkg/asvs package (5.7% coverage) | 200 | High | |
+| TODO-116 | test | Review | Review and add missing test cases for pkg/meta package (0% coverage) | 200 | High | |
+| TODO-117 | test | Review | Review and add missing test cases for pkg/cwe package (0% coverage) | 200 | High | |
+| TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) | 150 | High | |
+| TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) | 200 | High | |
+| TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) | 150 | High | |
 
 ## TODO Management Guidelines
 
