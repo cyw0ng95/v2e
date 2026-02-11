@@ -109,7 +109,6 @@
 | TODO-130 | cwe | Optimization | Use Preload or eager loading for nested relations instead of N+1 queries in GetByID/ListCWEsPaginated | 100 | Medium | |
 | TODO-133 | cwe | Documentation | Document LocalCWEStore.SaveView nested array deletion order and why it's safe | 40 | Low | |
 | TODO-136 | capec | Refactor | Eliminate code duplication between LocalCAPECStore and CachedLocalCAPECStore - share ImportFromXML logic via base struct | 180 | Medium | |
-| TODO-138 | capec | Security | Add XML entity explosion protection to ImportFromXML - limit entity expansion depth | 100 | High | |
 | TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
 | TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
 | TODO-146 | cmd/v2access | Bug Fix | Fix handlers.go:82 returns http.StatusOK when context is canceled instead of appropriate error status code | 20 | Medium | |

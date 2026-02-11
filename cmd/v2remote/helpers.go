@@ -43,7 +43,7 @@ func validatePagination(req PaginationRequest) error {
 	validator.ValidateIntPositive(req.StartIndex, "start_index")
 	validator.ValidateIntRange(req.ResultsPerPage, 1, 2000, "results_per_page")
 	if validator.HasErrors() {
-		return validator.Error()
+		return errors.New(validator.Error())
 	}
 	return nil
 }
