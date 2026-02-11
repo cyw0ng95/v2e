@@ -8,6 +8,30 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
 
+// permitParams represents common parameters for permit-related RPC requests.
+type permitParams struct {
+	ProviderID  string `json:"provider_id"`
+	PermitCount int    `json:"permit_count"`
+}
+
+// parseAndValidatePermitParams parses and validates permit-related request parameters.
+// Returns an error if parsing fails or validation fails.
+func parseAndValidatePermitParams(payload []byte) (*permitParams, error) {
+	var params permitParams
+	if err := json.Unmarshal(payload, &params); err != nil {
+		return nil, fmt.Errorf("failed to parse request parameters: %w", err)
+	}
+
+	if params.ProviderID == "" {
+		return nil, fmt.Errorf("provider_id is required")
+	}
+	if params.PermitCount <= 0 {
+		return nil, fmt.Errorf("permit_count must be greater than 0")
+	}
+
+	return &params, nil
+}
+
 // HandleRPCRequestPermits handles the RPCRequestPermits RPC request.
 // This allows meta service (or other services) to request worker permits from the broker's global pool.
 func (b *Broker) HandleRPCRequestPermits(reqMsg *proc.Message) (*proc.Message, error) {
@@ -15,22 +39,10 @@ func (b *Broker) HandleRPCRequestPermits(reqMsg *proc.Message) (*proc.Message, e
 		return nil, fmt.Errorf("permit manager not initialized")
 	}
 
-	// Parse request parameters
-	var params struct {
-		ProviderID  string `json:"provider_id"`
-		PermitCount int    `json:"permit_count"`
-	}
-
-	if err := json.Unmarshal(reqMsg.Payload, &params); err != nil {
-		return nil, fmt.Errorf("failed to parse request parameters: %w", err)
-	}
-
-	// Validate parameters
-	if params.ProviderID == "" {
-		return nil, fmt.Errorf("provider_id is required")
-	}
-	if params.PermitCount <= 0 {
-		return nil, fmt.Errorf("permit_count must be greater than 0")
+	// Parse and validate request parameters
+	params, err := parseAndValidatePermitParams(reqMsg.Payload)
+	if err != nil {
+		return nil, err
 	}
 
 	// Request permits from manager
@@ -71,22 +83,10 @@ func (b *Broker) HandleRPCReleasePermits(reqMsg *proc.Message) (*proc.Message, e
 		return nil, fmt.Errorf("permit manager not initialized")
 	}
 
-	// Parse request parameters
-	var params struct {
-		ProviderID  string `json:"provider_id"`
-		PermitCount int    `json:"permit_count"`
-	}
-
-	if err := json.Unmarshal(reqMsg.Payload, &params); err != nil {
-		return nil, fmt.Errorf("failed to parse request parameters: %w", err)
-	}
-
-	// Validate parameters
-	if params.ProviderID == "" {
-		return nil, fmt.Errorf("provider_id is required")
-	}
-	if params.PermitCount <= 0 {
-		return nil, fmt.Errorf("permit_count must be greater than 0")
+	// Parse and validate request parameters
+	params, err := parseAndValidatePermitParams(reqMsg.Payload)
+	if err != nil {
+		return nil, err
 	}
 
 	// Release permits
