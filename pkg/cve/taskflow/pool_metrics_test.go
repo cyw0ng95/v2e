@@ -2,6 +2,7 @@ package taskflow
 
 import (
 	"math"
+	"sync"
 	"testing"
 	"time"
 
@@ -212,13 +213,17 @@ func TestPoolMetrics_ConcurrentAccess(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "TestPoolMetrics_ConcurrentAccess", nil, func(t *testing.T, tx *gorm.DB) {
 		pm := NewPoolMetrics()
 
+		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				pm.RecordAllocation(PoolSmall, 1000, 100*time.Microsecond)
 				pm.RecordHit(PoolSmall)
 				pm.RecordRelease(PoolSmall)
 			}()
 		}
+		wg.Wait()
 
 		stats := pm.GetUtilizationStats()
 		if stats.TotalAllocations == 0 {
