@@ -224,11 +224,44 @@ func (b *Broker) ListProcesses() []*ProcessInfo {
 }
 
 // Shutdown gracefully shuts down the broker and all managed processes.
+// It uses a drain period to allow in-flight requests to complete before
+// terminating processes.
 func (b *Broker) Shutdown() error {
 	b.logger.Info("Shutting down broker")
 
+	// Step 1: Cancel the broker context to stop accepting new requests
 	b.cancel()
 
+	// Step 2: Wait for drain period or until pending requests complete
+	drainPeriod := b.GetDrainPeriod()
+	if drainPeriod > 0 {
+		b.logger.Info("Draining in-flight requests (drain period: %v)", drainPeriod)
+
+		drainStartTime := time.Now()
+		drainTicker := time.NewTicker(100 * time.Millisecond)
+		defer drainTicker.Stop()
+
+		for time.Since(drainStartTime) < drainPeriod {
+			if !b.HasPendingRequests() {
+				b.logger.Info("All in-flight requests completed")
+				break
+			}
+			// Wait a bit before checking again
+			<-drainTicker.C
+		}
+
+		remainingTime := drainPeriod - time.Since(drainStartTime)
+		pendingCount := b.PendingRequestCount()
+		if pendingCount > 0 {
+			if remainingTime > 0 {
+				b.logger.Warn("Drain period expired with %d pending requests, proceeding with shutdown", pendingCount)
+			} else {
+				b.logger.Warn("Drain period complete but %d requests still pending, proceeding with shutdown", pendingCount)
+			}
+		}
+	}
+
+	// Step 3: Collect and terminate all running processes
 	processIDs := make([]string, 0)
 	b.processes.Range(func(key, value interface{}) bool {
 		processIDs = append(processIDs, key.(string))
@@ -249,11 +282,13 @@ func (b *Broker) Shutdown() error {
 		}
 	}
 
+	// Step 4: Wait for all goroutines to complete
 	b.wg.Wait()
 
+	// Step 5: Close the message bus
 	b.bus.Close()
 
-	// Clean up transport manager - close all transports including those
+	// Step 6: Clean up transport manager - close all transports including those
 	// kept alive for process restart
 	if b.transportManager != nil {
 		b.transportManager.CloseAll()

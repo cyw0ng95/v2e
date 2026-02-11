@@ -60,6 +60,8 @@ type Broker struct {
 	transportManager *transport.TransportManager
 	// permitManager manages the global worker permit pool (Phase 2 UEE)
 	permitManager *permits.PermitManager
+	// drainPeriod is the time to wait for in-flight requests to complete during shutdown
+	drainPeriod time.Duration
 }
 
 // NewBroker creates a new Broker instance.
@@ -166,6 +168,30 @@ func (b *Broker) SetPermitManager(pm *permits.PermitManager) {
 	if pm != nil && b.logger != nil {
 		b.logger.Info("PermitManager attached")
 	}
+}
+
+// SetDrainPeriod sets the drain period for graceful shutdown.
+// The drain period is the maximum time to wait for in-flight requests to complete
+// before forcibly shutting down processes.
+func (b *Broker) SetDrainPeriod(drainPeriod time.Duration) {
+	b.mu.Lock()
+	b.drainPeriod = drainPeriod
+	b.mu.Unlock()
+	if b.logger != nil {
+		b.logger.Info("Drain period set to: %v", drainPeriod)
+	}
+}
+
+// GetDrainPeriod returns the configured drain period.
+func (b *Broker) GetDrainPeriod() time.Duration {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.drainPeriod
+}
+
+// HasPendingRequests returns true if there are any pending RPC requests being processed.
+func (b *Broker) HasPendingRequests() bool {
+	return b.PendingRequestCount() > 0
 }
 
 // Context returns the broker's context.
