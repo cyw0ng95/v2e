@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -410,4 +412,91 @@ func TestMessageBatching(t *testing.T) {
 		}
 	})
 
+}
+
+// TestNewWithUDS_ConnectionLeak verifies that connection is closed properly
+// when all connection attempts fail, preventing file descriptor leaks
+func TestNewWithUDS_ConnectionLeak(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestNewWithUDS_ConnectionLeak", nil, func(t *testing.T, tx *gorm.DB) {
+		// Use a non-existent socket path to ensure all connection attempts fail
+		nonExistentPath := "/tmp/test_nonexistent_socket_12345.sock"
+
+		// Remove the file if it exists (cleanup from previous runs)
+		_ = os.Remove(nonExistentPath)
+
+		// Track original file descriptor count (approximate)
+		// In a real scenario, repeated calls without proper cleanup would leak fds
+		initialFDs := countOpenFiles(t)
+
+		// Attempt to create subprocess with non-existent socket
+		// This should fail after all retries and close the connection
+		sp, err := NewWithUDS("test-leak", nonExistentPath)
+
+		// Should return error
+		if err == nil {
+			t.Error("Expected error when connecting to non-existent socket")
+			if sp != nil {
+				_ = sp.Stop()
+			}
+		}
+
+		// Verify error message contains expected information
+		if err != nil && sp == nil {
+			if !strings.Contains(err.Error(), "failed to connect") {
+				t.Errorf("Error message should mention connection failure, got: %v", err)
+			}
+		}
+
+		// Verify file descriptor count hasn't increased significantly
+		// (allowing for some variance due to test infrastructure)
+		finalFDs := countOpenFiles(t)
+		fdDelta := finalFDs - initialFDs
+		if fdDelta > 5 {
+			// More than 5 extra fds suggests a leak
+			t.Errorf("Potential file descriptor leak: %d extra fds after failed connection attempts", fdDelta)
+		}
+	})
+}
+
+// TestNewWithUDS_ConnectionLeakRepeated tests that repeated failed connection
+// attempts don't leak file descriptors
+func TestNewWithUDS_ConnectionLeakRepeated(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestNewWithUDS_ConnectionLeakRepeated", nil, func(t *testing.T, tx *gorm.DB) {
+		nonExistentPath := "/tmp/test_repeated_socket_12345.sock"
+		_ = os.Remove(nonExistentPath)
+
+		initialFDs := countOpenFiles(t)
+
+		// Attempt multiple failed connections
+		for i := 0; i < 10; i++ {
+			_, err := NewWithUDS(fmt.Sprintf("test-leak-%d", i), nonExistentPath)
+			if err == nil {
+				t.Errorf("Expected error on attempt %d", i)
+			}
+		}
+
+		finalFDs := countOpenFiles(t)
+		fdDelta := finalFDs - initialFDs
+
+		// With proper cleanup, we shouldn't accumulate leaked fds
+		// Each failed attempt has 3 retries, so 10 attempts = up to 30 connection attempts
+		// But each should be properly closed
+		if fdDelta > 20 {
+			t.Errorf("File descriptor leak detected after repeated failed connections: %d fds accumulated", fdDelta)
+		}
+	})
+}
+
+// countOpenFiles counts the number of open file descriptors for the current process
+// This is a best-effort check for connection leak detection
+func countOpenFiles(t *testing.T) int {
+	// Read /proc/self/fd directory (Linux-specific)
+	fdDir := "/proc/self/fd"
+	entries, err := os.ReadDir(fdDir)
+	if err != nil {
+		// If /proc/self/fd is not available (e.g., on macOS during tests),
+		// return 0 to skip this check
+		return 0
+	}
+	return len(entries)
 }

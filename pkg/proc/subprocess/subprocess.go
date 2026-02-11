@@ -275,8 +275,12 @@ func NewWithUDS(id string, socketPath string) (*Subprocess, error) {
 		}
 	}
 
-	// If all retries failed, return error
+	// If all retries failed, close connection and return error
 	if err != nil {
+		// Close the last connection attempt to prevent file descriptor leak
+		if conn != nil {
+			conn.Close()
+		}
 		return nil, fmt.Errorf("failed to connect to UDS socket %s after %d attempts: %w", socketPath, maxRetries, err)
 	}
 
