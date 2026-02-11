@@ -265,37 +265,46 @@ export function useCAPEC(capecId?: string) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   useEffect(() => {
-    if (!capecId) {
-      setIsLoading(false);
-      return;
-    }
+    const abortController = new AbortController();
+    const { signal } = abortController;
 
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.getCAPEC(capecId);
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch CAPEC');
         }
-        
+
         setData(response.payload);
         setError(null);
       } catch (err: any) {
-        setError(err);
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         logger.error('Error fetching CAPEC', err, { capecId });
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
 
-    // Cleanup function
-    return () => {};
-  }, [capecId]);
+    return () => {
+      abortController.abort();
+    };
+  }, [capecId, isMounted, setStateIfMounted]);
 
   return { data, isLoading, error };
 }
@@ -400,6 +409,7 @@ export function useSessionStatus() {
 export function useStartSession() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   const mutate = async (params: { sessionId: string; startIndex?: number; resultsPerBatch?: number }, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
     // Destructure outside try block so variables are in scope for error logging
@@ -470,15 +480,22 @@ export function useStartTypedSession() {
 export function useStartCWEImport() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
     try {
       setIsPending(true);
       setError(null);
 
-      // TODO: Implement CWE import RPC method
-      throw new Error('CWE import not yet implemented');
+      const response = await rpcClient.startCWEImport(params);
 
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start CWE import');
+      }
+
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
     } catch (err: any) {
       setError(err);
       logger.error('Error starting CWE import', err);
@@ -496,18 +513,25 @@ export function useStartCWEImport() {
 export function useStartCAPECImport() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
     try {
       setIsPending(true);
       setError(null);
 
-      // TODO: Implement CAPEC import RPC method
-      throw new Error('CAPEC import not yet implemented');
+      const response = await rpcClient.startCAPECImport(params);
 
+      if (response.retcode !== 0) {
+        throw new Error(response.message || 'Failed to start CAPEC import');
+      }
+
+      if (options?.onSuccess) {
+        options.onSuccess(response.payload);
+      }
     } catch (err: any) {
       setError(err);
-      logger.error('Error starting CAPEC import', err);
+      logger.error('Error starting CAPEC import', err, params);
       if (options?.onError) {
         options.onError(err);
       }
@@ -1133,26 +1157,43 @@ export function useASVSList(params: { offset?: number; limit?: number; chapter?:
   const { offset = 0, limit = 100, chapter = '', level = 0 } = params;
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchData = async () => {
+      if (signal.aborted) return;
+
       try {
         setIsLoading(true);
         const response = await rpcClient.listASVS({ offset, limit, chapter, level });
-        
+
+        if (signal.aborted || !isMounted()) return;
+
         if (response.retcode !== 0) {
           throw new Error(response.message || 'Failed to fetch ASVS list');
         }
-        
+
         setData(response.payload);
         setError(null);
       } catch (err: any) {
-        setError(err);
+        if (signal.aborted) return;
+
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setStateIfMounted<Error | null>(() => setError(errorObj));
         console.error('Error fetching ASVS list:', err);
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [offset, limit, chapter, level, isMounted, setStateIfMounted]);
 
     // Cleanup function
     return () => {};
