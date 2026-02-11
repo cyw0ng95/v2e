@@ -92,7 +92,7 @@ export function CVSSProvider({
   const calculateScores = useCallback(() => {
     try {
       const result = calculateCVSS(version, metrics);
-      setScores(result.breakdown as CVSS3ScoreBreakdown | CVSS4ScoreBreakdown);
+      setScores(result as CVSS3ScoreBreakdown | CVSS4ScoreBreakdown);
     } catch (error) {
       console.error('CVSS calculation error:', error);
     }

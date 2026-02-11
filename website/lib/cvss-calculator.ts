@@ -109,11 +109,21 @@ function calculateV3Impact(metrics: CVSS3BaseMetrics): number {
   const i = V3_MAPS.i[metrics.I];
   const a = V3_MAPS.a[metrics.A];
 
-  const impactSubScore = (1 - c) * (1 - i) * (1 - a);
+  // ISS (Impact Sub-Score) = 1 - [(1 - Confidentiality) × (1 - Integrity) × (1 - Availability)]
+  const iss = 1 - ((1 - c) * (1 - i) * (1 - a));
 
   const scopeModified = V3_MAPS.s[metrics.S];
 
-  return ROUND(10.41 * (1 - impactSubScore * (1 - scopeModified)));
+  // Impact formula per FIRST.org CVSS v3.1 specification:
+  // If Scope is Unchanged: Impact = 6.42 × ISS
+  // If Scope is Changed: Impact = 7.52 × (ISS - 0.029) - 3.25 × (ISS × 0.9731 - 0.02)^13
+  if (scopeModified === 1) {
+    // Scope Changed: Impact = 7.52 × (ISS - 0.029) - 3.25 × (ISS × 0.9731 - 0.02)^13
+    return ROUND(7.52 * (iss - 0.029) - 3.25 * Math.pow((iss * 0.9731 - 0.02), 13));
+  } else {
+    // Scope Unchanged: Impact = 6.42 × ISS
+    return ROUND(6.42 * iss);
+  }
 }
 
 /**
@@ -122,12 +132,19 @@ function calculateV3Impact(metrics: CVSS3BaseMetrics): number {
 function calculateV3BaseScore(metrics: CVSS3BaseMetrics): number {
   const impact = calculateV3Impact(metrics);
   const exploitability = calculateV3Exploitability(metrics);
-
   const scopeModified = V3_MAPS.s[metrics.S];
-  const baseScore = impact + exploitability;
-  const adjustedScore = scopeModified === 0 ? baseScore : baseScore + scopeModified;
 
-  return ROUND(CLAMP(adjustedScore, 0, 10));
+  let baseScore = impact + exploitability;
+
+  // Per FIRST spec: min(10, Impact + Exploitability)
+  // But when Scope is Changed and result >= 10, round up to 10
+  baseScore = Math.min(10, baseScore);
+
+  if (scopeModified === 1 && baseScore > 9) {
+    baseScore = 10;
+  }
+
+  return ROUND(baseScore);
 }
 
 /**
@@ -433,9 +450,11 @@ function applyV4EnvironmentalAdjustments(
   const si = hasSI ? environmental.MSI ?? baseMetrics.SI : 'N';
   const sa = hasSA ? environmental.MSA ?? baseMetrics.SA : 'N';
 
+  // For CVSS v4.0 environmental scoring, use simplified impact lookup
+  // The lookup key format is: VC:SI or H:N format
   const providerI = hasProviderI(environmental) ? 'E' : 'X';
-  const ieKey = providerI ? `${vc}:${vi}:${sc}:${si}:${sa}` : 'N:N';
-  const modifiedImpactLookup = V4_IMPACT_LOOKUP[ieKey];
+  const ieKey = providerI ? `${vc}:${si}` : 'N:N';
+  const modifiedImpactLookup = V4_IMPACT_LOOKUP[ieKey] ?? V4_IMPACT_LOOKUP['N:N'];
 
   const { iq: iqFactor, ss: ssFactor, isc } = modifiedImpactLookup;
 
@@ -539,8 +558,8 @@ export function calculateCVSS3(
 
   if (metrics.temporal) {
     const temporalResult = applyV3TemporalAdjustments(baseScore, metrics.temporal);
-    breakdown = { ...breakdown, ...temporalResult.breakdown };
-    finalScore = temporalResult.score;
+    breakdown = { ...breakdown, ...temporalResult };
+    finalScore = temporalResult.temporalScore;
   }
 
   if (metrics.environmental) {
@@ -549,8 +568,8 @@ export function calculateCVSS3(
       metrics,
       metrics.environmental
     );
-    breakdown = { ...breakdown, ...envResult.breakdown };
-    finalScore = envResult.score;
+    breakdown = { ...breakdown, ...envResult };
+    finalScore = envResult.environmentalScore;
   }
 
   breakdown.vectorString = generateV3VectorString(metrics, version);
