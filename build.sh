@@ -6,6 +6,24 @@
 
 set -e
 
+# Acquire exclusive lock to prevent parallel builds
+# This protects shared resources (build artifacts, cache) from concurrent modification
+BUILD_LOCK_FILE="${TMPDIR:-/tmp}/v2e-build.lock"
+exec 200>"$BUILD_LOCK_FILE"
+
+# Try to acquire lock with timeout (wait up to 30 minutes for another build to complete)
+if ! flock -n 200; then
+    echo "Waiting for another build.sh instance to complete..."
+    if ! flock -w 1800 200; then
+        echo "Error: Timeout waiting for build lock after 30 minutes" >&2
+        echo "Another build may be stuck. Please check and manually remove $BUILD_LOCK_FILE if needed" >&2
+        exit 1
+    fi
+fi
+
+# Release lock on exit (including error, interrupt, or termination)
+trap 'flock -u 200' EXIT INT TERM
+
 # Enable CGO for builds that require C libraries (e.g. libxml2)
 export CGO_ENABLED=1
 

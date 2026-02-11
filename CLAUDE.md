@@ -60,6 +60,10 @@ sudo yum install libxml2-devel  # CentOS/RHEL
 cd website && npm install
 ```
 
+**Build Locking**: Both `build.sh` and `runenv.sh` use `flock`-based locking to prevent parallel execution. This protects shared resources (build artifacts, Go module cache) from concurrent modification. If another build is running, subsequent invocations will wait up to 30 minutes for the lock, then exit with an error. The lock file is located at `${TMPDIR:-/tmp}/v2e-build.lock`.
+
+**Parallel Agent Execution**: With flock-based locking in place, multiple agents can now safely run in parallel to accelerate development work. The locking mechanism ensures that only one build operation occurs at a time, preventing race conditions and resource conflicts. Agents can independently invoke build.sh, and the locking will serialize the actual builds while allowing agents to continue other work.
+
 ## Architecture: Broker-First Pattern
 
 The broker is the central orchestrator. All subprocess services (`cmd/v2access`, `cmd/v2local`, `cmd/v2remote`, `cmd/v2meta`, `cmd/v2sysmon`) communicate exclusively via stdin/stdout RPC messages routed through the broker.
