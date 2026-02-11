@@ -145,6 +145,16 @@
 | TODO-187 | website | Documentation | Document component prop interfaces in components/ with JSDoc comments describing required and optional props | 200 | Low | |
 | TODO-188 | website | Feature | Connect navbar search to actual search functionality querying across CVEs, CWEs, CAPECs, and ATT&CK data | 150 | Medium | |
 | TODO-189 | website | Feature | Add settings functionality for settings button - create dialog/page for user preferences (theme, API endpoints, data refresh) | 180 | Low | |
+| TODO-190 | analysis | Optimization | Replace encoding/json with sonic for graph serialization in graph_store.go to achieve 2-3x performance improvement | 50 | High | |
+| TODO-191 | analysis | Optimization | Add sync.Pool buffer pool for JSON serialization in graph_store.go to reduce GC pressure | 80 | Medium | |
+| TODO-192 | analysis | Optimization | Replace fmt.Sprintf with optimized byte array conversion for edge key generation in SaveGraph | 30 | Low | |
+| TODO-193 | analysis | Feature | Implement incremental graph save to avoid clearing entire bucket on each SaveGraph call | 200 | Medium | |
+| TODO-194 | analysis | Feature | Add batch operations API for saving multiple nodes/edges in single transaction | 150 | Medium | |
+| TODO-195 | rpc-client | Refactor | Consolidate duplicate mock response logic between getMockResponseForCache and getMockResponse (~600 lines of duplication) | 100 | Medium | |
+| TODO-196 | rpc-client | Optimization | Pre-compile regex patterns in toCamelCase and toSnakeCase functions to avoid repeated regex creation | 20 | Low | |
+| TODO-197 | rpc-client | Bug Fix | Add proper cleanup strategy for pendingRequests Map to prevent memory leaks from failed requests | 60 | Medium | |
+| TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
+| TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
 
 ## TODO Management Guidelines
 
