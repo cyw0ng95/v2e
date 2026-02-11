@@ -163,7 +163,6 @@
 | TODO-220 | ume | Feature | Add message delivery guarantees - router currently provides no delivery confirmation, messages can be silently dropped, should implement ack/nack mechanism | 200 | High | |
 | TODO-221 | ume | Bug Fix | Fix hybrid transport synchronization missing - when falling back from shared memory to UDS, there's no mechanism to transfer pending data, messages could be lost | 120 | High | |
 | TODO-222 | ume | Bug Fix | Fix transport manager CloseAll ignoring errors - errors from individual transport Close() calls are silently discarded, making debugging difficult, should be logged or aggregated | 80 | Medium | |
-| TODO-223 | ume | Bug Fix | Fix shared memory write overflow handling - ring buffer should wrap around when reaching end instead of returning "ring buffer full" error which causes data loss | 100 | High | |
 | TODO-224 | ume | Feature | Implement actual fd passing to subprocesses - shared memory transport needs mechanism to pass file descriptors to subprocesses for true IPC, not memfd_create which is same-process only | 250 | High | |
 | TODO-225 | ume | Feature | Implement SelectTarget method in Router interface - task description mentioned SelectTarget method but router interface doesn't define it, routing cannot select targets dynamically | 150 | High | |
 | TODO-226 | ume | Refactor | Add pool statistics for Message Pool - ResponseBufferPool is missing hit/miss tracking which is needed for optimization and debugging | 80 | Medium | |
