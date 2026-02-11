@@ -270,17 +270,20 @@ func (l *LearningFSM) getItemByURN(urn string) (*LearningItem, error) {
 // MarkViewed records an item as viewed
 func (l *LearningFSM) MarkViewed(urn string) error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	// Check if already viewed
 	for _, viewedURN := range l.viewedItems {
 		if viewedURN == urn {
+			l.mu.Unlock()
 			return nil // Already viewed
 		}
 	}
 
 	l.viewedItems = append(l.viewedItems, urn)
 	l.lastActivity = time.Now()
+
+	// Release lock before saving to prevent potential deadlock
+	l.mu.Unlock()
 
 	// Save state with timeout
 	if l.storage != nil {
@@ -298,11 +301,11 @@ func (l *LearningFSM) MarkViewed(urn string) error {
 // MarkLearned records an item as completed/learned
 func (l *LearningFSM) MarkLearned(urn string) error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	// Check if already learned
 	for _, learnedURN := range l.completedItems {
 		if learnedURN == urn {
+			l.mu.Unlock()
 			return nil // Already learned
 		}
 	}
@@ -314,6 +317,9 @@ func (l *LearningFSM) MarkLearned(urn string) error {
 	if l.currentItemURN == urn {
 		l.currentItemURN = ""
 	}
+
+	// Release lock before saving to prevent potential deadlock
+	l.mu.Unlock()
 
 	// Save state with timeout
 	if l.storage != nil {
@@ -331,7 +337,6 @@ func (l *LearningFSM) MarkLearned(urn string) error {
 // FollowLink handles user clicking a related link (DFS transition)
 func (l *LearningFSM) FollowLink(fromURN, toURN string) error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	// Push current item to stack for backtracking
 	if fromURN != "" && l.currentItemURN != "" {
@@ -347,9 +352,15 @@ func (l *LearningFSM) FollowLink(fromURN, toURN string) error {
 	// Mark the new item as viewed
 	l.viewedItems = append(l.viewedItems, toURN)
 
-	// Save state
+	// Release lock before saving to prevent potential deadlock
+	l.mu.Unlock()
+
+	// Save state with timeout - this must be done without holding l.mu
 	if l.storage != nil {
-		if err := l.SaveState(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := l.SaveStateWithContext(ctx); err != nil {
 			return fmt.Errorf("failed to save state: %w", err)
 		}
 	}
@@ -360,21 +371,22 @@ func (l *LearningFSM) FollowLink(fromURN, toURN string) error {
 // GoBack navigates to the previous item (DFS backtracking)
 func (l *LearningFSM) GoBack(ctx context.Context) (*LearningItem, error) {
 	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.lastActivity = time.Now()
 
 	if len(l.pathStack) == 0 {
 		l.currentStrategy = "bfs"
 		l.state = LearningStateBrowsing
 		l.currentItemURN = ""
 
-		l.mu.Unlock()
-		return l.LoadItem(ctx)
+		// Get next BFS item without calling LoadItem to avoid relock
+		return l.getNextBFSItem(ctx)
 	}
 
 	urn := l.pathStack[len(l.pathStack)-1]
 	l.pathStack = l.pathStack[:len(l.pathStack)-1]
 	l.currentItemURN = urn
-	l.lastActivity = time.Now()
-	l.mu.Unlock()
 
 	return l.getItemByURN(urn)
 }
@@ -412,25 +424,35 @@ func (l *LearningFSM) SaveStateWithContext(ctx context.Context) error {
 	default:
 	}
 
+	// Capture state snapshot while holding lock to prevent data race
+	// This ensures we have a consistent view of all fields
+	l.mu.RLock()
+	stateSnapshot := &LearningFSMState{
+		State:           l.state,
+		CurrentStrategy: l.currentStrategy,
+		CurrentItemURN:  l.currentItemURN,
+		ViewedItems:     make([]string, len(l.viewedItems)),
+		CompletedItems:  make([]string, len(l.completedItems)),
+		PathStack:       make([]string, len(l.pathStack)),
+		SessionStart:    l.sessionStart,
+		LastActivity:    l.lastActivity,
+		UpdatedAt:       time.Now(),
+	}
+	copy(stateSnapshot.ViewedItems, l.viewedItems)
+	copy(stateSnapshot.CompletedItems, l.completedItems)
+	copy(stateSnapshot.PathStack, l.pathStack)
+	l.mu.RUnlock()
+
 	// Create a channel to handle timeout
 	type result struct {
 		err error
 	}
 	resultCh := make(chan result, 1)
 
+	// Spawn goroutine to save state without holding l.mu
+	// This prevents potential deadlock if storage operation acquires other locks
 	go func() {
-		state := &LearningFSMState{
-			State:           l.state,
-			CurrentStrategy: l.currentStrategy,
-			CurrentItemURN:  l.currentItemURN,
-			ViewedItems:     l.viewedItems,
-			CompletedItems:  l.completedItems,
-			PathStack:       l.pathStack,
-			SessionStart:    l.sessionStart,
-			LastActivity:    l.lastActivity,
-			UpdatedAt:       time.Now(),
-		}
-		resultCh <- result{l.storage.SaveLearningFSMState(state)}
+		resultCh <- result{l.storage.SaveLearningFSMState(stateSnapshot)}
 	}()
 
 	select {
@@ -474,13 +496,21 @@ func (l *LearningFSM) LoadState() error {
 // Pause pauses the learning session
 func (l *LearningFSM) Pause() error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	l.state = LearningStatePaused
-	l.lastActivity = time.Now()
+	lastActivity := time.Now()
+	l.lastActivity = lastActivity
+
+	// Release lock before saving to prevent potential deadlock
+	l.mu.Unlock()
 
 	if l.storage != nil {
-		return l.SaveState()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := l.SaveStateWithContext(ctx); err != nil {
+			return fmt.Errorf("failed to save state: %w", err)
+		}
 	}
 
 	return nil
@@ -489,17 +519,25 @@ func (l *LearningFSM) Pause() error {
 // Resume resumes the learning session
 func (l *LearningFSM) Resume() error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	if l.state != LearningStatePaused {
+		l.mu.Unlock()
 		return fmt.Errorf("cannot resume from state: %s", l.state)
 	}
 
 	l.state = LearningStateBrowsing
 	l.lastActivity = time.Now()
 
+	// Release lock before saving to prevent potential deadlock
+	l.mu.Unlock()
+
 	if l.storage != nil {
-		return l.SaveState()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := l.SaveStateWithContext(ctx); err != nil {
+			return fmt.Errorf("failed to save state: %w", err)
+		}
 	}
 
 	return nil
