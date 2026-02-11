@@ -109,7 +109,6 @@
 | TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
 | TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
 | TODO-148 | cmd/v2access | Optimization | Use sync.Pool for context creation in handlers.go:90 instead of creating new context per RPC call | 60 | Low | |
-| TODO-149 | cmd/v2access | Refactor | Group and namespace 65 log constants in constants.go by functionality or use enum | 80 | Low | |
 | TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
@@ -144,7 +143,6 @@
 | TODO-197 | rpc-client | Bug Fix | Add proper cleanup strategy for pendingRequests Map to prevent memory leaks from failed requests | 60 | Medium | |
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
 | TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
-| TODO-200 | glc | Bug Fix | Fix UpdateGraph version snapshot logic - incorrect condition creates snapshots when nodes/edges keys exist in updates map regardless of value, should check if key exists OR if edges value is not nil | 80 | High | |
 | TODO-202 | glc | Bug Fix | Add missing foreign key constraint to ShareLinkModel.GraphID for CASCADE delete on graph deletion - prevents orphaned share links | 40 | Medium | |
 | TODO-203 | glc | Bug Fix | Fix JSON field name inconsistency - struct has Relations but JSON tag is relationships, causes frontend/backend communication failure | 30 | Medium | |
 | TODO-204 | glc | Bug Fix | Implement password hashing with bcrypt or argon2 for CreateShareLink - currently stores plaintext which is security vulnerability | 60 | High | |
