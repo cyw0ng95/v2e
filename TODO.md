@@ -28,7 +28,6 @@
 | TODO-027 | notes | Feature | Add memory card export/import functionality | 200 | Low | |
 | TODO-029 | notes | Refactor | Simplify bookmark service with repository pattern | 120 | Medium | |
 | TODO-030 | notes | Test | Add performance benchmarks for FSM operations | 100 | Medium | |
-| TODO-031 | proc | Feature | Implement subprocess health monitoring and auto-restart | 200 | High | |
 | TODO-032 | proc | Optimization | Add message prioritization and backpressure handling | 150 | Medium | |
 | TODO-033 | proc | Test | Add fuzz testing for message serialization/deserialization | 150 | Medium | |
 | TODO-035 | rpc | Feature | Add request retry with exponential backoff | 120 | Medium | |
