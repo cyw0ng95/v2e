@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -141,8 +142,8 @@ func (s *GraphStore) SaveGraph(g *graph.Graph) error {
 				return fmt.Errorf("failed to marshal edge: %w", err)
 			}
 
-			// Use sequential ID as key for edges
-			key := []byte(fmt.Sprintf("edge_%d", i))
+			// Use sequential ID as key for edges (optimized allocation)
+			key := []byte("edge_" + strconv.FormatInt(int64(i), 10))
 			if err := edgesBucket.Put(key, data); err != nil {
 				return fmt.Errorf("failed to save edge: %w", err)
 			}
