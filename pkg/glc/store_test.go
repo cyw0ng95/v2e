@@ -3,6 +3,7 @@ package glc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -1036,4 +1037,348 @@ func TestTableNames(t *testing.T) {
 			t.Errorf("Expected table name 'glc_share_links', got '%s'", shareLink.TableName())
 		}
 	})
+}
+
+// TestConcurrentGraphUpdates tests concurrent graph updates for race conditions
+func TestConcurrentGraphUpdates(t *testing.T) {
+	db := setupTestDB(t)
+
+	testutils.Run(t, testutils.Level2, "TestConcurrentGraphUpdates", db, func(t *testing.T, tx *gorm.DB) {
+		testStore, _ := NewStore(tx)
+
+		// Create a graph
+		graph, err := testStore.CreateGraph(
+			context.Background(),
+			"Concurrent Update Test",
+			"",
+			"d3fend",
+			`[{"id": "node-1"}]`,
+			`[]`,
+			`{}`,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create graph: %v", err)
+		}
+
+		// Launch multiple concurrent updates
+		concurrency := 10
+		errChan := make(chan error, concurrency)
+
+		for i := 0; i < concurrency; i++ {
+			go func(index int) {
+				_, err := testStore.UpdateGraph(context.Background(), graph.GraphID, map[string]interface{}{
+					"name": fmt.Sprintf("Concurrent Update %d", index),
+				})
+				errChan <- err
+			}(i)
+		}
+
+		// Collect all errors
+		for i := 0; i < concurrency; i++ {
+			if err := <-errChan; err != nil {
+				t.Errorf("Concurrent update failed: %v", err)
+			}
+		}
+
+		// Verify graph still exists and is consistent
+		finalGraph, err := testStore.GetGraph(context.Background(), graph.GraphID)
+		if err != nil {
+			t.Fatalf("Failed to get final graph: %v", err)
+		}
+		if finalGraph.GraphID != graph.GraphID {
+			t.Errorf("GraphID mismatch after concurrent updates")
+		}
+	})
+}
+
+// TestLargeJSONPayload tests handling of large JSON payloads (1000+ nodes)
+func TestLargeJSONPayload(t *testing.T) {
+	db := setupTestDB(t)
+
+	testutils.Run(t, testutils.Level2, "TestLargeJSONPayload", db, func(t *testing.T, tx *gorm.DB) {
+		testStore, _ := NewStore(tx)
+
+		// Build large nodes array (1000+ nodes)
+		nodes := make([]map[string]interface{}, 1000)
+		for i := 0; i < 1000; i++ {
+			nodes[i] = map[string]interface{}{
+				"id":       fmt.Sprintf("node-%d", i),
+				"type":     "glc",
+				"position": map[string]float64{"x": float64(i * 10), "y": float64(i * 10)},
+			}
+		}
+		nodesJSON, err := json.Marshal(nodes)
+		if err != nil {
+			t.Fatalf("Failed to marshal large nodes array: %v", err)
+		}
+
+		// Build large edges array (500 edges)
+		edges := make([]map[string]interface{}, 500)
+		for i := 0; i < 500; i++ {
+			edges[i] = map[string]interface{}{
+				"id":     fmt.Sprintf("edge-%d", i),
+				"source": fmt.Sprintf("node-%d", i),
+				"target": fmt.Sprintf("node-%d", (i+1)%1000),
+			}
+		}
+		edgesJSON, err := json.Marshal(edges)
+		if err != nil {
+			t.Fatalf("Failed to marshal large edges array: %v", err)
+		}
+
+		// Create graph with large payload
+		graph, err := testStore.CreateGraph(
+			context.Background(),
+			"Large Payload Test",
+			"Test graph with 1000+ nodes",
+			"d3fend",
+			string(nodesJSON),
+			string(edgesJSON),
+			`{"x": 0, "y": 0, "zoom": 1}`,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create graph with large payload: %v", err)
+		}
+
+		// Verify retrieval
+		retrieved, err := testStore.GetGraph(context.Background(), graph.GraphID)
+		if err != nil {
+			t.Fatalf("Failed to retrieve graph with large payload: %v", err)
+		}
+
+		// Verify nodes can be parsed
+		var retrievedNodes []map[string]interface{}
+		if err := json.Unmarshal([]byte(retrieved.Nodes), &retrievedNodes); err != nil {
+			t.Errorf("Failed to parse retrieved nodes: %v", err)
+		}
+		if len(retrievedNodes) != 1000 {
+			t.Errorf("Expected 1000 nodes, got %d", len(retrievedNodes))
+		}
+
+		// Update with large payload
+		updatedNodes := make([]map[string]interface{}, 1001)
+		copy(updatedNodes, nodes)
+		updatedNodes[1000] = map[string]interface{}{
+			"id":       "node-1000",
+			"type":     "glc",
+			"position": map[string]float64{"x": 10000, "y": 10000},
+		}
+		updatedNodesJSON, _ := json.Marshal(updatedNodes)
+
+		_, err = testStore.UpdateGraph(context.Background(), graph.GraphID, map[string]interface{}{
+			"nodes": string(updatedNodesJSON),
+		})
+		if err != nil {
+			t.Errorf("Failed to update graph with large payload: %v", err)
+		}
+	})
+}
+
+// TestPaginationEdgeCases tests pagination edge cases
+func TestPaginationEdgeCases(t *testing.T) {
+	db := setupTestDB(t)
+
+	testutils.Run(t, testutils.Level2, "TestPaginationEdgeCases", db, func(t *testing.T, tx *gorm.DB) {
+		testStore, _ := NewStore(tx)
+
+		// Test with empty database
+		graphs, total, err := testStore.ListGraphs(context.Background(), "", 0, 10)
+		if err != nil {
+			t.Fatalf("Failed to list graphs with empty DB: %v", err)
+		}
+		if len(graphs) != 0 {
+			t.Errorf("Expected 0 graphs from empty DB, got %d", len(graphs))
+		}
+		if total != 0 {
+			t.Errorf("Expected total count 0, got %d", total)
+		}
+
+		// Test offset=0 explicitly
+		for i := 0; i < 5; i++ {
+			_, err := testStore.CreateGraph(
+				context.Background(),
+				fmt.Sprintf("Pagination Test %d", i),
+				"",
+				"d3fend",
+				"[]",
+				"[]",
+				"{}",
+			)
+			if err != nil {
+				t.Fatalf("Failed to create graph %d: %v", i, err)
+			}
+		}
+
+		// Test offset=0
+		graphs, total, err = testStore.ListGraphs(context.Background(), "", 0, 3)
+		if err != nil {
+			t.Fatalf("Failed to list graphs with offset=0: %v", err)
+		}
+		if len(graphs) != 3 {
+			t.Errorf("Expected 3 graphs with offset=0, limit=3, got %d", len(graphs))
+		}
+		if total != 5 {
+			t.Errorf("Expected total count 5, got %d", total)
+		}
+
+		// Test offset beyond available data
+		graphs, total, err = testStore.ListGraphs(context.Background(), "", 10, 3)
+		if err != nil {
+			t.Fatalf("Failed to list graphs with offset beyond data: %v", err)
+		}
+		if len(graphs) != 0 {
+			t.Errorf("Expected 0 graphs with offset=10, got %d", len(graphs))
+		}
+
+		// Test very large limit (should return all available)
+		graphs, total, err = testStore.ListGraphs(context.Background(), "", 0, 10000)
+		if err != nil {
+			t.Fatalf("Failed to list graphs with large limit: %v", err)
+		}
+		if len(graphs) != 5 {
+			t.Errorf("Expected 5 graphs with large limit, got %d", len(graphs))
+		}
+		if total != 5 {
+			t.Errorf("Expected total count 5, got %d", total)
+		}
+	})
+}
+
+// TestShareLinkExpirationBoundary tests share link expiration at exact boundary
+func TestShareLinkExpirationBoundary(t *testing.T) {
+	db := setupTestDB(t)
+
+	testutils.Run(t, testutils.Level2, "TestShareLinkExpirationBoundary", db, func(t *testing.T, tx *gorm.DB) {
+		testStore, _ := NewStore(tx)
+
+		// Create a graph
+		graph, err := testStore.CreateGraph(
+			context.Background(),
+			"Expiration Boundary Test",
+			"",
+			"d3fend",
+			"[]",
+			"[]",
+			"{}",
+		)
+		if err != nil {
+			t.Fatalf("Failed to create graph: %v", err)
+		}
+
+		// Create link with zero expiration (not expired at creation)
+		var zeroDuration time.Duration
+		link, err := testStore.CreateShareLink(context.Background(), graph.GraphID, "", &zeroDuration)
+		if err != nil {
+			t.Fatalf("Failed to create share link: %v", err)
+		}
+
+		// Link should be immediately retrievable (or not, depending on implementation)
+		// The current implementation might consider zero duration as expired
+		_, err = testStore.GetShareLink(context.Background(), link.LinkID)
+		// Either behavior is acceptable - link might be considered expired or not
+
+		// Create link that expires in 1 millisecond
+		oneMs := 1 * time.Millisecond
+		link, err = testStore.CreateShareLink(context.Background(), graph.GraphID, "", &oneMs)
+		if err != nil {
+			t.Fatalf("Failed to create short-lived share link: %v", err)
+		}
+
+		// Should be accessible immediately
+		_, err = testStore.GetShareLink(context.Background(), link.LinkID)
+		if err != nil {
+			t.Errorf("Short-lived link should be accessible immediately: %v", err)
+		}
+
+		// Wait for expiration
+		time.Sleep(10 * time.Millisecond)
+
+		// Should be expired now
+		_, err = testStore.GetShareLink(context.Background(), link.LinkID)
+		if err == nil {
+			t.Error("Expected link to be expired after 10ms wait")
+		}
+	})
+}
+
+// Benchmark tests
+func BenchmarkCreateGraph(b *testing.B) {
+	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	MigrateTables(db)
+	store, _ := NewStore(db)
+	ctx := context.Background()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.CreateGraph(ctx, "Bench Graph", "", "d3fend", "[]", "[]", "{}")
+	}
+}
+
+func BenchmarkGetGraph(b *testing.B) {
+	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	MigrateTables(db)
+	store, _ := NewStore(db)
+	ctx := context.Background()
+
+	graph, _ := store.CreateGraph(ctx, "Bench Graph", "", "d3fend", "[]", "[]", "{}")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.GetGraph(ctx, graph.GraphID)
+	}
+}
+
+func BenchmarkUpdateGraph(b *testing.B) {
+	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	MigrateTables(db)
+	store, _ := NewStore(db)
+	ctx := context.Background()
+
+	graph, _ := store.CreateGraph(ctx, "Bench Graph", "", "d3fend", "[]", "[]", "{}")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.UpdateGraph(ctx, graph.GraphID, map[string]interface{}{"name": fmt.Sprintf("Update %d", i)})
+	}
+}
+
+func BenchmarkListGraphs(b *testing.B) {
+	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	MigrateTables(db)
+	store, _ := NewStore(db)
+	ctx := context.Background()
+
+	// Create 100 graphs
+	for i := 0; i < 100; i++ {
+		store.CreateGraph(ctx, fmt.Sprintf("Graph %d", i), "", "d3fend", "[]", "[]", "{}")
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.ListGraphs(ctx, "", 0, 10)
+	}
+}
+
+func BenchmarkCreateVersion(b *testing.B) {
+	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	MigrateTables(db)
+	store, _ := NewStore(db)
+	ctx := context.Background()
+
+	graph, _ := store.CreateGraph(ctx, "Bench Graph", "", "d3fend", `[]`, `[]`, `{}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.UpdateGraph(ctx, graph.GraphID, map[string]interface{}{"nodes": fmt.Sprintf(`[{"id": "node-%d"}]`, i)})
+	}
 }

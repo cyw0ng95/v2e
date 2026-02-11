@@ -190,8 +190,17 @@ func TestGraphFSM_GetLastError(t *testing.T) {
 		if lastErr == nil {
 			t.Error("Expected last error to be set")
 		}
-		if lastErr.Error() != "test error" {
-			t.Errorf("Expected error message 'test error', got '%s'", lastErr.Error())
+		// Check if error is FSMError type
+		if !IsFSMError(lastErr) {
+			t.Errorf("Expected FSMError, got %T", lastErr)
+		}
+		// Check the underlying error message
+		var fsmErr *FSMError
+		if IsFSMError(lastErr) {
+			fsmErr = lastErr.(*FSMError)
+			if fsmErr.Err.Error() != "test error" {
+				t.Errorf("Expected underlying error 'test error', got '%s'", fsmErr.Err.Error())
+			}
 		}
 	})
 
