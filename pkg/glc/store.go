@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -347,8 +348,12 @@ func (s *Store) CreateShareLink(ctx context.Context, graphID string, password st
 	}
 
 	if password != "" {
-		// In production, hash the password properly
-		link.Password = password
+		// Hash the password using bcrypt with default cost (currently 10)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password: %w", err)
+		}
+		link.Password = string(hashedPassword)
 	}
 
 	if expiresIn != nil {
@@ -399,9 +404,11 @@ func (s *Store) GetGraphByShareLink(ctx context.Context, linkID, password string
 			return fmt.Errorf("share link expired")
 		}
 
-		// Validate password if set
-		if link.Password != "" && link.Password != password {
-			return fmt.Errorf("invalid password")
+		// Validate password if set (using bcrypt comparison)
+		if link.Password != "" {
+			if err := bcrypt.CompareHashAndPassword([]byte(link.Password), []byte(password)); err != nil {
+				return fmt.Errorf("invalid password")
+			}
 		}
 
 		// Increment view count within transaction
