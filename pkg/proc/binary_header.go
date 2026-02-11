@@ -200,9 +200,18 @@ func stringToFixedBytes(s string, size int) []byte {
 	return result
 }
 
-// fixedBytesToString converts a fixed-size byte array to a string
+// fixedBytesToString converts a fixed-size byte array to a string.
+// It handles the edge case where all bytes are zero (uninitialized or empty string)
+// by consistently returning an empty string, matching the behavior of stringToFixedBytes("").
 func fixedBytesToString(b []byte) string {
-	// Find the first null byte and return the string up to that point
+	// Handle empty slice edge case
+	if len(b) == 0 {
+		return ""
+	}
+
+	// Find the first null byte and return the string up to that point.
+	// For all-zero byte arrays (uninitialized fields), this returns "" at i=0,
+	// which is the correct and consistent behavior.
 	for i, c := range b {
 		if c == 0 {
 			return string(b[:i])
