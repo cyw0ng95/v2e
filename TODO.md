@@ -113,7 +113,6 @@
 | TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
 | TODO-148 | cmd/v2access | Optimization | Use sync.Pool for context creation in handlers.go:90 instead of creating new context per RPC call | 60 | Low | |
 | TODO-149 | cmd/v2access | Refactor | Group and namespace 65 log constants in constants.go by functionality or use enum | 80 | Low | |
-| TODO-150 | cmd/v2access | Documentation | Document ACCESS_STATIC_DIR environment variable in cmd/v2access/service.md | 10 | Low | |
 | TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |

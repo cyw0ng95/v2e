@@ -112,7 +112,10 @@ All available RPC methods are documented in the respective service documentation
 ## Configuration
 - **RPC Timeout**: Configurable via `config.json` under `access.rpc_timeout_seconds` (default: 30 seconds)
 - **Shutdown Timeout**: Configurable via `config.json` under `access.shutdown_timeout_seconds` (default: 10 seconds)
-- **Static Directory**: Configurable via `config.json` under `access.static_dir` (default: "website")
+- **Static Directory**:
+  - Configurable via `config.json` under `access.static_dir` (default: "website")
+  - Overridable via environment variable `ACCESS_STATIC_DIR` when running as subprocess
+  - Environment variable takes precedence over config file setting
 - **Server Address**: Configurable via `config.json` under `server.address` (default: "0.0.0.0:8080")
 
 ## Security Features
