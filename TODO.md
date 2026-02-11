@@ -93,6 +93,16 @@
 | TODO-098 | all | Refactor | Remove duplicate error handling patterns across cmd/* services with centralized error wrapper | 150 | Medium | |
 | TODO-099 | all | Test | Add race condition tests using -race flag for all critical path functions | 200 | High | |
 | TODO-100 | all | Refactor | Consolidate similar test setup/teardown code into test helpers package | 100 | Low | |
+| TODO-101 | website | Refactor | Review and optimize website/app/layout.tsx for code quality and performance | 80 | Medium | |
+| TODO-102 | website | Refactor | Review and optimize website/components/navbar.tsx for accessibility and responsiveness | 80 | Medium | |
+| TODO-103 | website | Refactor | Review and optimize website/components/session-control.tsx for state management | 80 | Medium | |
+| TODO-104 | website | Refactor | Review and optimize website/lib/rpc-client.ts for error handling and retry logic | 100 | Medium | |
+| TODO-105 | website | Refactor | Review and optimize website/app/glc/page.tsx and related components for performance | 120 | Medium | |
+| TODO-106 | website | Refactor | Review and optimize website/components/providers/ for code consistency and reusability | 100 | Medium | |
+| TODO-107 | website | Documentation | Add JSDoc comments to website/lib/types.ts for better type documentation | 60 | Low | |
+| TODO-108 | website | Refactor | Review and optimize website/app/page.tsx for bundle size and performance | 80 | Medium | |
+| TODO-109 | website | Test | Add unit tests for website/lib/utils.ts utility functions | 100 | Medium | |
+| TODO-110 | website | Refactor | Review and optimize website/components/cve-detail-modal.tsx for UX and performance | 80 | Medium | |
 
 ## TODO Management Guidelines
 
