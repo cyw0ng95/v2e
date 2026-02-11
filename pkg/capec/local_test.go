@@ -236,28 +236,29 @@ func TestUtilityFunctions(t *testing.T) {
 		// Japanese text: "これは日本語のテキストです" (This is Japanese text)
 		japaneseText := "これは日本語のテキストです"
 		// Each character is 3 bytes in UTF-8
-		truncated = truncateString(japaneseText, 10) // 10 bytes = 3 chars + 1 byte of 4th char
+		truncated = truncateString(japaneseText, 10) // 10 bytes = 3 chars (9 bytes) + 1 byte of 4th char
 		// Should truncate to 3 complete characters (9 bytes) to avoid invalid UTF-8
-		assert.Equal(t, "これ", truncated)
+		assert.Equal(t, "これは", truncated)
 		assert.True(t, utf8.ValidString(truncated), "truncated string should be valid UTF-8")
 
 		// Test with emoji (4-byte UTF-8 sequences)
 		emojiText := "Hello 👋 World 🌍 Test 🎉"
-		truncated = truncateString(emojiText, 12) // "Hello 👋" is 12 bytes
-		assert.Equal(t, "Hello 👋", truncated)
+		truncated = truncateString(emojiText, 12) // "Hello " (6) + 👋 (4) + " " (1) + "W" (1) = 12 bytes
+		assert.Equal(t, "Hello 👋 W", truncated)
 		assert.True(t, utf8.ValidString(truncated), "truncated emoji string should be valid UTF-8")
 
 		// Test truncation in middle of multi-byte sequence
 		mixedText := "ABC日本語XYZ"                 // ABC (3) + 日本語 (9) + XYZ (3) = 15 bytes
-		truncated = truncateString(mixedText, 8) // Should cut after "ABC" (6 bytes) + 2 bytes of "日"
-		// Should only include "ABC" to avoid cutting the multi-byte character
-		assert.Equal(t, "ABC", truncated)
+		truncated = truncateString(mixedText, 8) // Should cut at 8 bytes, but "日" is multi-byte
+		// Actual behavior: scans backward from byte 8, which lands in "日", goes back to start of "日" (byte 6)
+		assert.Equal(t, "ABC日", truncated)
 		assert.True(t, utf8.ValidString(truncated), "truncated mixed string should be valid UTF-8")
 
 		// Test edge case: single byte past a multi-byte boundary
 		chineseText := "测试文本"                      // Each Chinese character is 3 bytes
 		truncated = truncateString(chineseText, 4) // 1 char (3 bytes) + 1 byte
-		assert.Equal(t, "测", truncated)            // Should be 1 complete character
+		// Scans backward from byte 4, which is in "试", goes back to byte 3 (start of "试")
+		assert.Equal(t, "测", truncated) // Should be 1 complete character
 		assert.True(t, utf8.ValidString(truncated), "truncated Chinese string should be valid UTF-8")
 	})
 
