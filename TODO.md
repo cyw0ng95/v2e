@@ -73,12 +73,9 @@
 | TODO-080 | cmd/v2broker | Optimization | Implement request batching for frequently called RPC methods to reduce context switching overhead | 150 | Medium | |
 | TODO-081 | cmd/v2local | Refactor | Simplify database connection pooling by using generic pool wrapper instead of repeated SetMaxIdleConns/SetMaxOpenConns calls | 80 | Medium | |
 | TODO-082 | cmd/v2local | Feature | Add database query logging with execution time tracking to identify slow queries | 100 | Low | |
-| TODO-083 | cmd/v2local | Bug Fix | Fix potential SQLite database lock contention when multiple services access same database file simultaneously | 120 | High | |
 | TODO-084 | cmd/v2meta | Refactor | Extract provider FSM state transition logic into shared package to reduce code duplication across CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider | 250 | Medium | |
 | TODO-087 | cmd/v2meta | Optimization | Add provider health checks with automatic restart for providers in TERMINATED state that should be running | 120 | Medium | |
 | TODO-088 | cmd/v2remote | Refactor | Simplify HTTP client configuration by extracting into shared package with retry logic and timeout handling | 100 | Medium | |
-| TODO-089 | cmd/v2remote | Feature | Add rate limit detection with adaptive backoff using Retry-After header from HTTP responses | 150 | High | |
-| TODO-090 | cmd/v2remote | Bug Fix | Fix potential memory leak when streaming large responses from NVD API without properly closing response body | 80 | High | |
 | TODO-091 | cmd/v2remote | Optimization | Implement response caching for frequently accessed API endpoints (e.g., CVE by ID lookup) to reduce API calls | 120 | Medium | |
 | TODO-092 | cmd/v2sysmon | Refactor | Extract metric collection logic into reusable functions to reduce code duplication for CPU, memory, and disk monitoring | 80 | Medium | |
 | TODO-093 | cmd/v2sysmon | Feature | Add alert threshold configuration with webhook or email notifications when metrics exceed defined limits | 150 | Medium | |
@@ -126,7 +123,6 @@
 | TODO-149 | cmd/v2access | Refactor | Group and namespace 65 log constants in constants.go by functionality or use enum | 80 | Low | |
 | TODO-150 | cmd/v2access | Documentation | Document ACCESS_STATIC_DIR environment variable in cmd/v2access/service.md | 10 | Low | |
 | TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
-| TODO-156 | cmd/v2remote | Refactor | Extract common import control logic into reusable functions | 100 | Medium | |
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
 | TODO-161 | cmd/v2meta | Test | Add tests for FSM recovery scenarios | 150 | Medium | |
