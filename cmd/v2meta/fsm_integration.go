@@ -60,8 +60,11 @@ func initFSMInfrastructure(logger *common.Logger, runDBPath string, sp *subproce
 }
 
 // initFSMProviders initializes all FSM-based providers and registers them with macro FSM
+// Provider dependencies are configured to ensure correct startup order:
+// - CAPEC depends on CWE (CAPEC data references CWE weaknesses)
+// - ATT&CK depends on CAPEC (ATT&CK techniques may reference CAPEC patterns)
 func initFSMProviders(logger *common.Logger) error {
-	// CVE Provider
+	// CVE Provider (no dependencies)
 	cveProv, err := provider.NewCVEProvider("", storageDB, fsmSubprocess)
 	if err != nil {
 		logger.Warn("Failed to create CVE provider (skipping): %v", err)
@@ -72,7 +75,7 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// CWE Provider
+	// CWE Provider (no dependencies)
 	cweProv, err := cweprovider.NewCWEProvider("", storageDB, fsmSubprocess)
 	if err != nil {
 		logger.Warn("Failed to create CWE provider (skipping): %v", err)
@@ -83,8 +86,9 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// CAPEC Provider
-	capecProv, err := capecprovider.NewCAPECProvider("", storageDB, fsmSubprocess)
+	// CAPEC Provider (depends on CWE)
+	capecDependencies := []string{"cwe"}
+	capecProv, err := capecprovider.NewCAPECProvider("", storageDB, fsmSubprocess, capecDependencies)
 	if err != nil {
 		logger.Warn("Failed to create CAPEC provider (skipping): %v", err)
 	} else {
@@ -94,8 +98,9 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// ATT&CK Provider
-	attackProv, err := attackprovider.NewATTACKProvider("", storageDB)
+	// ATT&CK Provider (depends on CAPEC)
+	attackDependencies := []string{"capec"}
+	attackProv, err := attackprovider.NewATTACKProvider("", storageDB, attackDependencies)
 	if err != nil {
 		logger.Warn("Failed to create ATT&CK provider (skipping): %v", err)
 	} else {
@@ -105,7 +110,7 @@ func initFSMProviders(logger *common.Logger) error {
 		}
 	}
 
-	// CCE Provider
+	// CCE Provider (no dependencies)
 	cceProv, err := cceprovider.NewCCEProvider("", storageDB)
 	if err != nil {
 		logger.Warn("Failed to create CCE provider (skipping): %v", err)

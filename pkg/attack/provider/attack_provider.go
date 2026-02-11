@@ -20,7 +20,8 @@ type ATTACKProvider struct {
 
 // NewATTACKProvider creates a new ATT&CK provider with FSM support
 // localPath is the path to ATT&CK Excel file
-func NewATTACKProvider(localPath string, store *storage.Store) (*ATTACKProvider, error) {
+// dependencies is a list of provider IDs that must complete before this provider
+func NewATTACKProvider(localPath string, store *storage.Store, dependencies []string) (*ATTACKProvider, error) {
 	if localPath == "" {
 		localPath = "assets/enterprise-attack.xlsx"
 	}
@@ -29,12 +30,13 @@ func NewATTACKProvider(localPath string, store *storage.Store) (*ATTACKProvider,
 		localPath: localPath,
 	}
 
-	// Create base FSM with custom executor
+	// Create base FSM with custom executor and dependencies
 	base, err := fsm.NewBaseProviderFSM(fsm.ProviderConfig{
 		ID:           "attack",
 		ProviderType: "attack",
 		Storage:      store,
 		Executor:     provider.execute,
+		Dependencies: dependencies,
 	})
 	if err != nil {
 		return nil, err

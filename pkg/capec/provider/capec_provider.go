@@ -30,7 +30,8 @@ type CAPECProvider struct {
 // NewCAPECProvider creates a new CAPEC provider with FSM support
 // localPath is the path to CAPEC XML file
 // sp is the subprocess for RPC communication (can be nil for testing)
-func NewCAPECProvider(localPath string, store *storage.Store, sp *subprocess.Subprocess) (*CAPECProvider, error) {
+// dependencies is a list of provider IDs that must complete before this provider
+func NewCAPECProvider(localPath string, store *storage.Store, sp *subprocess.Subprocess, dependencies []string) (*CAPECProvider, error) {
 	if localPath == "" {
 		localPath = "assets/capec_contents_latest.xml"
 	}
@@ -43,12 +44,13 @@ func NewCAPECProvider(localPath string, store *storage.Store, sp *subprocess.Sub
 		sp:         sp,
 	}
 
-	// Create base FSM with custom executor
+	// Create base FSM with custom executor and dependencies
 	base, err := fsm.NewBaseProviderFSM(fsm.ProviderConfig{
 		ID:           "capec",
 		ProviderType: "capec",
 		Storage:      store,
 		Executor:     provider.execute,
+		Dependencies: dependencies,
 	})
 	if err != nil {
 		return nil, err
