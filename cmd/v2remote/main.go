@@ -11,6 +11,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -209,9 +210,8 @@ func createGetCVEByIDHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		// Fetch CVE from NVD
 		response, err := fetcher.FetchCVEByID(req.CVEID)
 		if err != nil {
-			// Check if this is a rate limit error
-			if err == remote.ErrRateLimited {
-				return subprocess.NewErrorResponse(msg, ErrMsgNVDRateLimited), nil
+			if errMsg := checkRateLimitError(msg, err); errMsg != nil {
+				return errMsg, nil
 			}
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf(ErrMsgFailedFetchCVE, err)), nil
 		}
@@ -246,6 +246,17 @@ func createGetCVECntHandler(fetcher *remote.Fetcher) subprocess.Handler {
 		validator.ValidateIntRange(req.ResultsPerPage, 1, 2000, "results_per_page")
 		if validator.HasErrors() {
 			return subprocess.NewErrorResponse(msg, validator.Error()), nil
+		}
+
+		// Parse pagination request with defaults
+		req, err := parsePaginationRequest(msg, 0, 1)
+		if err != nil {
+			return subprocess.NewErrorResponse(msg, err.Error()), nil
+		}
+
+		// Validate pagination parameters
+		if err := validatePagination(req); err != nil {
+			return subprocess.NewErrorResponse(msg, err.Error()), nil
 		}
 
 		// Fetch CVEs to get the total count
