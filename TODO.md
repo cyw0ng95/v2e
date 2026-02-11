@@ -37,7 +37,6 @@
 | TODO-040 | testutils | Refactor | Extract common test patterns into helpers (database fixtures, assertion helpers, context factories) | 100 | Low | |
 | TODO-042 | urn | Test | Add property-based tests using testing/quick for URN parsing edge cases | 120 | Medium | |
 | TODO-043 | vconfig | Feature | Add configuration validation with detailed error messages indicating which option failed and why | 120 | High | |
-| TODO-044 | vconfig | Bug Fix | Fix TUI rendering issues on terminals with non-standard dimensions (handle resize gracefully) | 80 | High | |
 | TODO-045 | vconfig | Feature | Add search/filter functionality in TUI to quickly locate configuration options by name or description | 150 | Medium | |
 | TODO-046 | vconfig | Refactor | Extract TUI event handling logic into separate package to improve testability and reduce coupling | 180 | Medium | |
 | TODO-047 | vconfig | Feature | Implement configuration profiles to allow switching between different build configurations (dev, test, prod) | 200 | Medium | |
@@ -48,7 +47,7 @@
 | TODO-052 | notes | Documentation | Add learning strategy comparison guide explaining when to use BFS vs DFS navigation | 60 | Low | |
 | TODO-053 | proc | Documentation | Document message flow and serialization format with examples of each message type | 100 | Low | |
 | TODO-054 | all | Refactor | Standardize error codes across all packages with custom error types and error code constants | 400 | Medium | |
-| TODO-055 | all | Feature | Add distributed tracing support with OpenTelemetry for request tracking across services | 500 | Low | |
+| TODO-055 | all | Feature | Add distributed tracing support with OpenTelemetry for request tracking across services | 500 | Low | WONTFIX |
 | TODO-056 | all | Test | Add integration test suite for broker-subprocess communication covering all RPC methods | 300 | High | |
 | TODO-057 | all | Optimization | Profile and optimize hot paths across all packages using pprof and benchmarking | 200 | Medium | |
 | TODO-058 | build.sh | Refactor | Extract common logging functions into a separate script library (runenv.sh and build.sh both use identical logging) | 80 | Medium | |
@@ -110,9 +109,7 @@
 | TODO-161 | cmd/v2meta | Test | Add tests for FSM recovery scenarios | 150 | Medium | |
 | TODO-166 | cmd/v2local | Documentation | Document database schema and access patterns | 60 | Low | |
 | TODO-167 | cmd/v2local | Documentation | Document RPC handlers in cmd/v2local/service.md | 80 | Low | |
-| TODO-168 | website | Bug Fix | Add global error boundary for RPC failures - implement in app/layout.tsx to catch errors and show user-friendly messages with retry options | 100 | High | |
 | TODO-169 | website | Bug Fix | Fix race conditions in hooks during rapid unmount - add AbortController usage and cleanup functions to data-fetching hooks in lib/hooks.ts | 150 | High | |
-| TODO-170 | website | Bug Fix | Add timeout handling to all long-running operations with configurable timeout options and user-facing progress indicators | 120 | Medium | |
 | TODO-171 | website | Optimization | Implement React.memo optimization for table row components to improve scroll performance for large datasets | 80 | Medium | |
 | TODO-172 | website | Optimization | Implement virtualization for horizontal tab lists when there are 10+ tabs | 100 | Low | |
 | TODO-173 | website | Optimization | Add route-based code splitting for major pages using Next.js dynamic imports | 60 | Medium | |
@@ -133,7 +130,6 @@
 | TODO-193 | analysis | Feature | Implement incremental graph save to avoid clearing entire bucket on each SaveGraph call | 200 | Medium | |
 | TODO-194 | analysis | Feature | Add batch operations API for saving multiple nodes/edges in single transaction | 150 | Medium | |
 | TODO-195 | rpc-client | Refactor | Consolidate duplicate mock response logic between getMockResponseForCache and getMockResponse (~600 lines of duplication) | 100 | Medium | |
-| TODO-197 | rpc-client | Bug Fix | Add proper cleanup strategy for pendingRequests Map to prevent memory leaks from failed requests | 60 | Medium | |
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
 | TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
 | TODO-208 | ume | Refactor | Add backpressure mechanism to message routing - when route channels are full, messages are dropped with "channel full" error instead of blocking send, implement proper queue or buffer | 200 | High | |
@@ -150,7 +146,6 @@
 | TODO-225 | ume | Feature | Implement SelectTarget method in Router interface - task description mentioned SelectTarget method but router interface doesn't define it, routing cannot select targets dynamically | 150 | High | |
 | TODO-226 | ume | Refactor | Add pool statistics for Message Pool - ResponseBufferPool is missing hit/miss tracking which is needed for optimization and debugging | 80 | Medium | |
 | TODO-227 | ume | Bug Fix | Fix UnmarshalBatch not using pooled messages - performance impact for bulk message operations, defeats pool optimization purpose | 100 | High | |
-| TODO-228 | sysmon | Bug Fix | Fix collectMetric helper unused - collectMetric() helper doesn't handle errors or return anything, it's unused dead code that should be removed or integrated properly | 40 | Low | |
 | TODO-229 | sysmon | Feature | Add configurable sampling intervals - setSamplingInterval() and getSamplingInterval() functions exist but are not exposed via RPC, users cannot configure sampling rates at runtime | 100 | Medium | |
 | TODO-230 | sysmon | Feature | Add active/passive health monitoring - service only responds to RPCGetSysMetrics requests, there's no push-based or scheduled monitoring that could alert on threshold crossings or process death | 200 | High | |
 | TODO-231 | sysmon | Feature | Add process-level metrics collection - missing per-process resource usage monitoring (goroutine count, memory per subprocess), sysmon could query broker's process stats and expose new RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
