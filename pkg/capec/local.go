@@ -311,14 +311,19 @@ func truncateString(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}
+	if n <= 0 {
+		return ""
+	}
 	// Find the last complete UTF-8 rune boundary before position n
 	// UTF-8 continuation bytes have the form 10xxxxxx (0x80-0xBF)
 	// We need to find the last byte that is NOT a continuation byte
-	for i := n; i > 0; i-- {
-		// Check if byte i is not a UTF-8 continuation byte
-		// UTF-8 continuation bytes have top two bits set to 10
-		if s[i] < 0x80 || s[i] >= 0xC0 {
-			return s[:i]
+	// Start from n-1 (since we want to include byte at position n-1 at most)
+	for i := n - 1; i >= 0; i-- {
+		b := s[i]
+		// ASCII character (0x00-0x7F) or start of multi-byte sequence (0xC0-0xFF)
+		// Continuation bytes are 0x80-0xBF (top two bits are 10)
+		if b < 0x80 || b >= 0xC0 {
+			return s[:i+1]
 		}
 	}
 	// If no valid boundary found, return empty string to avoid invalid UTF-8
