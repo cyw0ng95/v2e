@@ -2,7 +2,6 @@ package transport
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"sync"
 	"syscall"
@@ -274,17 +273,11 @@ func (shm *SharedMemory) SendFd(conn *os.File) error {
 
 	socketFd := int(conn.Fd())
 
-	rights := unix.UnixRights(int(shm.fd))
-	rightsBytes := append([]byte(nil), rights...)
-
-	if len(rightsBytes) == 0 {
-		return fmt.Errorf("failed to serialize rights")
-	}
+	rights := unix.UnixRights(shm.fd)
 
 	data := []byte("FD")
-	oob := append([]byte(nil), rights...)
 
-	err := syscall.Sendmsg(socketFd, data, oob, 0)
+	err := unix.Sendmsg(socketFd, data, rights, nil, 0)
 	if err != nil {
 		return fmt.Errorf("sendmsg failed: %w", err)
 	}
@@ -296,9 +289,9 @@ func RecvFd(conn *os.File) (*SharedMemory, error) {
 	socketFd := int(conn.Fd())
 
 	buf := make([]byte, 32)
-	oob := make([]byte, unix.CmsgSpace(1))
+	oob := make([]byte, unix.CmsgSpace(4))
 
-	n, oobn, flags, err := syscall.Recvmsg(socketFd, buf, oob, 0)
+	n, oobn, flags, _, err := unix.Recvmsg(socketFd, buf, oob, 0)
 	if err != nil {
 		return nil, fmt.Errorf("recvmsg failed: %w", err)
 	}
