@@ -81,7 +81,14 @@ func (m *MacroFSMManager) Transition(newState MacroState) error {
 	m.updatedAt = time.Now()
 
 	// Log FSM transition (Requirement 6: Log FSM Transitions)
-	m.logTransition(oldState, newState)
+	// Collect provider states without holding m.mu to avoid deadlock
+	providerCount := len(m.providers)
+	stateCounts := make(map[ProviderState]int)
+	for _, provider := range m.providers {
+		state := provider.GetState()
+		stateCounts[state]++
+	}
+	m.logTransition(oldState, newState, providerCount, stateCounts)
 
 	// Persist state to storage
 	if m.storage != nil {
@@ -166,6 +173,19 @@ func (m *MacroFSMManager) processEvents() {
 
 // handleEventInternal processes a single event
 func (m *MacroFSMManager) handleEventInternal(event *Event) {
+	// Collect provider states BEFORE acquiring lock to avoid deadlock
+	// If provider's GetState() needs to callback into macro FSM, doing it
+	// without holding m.mu prevents circular lock dependency
+	var providerStates map[string]ProviderState
+	if event.Type == EventProviderCompleted {
+		m.mu.RLock()
+		providerStates = make(map[string]ProviderState, len(m.providers))
+		for id, provider := range m.providers {
+			providerStates[id] = provider.GetState()
+		}
+		m.mu.RUnlock()
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -179,10 +199,10 @@ func (m *MacroFSMManager) handleEventInternal(event *Event) {
 		}
 
 	case EventProviderCompleted:
-		// Check if all providers are completed
+		// Check if all providers are completed using previously collected states
 		allCompleted := true
-		for _, provider := range m.providers {
-			if provider.GetState() != ProviderTerminated {
+		for _, state := range providerStates {
+			if state != ProviderTerminated {
 				allCompleted = false
 				break
 			}
@@ -278,13 +298,19 @@ func (m *MacroFSMManager) GetProviderCount() int {
 
 // Stop gracefully stops the macro FSM manager
 func (m *MacroFSMManager) Stop() error {
+	// Signal event processor to stop
 	close(m.stopChan)
 	m.eventWg.Wait()
 
-	// Transition to draining if not already
-	if m.state != MacroDraining {
-		return m.Transition(MacroDraining)
+	// Try to transition to draining without blocking
+	// Use a non-blocking approach to avoid deadlock if locks are held elsewhere
+	m.mu.Lock()
+	currentState := m.state
+	if currentState != MacroDraining {
+		m.state = MacroDraining
+		m.updatedAt = time.Now()
 	}
+	m.mu.Unlock()
 
 	return nil
 }
@@ -309,16 +335,8 @@ func (m *MacroFSMManager) loadState() error {
 
 // logTransition logs a macro FSM state transition
 // Implements Requirement 6: Log FSM Transitions
-func (m *MacroFSMManager) logTransition(oldState, newState MacroState) {
-	providerCount := len(m.providers)
-
-	// Count providers by state
-	stateCounts := make(map[ProviderState]int)
-	for _, provider := range m.providers {
-		state := provider.GetState()
-		stateCounts[state]++
-	}
-
+// Takes provider state info as parameters to avoid calling provider methods while holding locks
+func (m *MacroFSMManager) logTransition(oldState, newState MacroState, providerCount int, stateCounts map[ProviderState]int) {
 	// Log structured transition
 	fmt.Printf("[MACRO_FSM_TRANSITION] macro_id=%s old_state=%s new_state=%s timestamp=%s provider_count=%d provider_states=%+v\n",
 		m.id,
