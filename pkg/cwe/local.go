@@ -374,25 +374,11 @@ func (s *LocalCWEStore) ImportFromJSON(jsonPath string) error {
 	})
 }
 
-// GetByID retrieves a CWEItem by ID.
-func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error) {
-	var m CWEItemModel
-	if err := s.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-	item := &CWEItem{
-		ID:                  m.ID,
-		Name:                m.Name,
-		Abstraction:         m.Abstraction,
-		Structure:           m.Structure,
-		Status:              m.Status,
-		Description:         m.Description,
-		ExtendedDescription: m.ExtendedDescription,
-		LikelihoodOfExploit: m.LikelihoodOfExploit,
-	}
+// loadCWEFields loads all nested fields for a CWE item.
+func (s *LocalCWEStore) loadCWEFields(ctx context.Context, cweID string, item *CWEItem) {
 	// RelatedWeaknesses
 	var rws []RelatedWeaknessModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&rws)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&rws)
 	for _, rw := range rws {
 		item.RelatedWeaknesses = append(item.RelatedWeaknesses, RelatedWeakness{
 			Nature:  rw.Nature,
@@ -403,7 +389,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// WeaknessOrdinalities
 	var wos []WeaknessOrdinalityModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&wos)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&wos)
 	for _, wo := range wos {
 		item.WeaknessOrdinalities = append(item.WeaknessOrdinalities, WeaknessOrdinality{
 			Ordinality:  wo.Ordinality,
@@ -412,7 +398,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// DetectionMethods
 	var dms []DetectionMethodModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&dms)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&dms)
 	for _, dm := range dms {
 		item.DetectionMethods = append(item.DetectionMethods, DetectionMethod{
 			DetectionMethodID:  dm.DetectionMethodID,
@@ -424,7 +410,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// Mitigations
 	var mts []MitigationModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&mts)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&mts)
 	for _, mt := range mts {
 		phase := []string{}
 		if mt.Phase != "" {
@@ -441,7 +427,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// DemonstrativeExamples
 	var des []DemonstrativeExampleModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&des)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&des)
 	entriesByID := make(map[string][]DemonstrativeEntry)
 	for _, de := range des {
 		entriesByID[de.EntryID] = append(entriesByID[de.EntryID], DemonstrativeEntry{
@@ -461,7 +447,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// ObservedExamples
 	var oes []ObservedExampleModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&oes)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&oes)
 	for _, oe := range oes {
 		item.ObservedExamples = append(item.ObservedExamples, ObservedExample{
 			Reference:   oe.Reference,
@@ -471,7 +457,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// TaxonomyMappings
 	var tms []TaxonomyMappingModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&tms)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&tms)
 	for _, tm := range tms {
 		item.TaxonomyMappings = append(item.TaxonomyMappings, TaxonomyMapping{
 			TaxonomyName: tm.TaxonomyName,
@@ -482,7 +468,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// Notes
 	var ns []NoteModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&ns)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&ns)
 	for _, n := range ns {
 		item.Notes = append(item.Notes, Note{
 			Type: n.Type,
@@ -491,7 +477,7 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 	}
 	// ContentHistory
 	var chs []ContentHistoryModel
-	s.db.WithContext(ctx).Where("cwe_id = ?", id).Find(&chs)
+	s.db.WithContext(ctx).Where("cwe_id = ?", cweID).Find(&chs)
 	for _, ch := range chs {
 		item.ContentHistory = append(item.ContentHistory, ContentHistory{
 			Type:                     ch.Type,
@@ -519,7 +505,25 @@ func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error
 			Version:                  ch.Version,
 		})
 	}
-	// Add similar logic for other nested fields as needed
+}
+
+// GetByID retrieves a CWEItem by ID.
+func (s *LocalCWEStore) GetByID(ctx context.Context, id string) (*CWEItem, error) {
+	var m CWEItemModel
+	if err := s.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	item := &CWEItem{
+		ID:                  m.ID,
+		Name:                m.Name,
+		Abstraction:         m.Abstraction,
+		Structure:           m.Structure,
+		Status:              m.Status,
+		Description:         m.Description,
+		ExtendedDescription: m.ExtendedDescription,
+		LikelihoodOfExploit: m.LikelihoodOfExploit,
+	}
+	s.loadCWEFields(ctx, id, item)
 	return item, nil
 }
 
@@ -546,136 +550,7 @@ func (s *LocalCWEStore) ListCWEsPaginated(ctx context.Context, offset, limit int
 			ExtendedDescription: m.ExtendedDescription,
 			LikelihoodOfExploit: m.LikelihoodOfExploit,
 		}
-		// RelatedWeaknesses
-		var rws []RelatedWeaknessModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&rws)
-		for _, rw := range rws {
-			item.RelatedWeaknesses = append(item.RelatedWeaknesses, RelatedWeakness{
-				Nature:  rw.Nature,
-				CweID:   rw.CweID,
-				ViewID:  rw.ViewID,
-				Ordinal: rw.Ordinal,
-			})
-		}
-		// WeaknessOrdinalities
-		var wos []WeaknessOrdinalityModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&wos)
-		for _, wo := range wos {
-			item.WeaknessOrdinalities = append(item.WeaknessOrdinalities, WeaknessOrdinality{
-				Ordinality:  wo.Ordinality,
-				Description: wo.Description,
-			})
-		}
-		// DetectionMethods
-		var dms []DetectionMethodModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&dms)
-		for _, dm := range dms {
-			item.DetectionMethods = append(item.DetectionMethods, DetectionMethod{
-				DetectionMethodID:  dm.DetectionMethodID,
-				Method:             dm.Method,
-				Description:        dm.Description,
-				Effectiveness:      dm.Effectiveness,
-				EffectivenessNotes: dm.EffectivenessNotes,
-			})
-		}
-		// Mitigations
-		var mts []MitigationModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&mts)
-		for _, mt := range mts {
-			phase := []string{}
-			if mt.Phase != "" {
-				phase = strings.Split(strings.TrimSpace(mt.Phase), ",")
-			}
-			item.PotentialMitigations = append(item.PotentialMitigations, Mitigation{
-				MitigationID:       mt.MitigationID,
-				Phase:              phase,
-				Strategy:           mt.Strategy,
-				Description:        mt.Description,
-				Effectiveness:      mt.Effectiveness,
-				EffectivenessNotes: mt.EffectivenessNotes,
-			})
-		}
-		// DemonstrativeExamples (group by EntryID)
-		var des []DemonstrativeExampleModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&des)
-		entriesByID := make(map[string][]DemonstrativeEntry)
-		for _, de := range des {
-			entriesByID[de.EntryID] = append(entriesByID[de.EntryID], DemonstrativeEntry{
-				IntroText:   de.IntroText,
-				BodyText:    de.BodyText,
-				Nature:      de.Nature,
-				Language:    de.Language,
-				ExampleCode: de.ExampleCode,
-				Reference:   de.Reference,
-			})
-		}
-		for entryID, entries := range entriesByID {
-			item.DemonstrativeExamples = append(item.DemonstrativeExamples, DemonstrativeExample{
-				ID:      entryID,
-				Entries: entries,
-			})
-		}
-		// ObservedExamples
-		var oes []ObservedExampleModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&oes)
-		for _, oe := range oes {
-			item.ObservedExamples = append(item.ObservedExamples, ObservedExample{
-				Reference:   oe.Reference,
-				Description: oe.Description,
-				Link:        oe.Link,
-			})
-		}
-		// TaxonomyMappings
-		var tms []TaxonomyMappingModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&tms)
-		for _, tm := range tms {
-			item.TaxonomyMappings = append(item.TaxonomyMappings, TaxonomyMapping{
-				TaxonomyName: tm.TaxonomyName,
-				EntryName:    tm.EntryName,
-				EntryID:      tm.EntryID,
-				MappingFit:   tm.MappingFit,
-			})
-		}
-		// Notes
-		var ns []NoteModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&ns)
-		for _, n := range ns {
-			item.Notes = append(item.Notes, Note{
-				Type: n.Type,
-				Note: n.Note,
-			})
-		}
-		// ContentHistory
-		var chs []ContentHistoryModel
-		s.db.WithContext(ctx).Where("cwe_id = ?", m.ID).Find(&chs)
-		for _, ch := range chs {
-			item.ContentHistory = append(item.ContentHistory, ContentHistory{
-				Type:                     ch.Type,
-				SubmissionName:           ch.SubmissionName,
-				SubmissionOrganization:   ch.SubmissionOrganization,
-				SubmissionDate:           ch.SubmissionDate,
-				SubmissionVersion:        ch.SubmissionVersion,
-				SubmissionReleaseDate:    ch.SubmissionReleaseDate,
-				SubmissionComment:        ch.SubmissionComment,
-				ModificationName:         ch.ModificationName,
-				ModificationOrganization: ch.ModificationOrganization,
-				ModificationDate:         ch.ModificationDate,
-				ModificationVersion:      ch.ModificationVersion,
-				ModificationReleaseDate:  ch.ModificationReleaseDate,
-				ModificationComment:      ch.ModificationComment,
-				ContributionName:         ch.ContributionName,
-				ContributionOrganization: ch.ContributionOrganization,
-				ContributionDate:         ch.ContributionDate,
-				ContributionVersion:      ch.ContributionVersion,
-				ContributionReleaseDate:  ch.ContributionReleaseDate,
-				ContributionComment:      ch.ContributionComment,
-				ContributionType:         ch.ContributionType,
-				PreviousEntryName:        ch.PreviousEntryName,
-				Date:                     ch.Date,
-				Version:                  ch.Version,
-			})
-		}
-		// Add similar logic for other nested fields as needed
+		s.loadCWEFields(ctx, m.ID, &item)
 		items = append(items, item)
 	}
 	return items, total, nil

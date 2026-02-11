@@ -239,16 +239,12 @@ func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 			return subprocess.NewErrorResponse(msg, "provider_id parameter required"), nil
 		}
 
-		provider := GetFSMProvider(providerID)
-		if provider == nil {
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("provider not found: %s", providerID)), nil
-		}
-
-		if err := provider.Start(); err != nil {
+		// Use macro FSM's dependency-aware startup
+		if err := macroFSM.StartProviderWithDependencyCheck(providerID); err != nil {
 			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to start provider: %v", err)), nil
 		}
 
-		logger.Info("Started provider: %s", providerID)
+		logger.Info("Started provider with dependency check: %s", providerID)
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"success":     true,
 			"provider_id": providerID,
