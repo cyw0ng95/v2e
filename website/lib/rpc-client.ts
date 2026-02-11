@@ -275,13 +275,17 @@ const MOCK_ASVS_DATA: ASVSItem = {
 // Case Conversion Utilities
 // ============================================================================
 
+// Pre-compiled regex patterns for case conversion (optimized for performance)
+const SNAKE_CASE_REGEX = /_([a-zA-Z0-9])/g;
+const CAMEL_CASE_REGEX = /[A-Z]/g;
+
 /**
  * Convert PascalCase/snake_case to camelCase
  */
 function toCamelCase(str: string): string {
   // Handle snake_case -> camelCase
   if (str.indexOf('_') >= 0) {
-    return str.replace(/_([a-zA-Z0-9])/g, (_, letter) => letter.toUpperCase());
+    return str.replace(SNAKE_CASE_REGEX, (_, letter) => letter.toUpperCase());
   }
 
   // If the key is ALL CAPS (e.g. "ID"), lower-case it entirely
@@ -321,7 +325,7 @@ function convertKeysToCamelCase<T>(obj: unknown): T {
  * Convert camelCase to snake_case
  */
 function toSnakeCase(str: string): string {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+  return str.replace(CAMEL_CASE_REGEX, (letter) => `_${letter.toLowerCase()}`);
 }
 
 /**
