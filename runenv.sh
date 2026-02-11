@@ -59,22 +59,8 @@ log_error() {
 BUILD_DIR=".build"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Function to run container environment
-run_container_env() {
-    local os_name=$1
-    shift  # Remove the first argument (os_name) to get remaining arguments
-    log_info "Detected $os_name, starting container environment..."
-    
-    # Check if Podman is available
-    if ! command -v podman &> /dev/null; then
-        log_error "Podman is required but not installed or not in PATH"
-        if [[ "$os_name" == "macOS" ]]; then
-            log_info "Install Podman with: brew install podman"
-        fi
-        exit 1
-    fi
-    
-    # Build container image with caching optimization
+# Build or reuse existing Podman container image
+build_container_image() {
     log_info "Checking for existing development container image..."
     if ! podman images v2e-dev-container | grep -q "v2e-dev-container"; then
         log_info "Building development container from assets/dev.Containerfile..."
@@ -85,7 +71,26 @@ run_container_env() {
     else
         log_info "Using existing v2e-dev-container image"
     fi
-    
+}
+
+# Function to run container environment
+run_container_env() {
+    local os_name=$1
+    shift  # Remove the first argument (os_name) to get remaining arguments
+    log_info "Detected $os_name, starting container environment..."
+
+    # Check if Podman is available
+    if ! command -v podman &> /dev/null; then
+        log_error "Podman is required but not installed or not in PATH"
+        if [[ "$os_name" == "macOS" ]]; then
+            log_info "Install Podman with: brew install podman"
+        fi
+        exit 1
+    fi
+
+    # Build or reuse container image
+    build_container_image
+
     # Create Go module cache directory if it doesn't exist
     mkdir -p "${SCRIPT_DIR}/${BUILD_DIR}/pkg/mod"
     
