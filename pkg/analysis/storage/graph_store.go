@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -12,6 +13,14 @@ import (
 	"github.com/cyw0ng95/v2e/pkg/graph"
 	"github.com/cyw0ng95/v2e/pkg/urn"
 )
+
+// jsonBufferPool is a sync.Pool for reusing JSON buffers
+var jsonBufferPool = sync.Pool{
+	New: func() interface{} {
+		buf := make([]byte, 0, 1024) // 1KB buffers for JSON
+		return &buf
+	},
+}
 
 // Bucket names for graph data
 var (
@@ -104,6 +113,10 @@ func (s *GraphStore) SaveGraph(g *graph.Graph) error {
 		// Get buckets after clearing
 		nodesBucket := tx.Bucket(BucketNodes)
 		edgesBucket := tx.Bucket(BucketEdges)
+
+	// Get buffer from pool
+		buf := jsonBufferPool.Get().(*[]byte)
+		defer jsonBufferPool.Put(buf)
 
 		// Save all nodes
 		nodeCount := 0
