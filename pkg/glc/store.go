@@ -88,8 +88,12 @@ func (s *Store) UpdateGraph(ctx context.Context, graphID string, updates map[str
 		}
 
 		// Create version snapshot before update (if nodes/edges changed)
-		_, hasNodes := updates["nodes"]
-		_, hasEdges := updates["edges"]
+		_, hasNodesKey := updates["nodes"]
+		_, hasEdgesKey := updates["edges"]
+		nodesValue := updates["nodes"]
+		edgesValue := updates["edges"]
+		hasNodes := hasNodesKey && nodesValue != nil
+		hasEdges := hasEdgesKey && edgesValue != nil
 		if hasNodes || hasEdges {
 			version := &GraphVersionModel{
 				GraphDBID: graph.ID,
@@ -413,8 +417,11 @@ func (s *Store) DeleteShareLink(ctx context.Context, linkID string) error {
 }
 
 // generateLinkID generates a random link ID
+// length specifies the number of hex characters (not bytes)
 func generateLinkID(length int) (string, error) {
-	bytes := make([]byte, length)
+	// Calculate bytes needed: 1 byte = 2 hex characters
+	byteLen := (length + 1) / 2
+	bytes := make([]byte, byteLen)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
