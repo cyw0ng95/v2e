@@ -527,14 +527,9 @@ func (m *MacroFSMManager) GetStats() map[string]interface{} {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	stats := map[string]interface{}{
-		"id":              m.id,
-		"state":           string(m.state),
-		"provider_count":  len(m.providers),
-		"created_at":      m.createdAt.Format(time.RFC3339),
-		"updated_at":      m.updatedAt.Format(time.RFC3339),
-		"event_queue_len": len(m.eventChan),
-	}
+	stats := buildBaseStats(m.id, string(m.state), m.createdAt, m.updatedAt)
+	stats["provider_count"] = len(m.providers)
+	stats["event_queue_len"] = len(m.eventChan)
 
 	// Count providers by state
 	stateCount := make(map[string]int)

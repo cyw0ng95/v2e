@@ -27,6 +27,17 @@ var (
 	}
 )
 
+// buildBaseStats builds common statistics map with id, state, and timestamps.
+// This is a shared helper for both BaseProviderFSM and MacroFSMManager GetStats().
+func buildBaseStats(id string, state string, createdAt, updatedAt time.Time) map[string]interface{} {
+	return map[string]interface{}{
+		"id":         id,
+		"state":      state,
+		"created_at": createdAt.Format(time.RFC3339),
+		"updated_at": updatedAt.Format(time.RFC3339),
+	}
+}
+
 // BaseProviderFSM provides a base implementation of ProviderFSM
 // Concrete providers (CVE, CWE, etc.) can embed this and override Execute()
 type BaseProviderFSM struct {
@@ -209,17 +220,13 @@ func (p *BaseProviderFSM) GetStats() map[string]interface{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	return map[string]interface{}{
-		"id":              p.id,
-		"provider_type":   p.providerType,
-		"state":           string(p.state),
-		"last_checkpoint": p.lastCheckpoint,
-		"processed_count": atomic.LoadInt64(&p.processedCount),
-		"error_count":     atomic.LoadInt64(&p.errorCount),
-		"permits_held":    atomic.LoadInt32(&p.permitsHeld),
-		"created_at":      p.createdAt.Format(time.RFC3339),
-		"updated_at":      p.updatedAt.Format(time.RFC3339),
-	}
+	stats := buildBaseStats(p.id, string(p.state), p.createdAt, p.updatedAt)
+	stats["provider_type"] = p.providerType
+	stats["last_checkpoint"] = p.lastCheckpoint
+	stats["processed_count"] = atomic.LoadInt64(&p.processedCount)
+	stats["error_count"] = atomic.LoadInt64(&p.errorCount)
+	stats["permits_held"] = atomic.LoadInt32(&p.permitsHeld)
+	return stats
 }
 
 // Transition attempts to transition to a new state

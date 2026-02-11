@@ -229,6 +229,9 @@ func (b *Broker) ListProcesses() []*ProcessInfo {
 func (b *Broker) Shutdown() error {
 	b.logger.Info("Shutting down broker")
 
+	// Step 0: Stop health monitoring
+	b.StopHealthMonitoring()
+
 	// Step 1: Cancel the broker context to stop accepting new requests
 	b.cancel()
 
