@@ -6,13 +6,23 @@ import (
 
 // ResponseBufferPool manages a pool of response buffers
 type ResponseBufferPool struct {
-	mu         sync.RWMutex
-	smallPool  *sync.Pool
-	mediumPool *sync.Pool
-	largePool  *sync.Pool
-	hugePool   *sync.Pool
-	hitCount   map[BufferClass]int
-	missCount  int
+	mu              sync.RWMutex
+	smallPool       []bufferEntry
+	mediumPool      []bufferEntry
+	largePool       []bufferEntry
+	hugePool        []bufferEntry
+	smallNext       int
+	mediumNext      int
+	largeNext       int
+	hugeNext        int
+	hitCount        map[BufferClass]int
+	missCount       map[BufferClass]int
+}
+
+// bufferEntry represents a pooled buffer with availability flag
+type bufferEntry struct {
+	buffer  []byte
+	available bool // true if buffer is available in pool
 }
 
 // BufferClass defines size classes for buffers
@@ -28,51 +38,46 @@ const (
 // BufferStats tracks buffer pool statistics
 type BufferStats struct {
 	Hits   map[BufferClass]int
-	Misses int
+	Misses map[BufferClass]int
 }
 
 // NewResponseBufferPool creates a new response buffer pool
 func NewResponseBufferPool() *ResponseBufferPool {
+	poolSize := 16
 	return &ResponseBufferPool{
-		smallPool: &sync.Pool{
-			New: func() interface{} {
-				b := make([]byte, 0, 4096) // 4KB
-				return &b
-			},
-		},
-		mediumPool: &sync.Pool{
-			New: func() interface{} {
-				b := make([]byte, 0, 32768) // 32KB
-				return &b
-			},
-		},
-		largePool: &sync.Pool{
-			New: func() interface{} {
-				b := make([]byte, 0, 262144) // 256KB
-				return &b
-			},
-		},
-		hugePool: &sync.Pool{
-			New: func() interface{} {
-				b := make([]byte, 0, 1048576) // 1MB
-				return &b
-			},
-		},
-		hitCount: make(map[BufferClass]int),
+		smallPool:  make([]bufferEntry, poolSize),
+		mediumPool: make([]bufferEntry, poolSize),
+		largePool:  make([]bufferEntry, poolSize),
+		hugePool:   make([]bufferEntry, poolSize),
+		hitCount:   make(map[BufferClass]int),
+		missCount:  make(map[BufferClass]int),
 	}
 }
 
 // Get retrieves a buffer from the pool based on desired size
 func (rbp *ResponseBufferPool) Get(size int) *[]byte {
-	pool := rbp.selectPool(size)
-	bufPtr := pool.Get().(*[]byte)
-
 	rbp.mu.Lock()
-	class := rbp.classifySize(size)
-	rbp.hitCount[class]++
-	rbp.mu.Unlock()
+	defer rbp.mu.Unlock()
 
-	return bufPtr
+	class := rbp.classifySize(size)
+	pool, nextIdx := rbp.getPoolAndIndex(class)
+
+	// Search for available buffer
+	for i := 0; i < len(pool); i++ {
+		idx := (nextIdx + i) % len(pool)
+		if pool[idx].available {
+			// Hit: found available buffer
+			pool[idx].available = false
+			rbp.updateNextIndex(class, idx+1)
+			rbp.hitCount[class]++
+			return &pool[idx].buffer
+		}
+	}
+
+	// Miss: no available buffer, allocate new
+	rbp.missCount[class]++
+	newBuf := rbp.newBuffer(size)
+	return &newBuf
 }
 
 // Put returns a buffer to the pool
@@ -81,35 +86,101 @@ func (rbp *ResponseBufferPool) Put(buf *[]byte) {
 		return
 	}
 
-	size := cap(*buf)
-	pool := rbp.selectPool(size)
+	capacity := cap(*buf)
+	class := rbp.classifySize(capacity)
 
-	// Reset buffer length
+	rbp.mu.Lock()
+	defer rbp.mu.Unlock()
+
+	pool, _ := rbp.getPoolAndIndex(class)
+
+	// Reset buffer and mark as available
 	*buf = (*buf)[:0]
+	entry := bufferEntry{buffer: *buf, available: true}
 
-	pool.Put(buf)
+	// Try to find an empty slot to reuse
+	for i := 0; i < len(pool); i++ {
+		if !pool[i].available {
+			pool[i] = entry
+			return
+		}
+	}
+
+	// No empty slot, append to end
+	pool = append(pool, entry)
+	rbp.setPool(class, pool)
 }
 
-// selectPool selects appropriate pool based on size
-func (rbp *ResponseBufferPool) selectPool(size int) *sync.Pool {
-	if size < 4096 {
-		return rbp.smallPool
-	} else if size < 32768 {
-		return rbp.mediumPool
-	} else if size < 262144 {
-		return rbp.largePool
-	} else {
-		return rbp.hugePool
+// getPoolAndIndex returns the pool slice and next index for a class
+func (rbp *ResponseBufferPool) getPoolAndIndex(class BufferClass) ([]bufferEntry, int) {
+	switch class {
+	case BufferClassSmall:
+		return rbp.smallPool, rbp.smallNext
+	case BufferClassMedium:
+		return rbp.mediumPool, rbp.mediumNext
+	case BufferClassLarge:
+		return rbp.largePool, rbp.largeNext
+	case BufferClassHuge:
+		return rbp.hugePool, rbp.hugeNext
+	default:
+		return rbp.smallPool, rbp.smallNext
 	}
+}
+
+// setPool updates the pool slice for a class
+func (rbp *ResponseBufferPool) setPool(class BufferClass, pool []bufferEntry) {
+	switch class {
+	case BufferClassSmall:
+		rbp.smallPool = pool
+		return
+	case BufferClassMedium:
+		rbp.mediumPool = pool
+		return
+	case BufferClassLarge:
+		rbp.largePool = pool
+		return
+	case BufferClassHuge:
+		rbp.hugePool = pool
+		return
+	}
+}
+
+// updateNextIndex updates the next index for a class
+func (rbp *ResponseBufferPool) updateNextIndex(class BufferClass, idx int) {
+	switch class {
+	case BufferClassSmall:
+		rbp.smallNext = idx
+	case BufferClassMedium:
+		rbp.mediumNext = idx
+	case BufferClassLarge:
+		rbp.largeNext = idx
+	case BufferClassHuge:
+		rbp.hugeNext = idx
+	}
+}
+
+// newBuffer creates a new buffer with appropriate capacity
+func (rbp *ResponseBufferPool) newBuffer(size int) []byte {
+	var capacity int
+	if size < 4096 {
+		capacity = 4096
+	} else if size < 32768 {
+		capacity = 32768
+	} else if size < 262144 {
+		capacity = 262144
+	} else {
+		capacity = 1048576
+	}
+	return make([]byte, 0, capacity)
 }
 
 // classifySize classifies buffer size into a class
 func (rbp *ResponseBufferPool) classifySize(size int) BufferClass {
-	if size < 4096 {
+	if size <= 4096 {
 		return BufferClassSmall
-	} else if size < 32768 {
+	} else if size <= 32768 {
 		return BufferClassMedium
-	} else if size < 262144 {
+	} else if size <= 262144 {
 		return BufferClassLarge
 	} else {
 		return BufferClassHuge
@@ -123,11 +194,14 @@ func (rbp *ResponseBufferPool) GetStats() BufferStats {
 
 	stats := BufferStats{
 		Hits:   make(map[BufferClass]int),
-		Misses: rbp.missCount,
+		Misses: make(map[BufferClass]int),
 	}
 
 	for k, v := range rbp.hitCount {
 		stats.Hits[k] = v
+	}
+	for k, v := range rbp.missCount {
+		stats.Misses[k] = v
 	}
 
 	return stats
@@ -139,10 +213,10 @@ func (rbp *ResponseBufferPool) ResetStats() {
 	defer rbp.mu.Unlock()
 
 	rbp.hitCount = make(map[BufferClass]int)
-	rbp.missCount = 0
+	rbp.missCount = make(map[BufferClass]int)
 }
 
-// GetPoolForMethod returns the pool for a specific hot RPC method
+// GetPoolForMethod returns a pool for a specific hot RPC method
 func (rbp *ResponseBufferPool) GetPoolForMethod(methodName string) *sync.Pool {
 	// Map known hot methods to appropriate pool sizes
 	// This is a simple heuristic - could be learned over time
@@ -155,17 +229,19 @@ func (rbp *ResponseBufferPool) GetPoolForMethod(methodName string) *sync.Pool {
 	}
 
 	if size, ok := hotMethods[methodName]; ok {
-		if size < 4096 {
-			return rbp.smallPool
-		} else if size < 32768 {
-			return rbp.mediumPool
-		} else if size < 262144 {
-			return rbp.largePool
-		} else {
-			return rbp.hugePool
+		return &sync.Pool{
+			New: func() interface{} {
+				b := make([]byte, 0, size)
+				return &b
+			},
 		}
 	}
 
 	// Default to medium pool
-	return rbp.mediumPool
+	return &sync.Pool{
+		New: func() interface{} {
+			b := make([]byte, 0, 32768)
+			return &b
+		},
+	}
 }

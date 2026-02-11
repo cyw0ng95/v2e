@@ -122,22 +122,51 @@ func (shm *SharedMemory) Write(data []byte) error {
 		return nil
 	}
 
-	if uint32(len(data)) > shm.header.Capacity {
+	dataLen := uint32(len(data))
+	if dataLen > shm.header.Capacity {
 		return fmt.Errorf("data too large: %d bytes", len(data))
 	}
 
-	headerSize := uint32(unsafe.Sizeof(SharedMemHeader{}))
-	writePos := shm.header.WritePos + headerSize
-	remaining := shm.header.Capacity - (shm.header.WritePos % shm.header.Capacity)
-
-	if uint32(len(data)) > remaining {
-		return fmt.Errorf("ring buffer full")
+	// Check if there's enough available space (ring buffer may need to wrap)
+	available := shm.availableSpaceLocked()
+	if dataLen > available {
+		return fmt.Errorf("ring buffer full: %d bytes needed, %d available", dataLen, available)
 	}
 
-	copy(shm.data[writePos:writePos+uint32(len(data))], data)
-	shm.header.WritePos += uint32(len(data))
+	headerSize := uint32(unsafe.Sizeof(SharedMemHeader{}))
+	dataOffset := shm.header.WritePos % shm.header.Capacity
+	writeStart := headerSize + dataOffset
+
+	// Check if write will wrap around
+	endPos := dataOffset + dataLen
+	if endPos > shm.header.Capacity {
+		// Write wraps around: split into two parts
+		firstPart := shm.header.Capacity - dataOffset
+		secondPart := dataLen - firstPart
+
+		// Copy first part to end of buffer
+		copy(shm.data[writeStart:writeStart+firstPart], data[:firstPart])
+
+		// Copy second part to beginning of data area
+		copy(shm.data[headerSize:headerSize+secondPart], data[firstPart:])
+	} else {
+		// Single contiguous write
+		copy(shm.data[writeStart:writeStart+dataLen], data)
+	}
+
+	shm.header.WritePos += dataLen
 
 	return nil
+}
+
+// availableSpaceLocked returns the available space in the ring buffer.
+// Caller must hold shm.mu.
+func (shm *SharedMemory) availableSpaceLocked() uint32 {
+	used := shm.header.WritePos - shm.header.ReadPos
+	if used >= shm.header.Capacity {
+		return 0
+	}
+	return shm.header.Capacity - used
 }
 
 func (shm *SharedMemory) Read(dst []byte) (int, error) {
@@ -148,27 +177,40 @@ func (shm *SharedMemory) Read(dst []byte) (int, error) {
 		return 0, fmt.Errorf("shared memory closed")
 	}
 
-	if shm.header.ReadPos == shm.header.WritePos {
+	available := shm.header.WritePos - shm.header.ReadPos
+	if available == 0 {
 		return 0, nil
 	}
 
+	readLen := uint32(len(dst))
+	if readLen > available {
+		return 0, fmt.Errorf("not enough data available: %d bytes requested, %d available", len(dst), available)
+	}
+
 	headerSize := uint32(unsafe.Sizeof(SharedMemHeader{}))
-	readPos := shm.header.ReadPos + headerSize
-	available := shm.header.WritePos - shm.header.ReadPos
+	dataOffset := shm.header.ReadPos % shm.header.Capacity
+	readStart := headerSize + dataOffset
 
-	if uint32(len(dst)) > available {
-		return 0, fmt.Errorf("not enough data available")
+	// Check if read will wrap around
+	endPos := dataOffset + readLen
+	if endPos > shm.header.Capacity {
+		// Read wraps around: split into two parts
+		firstPart := shm.header.Capacity - dataOffset
+		secondPart := readLen - firstPart
+
+		// Copy first part from end of buffer
+		copy(dst[:firstPart], shm.data[readStart:readStart+firstPart])
+
+		// Copy second part from beginning of data area
+		copy(dst[firstPart:], shm.data[headerSize:headerSize+secondPart])
+	} else {
+		// Single contiguous read
+		copy(dst, shm.data[readStart:readStart+readLen])
 	}
 
-	copy(dst, shm.data[readPos:readPos+uint32(len(dst))])
-	shm.header.ReadPos += uint32(len(dst))
+	shm.header.ReadPos += readLen
 
-	if shm.header.ReadPos == shm.header.WritePos {
-		shm.header.ReadPos = 0
-		shm.header.WritePos = 0
-	}
-
-	return len(dst), nil
+	return int(readLen), nil
 }
 
 func (shm *SharedMemory) IsClosed() bool {
@@ -181,7 +223,7 @@ func (shm *SharedMemory) Available() uint32 {
 	shm.mu.Lock()
 	defer shm.mu.Unlock()
 
-	return shm.header.Capacity - (shm.header.WritePos - shm.header.ReadPos)
+	return shm.availableSpaceLocked()
 }
 
 func (shm *SharedMemory) BytesAvailable() uint32 {

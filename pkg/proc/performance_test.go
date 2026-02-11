@@ -132,7 +132,7 @@ func TestResponseBufferPool_SizeClasses(t *testing.T) {
 func TestResponseBufferPool_Stats(t *testing.T) {
 	pool := NewResponseBufferPool()
 
-	// Get some buffers
+	// Get some buffers (all should be misses initially - no buffers in pool yet)
 	for i := 0; i < 10; i++ {
 		buf := pool.Get(1024)
 		pool.Put(buf)
@@ -140,8 +140,12 @@ func TestResponseBufferPool_Stats(t *testing.T) {
 
 	stats := pool.GetStats()
 
+	// Should have 10 hits (reusing buffers we Put back) and some initial misses
 	if len(stats.Hits) == 0 {
 		t.Error("Expected hit statistics")
+	}
+	if len(stats.Misses) == 0 {
+		t.Error("Expected miss statistics")
 	}
 }
 
@@ -305,6 +309,9 @@ func TestResponseBufferPool_ResetStats(t *testing.T) {
 	if len(stats1.Hits) == 0 {
 		t.Error("Expected hit statistics before reset")
 	}
+	if len(stats1.Misses) == 0 {
+		t.Error("Expected miss statistics before reset")
+	}
 
 	// Reset stats
 	pool.ResetStats()
@@ -312,5 +319,103 @@ func TestResponseBufferPool_ResetStats(t *testing.T) {
 	stats2 := pool.GetStats()
 	if len(stats2.Hits) != 0 {
 		t.Error("Expected no hit statistics after reset")
+	}
+	if len(stats2.Misses) != 0 {
+		t.Error("Expected no miss statistics after reset")
+	}
+}
+
+// TestResponseBufferPool_HitMissTracking tests that hits and misses are correctly tracked
+func TestResponseBufferPool_HitMissTracking(t *testing.T) {
+	pool := NewResponseBufferPool()
+
+	// First Get() should be a miss (no buffers in pool yet)
+	buf1 := pool.Get(1024)
+
+	stats := pool.GetStats()
+	if stats.Misses[BufferClassSmall] != 1 {
+		t.Errorf("Expected 1 miss, got %d", stats.Misses[BufferClassSmall])
+	}
+	if stats.Hits[BufferClassSmall] != 0 {
+		t.Errorf("Expected 0 hits, got %d", stats.Hits[BufferClassSmall])
+	}
+
+	// Return the buffer to the pool
+	pool.Put(buf1)
+
+	// Get again - should be a hit now
+	buf2 := pool.Get(1024)
+
+	stats = pool.GetStats()
+	if stats.Misses[BufferClassSmall] != 1 {
+		t.Errorf("Expected still 1 miss, got %d", stats.Misses[BufferClassSmall])
+	}
+	if stats.Hits[BufferClassSmall] != 1 {
+		t.Errorf("Expected 1 hit, got %d", stats.Hits[BufferClassSmall])
+	}
+
+	// Get without Put - should be a miss
+	_ = pool.Get(2048)
+
+	stats = pool.GetStats()
+	if stats.Misses[BufferClassSmall] != 2 {
+		t.Errorf("Expected 2 misses, got %d", stats.Misses[BufferClassSmall])
+	}
+
+	// Test with different size classes
+	pool.Put(buf2)
+
+	// Get from pool (hit)
+	_ = pool.Get(1024)
+	stats = pool.GetStats()
+	if stats.Hits[BufferClassSmall] != 2 {
+		t.Errorf("Expected 2 hits for small class, got %d", stats.Hits[BufferClassSmall])
+	}
+}
+
+// TestResponseBufferPool_MultiClassStats tests statistics across different buffer classes
+func TestResponseBufferPool_MultiClassStats(t *testing.T) {
+	pool := NewResponseBufferPool()
+
+	// Get buffers from different size classes
+	smallBuf := pool.Get(1024)   // miss
+	mediumBuf := pool.Get(16384) // miss
+	largeBuf := pool.Get(100000) // miss
+
+	stats := pool.GetStats()
+
+	if stats.Misses[BufferClassSmall] != 1 {
+		t.Errorf("Expected 1 small miss, got %d", stats.Misses[BufferClassSmall])
+	}
+	if stats.Misses[BufferClassMedium] != 1 {
+		t.Errorf("Expected 1 medium miss, got %d", stats.Misses[BufferClassMedium])
+	}
+	if stats.Misses[BufferClassLarge] != 1 {
+		t.Errorf("Expected 1 large miss, got %d", stats.Misses[BufferClassLarge])
+	}
+
+	// Return buffers and get them again (should be hits)
+	pool.Put(smallBuf)
+	pool.Put(mediumBuf)
+	pool.Put(largeBuf)
+
+	_ = pool.Get(1024)
+	_ = pool.Get(16384)
+	_ = pool.Get(100000)
+
+	stats = pool.GetStats()
+
+	if stats.Hits[BufferClassSmall] != 1 {
+		t.Errorf("Expected 1 small hit, got %d", stats.Hits[BufferClassSmall])
+	}
+	if stats.Hits[BufferClassMedium] != 1 {
+		t.Errorf("Expected 1 medium hit, got %d", stats.Hits[BufferClassMedium])
+	}
+	if stats.Hits[BufferClassLarge] != 1 {
+		t.Errorf("Expected 1 large hit, got %d", stats.Hits[BufferClassLarge])
+	}
+	// Misses should stay the same
+	if stats.Misses[BufferClassSmall] != 1 {
+		t.Errorf("Expected still 1 small miss, got %d", stats.Misses[BufferClassSmall])
 	}
 }
