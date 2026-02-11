@@ -20,15 +20,50 @@ func TestNVDTime_UnmarshalJSON(t *testing.T) {
 			expected time.Time
 		}{
 			{
-				name:     "valid NVD format",
+				name:     "valid NVD format without timezone",
 				input:    `"2021-12-10T10:15:09.143"`,
 				wantErr:  false,
 				checkVal: true,
 				expected: time.Date(2021, 12, 10, 10, 15, 9, 143000000, time.UTC),
 			},
 			{
-				name:     "valid RFC3339 format",
+				name:     "NVD format with Z suffix timezone",
+				input:    `"2021-12-10T10:15:09.143Z"`,
+				wantErr:  false,
+				checkVal: true,
+				expected: time.Date(2021, 12, 10, 10, 15, 9, 143000000, time.UTC),
+			},
+			{
+				name:     "NVD format with positive timezone offset",
+				input:    `"2021-12-10T10:15:09.143+00:00"`,
+				wantErr:  false,
+				checkVal: true,
+				expected: time.Date(2021, 12, 10, 10, 15, 9, 143000000, time.UTC),
+			},
+			{
+				name:     "NVD format with negative timezone offset",
+				input:    `"2021-12-10T10:15:09.143-05:00"`,
+				wantErr:  false,
+				checkVal: true,
+				expected: time.Date(2021, 12, 10, 15, 15, 9, 143000000, time.UTC),
+			},
+			{
+				name:     "NVD format with positive non-zero timezone offset",
+				input:    `"2021-12-10T10:15:09.143+08:00"`,
+				wantErr:  false,
+				checkVal: true,
+				expected: time.Date(2021, 12, 10, 2, 15, 9, 143000000, time.UTC),
+			},
+			{
+				name:     "valid RFC3339 format with Z",
 				input:    `"2021-12-10T10:15:09Z"`,
+				wantErr:  false,
+				checkVal: true,
+				expected: time.Date(2021, 12, 10, 10, 15, 9, 0, time.UTC),
+			},
+			{
+				name:     "RFC3339 format with timezone offset",
+				input:    `"2021-12-10T10:15:09+00:00"`,
 				wantErr:  false,
 				checkVal: true,
 				expected: time.Date(2021, 12, 10, 10, 15, 9, 0, time.UTC),
