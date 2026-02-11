@@ -76,7 +76,6 @@
 | TODO-082 | cmd/v2local | Feature | Add database query logging with execution time tracking to identify slow queries | 100 | Low | |
 | TODO-083 | cmd/v2local | Bug Fix | Fix potential SQLite database lock contention when multiple services access same database file simultaneously | 120 | High | |
 | TODO-084 | cmd/v2meta | Refactor | Extract provider FSM state transition logic into shared package to reduce code duplication across CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider | 250 | Medium | |
-| TODO-085 | cmd/v2meta | Feature | Add provider dependency graph to automatically determine provider startup order based on data dependencies (CWE before CAPEC, CAPEC before ATT&CK) | 200 | High | |
 | TODO-087 | cmd/v2meta | Optimization | Add provider health checks with automatic restart for providers in TERMINATED state that should be running | 120 | Medium | |
 | TODO-088 | cmd/v2remote | Refactor | Simplify HTTP client configuration by extracting into shared package with retry logic and timeout handling | 100 | Medium | |
 | TODO-089 | cmd/v2remote | Feature | Add rate limit detection with adaptive backoff using Retry-After header from HTTP responses | 150 | High | |
