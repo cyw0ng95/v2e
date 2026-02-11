@@ -130,8 +130,10 @@ type Optimizer struct {
 	offerTimeout time.Duration
 	// dropOldest policy and batching
 	// batchSize is number of messages to collect before flush (1 = immediate)
-	batchSize int
+	// Using atomic.Int32 for safe concurrent access
+	batchSize atomic.Int32
 	// flushInterval is the maximum wait time to collect a batch
+	// Protected by adaptationMu for concurrent access
 	flushInterval time.Duration
 
 	// Moving-window metrics
@@ -190,6 +192,10 @@ func (o *Optimizer) EnableAdaptiveOptimization() {
 }
 
 func (o *Optimizer) applyAdaptedParameters() {
+	// Hold adaptationMu to prevent concurrent parameter changes
+	o.adaptationMu.Lock()
+	defer o.adaptationMu.Unlock()
+
 	metrics := o.adaptiveOpt.GetMetrics()
 
 	if bufferCap, ok := metrics["buffer_capacity"].(int); ok {
@@ -209,12 +215,12 @@ func (o *Optimizer) applyAdaptedParameters() {
 			}
 
 			// Adjust worker count by adding or removing workers
-			o.adjustWorkerCount(workerCount)
+			o.adjustWorkerCountLocked(workerCount)
 		}
 	}
 
 	if batchSize, ok := metrics["batch_size"].(int); ok {
-		o.batchSize = batchSize
+		o.batchSize.Store(int32(batchSize))
 		if o.logger != nil {
 			o.logger.Info("Adjusted batch size to: %d", batchSize)
 		}
@@ -230,16 +236,18 @@ func (o *Optimizer) applyAdaptedParameters() {
 	// Task 015: Apply dynamic batch size adjustment if enabled
 	if o.dynamicBatchSizeEnabled && o.batchPredictor != nil {
 		predictedBatchSize := o.batchPredictor.PredictBatchSize()
-		if predictedBatchSize != o.batchSize {
+		currentBatchSize := o.batchSize.Load()
+		if predictedBatchSize != int(currentBatchSize) {
 			if o.logger != nil {
-				o.logger.Info("Dynamic batch size adjustment: %d -> %d", o.batchSize, predictedBatchSize)
+				o.logger.Info("Dynamic batch size adjustment: %d -> %d", currentBatchSize, predictedBatchSize)
 			}
-			o.batchSize = predictedBatchSize
+			o.batchSize.Store(int32(predictedBatchSize))
 		}
 	}
 }
 
-func (o *Optimizer) adjustWorkerCount(newCount int) {
+// adjustWorkerCountLocked adjusts worker count - caller must hold adaptationMu
+func (o *Optimizer) adjustWorkerCountLocked(newCount int) {
 	currentCount := o.numWorkers
 
 	if newCount > currentCount {
@@ -338,6 +346,7 @@ func New(router routing.Router) *Optimizer {
 		optimizedMessages:       make(chan *proc.Message, 1000),
 		bufferCap:               1000,
 		numWorkers:              n,
+		flushInterval:           10 * time.Millisecond, // Default flush interval
 		ctx:                     ctx,
 		cancel:                  cancel,
 		monitor:                 sched.NewSystemMonitor(5 * time.Second),
@@ -347,6 +356,8 @@ func New(router routing.Router) *Optimizer {
 		batchPredictor:          NewBatchSizePredictor(1, 100, 1000), // Task 014
 		dynamicBatchSizeEnabled: false,                               // Task 015: Disabled by default
 	}
+	// Initialize atomic batchSize with default value of 1
+	opt.batchSize.Store(1)
 	opt.statsSyncTicker = time.NewTicker(opt.statsSyncInterval)
 	for i := 0; i < opt.numWorkers; i++ {
 		opt.workerWG.Add(1)
@@ -423,7 +434,6 @@ func NewWithConfig(router routing.Router, cfg Config) *Optimizer {
 		numWorkers:              cfg.NumWorkers,
 		offerPolicy:             cfg.OfferPolicy,
 		offerTimeout:            cfg.OfferTimeout,
-		batchSize:               cfg.BatchSize,
 		flushInterval:           cfg.FlushInterval,
 		ctx:                     ctx,
 		cancel:                  cancel,
@@ -434,6 +444,8 @@ func NewWithConfig(router routing.Router, cfg Config) *Optimizer {
 		batchPredictor:          NewBatchSizePredictor(1, 100, 1000), // Task 014
 		dynamicBatchSizeEnabled: false,                               // Task 015: Disabled by default
 	}
+	// Initialize atomic batchSize after struct creation
+	opt.batchSize.Store(int32(cfg.BatchSize))
 	opt.statsSyncTicker = time.NewTicker(opt.statsSyncInterval)
 	for i := 0; i < opt.numWorkers; i++ {
 		opt.workerWG.Add(1)
@@ -493,10 +505,17 @@ func (o *Optimizer) worker(id int) {
 		}
 
 		// collect up to batchSize-1 more messages, waiting up to flushInterval
-		if o.batchSize > 1 {
-			deadline := time.NewTimer(o.flushInterval)
+		batchSize := int(o.batchSize.Load())
+		if batchSize > 1 {
+			// Get flushInterval under lock for consistent read
+			var flushInterval time.Duration
+			o.adaptationMu.Lock()
+			flushInterval = o.flushInterval
+			o.adaptationMu.Unlock()
+
+			deadline := time.NewTimer(flushInterval)
 		collectLoop:
-			for len(batch) < o.batchSize {
+			for len(batch) < batchSize {
 				select {
 				case msg := <-o.optimizedMessages:
 					batch = append(batch, msg)
@@ -505,7 +524,7 @@ func (o *Optimizer) worker(id int) {
 					if o.monitor != nil {
 						o.monitor.RecordMessage()
 					}
-					if len(batch) >= o.batchSize {
+					if len(batch) >= batchSize {
 						break collectLoop
 					}
 				case <-deadline.C:
