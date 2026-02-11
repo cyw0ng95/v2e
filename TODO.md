@@ -76,7 +76,6 @@
 | TODO-087 | cmd/v2meta | Optimization | Add provider health checks with automatic restart for providers in TERMINATED state that should be running | 120 | Medium | |
 | TODO-088 | cmd/v2remote | Refactor | Simplify HTTP client configuration by extracting into shared package with retry logic and timeout handling | 100 | Medium | |
 | TODO-091 | cmd/v2remote | Optimization | Implement response caching for frequently accessed API endpoints (e.g., CVE by ID lookup) to reduce API calls | 120 | Medium | |
-| TODO-092 | cmd/v2sysmon | Refactor | Extract metric collection logic into reusable functions to reduce code duplication for CPU, memory, and disk monitoring | 80 | Medium | |
 | TODO-093 | cmd/v2sysmon | Feature | Add alert threshold configuration with webhook or email notifications when metrics exceed defined limits | 150 | Medium | |
 | TODO-095 | cmd/v2sysmon | Optimization | Reduce CPU overhead in metric collection by sampling metrics at configurable intervals instead of every poll cycle | 100 | Medium | |
 | TODO-096 | notes | Refactor | Compact LearningFSM code by extracting common save state patterns into helper function | 50 | Medium | |
