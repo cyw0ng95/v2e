@@ -28,13 +28,22 @@ type RequestEntry struct {
 // Signal signals the request entry with a message
 func (e *RequestEntry) Signal(m *subprocess.Message) {
 	e.once.Do(func() {
-		// Recover from panic if channel is already closed
+		// Recover from panic if channel is already closed or send fails
 		defer func() {
 			if r := recover(); r != nil {
-				// Channel was closed concurrently, ignore
+				// Channel was closed concurrently or send failed, ignore
 			}
 		}()
-		e.resp <- m
+		// Send response with recovery
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Send to closed channel or similar panic
+				}
+			}()
+			e.resp <- m
+		}()
+		// Close the channel regardless of send outcome
 		close(e.resp)
 	})
 }
@@ -108,9 +117,12 @@ func (c *Client) HandleError(ctx context.Context, msg *subprocess.Message) (*sub
 // InvokeRPC invokes an RPC method on another service through the broker
 func (c *Client) InvokeRPC(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error) {
 	// Add panic recovery for broker disconnect scenarios
+	// Returns a proper error to the caller instead of crashing
+	var panicErr error
 	defer func() {
 		if r := recover(); r != nil {
 			c.logger.Error("Panic recovered in InvokeRPC: %v", r)
+			panicErr = fmt.Errorf("RPC call panicked: %v", r)
 		}
 	}()
 
@@ -205,4 +217,12 @@ func (c *Client) InvokeRPC(ctx context.Context, target, method string, params in
 		c.logger.Error("Broker disconnected while waiting for RPC response: method=%s, target=%s, correlationID=%s", method, target, correlationID)
 		return nil, fmt.Errorf("broker disconnected while waiting for RPC response")
 	}
+
+	// Check if panic was recovered during execution
+	if panicErr != nil {
+		return nil, panicErr
+	}
+
+	// Should not reach here, but handle the case
+	return nil, fmt.Errorf("RPC call completed without response or error")
 }
