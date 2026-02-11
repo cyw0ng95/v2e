@@ -100,8 +100,6 @@
 | TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) | 150 | High | |
 | TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) | 200 | High | |
 | TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) | 150 | High | |
-| TODO-121 | cve | Bug Fix | Fix NVDTime UnmarshalJSON not handling timezone offsets in timestamp format - may fail parsing for timestamps with timezone info | 40 | Medium | |
-| TODO-124 | cve | Refactor | Consolidate duplicate retry logic in ListCVEs and Count functions - both have identical database lock retry pattern | 50 | Low | |
 | TODO-126 | cve | Test | Add tests for CVEProvider.execute() checkpoint saving logic when RPC calls fail | 80 | Medium | |
 | TODO-127 | cve | Documentation | Document exported types in pkg/cve/types.go - CVSSDataV40, CVSSMetricV40 lack comments explaining v4.0 differences | 60 | Low | |
 | TODO-129 | cwe | Refactor | Reduce massive code duplication in local.go - GetByID and ListCWEsPaginated share 90% identical nested field loading logic | 150 | Medium | |
@@ -192,7 +190,7 @@ For detailed guidelines on managing TODO items, see the **TODO Management** sect
 
 ### Quick Reference
 
-**Adding Tasks**: Use next available ID, include test code in LoC estimates, write detailed actionable descriptions
+**Adding Tasks**: Use next available ID (continue from last TODO-NNN), include test code in LoC estimates, write detailed actionable descriptions. **NEVER reuse existing task IDs** - always find the highest current ID and increment by 1.
 
 **Completing Tasks**:
 1. Verify all acceptance criteria are met
