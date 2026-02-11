@@ -106,7 +106,6 @@
 | TODO-136 | capec | Refactor | Eliminate code duplication between LocalCAPECStore and CachedLocalCAPECStore - share ImportFromXML logic via base struct | 180 | Medium | |
 | TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
 | TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
-| TODO-148 | cmd/v2access | Optimization | Use sync.Pool for context creation in handlers.go:90 instead of creating new context per RPC call | 60 | Low | |
 | TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
@@ -147,7 +146,6 @@
 | TODO-212 | ume | Bug Fix | Fix shared memory transport non-functional - SharedMemoryTransport uses memfd_create which only creates memory accessible within same process, there's no actual fd sharing with subprocesses, SendFd returns "not implemented" error | 200 | High | |
 | TODO-213 | ume | Feature | Remove or complete shared memory transport - current implementation is incomplete and cannot be used for cross-process communication, should either implement actual fd passing or remove entirely | 150 | High | |
 | TODO-214 | ume | Bug Fix | Fix ring buffer calculation in shared_memory.go - remaining := shm.header.Capacity - (shm.header.WritePos % shm.header.Capacity) doesn't correctly calculate remaining space in ring buffer, needs to account for ReadPos and handle wrap-around properly | 60 | Medium | |
-| TODO-217 | ume | Bug Fix | Fix fixedBytesToString edge case inconsistency - behavior inconsistent for all-zero byte arrays between different functions, needs unified handling | 40 | Low | |
 | TODO-218 | ume | Bug Fix | Fix SetSocketOptions ignoring TCP_QUICKACK error - TCP_QUICKACK socket option error is explicitly ignored, masking legitimate socket configuration failures | 60 | Medium | |
 | TODO-219 | ume | Feature | Add connection pooling to UDS transport - UDS transport uses single connection per pair, not a pool for efficiency, should implement connection reuse | 180 | High | |
 | TODO-220 | ume | Feature | Add message delivery guarantees - router currently provides no delivery confirmation, messages can be silently dropped, should implement ack/nack mechanism | 200 | High | |
