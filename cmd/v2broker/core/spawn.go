@@ -22,6 +22,79 @@ type serviceToSpawn struct {
 	path string
 }
 
+// allowedCommandPrefixes defines secure command prefixes that are whitelisted.
+// Commands must start with one of these prefixes to prevent path traversal.
+var allowedCommandPrefixes = []string{
+	"./",           // Current directory relative paths
+	"../",          // Parent directory relative paths (for build directories)
+	"",             // Simple command names (looked up in PATH)
+}
+
+// validateCommandPath validates that a command path is safe to execute.
+// It prevents path traversal attacks by ensuring the command matches
+// the whitelist of allowed prefixes.
+func validateCommandPath(command string) error {
+	if command == "" {
+		return fmt.Errorf("command cannot be empty")
+	}
+
+	// Clean the path to normalize any potential traversal attempts
+	cleaned := filepath.Clean(command)
+
+	// Check for absolute paths - these are not allowed for security
+	if filepath.IsAbs(cleaned) {
+		return fmt.Errorf("absolute paths are not allowed: %s", command)
+	}
+
+	// Check for path traversal sequences that survived cleaning
+	if strings.Contains(cleaned, "..") {
+		// Only allow ../ as a prefix (one level up for build directories)
+		if !strings.HasPrefix(cleaned, "../") && cleaned != ".." {
+			return fmt.Errorf("path traversal not allowed: %s", command)
+		}
+	}
+
+	// Validate against allowed prefixes
+	for _, prefix := range allowedCommandPrefixes {
+		if strings.HasPrefix(cleaned, prefix) {
+			return nil
+		}
+	}
+
+	// Check if it's a simple command name (no directory separators)
+	if !strings.ContainsAny(cleaned, "/\\") {
+		return nil
+	}
+
+	return fmt.Errorf("command path must start with allowed prefix (./ or ../): %s", command)
+}
+
+// isValidServiceName validates that a service name contains only safe characters.
+// This prevents command injection through malformed filenames discovered during
+// binary detection.
+func isValidServiceName(name string) bool {
+	if name == "" {
+		return false
+	}
+	// Only allow alphanumeric characters, underscores, hyphens, and dots
+	for i, r := range name {
+		if r >= 'a' && r <= 'z' {
+			continue
+		}
+		if r >= 'A' && r <= 'Z' {
+			continue
+		}
+		if r >= '0' && r <= '9' && i > 0 {
+			continue
+		}
+		if r == '_' || r == '-' || r == '.' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 // normalizeServiceName converts a binary name (e.g., v2access) to the process ID (e.g., access).
 // The subprocess binaries have v2* prefix but their internal ProcessID is without the prefix.
 func normalizeServiceName(binaryName string) string {
@@ -76,6 +149,11 @@ func (b *Broker) SpawnRPCWithRestart(id, command string, maxRestarts int, args .
 func (b *Broker) spawnInternal(id, command string, args []string, restartConfig *RestartConfig) (*ProcessInfo, error) {
 	if _, exists := b.processes.Load(id); exists {
 		return nil, fmt.Errorf("process with id '%s' already exists", id)
+	}
+
+	// Validate command path for security
+	if err := validateCommandPath(command); err != nil {
+		return nil, fmt.Errorf("invalid command path: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(b.ctx)
@@ -326,6 +404,13 @@ func (b *Broker) spawnServicesParallel(services []serviceToSpawn) error {
 
 			if _, exists := b.processes.Load(processID); exists {
 				resultChan <- spawnResult{name: processID, err: fmt.Errorf("process with id '%s' already exists", processID)}
+				return
+			}
+
+			// Validate the service name to prevent injection through malformed filenames
+			// Only allow alphanumeric names with underscores and hyphens
+			if !isValidServiceName(s.name) {
+				resultChan <- spawnResult{name: processID, err: fmt.Errorf("invalid service name: %s", s.name)}
 				return
 			}
 

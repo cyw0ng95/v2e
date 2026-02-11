@@ -238,6 +238,7 @@ func (b *Broker) Shutdown() error {
 		value, exists := b.processes.Load(id)
 		if exists {
 			proc := value.(*Process)
+			proc.mu.RLock()
 			status := proc.info.Status
 			proc.mu.RUnlock()
 

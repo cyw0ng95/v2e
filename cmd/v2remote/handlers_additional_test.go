@@ -135,7 +135,8 @@ func TestCreateGetCVECntHandler_DefaultsAndSuccess(t *testing.T) {
 		if err := json.Unmarshal(resp.Payload, &decoded); err != nil {
 			t.Fatalf("unmarshal payload: %v", err)
 		}
-		if decoded["total_results"].(float64) != 42 {
+		totalResults, ok := decoded["total_results"].(float64)
+		if !ok || totalResults != 42 {
 			t.Fatalf("unexpected total_results: %+v", decoded)
 		}
 	})

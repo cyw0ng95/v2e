@@ -121,8 +121,6 @@
 | TODO-128 | cwe | Bug Fix | Fix CWEProvider.execute() doesn't handle RPC errors - continues execution even when RPCImportCWE fails | 80 | High | |
 | TODO-129 | cwe | Refactor | Reduce massive code duplication in local.go - GetByID and ListCWEsPaginated share 90% identical nested field loading logic | 150 | Medium | |
 | TODO-130 | cwe | Optimization | Use Preload or eager loading for nested relations instead of N+1 queries in GetByID/ListCWEsPaginated | 100 | Medium | |
-| TODO-131 | cwe | Bug Fix | Fix ImportFromJSON doesn't wrap import in transaction - partial data inserted on failure | 60 | High | |
-| TODO-132 | cwe | Bug Fix | Fix ListCWEsPaginated returns error for Count but doesn't check error before proceeding with Find | 40 | Medium | |
 | TODO-133 | cwe | Documentation | Document LocalCWEStore.SaveView nested array deletion order and why it's safe | 40 | Low | |
 | TODO-134 | capec | Bug Fix | Fix truncateString cuts multi-byte UTF-8 characters incorrectly, may produce invalid UTF-8 | 50 | High | |
 | TODO-135 | capec | Bug Fix | Fix GetByID uses regex.MustCompile on every call - compile regex once at package init | 30 | Low | |
@@ -130,8 +128,6 @@
 | TODO-137 | capec | Bug Fix | Fix CAPECProvider.execute() discards marshaled CAPEC data instead of sending via RPC | 80 | High | |
 | TODO-138 | capec | Security | Add XML entity explosion protection to ImportFromXML - limit entity expansion depth | 100 | High | |
 | TODO-139 | capec | Optimization | Cache compiled regex in GetByID across all calls instead of creating new on each request | 30 | Low | |
-| TODO-140 | cmd/v2broker | Bug Fix | Fix process_lifecycle.go:242 mutex unlock issue - proc.mu.Unlock() should be proc.mu.RUnlock() for read operations | 30 | High | |
-| TODO-141 | cmd/v2broker | Security | Add command path validation in spawn.go to prevent path traversal vulnerabilities - implement whitelist mechanism | 80 | High | |
 | TODO-142 | cmd/v2broker | Feature | Make restart delay configurable instead of hardcoded 1 second in process_lifecycle.go:119 | 60 | Medium | |
 | TODO-143 | cmd/v2broker | Refactor | Extract duplicate parameter parsing and validation logic in permits_rpc.go HandleRPCRequestPermits and HandleRPCReleasePermits | 50 | Low | |
 | TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
@@ -143,14 +139,10 @@
 | TODO-150 | cmd/v2access | Documentation | Document ACCESS_STATIC_DIR environment variable in cmd/v2access/service.md | 10 | Low | |
 | TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
 | TODO-152 | cmd/v2remote | Bug Fix | Fix file descriptor leak in zip handling - ensure zip files are properly closed after processing | 60 | High | |
-| TODO-153 | cmd/v2remote | Bug Fix | Fix type assertion panic risks - add safe type checking with comma-ok pattern | 80 | High | |
-| TODO-154 | cmd/v2remote | Bug Fix | Fix potential goroutine leaks in import control routines - ensure context cancellation is properly handled | 100 | High | |
 | TODO-155 | cmd/v2remote | Bug Fix | Fix missing input validation for security - validate all RPC handler inputs | 80 | High | |
 | TODO-156 | cmd/v2remote | Refactor | Extract common import control logic into reusable functions | 100 | Medium | |
 | TODO-157 | cmd/v2remote | Test | Add tests for FSM recovery scenarios in cmd/v2meta | 150 | Medium | |
 | TODO-158 | cmd/v2remote | Test | Add tests for CAPEC handlers in cmd/v2remote | 100 | Medium | |
-| TODO-159 | cmd/v2meta | Bug Fix | Fix type assertion panic risks - add safe type checking with comma-ok pattern | 80 | High | |
-| TODO-160 | cmd/v2meta | Bug Fix | Fix potential goroutine leaks in import control routines - ensure context cancellation is properly handled | 120 | High | |
 | TODO-161 | cmd/v2meta | Test | Add tests for FSM recovery scenarios | 150 | Medium | |
 | TODO-162 | cmd/v2local | Bug Fix | Fix missing input validation for security - validate all RPC handler inputs | 80 | High | |
 | TODO-163 | cmd/v2local | Refactor | Extract common handler patterns into reusable functions | 80 | Medium | |
