@@ -84,7 +84,6 @@
 | TODO-104 | website | Refactor | Review and optimize website/lib/rpc-client.ts for error handling and retry logic | 100 | Medium | |
 | TODO-105 | website | Refactor | Review and optimize website/app/glc/page.tsx and related components for performance | 120 | Medium | |
 | TODO-106 | website | Refactor | Review and optimize website/components/providers/ for code consistency and reusability | 100 | Medium | |
-| TODO-107 | website | Documentation | Add JSDoc comments to website/lib/types.ts for better type documentation | 60 | Low | |
 | TODO-108 | website | Refactor | Review and optimize website/app/page.tsx for bundle size and performance | 80 | Medium | |
 | TODO-109 | website | Test | Add unit tests for website/lib/utils.ts utility functions | 100 | Medium | |
 | TODO-110 | website | Refactor | Review and optimize website/components/cve-detail-modal.tsx for UX and performance | 80 | Medium | |
