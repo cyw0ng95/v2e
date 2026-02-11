@@ -6,7 +6,7 @@
  */
 
 import Link from 'next/link';
-import { ArrowRight, Calculator, FileText, Share2 } from 'lucide-react';
+import { ArrowRight, Calculator, FileText, Share2, ExternalLink, BookOpen } from 'lucide-react';
 
 const versions = [
   {
@@ -174,33 +174,91 @@ export default function CVSSPage() {
             reflecting its severity. CVSS is owned and managed by FIRST.org
             (Forum of Incident Response and Security Teams).
           </p>
-          <div className="grid sm:grid-cols-3 gap-4">
+
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-4">
+            <h4 className="font-semibold text-blue-900 mb-2">Understanding CVSS Scores</h4>
+            <div className="grid grid-cols-5 gap-2 text-xs mb-4">
+              <div className="bg-gray-100 border border-gray-300 rounded-lg p-2 text-center">
+                <div className="font-bold">0.0</div>
+                <div className="text-gray-600">None</div>
+              </div>
+              <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-2 text-center">
+                <div className="font-bold">0.1-3.9</div>
+                <div className="text-yellow-700">Low</div>
+              </div>
+              <div className="bg-orange-100 border border-orange-300 rounded-lg p-2 text-center">
+                <div className="font-bold">4.0-6.9</div>
+                <div className="text-orange-700">Medium</div>
+              </div>
+              <div className="bg-red-100 border border-red-300 rounded-lg p-2 text-center">
+                <div className="font-bold">7.0-8.9</div>
+                <div className="text-red-700">High</div>
+              </div>
+              <div className="bg-purple-100 border border-purple-300 rounded-lg p-2 text-center">
+                <div className="font-bold">9.0-10.0</div>
+                <div className="text-purple-700">Critical</div>
+              </div>
+            </div>
+            <div className="space-y-1 text-xs text-slate-700">
+              <p><strong>Base Score:</strong> Core severity based on intrinsic properties (constant over time)</p>
+              <p><strong>Temporal Score:</strong> Adjusted for exploit maturity, remediation, and report confidence</p>
+              <p><strong>Environmental Score:</strong> Customized for your organization's requirements</p>
+            </div>
+          </div>
+
+          <h4 className="font-semibold text-slate-900 mb-3">Official Resources</h4>
+          <div className="grid sm:grid-cols-2 gap-3">
             <a
               href="https://www.first.org/cvss/calculator/4.0"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
             >
-              <Calculator className="h-5 w-5" />
-              <span>CVSS v4.0 Spec</span>
+              <Calculator className="h-5 w-5 text-blue-600" />
+              <div className="text-left">
+                <div className="font-medium text-slate-900">CVSS v4.0 Spec</div>
+                <div className="text-xs text-slate-500">Latest specification (2023)</div>
+              </div>
+              <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
             </a>
             <a
               href="https://www.first.org/cvss/calculator/3.1"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
             >
-              <FileText className="h-5 w-5" />
-              <span>CVSS v3.1 Spec</span>
+              <FileText className="h-5 w-5 text-emerald-600" />
+              <div className="text-left">
+                <div className="font-medium text-slate-900">CVSS v3.1 Spec</div>
+                <div className="text-xs text-slate-500">Refined v3.0 standard</div>
+              </div>
+              <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
+            </a>
+            <a
+              href="https://www.first.org/cvss/calculator/3.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
+            >
+              <FileText className="h-5 w-5 text-emerald-600" />
+              <div className="text-left">
+                <div className="font-medium text-slate-900">CVSS v3.0 Spec</div>
+                <div className="text-xs text-slate-500">Original modern standard</div>
+              </div>
+              <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
             </a>
             <a
               href="https://www.first.org/cvss/calculator-information"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
             >
-              <Share2 className="h-5 w-5" />
-              <span>CVSS Documentation</span>
+              <BookOpen className="h-5 w-5 text-purple-600" />
+              <div className="text-left">
+                <div className="font-medium text-slate-900">CVSS Documentation</div>
+                <div className="text-xs text-slate-500">General scoring information</div>
+              </div>
+              <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
             </a>
           </div>
         </div>

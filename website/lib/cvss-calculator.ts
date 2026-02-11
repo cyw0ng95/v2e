@@ -575,7 +575,7 @@ export function calculateCVSS4(
   };
 
   if (metrics.threat) {
-    const threatScore = applyV4ThreatAdjustment(finalScore, metrics.threat);
+    const threatScore = applyV4ThreatAdjustments(finalScore, metrics.threat);
     breakdown.threatScore = ROUND(threatScore);
     breakdown.threatSeverity = getSeverity(ROUND(threatScore));
     finalScore = threatScore;

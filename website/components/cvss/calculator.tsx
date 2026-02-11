@@ -17,11 +17,13 @@ import {
   Link as Link2,
   Settings,
   X,
-  Check
+  Check,
+  BookOpen
 } from 'lucide-react';
 import { useCVSS } from '@/lib/cvss-context';
 import { getCVSSMetadata } from '@/lib/cvss-calculator';
 import type { CVSSVersion, CVSSSeverity } from '@/lib/types';
+import CVSSUserGuide from './user-guide';
 
 const severityColors: Record<CVSSSeverity, string> = {
   NONE: 'from-gray-400 to-gray-500 bg-gray-50',
@@ -130,6 +132,7 @@ export default function CVSSCalculator() {
   const [showVectorHelp, setShowVectorHelp] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [copiedVector, setCopiedVector] = useState(false);
+  const [showUserGuide, setShowUserGuide] = useState(false);
 
   const metadata = getCVSSMetadata(state.version);
 
@@ -187,11 +190,26 @@ export default function CVSSCalculator() {
               <Settings className="h-4 w-4" />
               Reset
             </button>
+
+            <button
+              onClick={() => setShowUserGuide(!showUserGuide)}
+              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2"
+              title="Show CVSS user guide"
+            >
+              <BookOpen className="h-4 w-4" />
+              Guide
+            </button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {showUserGuide && (
+          <div className="mb-6">
+            <CVSSUserGuide />
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <section className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
