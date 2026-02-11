@@ -181,11 +181,30 @@ func UnmarshalFast(data []byte) (*Message, error) {
 	return msg, nil
 }
 
-// UnmarshalBatch efficiently unmarshals multiple messages
+// UnmarshalBatch efficiently unmarshals multiple messages using pooled message objects.
+// This ensures pool optimization benefits are maintained for bulk operations.
 func UnmarshalBatch(data []byte) ([]*Message, error) {
-	var messages []*Message
-	if err := jsonutil.Unmarshal(data, &messages); err != nil {
+	// First unmarshal into raw JSON array to get individual message data
+	var rawMessages []json.RawMessage
+	if err := jsonutil.Unmarshal(data, &rawMessages); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal batch: %w", err)
 	}
+
+	// Pre-allocate slice with exact capacity
+	messages := make([]*Message, 0, len(rawMessages))
+
+	// Use UnmarshalFast for each message to leverage message pool
+	for i, raw := range rawMessages {
+		msg, err := UnmarshalFast(raw)
+		if err != nil {
+			// Return already allocated messages to pool before returning error
+			for _, m := range messages {
+				PutMessage(m)
+			}
+			return nil, fmt.Errorf("failed to unmarshal message %d in batch: %w", i, err)
+		}
+		messages = append(messages, msg)
+	}
+
 	return messages, nil
 }

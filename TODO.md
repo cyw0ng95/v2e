@@ -142,7 +142,6 @@
 | TODO-224 | ume | Feature | Implement actual fd passing to subprocesses - shared memory transport needs mechanism to pass file descriptors to subprocesses for true IPC, not memfd_create which is same-process only | 250 | High | |
 | TODO-225 | ume | Feature | Implement SelectTarget method in Router interface - task description mentioned SelectTarget method but router interface doesn't define it, routing cannot select targets dynamically | 150 | High | |
 | TODO-226 | ume | Refactor | Add pool statistics for Message Pool - ResponseBufferPool is missing hit/miss tracking which is needed for optimization and debugging | 80 | Medium | |
-| TODO-227 | ume | Bug Fix | Fix UnmarshalBatch not using pooled messages - performance impact for bulk message operations, defeats pool optimization purpose | 100 | High | |
 | TODO-229 | sysmon | Feature | Add configurable sampling intervals - setSamplingInterval() and getSamplingInterval() functions exist but are not exposed via RPC, users cannot configure sampling rates at runtime | 100 | Medium | |
 | TODO-230 | sysmon | Feature | Add active/passive health monitoring - service only responds to RPCGetSysMetrics requests, there's no push-based or scheduled monitoring that could alert on threshold crossings or process death | 200 | High | |
 | TODO-231 | sysmon | Feature | Add process-level metrics collection - missing per-process resource usage monitoring (goroutine count, memory per subprocess), sysmon could query broker's process stats and expose new RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
@@ -150,7 +149,6 @@
 | TODO-233 | sysmon | Feature | Add historical data storage - metrics are collected with sampling intervals but no persistent storage for trend analysis or historical querying | 150 | Medium | |
 | TODO-234 | sysmon | Feature | Add shutdown timeout - Stop() method waits indefinitely via wg.Wait(), in production a timeout would prevent hanging if a handler is stuck | 120 | Medium | |
 | TODO-235 | sysmon | Feature | Add graceful shutdown hook for handlers - handlers cannot register cleanup functions to run when shutdown is signaled, no way to do cleanup on shutdown | 150 | High | |
-| TODO-237 | sysmon | Cleanup | Remove unused log constants - many log constants in constants.go are defined but never used (LogMsgCPUUsageCollected, LogMsgMemoryUsageCollected, LogMsgPerformanceMetricsCollected), should be removed or implemented | 20 | Low | |
 | TODO-238 | sysmon | Feature | Move goroutine and connection metrics to sysmon - broker's scaling module tracks goroutine count and connections but doesn't actually collect these values, it receives them via AddMetric() calls, sysmon could add RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
 
 ## TODO Management Guidelines
