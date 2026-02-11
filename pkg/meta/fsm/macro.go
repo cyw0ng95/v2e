@@ -469,20 +469,6 @@ func (m *MacroFSMManager) StartAllProvidersInOrder() map[string]error {
 
 	return errors
 }
-		states[p.GetID()] = p.GetState()
-	}
-
-	// Check each provider's dependencies
-	for _, p := range m.providers {
-		if bp, ok := p.(interface{ CheckDependencies(map[string]ProviderState) error }); ok {
-			if err := bp.CheckDependencies(states); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
 
 // Stop gracefully stops the macro FSM manager
 func (m *MacroFSMManager) Stop() error {
