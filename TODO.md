@@ -179,7 +179,6 @@
 | TODO-233 | sysmon | Feature | Add historical data storage - metrics are collected with sampling intervals but no persistent storage for trend analysis or historical querying | 150 | Medium | |
 | TODO-234 | sysmon | Feature | Add shutdown timeout - Stop() method waits indefinitely via wg.Wait(), in production a timeout would prevent hanging if a handler is stuck | 120 | Medium | |
 | TODO-235 | sysmon | Feature | Add graceful shutdown hook for handlers - handlers cannot register cleanup functions to run when shutdown is signaled, no way to do cleanup on shutdown | 150 | High | |
-| TODO-236 | sysmon | Bug Fix | Fix connection.Close missing on error - when scanner returns an error in Run(), connection is not explicitly closed before returning, could leak file descriptors | 100 | High | |
 | TODO-237 | sysmon | Cleanup | Remove unused log constants - many log constants in constants.go are defined but never used (LogMsgCPUUsageCollected, LogMsgMemoryUsageCollected, LogMsgPerformanceMetricsCollected), should be removed or implemented | 20 | Low | |
 | TODO-238 | sysmon | Feature | Move goroutine and connection metrics to sysmon - broker's scaling module tracks goroutine count and connections but doesn't actually collect these values, it receives them via AddMetric() calls, sysmon could add RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
 
