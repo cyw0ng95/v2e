@@ -115,17 +115,14 @@
 | TODO-122 | cve | Bug Fix | Fix FetchCVEsConcurrent result collection - results and errors channels don't preserve order with input cveIDs, causing response/ID mismatch | 80 | High | |
 | TODO-123 | cve | Optimization | Add response body size limits to FetchCVEByID and FetchCVEs to prevent OOM on malicious large responses | 60 | High | |
 | TODO-124 | cve | Refactor | Consolidate duplicate retry logic in ListCVEs and Count functions - both have identical database lock retry pattern | 50 | Low | |
-| TODO-125 | cve | Bug Fix | Fix CVEProvider.execute() simulates success (hardcoded) instead of actually calling RPC to store CVE data | 100 | High | |
 | TODO-126 | cve | Test | Add tests for CVEProvider.execute() checkpoint saving logic when RPC calls fail | 80 | Medium | |
 | TODO-127 | cve | Documentation | Document exported types in pkg/cve/types.go - CVSSDataV40, CVSSMetricV40 lack comments explaining v4.0 differences | 60 | Low | |
-| TODO-128 | cwe | Bug Fix | Fix CWEProvider.execute() doesn't handle RPC errors - continues execution even when RPCImportCWE fails | 80 | High | |
 | TODO-129 | cwe | Refactor | Reduce massive code duplication in local.go - GetByID and ListCWEsPaginated share 90% identical nested field loading logic | 150 | Medium | |
 | TODO-130 | cwe | Optimization | Use Preload or eager loading for nested relations instead of N+1 queries in GetByID/ListCWEsPaginated | 100 | Medium | |
 | TODO-133 | cwe | Documentation | Document LocalCWEStore.SaveView nested array deletion order and why it's safe | 40 | Low | |
 | TODO-134 | capec | Bug Fix | Fix truncateString cuts multi-byte UTF-8 characters incorrectly, may produce invalid UTF-8 | 50 | High | |
 | TODO-135 | capec | Bug Fix | Fix GetByID uses regex.MustCompile on every call - compile regex once at package init | 30 | Low | |
 | TODO-136 | capec | Refactor | Eliminate code duplication between LocalCAPECStore and CachedLocalCAPECStore - share ImportFromXML logic via base struct | 180 | Medium | |
-| TODO-137 | capec | Bug Fix | Fix CAPECProvider.execute() discards marshaled CAPEC data instead of sending via RPC | 80 | High | |
 | TODO-138 | capec | Security | Add XML entity explosion protection to ImportFromXML - limit entity expansion depth | 100 | High | |
 | TODO-139 | capec | Optimization | Cache compiled regex in GetByID across all calls instead of creating new on each request | 30 | Low | |
 | TODO-142 | cmd/v2broker | Feature | Make restart delay configurable instead of hardcoded 1 second in process_lifecycle.go:119 | 60 | Medium | |
