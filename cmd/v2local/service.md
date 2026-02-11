@@ -1463,3 +1463,78 @@ Manages local storage and retrieval of CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE, 
 - SSG data is read-only after import (no update or delete operations)
 - Cross-references enable navigation between related SSG objects based on rule IDs, CCE identifiers, products, and profile IDs
 - GLC graphs support versioning for undo/restore functionality and share links for collaboration
+
+
+## Database Schema Documentation
+
+### Overview
+The v2local service manages multiple SQLite databases for different security data types. Each database uses GORM ORM with separate models defined in their respective packages.
+
+### Database Files and Models
+
+| Data Type | Database Path (Default) | Model Definitions |
+|------------|------------------------|-------------------|
+| CVE | `cve.db` | `pkg/cve/types.go` - CVEItem, Metrics, CVSSMetricV3 |
+| CWE | `cwe.db` | `pkg/cwe/types.go` - CWEItem with nested structures |
+| CAPEC | `capec.db` | `pkg/capec/models.go` - CAPECItemModel, RelatedWeaknessModel |
+| ATT&CK | `attack.db` | Imported from XLSX files |
+| ASVS | `asvs.db` | `pkg/asvs/types.go` - Requirement items |
+| SSG | `ssg.db` | `pkg/ssg/types.go` - Control, Mapping |
+| CCE | `cce.db` | `pkg/cce/types.go` - CCE items |
+| Bookmarks | `bookmark.db` (shared) | Notes, Bookmarks |
+| Notes | `bookmark.db` (shared) | `pkg/notes/models.go` - User annotations |
+| GLC | `bookmark.db` (shared) | Memory cards |
+| Learning | `learning.db` (shared) | FSM state, sessions |
+
+### Common Access Patterns
+
+#### Pagination
+Most list operations support pagination:
+- `offset` (int): Skip N records before starting
+- `limit` (int): Return at most N records
+- Default `limit` is typically 100 records
+
+#### Query Filtering
+- **CVE**: Filter by `search` parameter (searches ID, descriptions)
+- **CWE**: Filter by `search` parameter (searches ID, Name, Description)
+- **CAPEC**: Filter by `search` parameter (full-text search)
+- **ATT&CK**: Filter by `search` parameter (searches techniques, tactics, mitigations, software)
+- **ASVS**: Filter by `chapter` (domain) and `level` (1-5)
+
+#### Performance Considerations
+
+- Use GORM `Preload` to avoid N+1 query problem
+- Enable WAL mode: `PRAGMA journal_mode=WAL` for better concurrency
+- Use connection pooling: `SetMaxIdleConns` and `SetMaxOpenConns`
+- Batch operations using `CreateInBatches` for bulk inserts
+- Index foreign keys and frequently queried fields
+- Use `EXPLAIN QUERY PLAN` to analyze slow queries
+
+#### Database Connection Management
+
+All database connections use:
+```go
+db, err := local.NewDB(dbPath)
+if err != nil {
+    logger.Error("Failed to open database: %v", err)
+    return
+}
+defer db.Close()
+```
+
+### Configuration Environment Variables
+
+All database paths are configurable via environment variables:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `CVE_DB_PATH` | CVE database file | `cve.db` |
+| `CWE_DB_PATH` | CWE database file | `cwe.db` |
+| `CAPEC_DB_PATH` | CAPEC database file | `capec.db` |
+| `ATTACK_DB_PATH` | ATT&CK database file | `attack.db` |
+| `ASVS_DB_PATH` | ASVS database file | `asvs.db` |
+| `SSG_DB_PATH` | SSG database file | `ssg.db` |
+| `CCE_DB_PATH` | CCE database file | `cce.db` |
+| `BOOKMARK_DB_PATH` | Bookmarks/Notes DB file | `bookmark.db` |
+| `LEARNING_FSM_DB_PATH` | Learning session DB | `learning.db` |
+
