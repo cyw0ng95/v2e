@@ -282,10 +282,9 @@ func (b *Broker) performHealthCheck(processID string) bool {
 	proc.mu.Lock()
 	status := proc.info.Status
 	pid := proc.info.PID
-	healthCheckTimeout := 5 * time.Second
-	if proc.restartConfig != nil && proc.restartConfig.HealthCheckTimeout > 0 {
-		healthCheckTimeout = proc.restartConfig.HealthCheckTimeout
-	}
+	// Note: healthCheckTimeout is captured for future use with ping-based health checks
+	// Currently we only check process status and transport connectivity
+	_ = proc.restartConfig != nil && proc.restartConfig.HealthCheckTimeout > 0
 	proc.mu.Unlock()
 
 	// Check if process is still running

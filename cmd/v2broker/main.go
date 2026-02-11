@@ -47,6 +47,9 @@ func main() {
 	// Use the subprocess logger as the broker logger
 	broker.SetLogger(logger)
 
+	// Start health monitoring for subprocesses
+	broker.StartHealthMonitoring()
+
 	// Load processes from configuration
 	if err := broker.LoadProcessesFromConfig(nil); err != nil {
 		logger.Error(LogMsgErrorLoadingProcesses, err)
