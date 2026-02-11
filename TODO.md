@@ -17,7 +17,6 @@
 | TODO-014 | cve | Optimization | Add caching layer for frequently accessed CVE items | 180 | Medium | |
 | TODO-015 | cve | Feature | Implement incremental sync from NVD API | 300 | High | |
 | TODO-016 | cwe | Refactor | Normalize database access patterns with generic repository pattern | 200 | Medium | |
-| TODO-017 | cwe | Optimization | Add database indexes for common query patterns | 50 | High | |
 | TODO-018 | glc | Feature | Implement automatic schema migration with version tracking | 150 | Medium | |
 | TODO-019 | graph | Feature | Add graph metrics (centrality, clustering coefficient) | 250 | Low | |
 | TODO-020 | graph | Optimization | Implement graph compression for large-scale deployments | 300 | Low | |

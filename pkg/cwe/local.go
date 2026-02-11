@@ -20,10 +20,10 @@ type LocalCWEStore struct {
 // CWEItemModel is the GORM model for flat CWE fields.
 type CWEItemModel struct {
 	ID                  string `gorm:"primaryKey"`
-	Name                string
-	Abstraction         string
+	Name                string `gorm:"index"`
+	Abstraction         string `gorm:"index"`
 	Structure           string
-	Status              string
+	Status              string `gorm:"index"`
 	Description         string
 	ExtendedDescription string
 	LikelihoodOfExploit string
@@ -33,8 +33,8 @@ type CWEItemModel struct {
 type RelatedWeaknessModel struct {
 	ID      uint   `gorm:"primaryKey"`
 	CWEID   string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
-	Nature  string `gorm:"column:nature"`
-	CweID   string `gorm:"column:related_cwe_id"` // ID of the related CWE
+	Nature  string `gorm:"column:nature;index"`
+	CweID   string `gorm:"column:related_cwe_id;index"` // ID of the related CWE
 	ViewID  string `gorm:"column:view_id"`
 	Ordinal string `gorm:"column:ordinal"`
 }
@@ -51,10 +51,10 @@ type WeaknessOrdinalityModel struct {
 type DetectionMethodModel struct {
 	ID                 uint   `gorm:"primaryKey"`
 	CWEID              string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
-	DetectionMethodID  string `gorm:"column:detection_method_id"`
-	Method             string `gorm:"column:method"`
+	DetectionMethodID  string `gorm:"column:detection_method_id;index"`
+	Method             string `gorm:"column:method;index"`
 	Description        string `gorm:"column:description"`
-	Effectiveness      string `gorm:"column:effectiveness"`
+	Effectiveness      string `gorm:"column:effectiveness;index"`
 	EffectivenessNotes string `gorm:"column:effectiveness_notes"`
 }
 
@@ -62,11 +62,11 @@ type DetectionMethodModel struct {
 type MitigationModel struct {
 	ID                 uint   `gorm:"primaryKey"`
 	CWEID              string `gorm:"column:cwe_id;index"` // Foreign key to parent CWE item
-	MitigationID       string `gorm:"column:mitigation_id"`
+	MitigationID       string `gorm:"column:mitigation_id;index"`
 	Phase              string `gorm:"column:phase"` // store as comma-separated string for []string
-	Strategy           string `gorm:"column:strategy"`
+	Strategy           string `gorm:"column:strategy;index"`
 	Description        string `gorm:"column:description"`
-	Effectiveness      string `gorm:"column:effectiveness"`
+	Effectiveness      string `gorm:"column:effectiveness;index"`
 	EffectivenessNotes string `gorm:"column:effectiveness_notes"`
 }
 
