@@ -142,7 +142,6 @@
 | TODO-197 | rpc-client | Bug Fix | Add proper cleanup strategy for pendingRequests Map to prevent memory leaks from failed requests | 60 | Medium | |
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
 | TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
-| TODO-202 | glc | Bug Fix | Add missing foreign key constraint to ShareLinkModel.GraphID for CASCADE delete on graph deletion - prevents orphaned share links | 40 | Medium | |
 | TODO-204 | glc | Bug Fix | Implement password hashing with bcrypt or argon2 for CreateShareLink - currently stores plaintext which is security vulnerability | 60 | High | |
 | TODO-205 | glc | Bug Fix | Fix race condition in GetGraphByShareLink - view count update happens after graph return, should update in transaction before return | 50 | Medium | |
 | TODO-208 | ume | Refactor | Add backpressure mechanism to message routing - when route channels are full, messages are dropped with "channel full" error instead of blocking send, implement proper queue or buffer | 200 | High | |
