@@ -65,7 +65,6 @@
 | TODO-066 | build.sh | Documentation | Add inline comments explaining incremental build detection logic and file timestamp comparison in build_project() | 60 | Low | |
 | TODO-067 | runenv.sh | Refactor | Extract Podman container image building logic into separate function to avoid code duplication between macOS and Linux paths | 100 | Medium | |
 | TODO-068 | runenv.sh | Feature | Add Docker container support as alternative to Podman for environments without Podman | 150 | Medium | |
-| TODO-069 | runenv.sh | Bug Fix | Fix container cleanup on SIGINT/SIGTERM to ensure volumes are properly unmounted and containers stopped | 80 | High | |
 | TODO-070 | runenv.sh | Feature | Add container health check with retry logic to ensure container is fully initialized before executing commands | 120 | Medium | |
 | TODO-071 | runenv.sh | Refactor | Simplify environment variable passing by using environment file instead of long -e flag chain in run_container_env() | 80 | Medium | |
 | TODO-072 | runenv.sh | Documentation | Add inline comments explaining container volume mount paths and Go module cache optimization in run_container_env() | 60 | Low | |

@@ -21,8 +21,29 @@ if ! flock -n 200; then
     fi
 fi
 
-# Release lock on exit (including error, interrupt, or termination)
-trap 'flock -u 200' EXIT INT TERM
+# Global variable to track container ID for cleanup
+CONTAINER_ID=""
+
+# Release lock and cleanup container on exit (including error, interrupt, or termination)
+cleanup() {
+    local exit_code=$?
+
+    # Release flock lock
+    flock -u 200 2>/dev/null || true
+
+    # Clean up container if still running
+    if [ -n "$CONTAINER_ID" ]; then
+        echo "Cleaning up container: $CONTAINER_ID" >&2
+        podman stop "$CONTAINER_ID" 2>/dev/null || true
+        podman rm "$CONTAINER_ID" 2>/dev/null || true
+    fi
+
+    # Exit with original exit code
+    exit $exit_code
+}
+
+# Register cleanup function for all exit signals
+trap cleanup EXIT INT TERM HUP QUIT
 
 # Logging functions
 log_info() {
@@ -83,34 +104,34 @@ run_container_env() {
     fi
     
     # Build podman command with common options
-    podman_base_cmd=(podman run --rm -v "$(pwd)":/workspace -w /workspace \
+    # Using --rm for automatic cleanup, but we also handle signals explicitly
+    podman_base_cmd=(podman run --rm \
+        -v "$(pwd)":/workspace -w /workspace \
         -v "${SCRIPT_DIR}/${BUILD_DIR}/pkg/mod":/home/developer/go/pkg/mod \
         -e SESSION_DB_PATH="$SESSION_DB_PATH" \
         # RPC FDs are configured at build time (ldflags). No runtime FD envs are set.
         -e V2E_SKIP_WEBSITE_BUILD="$V2E_SKIP_WEBSITE_BUILD" \
         -e GO_TAGS="$GO_TAGS" \
         -e CGO_ENABLED="$CGO_ENABLED")
-    
+
     # Add interactive flag if no command provided
     if [ $# -eq 0 ]; then
         podman_base_cmd+=(-it)
     fi
-    
+
     # Add container image and command
     podman_base_cmd+=(v2e-dev-container)
     if [ $# -gt 0 ]; then
-        podman_base_cmd+=("${container_cmd[@]}")
+        podman_base_cmd+=(bash -c "$*")
     fi
-    
+
     # Execute podman command and capture exit code
-    if "${podman_base_cmd[@]}"; then
-        exit_code=0
-    else
-        exit_code=$?
-    fi
-    
+    # The trap handler will ensure proper cleanup on signals
+    "${podman_base_cmd[@]}"
+    exit_code=$?
+
     # Exit with the same code as the container command
-    exit $exit_code
+    return $exit_code
 }
 
 # Detect operating system
