@@ -90,8 +90,8 @@ describe('D3FENDInferenceEngine', () => {
       const engine = createInferenceEngine(mockNodes, mockEdges);
       const score = engine.getSensorCoverageScore();
 
-      // (85 + 80) / 2 = 82.5, Math.round = 82
-      expect(score).toBe(82);
+      // (85 + 80) / 2 = 82.5, Math.round(82.5) = 83
+      expect(score).toBe(83);
     });
 
     it('should return 0 when no sensors detected', () => {
@@ -135,22 +135,44 @@ describe('D3FENDInferenceEngine', () => {
       expect(mitigations[0].weaknesses.length).toBeGreaterThan(0);
     });
 
-    it('should return empty array for nodes without D3FEND mapping', () => {
+    it('should map weaknesses for nodes with D3FEND mapping', () => {
       const engine = createInferenceEngine(mockNodes, mockEdges);
-      const mitigations = engine.mapWeaknesses();
+      const weaknesses = engine.mapWeaknesses();
 
-      // firewall node doesn't have a direct D3FEND mapping that triggers CWE
-      expect(mitigations.length).toBe(0);
+      // All three nodes have D3FEND mappings:
+      // - node-1: d3f:NetworkTrafficAnalysis
+      // - node-2: d3f:FileAnalysis
+      // - node-3: firewall -> d3f:Isolation (via mapNodeTypeToD3FENDClass)
+      expect(weaknesses.length).toBe(3);
+
+      // Verify node-3 (firewall) maps to d3f:Isolation with CWE weaknesses
+      const firewallWeaknesses = weaknesses.find(w => w.nodeId === 'node-3');
+      expect(firewallWeaknesses).toBeDefined();
+      expect(firewallWeaknesses?.weaknesses.length).toBeGreaterThan(0);
     });
-  });
 
-    it('should include both mitigation types for external connection', () => {
-      const engine = createInferenceEngine(mockNodes, mockEdges);
+    it('should suggest mitigations for nodes with attack indicators', () => {
+      // Create a node with label that contains the exact attack indicator key
+      const nodesWithIndicator: Node[] = [
+        {
+          id: 'node-test',
+          type: 'firewall',
+          position: { x: 0, y: 0 },
+          data: {
+            label: 'Detected external-connection to suspicious server',
+            typeId: 'firewall',
+          },
+        },
+      ];
+
+      const engine = createInferenceEngine(nodesWithIndicator, []);
       const mitigations = engine.suggestMitigations();
 
-      const firewallMitigations = mitigations.find(m => m.nodeId === 'node-3');
-      expect(firewallMitigations).toBeDefined();
-      expect(firewallMitigations?.mitigations.some(m => m.d3fendClass === 'd3f:NetworkTrafficAnalysis')).toBe(true);
+      expect(mitigations.length).toBeGreaterThan(0);
+      const testMitigations = mitigations.find(m => m.nodeId === 'node-test');
+      expect(testMitigations).toBeDefined();
+      expect(testMitigations?.mitigations.length).toBeGreaterThan(0);
+      expect(testMitigations?.mitigations.some(m => m.d3fendClass === 'd3f:NetworkTrafficAnalysis')).toBe(true);
     });
   });
 

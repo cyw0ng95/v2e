@@ -6,9 +6,10 @@
 /v2remote
 /v2analysis
 /v2sysmon
-/db
-/db-shm
-/db-wal
+/*.db
+/*.db-shm
+/*.db-wal
 /*.test
 **/:memory:
 /node_modules
+/logs

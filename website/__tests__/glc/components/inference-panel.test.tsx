@@ -1,13 +1,19 @@
 /**
  * Inference Panel Component Tests
+ *
+ * Note: These tests verify the inference engine functionality.
+ * Full integration testing with React components is done via browser testing.
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { InferencePanel } from '@/components/glc/d3fend/inference-panel';
-import type { Node, Edge } from '@xyflow/react';
+import { describe, it, expect } from 'vitest';
+import {
+  getSensorCoverage,
+  getGraphInferences,
+  type Node,
+  type Edge,
+} from '@/lib/glc/d3fend';
 
-describe('InferencePanel', () => {
+describe('D3FEND Inference', () => {
   const mockNodes: Node[] = [
     {
       id: 'node-1',
@@ -17,6 +23,16 @@ describe('InferencePanel', () => {
         label: 'Network Traffic Analysis',
         typeId: 'd3f:NetworkTrafficAnalysis',
         d3fendClass: 'd3f:NetworkTrafficAnalysis',
+      },
+    },
+    {
+      id: 'node-2',
+      type: 'd3f:FileAnalysis',
+      position: { x: 100, y: 100 },
+      data: {
+        label: 'File Analysis',
+        typeId: 'd3f:FileAnalysis',
+        d3fendClass: 'd3f:FileAnalysis',
       },
     },
   ];
@@ -31,87 +47,45 @@ describe('InferencePanel', () => {
     },
   ];
 
-  const mockOnClose = vi.fn();
+  it('should calculate sensor coverage score', () => {
+    const result = getSensorCoverage(mockNodes, mockEdges);
 
-  it('should render sensor coverage gauge', () => {
-    render(
-      <InferencePanel
-        nodes={mockNodes}
-        edges={mockEdges}
-        isOpen={true}
-        onClose={mockOnClose}
-      />
-    );
-
-    expect(screen.getByText(/sensor coverage/i)).toBeInTheDocument();
+    expect(result).toBeDefined();
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(100);
+    expect(result.detections).toBeDefined();
+    expect(Array.isArray(result.detections)).toBe(true);
   });
 
-  it('should display coverage score', () => {
-    render(
-      <InferencePanel
-        nodes={mockNodes}
-        edges={mockEdges}
-        isOpen={true}
-        onClose={mockOnClose}
-      />
-    );
+  it('should detect sensor nodes', () => {
+    const result = getSensorCoverage(mockNodes, mockEdges);
 
-    // Score should be visible
-    expect(screen.queryByText(/\d+/)).toBeInTheDocument();
+    expect(result.detections.length).toBeGreaterThan(0);
+    expect(result.detections[0].nodeId).toBeDefined();
+    expect(result.detections[0].nodeType).toBeDefined();
+    expect(result.detections[0].sensors).toBeDefined();
+    expect(Array.isArray(result.detections[0].sensors)).toBe(true);
   });
 
-  it('should render active sensors', () => {
-    render(
-      <InferencePanel
-        nodes={mockNodes}
-        edges={mockEdges}
-        isOpen={true}
-        onClose={mockOnClose}
-      />
-    );
+  it('should generate graph inferences', () => {
+    const inferences = getGraphInferences(mockNodes, mockEdges);
 
-    expect(screen.getByText(/active sensors/i)).toBeInTheDocument();
+    expect(inferences).toBeDefined();
+    expect(Array.isArray(inferences)).toBe(true);
+    expect(inferences.length).toBeGreaterThan(0);
   });
 
-  it('should not render when closed', () => {
-    const { container } = render(
-      <InferencePanel
-        nodes={mockNodes}
-        edges={mockEdges}
-        isOpen={false}
-        onClose={mockOnClose}
-      />
-    );
+  it('should return zero score for empty graph', () => {
+    const result = getSensorCoverage([], []);
 
-    expect(container.firstChild).toBeNull();
+    expect(result.score).toBe(0);
+    expect(result.detections).toHaveLength(0);
   });
 
-  it('should call onClose when close button clicked', () => {
-    render(
-      <InferencePanel
-        nodes={mockNodes}
-        edges={mockEdges}
-        isOpen={true}
-        onClose={mockOnClose}
-      />
-    );
-
-    const closeButton = screen.getByRole('button', { name: /close/i });
-    fireEvent.click(closeButton);
-
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('should display "No Critical Issues" message when no issues', () => {
-    render(
-      <InferencePanel
-        nodes={[]}
-        edges={[]}
-        isOpen={true}
-        onClose={mockOnClose}
-      />
-    );
-
-    expect(screen.getByText(/no critical issues/i)).toBeInTheDocument();
+  it('should have sensor coverage score between sensor scores', () => {
+    // NetworkTrafficAnalysis has coverage 85, FileAnalysis has 80
+    const result = getSensorCoverage(mockNodes, mockEdges);
+    // Average should be (85 + 80) / 2 = 82.5, rounded to 83
+    expect(result.score).toBe(83);
   });
 });

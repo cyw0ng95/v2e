@@ -1,6 +1,7 @@
 package fsm
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -232,4 +233,99 @@ func ValidateAnalyzeTransition(from, to AnalyzeState) error {
 	}
 
 	return nil
+}
+
+// FSMErrorType represents the category of FSM error
+type FSMErrorType string
+
+const (
+	// ErrorTypeTransient indicates a temporary error that can be retried
+	ErrorTypeTransient FSMErrorType = "TRANSIENT"
+	// ErrorTypePermanent indicates a permanent error that should not be retried
+	ErrorTypePermanent FSMErrorType = "PERMANENT"
+)
+
+// FSMError represents an error that occurs during FSM operation
+type FSMError struct {
+	// Type is the error category
+	Type FSMErrorType
+	// State is the FSM state when the error occurred
+	State string
+	// Err is the underlying error
+	Err error
+	// RetryCount is the number of retry attempts made
+	RetryCount int
+	// Message provides additional context
+	Message string
+}
+
+// Error returns the error message
+func (e *FSMError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("[%s] %s: %v", e.Type, e.Message, e.Err)
+	}
+	return fmt.Sprintf("[%s] state=%s: %v", e.Type, e.State, e.Err)
+}
+
+// Unwrap returns the underlying error
+func (e *FSMError) Unwrap() error {
+	return e.Err
+}
+
+// IsTransient returns true if this is a transient error
+func (e *FSMError) IsTransient() bool {
+	return e.Type == ErrorTypeTransient
+}
+
+// IsPermanent returns true if this is a permanent error
+func (e *FSMError) IsPermanent() bool {
+	return e.Type == ErrorTypePermanent
+}
+
+// IsFSMError checks if an error is an FSMError
+func IsFSMError(err error) bool {
+	var fsmErr *FSMError
+	return errors.As(err, &fsmErr)
+}
+
+// NewTransientError creates a new transient FSM error
+func NewTransientError(state string, err error) *FSMError {
+	return &FSMError{
+		Type:    ErrorTypeTransient,
+		State:   state,
+		Err:     err,
+		Message: "",
+	}
+}
+
+// NewPermanentError creates a new permanent FSM error
+func NewPermanentError(state string, err error) *FSMError {
+	return &FSMError{
+		Type:    ErrorTypePermanent,
+		State:   state,
+		Err:     err,
+		Message: "",
+	}
+}
+
+// RetryConfig defines retry behavior for transient errors
+type RetryConfig struct {
+	// MaxRetries is the maximum number of retry attempts
+	MaxRetries int
+	// BaseDelay is the initial delay before first retry
+	BaseDelay time.Duration
+	// MaxDelay is the maximum delay between retries
+	MaxDelay time.Duration
+	// BackoffFactor is the multiplier for exponential backoff
+	BackoffFactor float64
+}
+
+// DefaultRetryConfig returns default retry configuration
+func DefaultRetryConfig() RetryConfig {
+	return RetryConfig{
+		MaxRetries:     3,
+		BaseDelay:      100 * time.Millisecond,
+		MaxDelay:       30 * time.Second,
+		BackoffFactor: 2.0,
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -257,4 +258,107 @@ func TestCollectMetrics_Stress(t *testing.T) {
 			assert.NoError(t, err)
 		}, "collectMetrics should not panic on iteration %d", i)
 	}
+}
+
+// TestMetricSampler_SamplingInterval tests the sampling interval functionality
+func TestMetricSampler_SamplingInterval(t *testing.T) {
+	// Reset sampler state for clean test
+	sampler.lastCollected = make(map[string]time.Time)
+
+	// Set up a metric with a 100ms sampling interval
+	setSamplingInterval("test_metric", 100*time.Millisecond)
+
+	// First call should return true (never collected)
+	assert.True(t, sampler.shouldCollect("test_metric"), "First collection should always happen")
+
+	// Mark as collected
+	sampler.markCollected("test_metric")
+
+	// Immediate second call should return false (within sampling interval)
+	assert.False(t, sampler.shouldCollect("test_metric"), "Should skip collection within interval")
+
+	// Wait for interval to pass
+	time.Sleep(110 * time.Millisecond)
+
+	// Third call should return true again (interval passed)
+	assert.True(t, sampler.shouldCollect("test_metric"), "Should collect after interval elapses")
+
+	// Restore default interval
+	setSamplingInterval("test_metric", 0)
+}
+
+// TestMetricSampler_ZeroInterval tests that zero interval means always collect
+func TestMetricSampler_ZeroInterval(t *testing.T) {
+	sampler.lastCollected = make(map[string]time.Time)
+
+	// Zero interval means always collect
+	setSamplingInterval("always_metric", 0)
+
+	assert.True(t, sampler.shouldCollect("always_metric"))
+	sampler.markCollected("always_metric")
+
+	// Even immediately after marking, should still collect
+	assert.True(t, sampler.shouldCollect("always_metric"), "Zero interval should always collect")
+}
+
+// TestMetricSampler_UnknownMetric tests behavior with unknown metrics
+func TestMetricSampler_UnknownMetric(t *testing.T) {
+	sampler.lastCollected = make(map[string]time.Time)
+
+	// Unknown metric should always collect (default behavior)
+	assert.True(t, sampler.shouldCollect("unknown_metric_xyz"))
+}
+
+// TestMetricSampler_GetSamplingInterval tests getting sampling intervals
+func TestMetricSampler_GetSamplingInterval(t *testing.T) {
+	// Test getting existing intervals
+	cpuInterval := getSamplingInterval("cpu")
+	assert.Equal(t, time.Duration(0), cpuInterval, "CPU should have zero interval")
+
+	loadInterval := getSamplingInterval("load_avg")
+	assert.Equal(t, 5*time.Second, loadInterval, "load_avg should have 5 second interval")
+
+	// Test getting non-existent interval returns zero
+	unknownInterval := getSamplingInterval("unknown_metric")
+	assert.Equal(t, time.Duration(0), unknownInterval, "Unknown metric should return zero interval")
+}
+
+// TestCollectAllMetrics_RequiredMetricsFail tests that required metric failures cause collection to fail
+func TestCollectAllMetrics_RequiredMetricsFail(t *testing.T) {
+	// This test verifies that if cpu or memory collection fails, the whole operation fails
+	// Since we can't easily mock the actual procfs calls, we verify the logic exists
+	// by checking that requiredMetricCollectors is properly configured
+	assert.True(t, requiredMetricCollectors["cpu"], "cpu should be a required metric")
+	assert.True(t, requiredMetricCollectors["memory"], "memory should be a required metric")
+	assert.False(t, requiredMetricCollectors["load_avg"], "load_avg should be optional")
+	assert.False(t, requiredMetricCollectors["uptime"], "uptime should be optional")
+}
+
+// TestCollectAllMetrics_ReturnsAllExpectedFields tests that all expected metric fields are present
+func TestCollectAllMetrics_ReturnsAllExpectedFields(t *testing.T) {
+	metrics, err := collectAllMetrics()
+	assert.NoError(t, err)
+	assert.NotNil(t, metrics)
+
+	// Verify required fields
+	_, hasCPU := metrics["cpu_usage"]
+	assert.True(t, hasCPU, "cpu_usage should be present")
+
+	_, hasMem := metrics["memory_usage"]
+	assert.True(t, hasMem, "memory_usage should be present")
+
+	// Note: load_avg and uptime may be skipped due to sampling, so we don't assert them
+}
+
+// TestCollectMetric_HandlesErrors tests that collectMetric handles errors gracefully
+func TestCollectMetric_HandlesErrors(t *testing.T) {
+	metrics := make(map[string]interface{})
+
+	// This function should handle errors without panicking
+	assert.NotPanics(t, func() {
+		// Call with a collector that returns error
+		collectMetric(metrics, func(m map[string]interface{}) error {
+			return errors.New("test error")
+		})
+	}, "collectMetric should handle collector errors gracefully")
 }
