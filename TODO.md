@@ -28,7 +28,6 @@
 | TODO-025 | meta | Refactor | Extract FSM transition logic into strategy pattern | 150 | Medium | |
 | TODO-026 | meta | Test | Add chaos testing for provider coordination | 250 | Medium | |
 | TODO-027 | notes | Feature | Add memory card export/import functionality | 200 | Low | |
-| TODO-028 | notes | Bug Fix | Fix potential deadlock in LearningFSM state transitions | 60 | High | |
 | TODO-029 | notes | Refactor | Simplify bookmark service with repository pattern | 120 | Medium | |
 | TODO-030 | notes | Test | Add performance benchmarks for FSM operations | 100 | Medium | |
 | TODO-031 | proc | Feature | Implement subprocess health monitoring and auto-restart | 200 | High | |
@@ -72,7 +71,6 @@
 | TODO-072 | runenv.sh | Documentation | Add inline comments explaining container volume mount paths and Go module cache optimization in run_container_env() | 60 | Low | |
 | TODO-073 | cmd/v2access | Refactor | Extract RPC handler registration logic into a shared package to reduce code duplication across cmd/* services | 150 | Medium | |
 | TODO-074 | cmd/v2access | Feature | Add request timeout configuration per RPC method to override DefaultRPCTimeout for long-running operations | 120 | Medium | |
-| TODO-075 | cmd/v2access | Bug Fix | Fix potential panic in error handling when broker disconnects unexpectedly during RPC call | 60 | High | |
 | TODO-076 | cmd/v2access | Optimization | Add connection pooling for HTTP clients to reduce connection overhead for repeated requests | 100 | Medium | |
 | TODO-077 | cmd/v2broker | Refactor | Extract subprocess lifecycle management into core package to improve testability and separation of concerns | 200 | Medium | |
 | TODO-078 | cmd/v2broker | Feature | Add graceful shutdown with drain period to allow in-flight requests to complete before terminating | 180 | High | |
@@ -92,6 +90,11 @@
 | TODO-092 | cmd/v2sysmon | Refactor | Extract metric collection logic into reusable functions to reduce code duplication for CPU, memory, and disk monitoring | 80 | Medium | |
 | TODO-093 | cmd/v2sysmon | Feature | Add alert threshold configuration with webhook or email notifications when metrics exceed defined limits | 150 | Medium | |
 | TODO-095 | cmd/v2sysmon | Optimization | Reduce CPU overhead in metric collection by sampling metrics at configurable intervals instead of every poll cycle | 100 | Medium | |
+| TODO-096 | notes | Refactor | Compact LearningFSM code by extracting common save state patterns into helper function | 50 | Medium | |
+| TODO-097 | notes | Test | Add concurrent stress test for LearningFSM state transitions with multiple goroutines | 100 | Medium | |
+| TODO-098 | all | Refactor | Remove duplicate error handling patterns across cmd/* services with centralized error wrapper | 150 | Medium | |
+| TODO-099 | all | Test | Add race condition tests using -race flag for all critical path functions | 200 | High | |
+| TODO-100 | all | Refactor | Consolidate similar test setup/teardown code into test helpers package | 100 | Low | |
 
 ## TODO Management Guidelines
 
