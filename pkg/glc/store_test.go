@@ -72,15 +72,15 @@ func TestGraphModel(t *testing.T) {
 func TestGraphVersionModel(t *testing.T) {
 	testutils.Run(t, testutils.Level1, "TestGraphVersionModel", nil, func(t *testing.T, tx *gorm.DB) {
 		version := &GraphVersionModel{
-			GraphID:  1,
-			Version:  1,
-			Nodes:    `[]`,
-			Edges:    `[]`,
-			Viewport: `{"x": 0, "y": 0, "zoom": 1}`,
+			GraphDBID: 1,
+			Version:   1,
+			Nodes:     `[]`,
+			Edges:     `[]`,
+			Viewport:  `{"x": 0, "y": 0, "zoom": 1}`,
 		}
 
-		if version.GraphID != 1 {
-			t.Errorf("Expected GraphID 1, got %d", version.GraphID)
+		if version.GraphDBID != 1 {
+			t.Errorf("Expected GraphDBID 1, got %d", version.GraphDBID)
 		}
 		if version.Version != 1 {
 			t.Errorf("Expected Version 1, got %d", version.Version)
