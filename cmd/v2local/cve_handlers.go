@@ -93,14 +93,16 @@ func createGetCVEByIDHandler(db *local.DB, logger *common.Logger) subprocess.Han
 
 		return executeWithValidation(ctx, msg, logger, "GetCVEByID",
 			func() error {
-				if errResp := subprocess.ParseRequest(msg, &req); errResp != nil {
-					return errResp
+				errResp := subprocess.ParseRequest(msg, &req)
+				if errResp != nil {
+					return fmt.Errorf("parse error: %s", errResp.Error)
 				}
 				return nil
 			},
 			func() error {
-				if errResp := subprocess.RequireField(msg, req.CVEID, "cve_id"); errResp != nil {
-					return errResp
+				errResp := subprocess.RequireField(msg, req.CVEID, "cve_id")
+				if errResp != nil {
+					return fmt.Errorf("validation error: %s", errResp.Error)
 				}
 				// Validate CVE ID format for security
 				validator := subprocess.NewValidator()
@@ -218,20 +220,13 @@ func createCountCVEsHandler(db *local.DB, logger *common.Logger) subprocess.Hand
 		count, err := db.Count()
 		if err != nil {
 			logger.Warn("Failed to count CVEs in database: %v", err)
-			logger.Debug("Processing CountCVEs request failed: %v", err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to count CVEs: %v", err)), nil
+			return sendErrorResponse(msg, "failed to count CVEs: %v", err)
 		}
 		logger.Info("CVE count: %d", count)
-		logger.Debug("Processing CountCVEs request completed successfully: count %d", count)
 		result := map[string]interface{}{
 			"count": count,
 		}
-		resp, err := subprocess.NewSuccessResponse(msg, result)
-		if err != nil {
-			logger.Error("Failed to marshal result: %v", err)
-			return subprocess.NewErrorResponse(msg, fmt.Sprintf("failed to marshal result: %v", err)), nil
-		}
-		return resp, nil
+		return sendSuccessResponse(msg, result)
 	}
 }
 

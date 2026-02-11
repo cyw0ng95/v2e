@@ -41,7 +41,7 @@ func parseRequestWithDefaults(msg *subprocess.Message, req interface{}, defaults
 		return nil
 	}
 	if errResp := subprocess.ParseRequest(msg, req); errResp != nil {
-		return fmt.Errorf("%w", errResp)
+		return fmt.Errorf("parse error: %s", errResp.Error)
 	}
 	return nil
 }
