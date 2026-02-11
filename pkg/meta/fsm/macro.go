@@ -296,6 +296,100 @@ func (m *MacroFSMManager) GetProviderCount() int {
 	return len(m.providers)
 }
 
+// GetProviderStartupOrder returns providers in dependency order
+// Providers with no dependencies come first, then providers that depend on them, etc.
+func (m *MacroFSMManager) GetProviderStartupOrder() []ProviderFSM {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Collect all providers
+	providers := make([]ProviderFSM, 0, len(m.providers))
+	for _, p := range m.providers {
+		providers = append(providers, p)
+	}
+
+	// Topological sort based on dependencies
+	return m.topologicalSort(providers)
+}
+
+// topologicalSort performs a topological sort of providers based on dependencies
+func (m *MacroFSMManager) topologicalSort(providers []ProviderFSM) []ProviderFSM {
+	// Build dependency map and in-degree count
+	providerIDMap := make(map[string]ProviderFSM)
+	inDegree := make(map[string]int)
+	depMap := make(map[string][]string) // provider -> list of providers that depend on it
+
+	for _, p := range providers {
+		pid := p.GetID()
+		providerIDMap[pid] = p
+		inDegree[pid] = 0
+	}
+
+	// Calculate in-degrees
+	for _, p := range providers {
+		pid := p.GetID()
+		for _, dep := range p.GetDependencies() {
+			if _, exists := providerIDMap[dep]; exists {
+				inDegree[pid]++
+				depMap[dep] = append(depMap[dep], pid)
+			}
+		}
+	}
+
+	// Kahn's algorithm for topological sort
+	var result []ProviderFSM
+	queue := make([]string, 0)
+
+	// Start with providers that have no dependencies
+	for pid, degree := range inDegree {
+		if degree == 0 {
+			queue = append(queue, pid)
+		}
+	}
+
+	for len(queue) > 0 {
+		// Remove from queue
+		current := queue[0]
+		queue = queue[1:]
+
+		// Add to result
+		if provider, exists := providerIDMap[current]; exists {
+			result = append(result, provider)
+		}
+
+		// Reduce in-degree for dependent providers
+		for _, dependent := range depMap[current] {
+			inDegree[dependent]--
+			if inDegree[dependent] == 0 {
+				queue = append(queue, dependent)
+			}
+		}
+	}
+
+	return result
+}
+
+// ValidateProviderDependencies checks if all provider dependencies are satisfied
+func (m *MacroFSMManager) ValidateProviderDependencies() error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Collect current provider states
+	states := make(map[string]ProviderState)
+	for _, p := range m.providers {
+		states[p.GetID()] = p.GetState()
+	}
+
+	// Check each provider's dependencies
+	for _, p := range m.providers {
+		if err := p.CheckDependencies(states); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Stop gracefully stops the macro FSM manager
 func (m *MacroFSMManager) Stop() error {
 	// Signal event processor to stop

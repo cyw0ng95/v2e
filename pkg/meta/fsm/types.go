@@ -149,6 +149,9 @@ type ProviderFSM interface {
 
 	// GetStats returns provider statistics for monitoring
 	GetStats() map[string]interface{}
+
+	// GetDependencies returns the list of provider IDs that must complete before this provider
+	GetDependencies() []string
 }
 
 // StateTransition represents a valid state transition

@@ -49,6 +49,9 @@ type BaseProviderFSM struct {
 	batchSize    int
 	maxRetries   int
 	retryDelay   time.Duration
+
+	// Dependencies: list of provider IDs that must complete before this provider can start
+	dependencies []string
 }
 
 // ProviderConfig holds configuration for creating a provider FSM
@@ -57,6 +60,9 @@ type ProviderConfig struct {
 	ProviderType string
 	Storage      *storage.Store
 	Executor     func() error // Custom execution logic
+
+	// Dependencies: list of provider IDs that must complete before this provider can start
+	Dependencies []string
 
 	// Common configuration (defaults applied if zero)
 	BatchSize    int           // Default: 100
@@ -98,6 +104,7 @@ func NewBaseProviderFSM(config ProviderConfig) (*BaseProviderFSM, error) {
 		batchSize:    batchSize,
 		maxRetries:   maxRetries,
 		retryDelay:   retryDelay,
+		dependencies: config.Dependencies,
 	}
 
 	// Try to load existing state from storage only if it exists
@@ -257,12 +264,56 @@ func (p *BaseProviderFSM) Transition(newState ProviderState) error {
 	return nil
 }
 
+// GetDependencies returns the list of provider IDs that must complete before this provider
+func (p *BaseProviderFSM) GetDependencies() []string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	// Return a copy to prevent external modification
+	if p.dependencies == nil {
+		return nil
+	}
+	deps := make([]string, len(p.dependencies))
+	copy(deps, p.dependencies)
+	return deps
+}
+
+// CheckDependencies verifies that all dependency providers are in TERMINATED state
+func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderState) error {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if len(p.dependencies) == 0 {
+		return nil // No dependencies, always ready
+	}
+
+	for _, depID := range p.dependencies {
+		state, exists := providerStates[depID]
+		if !exists {
+			return fmt.Errorf("dependency provider %s not found", depID)
+		}
+		if state != ProviderTerminated {
+			return fmt.Errorf("dependency provider %s must be TERMINATED before starting, currently: %s", depID, state)
+		}
+	}
+
+	return nil
+}
+
 // Start begins execution (IDLE -> ACQUIRING -> RUNNING)
-func (p *BaseProviderFSM) Start() error {
+// Optional dependencyChecker can be provided to verify dependencies before starting
+func (p *BaseProviderFSM) Start(dependencyChecker func(map[string]ProviderState) error) error {
 	currentState := p.GetState()
 
 	if currentState != ProviderIdle {
 		return fmt.Errorf("cannot start from state %s, must be IDLE", currentState)
+	}
+
+	// Check dependencies if a checker is provided
+	if dependencyChecker != nil {
+		if err := dependencyChecker(map[string]ProviderState{}); err != nil {
+			return fmt.Errorf("dependency check failed: %w", err)
+		}
 	}
 
 	// Transition to ACQUIRING (waiting for permits)
