@@ -2,19 +2,21 @@ package transport
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"sync"
+	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
 
 const (
-	SharedMemMagic       = "V2E-SHRM"
-	SharedMemVersion     = 1
+	SharedMemMagic   = "V2E-SHRM"
+	SharedMemVersion = 1
 	SharedMemMinSize     = 4096
-	SharedMemDefaultSize = 64 * 1024        // 64KB default
-	SharedMemMaxSize     = 16 * 1024 * 1024 // 16MB max
+	SharedMemDefaultSize = 64 * 1024
+	SharedMemMaxSize     = 16 * 1024 * 1024
 )
 
 type SharedMemHeader struct {
@@ -127,7 +129,6 @@ func (shm *SharedMemory) Write(data []byte) error {
 		return fmt.Errorf("data too large: %d bytes", len(data))
 	}
 
-	// Check if there's enough available space (ring buffer may need to wrap)
 	available := shm.availableSpaceLocked()
 	if dataLen > available {
 		return fmt.Errorf("ring buffer full: %d bytes needed, %d available", dataLen, available)
@@ -137,20 +138,15 @@ func (shm *SharedMemory) Write(data []byte) error {
 	dataOffset := shm.header.WritePos % shm.header.Capacity
 	writeStart := headerSize + dataOffset
 
-	// Check if write will wrap around
 	endPos := dataOffset + dataLen
 	if endPos > shm.header.Capacity {
-		// Write wraps around: split into two parts
 		firstPart := shm.header.Capacity - dataOffset
 		secondPart := dataLen - firstPart
 
-		// Copy first part to end of buffer
 		copy(shm.data[writeStart:writeStart+firstPart], data[:firstPart])
 
-		// Copy second part to beginning of data area
 		copy(shm.data[headerSize:headerSize+secondPart], data[firstPart:])
 	} else {
-		// Single contiguous write
 		copy(shm.data[writeStart:writeStart+dataLen], data)
 	}
 
@@ -159,8 +155,6 @@ func (shm *SharedMemory) Write(data []byte) error {
 	return nil
 }
 
-// availableSpaceLocked returns the available space in the ring buffer.
-// Caller must hold shm.mu.
 func (shm *SharedMemory) availableSpaceLocked() uint32 {
 	used := shm.header.WritePos - shm.header.ReadPos
 	if used >= shm.header.Capacity {
@@ -191,20 +185,15 @@ func (shm *SharedMemory) Read(dst []byte) (int, error) {
 	dataOffset := shm.header.ReadPos % shm.header.Capacity
 	readStart := headerSize + dataOffset
 
-	// Check if read will wrap around
 	endPos := dataOffset + readLen
 	if endPos > shm.header.Capacity {
-		// Read wraps around: split into two parts
 		firstPart := shm.header.Capacity - dataOffset
 		secondPart := readLen - firstPart
 
-		// Copy first part from end of buffer
 		copy(dst[:firstPart], shm.data[readStart:readStart+firstPart])
 
-		// Copy second part from beginning of data area
 		copy(dst[firstPart:], shm.data[headerSize:headerSize+secondPart])
 	} else {
-		// Single contiguous read
 		copy(dst, shm.data[readStart:readStart+readLen])
 	}
 
@@ -222,28 +211,24 @@ func (shm *SharedMemory) IsClosed() bool {
 func (shm *SharedMemory) Available() uint32 {
 	shm.mu.Lock()
 	defer shm.mu.Unlock()
-
 	return shm.availableSpaceLocked()
 }
 
 func (shm *SharedMemory) BytesAvailable() uint32 {
 	shm.mu.Lock()
 	defer shm.mu.Unlock()
-
 	return shm.header.WritePos - shm.header.ReadPos
 }
 
 func (shm *SharedMemory) Fd() uintptr {
 	shm.mu.Lock()
 	defer shm.mu.Unlock()
-
 	return uintptr(shm.fd)
 }
 
 func (shm *SharedMemory) Size() uint32 {
 	shm.mu.Lock()
 	defer shm.mu.Unlock()
-
 	return shm.header.Size
 }
 
@@ -276,7 +261,110 @@ func (shm *SharedMemory) Close() error {
 }
 
 func (shm *SharedMemory) SendFd(conn *os.File) error {
-	return fmt.Errorf("SendFd: fd passing not implemented")
+	shm.mu.Lock()
+	defer shm.mu.Unlock()
+
+	if shm.closed {
+		return fmt.Errorf("shared memory closed")
+	}
+
+	if shm.fd < 0 {
+		return fmt.Errorf("invalid file descriptor")
+	}
+
+	socketFd := int(conn.Fd())
+
+	rights := unix.UnixRights(int(shm.fd))
+	rightsBytes := append([]byte(nil), rights...)
+
+	if len(rightsBytes) == 0 {
+		return fmt.Errorf("failed to serialize rights")
+	}
+
+	data := []byte("FD")
+	oob := append([]byte(nil), rights...)
+
+	err := syscall.Sendmsg(socketFd, data, oob, 0)
+	if err != nil {
+		return fmt.Errorf("sendmsg failed: %w", err)
+	}
+
+	return nil
+}
+
+func RecvFd(conn *os.File) (*SharedMemory, error) {
+	socketFd := int(conn.Fd())
+
+	buf := make([]byte, 32)
+	oob := make([]byte, unix.CmsgSpace(1))
+
+	n, oobn, flags, err := syscall.Recvmsg(socketFd, buf, oob, 0)
+	if err != nil {
+		return nil, fmt.Errorf("recvmsg failed: %w", err)
+	}
+
+	if flags&syscall.MSG_TRUNC != 0 {
+		return nil, fmt.Errorf("message truncated")
+	}
+
+	if flags&syscall.MSG_CTRUNC != 0 {
+		return nil, fmt.Errorf("control message truncated")
+	}
+
+	if n == 0 && oobn == 0 {
+		return nil, fmt.Errorf("no data received")
+	}
+
+	msgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
+	if err != nil {
+		return nil, fmt.Errorf("parse socket control failed: %w", err)
+	}
+
+	for _, msg := range msgs {
+		if msg.Header.Type == syscall.SCM_RIGHTS {
+			fds, err := syscall.ParseUnixRights(&msg)
+			if err != nil {
+				return nil, fmt.Errorf("parse unix rights failed: %w", err)
+			}
+
+			if len(fds) == 0 {
+				return nil, fmt.Errorf("no file descriptor received")
+			}
+
+			receivedFd := fds[0]
+
+			var stat syscall.Stat_t
+			if err := syscall.Fstat(receivedFd, &stat); err != nil {
+				syscall.Close(receivedFd)
+				return nil, fmt.Errorf("failed to stat shared memory: %w", err)
+			}
+			size := int(stat.Size)
+
+			data, err := unix.Mmap(receivedFd, 0, size, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+			if err != nil {
+				syscall.Close(receivedFd)
+				return nil, fmt.Errorf("failed to mmap shared memory: %w", err)
+			}
+
+			shm := &SharedMemory{
+				fd:       receivedFd,
+				data:     data,
+				isServer: false,
+				memFd:    os.NewFile(uintptr(receivedFd), "v2e-shmem-recv"),
+			}
+
+			shm.header = (*SharedMemHeader)(unsafe.Pointer(&data[0]))
+
+			if err := shm.validateHeader(); err != nil {
+				shm.Close()
+				return nil, fmt.Errorf("invalid shared memory header: %w", err)
+			}
+
+			return shm, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no SCM_RIGHTS message received")
 }
 
 func alignToPage(size uint64) uint64 {
