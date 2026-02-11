@@ -60,7 +60,7 @@ type UserPresetModel struct {
 type ShareLinkModel struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
 	LinkID    string         `gorm:"uniqueIndex;not null" json:"link_id"` // Short unique identifier for URL
-	GraphID   string         `gorm:"index;not null" json:"graph_id"`      // References GraphModel.GraphID
+	GraphID   string         `gorm:"index;not null;references:GraphID;constraint:OnDelete:CASCADE" json:"graph_id"` // References GraphModel.GraphID with CASCADE delete
 	Password  string         `json:"password,omitempty"`                  // Optional password protection (hashed)
 	ExpiresAt *time.Time     `json:"expires_at,omitempty"`
 	ViewCount int            `gorm:"default:0" json:"view_count"`
