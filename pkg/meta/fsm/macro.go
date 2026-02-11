@@ -23,6 +23,9 @@ type MacroFSMManager struct {
 	eventBatch []*Event
 	batchMu    sync.Mutex
 	flushChan  chan struct{}
+
+	// Transition strategy for state transitions (reduces code duplication)
+	transitionStrategy *MacroTransitionStrategy
 }
 
 // NewMacroFSMManager creates a new macro FSM manager
@@ -32,16 +35,17 @@ func NewMacroFSMManager(id string, store *storage.Store) (*MacroFSMManager, erro
 	}
 
 	m := &MacroFSMManager{
-		id:         id,
-		state:      MacroBootstrapping,
-		providers:  make(map[string]ProviderFSM),
-		storage:    store,
-		createdAt:  time.Now(),
-		updatedAt:  time.Now(),
-		eventChan:  make(chan *Event, 1000),
-		stopChan:   make(chan struct{}),
-		eventBatch: make([]*Event, 0, 50),
-		flushChan:  make(chan struct{}, 1),
+		id:                id,
+		state:             MacroBootstrapping,
+		providers:         make(map[string]ProviderFSM),
+		storage:           store,
+		createdAt:         time.Now(),
+		updatedAt:         time.Now(),
+		eventChan:         make(chan *Event, 1000),
+		stopChan:         make(chan struct{}),
+		eventBatch:        make([]*Event, 0, 50),
+		flushChan:         make(chan struct{}, 1),
+		transitionStrategy: NewMacroTransitionStrategy(),
 	}
 
 	// Try to load existing state from storage
@@ -69,16 +73,19 @@ func (m *MacroFSMManager) GetState() MacroState {
 // Transition attempts to transition to a new state
 func (m *MacroFSMManager) Transition(newState MacroState) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 
-	// Validate transition
-	if err := ValidateMacroTransition(m.state, newState); err != nil {
+	oldState := m.state
+
+	// Validate transition using strategy
+	if err := m.transitionStrategy.Validate(oldState, newState); err != nil {
+		m.mu.Unlock()
 		return err
 	}
 
-	oldState := m.state
+	// Update state
 	m.state = newState
-	m.updatedAt = time.Now()
+	now := time.Now()
+	m.updatedAt = now
 
 	// Log FSM transition (Requirement 6: Log FSM Transitions)
 	// Collect provider states without holding m.mu to avoid deadlock
@@ -90,21 +97,23 @@ func (m *MacroFSMManager) Transition(newState MacroState) error {
 	}
 	m.logTransition(oldState, newState, providerCount, stateCounts)
 
-	// Persist state to storage
+	// Create state for persistence (capture values while holding lock)
 	if m.storage != nil {
 		macroState := &storage.MacroFSMState{
 			ID:        m.id,
-			State:     storage.MacroState(m.state),
+			State:     storage.MacroState(newState),
 			CreatedAt: m.createdAt,
-			UpdatedAt: m.updatedAt,
+			UpdatedAt: now,
 		}
 		if err := m.storage.SaveMacroState(macroState); err != nil {
 			// Rollback state on persistence failure
 			m.state = oldState
+			m.mu.Unlock()
 			return fmt.Errorf("failed to persist state transition: %w", err)
 		}
 	}
 
+	m.mu.Unlock()
 	return nil
 }
 

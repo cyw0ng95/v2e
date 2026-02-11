@@ -63,6 +63,9 @@ type BaseProviderFSM struct {
 
 	// Dependencies: list of provider IDs that must complete before this provider can start
 	dependencies []string
+
+	// Transition strategy for state transitions (reduces code duplication)
+	transitionStrategy *ProviderTransitionStrategy
 }
 
 // ProviderConfig holds configuration for creating a provider FSM
@@ -105,17 +108,18 @@ func NewBaseProviderFSM(config ProviderConfig) (*BaseProviderFSM, error) {
 	}
 
 	p := &BaseProviderFSM{
-		id:           config.ID,
-		providerType: config.ProviderType,
-		state:        ProviderIdle,
-		storage:      config.Storage,
-		createdAt:    time.Now(),
-		updatedAt:    time.Now(),
-		executor:     config.Executor,
-		batchSize:    batchSize,
-		maxRetries:   maxRetries,
-		retryDelay:   retryDelay,
-		dependencies: config.Dependencies,
+		id:                config.ID,
+		providerType:       config.ProviderType,
+		state:             ProviderIdle,
+		storage:           config.Storage,
+		createdAt:         time.Now(),
+		updatedAt:         time.Now(),
+		executor:          config.Executor,
+		batchSize:         batchSize,
+		maxRetries:        maxRetries,
+		retryDelay:        retryDelay,
+		dependencies:      config.Dependencies,
+		transitionStrategy: NewProviderTransitionStrategy(),
 	}
 
 	// Try to load existing state from storage only if it exists
@@ -232,42 +236,47 @@ func (p *BaseProviderFSM) GetStats() map[string]interface{} {
 // Transition attempts to transition to a new state
 func (p *BaseProviderFSM) Transition(newState ProviderState) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 
-	// Validate transition
-	if err := ValidateProviderTransition(p.state, newState); err != nil {
+	oldState := p.state
+
+	// Validate transition using strategy
+	if err := p.transitionStrategy.Validate(oldState, newState); err != nil {
+		p.mu.Unlock()
 		return err
 	}
 
-	oldState := p.state
+	// Update state
 	p.state = newState
-	p.updatedAt = time.Now()
+	now := time.Now()
+	p.updatedAt = now
 
 	// Log FSM transition (Requirement 6: Log FSM Transitions)
 	p.logTransition(oldState, newState, "manual")
 
-	// Persist state to storage
-	if p.storage != nil {
-		providerState := providerStatePool.Get().(*storage.ProviderFSMState)
-		providerState.ID = p.id
-		providerState.ProviderType = p.providerType
-		providerState.State = storage.ProviderState(p.state)
-		providerState.LastCheckpoint = p.lastCheckpoint
-		providerState.ProcessedCount = atomic.LoadInt64(&p.processedCount)
-		providerState.ErrorCount = atomic.LoadInt64(&p.errorCount)
-		providerState.CreatedAt = p.createdAt
-		providerState.UpdatedAt = time.Now()
+	// Create state for persistence (capture values while holding lock)
+	providerState := providerStatePool.Get().(*storage.ProviderFSMState)
+	providerState.ID = p.id
+	providerState.ProviderType = p.providerType
+	providerState.State = storage.ProviderState(newState)
+	providerState.LastCheckpoint = p.lastCheckpoint
+	providerState.ProcessedCount = atomic.LoadInt64(&p.processedCount)
+	providerState.ErrorCount = atomic.LoadInt64(&p.errorCount)
+	providerState.CreatedAt = p.createdAt
+	providerState.UpdatedAt = now
 
+	// Persist to storage
+	if p.storage != nil {
 		if err := p.storage.SaveProviderState(providerState); err != nil {
 			// Rollback state on persistence failure
 			p.state = oldState
 			providerStatePool.Put(providerState)
+			p.mu.Unlock()
 			return fmt.Errorf("failed to persist state transition: %w", err)
 		}
-
-		providerStatePool.Put(providerState)
 	}
 
+	providerStatePool.Put(providerState)
+	p.mu.Unlock()
 	return nil
 }
 
