@@ -139,7 +139,6 @@
 | TODO-197 | rpc-client | Bug Fix | Add proper cleanup strategy for pendingRequests Map to prevent memory leaks from failed requests | 60 | Medium | |
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
 | TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
-| TODO-204 | glc | Bug Fix | Implement password hashing with bcrypt or argon2 for CreateShareLink - currently stores plaintext which is security vulnerability | 60 | High | |
 | TODO-208 | ume | Refactor | Add backpressure mechanism to message routing - when route channels are full, messages are dropped with "channel full" error instead of blocking send, implement proper queue or buffer | 200 | High | |
 | TODO-209 | ume | Feature | Add message batching support to router - group multiple messages and route them in batches to improve throughput for high-volume scenarios | 250 | Medium | |
 | TODO-210 | ume | Feature | Add message delivery tracking - track whether messages were successfully delivered or dropped for observability and debugging | 150 | Medium | |
