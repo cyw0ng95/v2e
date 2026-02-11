@@ -318,7 +318,7 @@ func createGLCPresetHandler(store *glc.Store, logger *common.Logger) subprocess.
 			Theme       json.RawMessage `json:"theme"`
 			Behavior    json.RawMessage `json:"behavior"`
 			NodeTypes   json.RawMessage `json:"node_types"`
-			Relations   json.RawMessage `json:"relationships"`
+			Relations   json.RawMessage `json:"relations"`
 		}
 		if errResp := subprocess.ParseRequest(msg, &params); errResp != nil {
 			logger.Warn("Failed to parse RPCGLCPresetCreate request: %v", errResp.Error)

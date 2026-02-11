@@ -194,7 +194,7 @@ export const d3fendPreset: CanvasPreset = {
     },
   ],
 
-  relationships: [
+  relations: [
     // D3FEND relationships
     {
       id: 'subtechnique-of',

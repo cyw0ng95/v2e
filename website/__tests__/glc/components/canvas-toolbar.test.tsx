@@ -50,7 +50,7 @@ describe('CanvasToolbar', () => {
   });
 
   it('should have correct number of relationships in preset', () => {
-    expect(d3fendPreset.relationships.length).toBeGreaterThan(0);
+    expect(d3fendPreset.relations.length).toBeGreaterThan(0);
   });
 
   it('should render without crashing when provided with preset', () => {
@@ -72,6 +72,7 @@ describe('CanvasToolbar', () => {
     expect(d3fendPreset.theme).toBeDefined();
     expect(d3fendPreset.behavior).toBeDefined();
     expect(d3fendPreset.nodeTypes).toBeDefined();
+    expect(d3fendPreset.relations).toBeDefined();
     expect(d3fendPreset.relationships).toBeDefined();
   });
 });

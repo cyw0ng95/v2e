@@ -155,6 +155,24 @@ func runTUIInteractive() error {
 	selectedOption := 0
 	activePane := 0 // 0: major, 1: minor, 2: options
 
+	// updateDimensions refreshes terminal dimensions from termui
+	updateDimensions := func() {
+		w, h := termui.TerminalDimensions()
+		termWidth = w
+		termHeight = h
+	}
+
+	// getMinTerminalDimensions returns the minimum safe dimensions for the TUI
+	getMinTerminalDimensions := func() (int, int) {
+		return 80, 24 // Minimum 80 columns x 24 rows
+	}
+
+	// isTerminalTooSmall checks if current terminal is too small for proper rendering
+	isTerminalTooSmall := func() bool {
+		minW, minH := getMinTerminalDimensions()
+		return termWidth < minW || termHeight < minH
+	}
+
 	// Populate major class list
 	for _, majorClass := range groupOrder {
 		majorClassList.Rows = append(majorClassList.Rows, majorClass)
@@ -273,6 +291,30 @@ func runTUIInteractive() error {
 
 	// Update grid layout to show/hide details panel
 	updateLayout := func() {
+		// Check if terminal is too small and show warning if needed
+		if isTerminalTooSmall() {
+			minW, minH := getMinTerminalDimensions()
+			warningText := fmt.Sprintf("Terminal too small! Current: %dx%d, Minimum: %dx%d\n\nPlease resize your terminal to at least %dx%d to use the TUI.\n\nPress 'q' to exit.",
+				termWidth, termHeight, minW, minH, minW, minH)
+
+			title.Text = "vconfig - Configuration Editor (Terminal Too Small!)"
+			title.TextStyle.Fg = termui.ColorRed
+			title.SetRect(0, 0, termWidth, 1)
+
+			warning := widgets.NewParagraph()
+			warning.Text = warningText
+			warning.TextStyle.Fg = termui.ColorYellow
+			warning.Title = "Warning"
+			warning.Border = true
+			warning.SetRect(0, 1, termWidth, termHeight)
+
+			termui.Render(title, warning)
+			return
+		}
+
+		// Ensure terminal dimensions are current
+		updateDimensions()
+
 		// Update borders to highlight active pane
 		majorClassList.BorderStyle = termui.NewStyle(termui.ColorWhite)
 		minorClassList.BorderStyle = termui.NewStyle(termui.ColorWhite)
@@ -287,11 +329,35 @@ func runTUIInteractive() error {
 			optionsList.BorderStyle = termui.NewStyle(termui.ColorCyan)
 		}
 
+		// Calculate layout dimensions with boundary checks
+		majorWidth := int(float64(termWidth) * 0.4)
+		minorWidth := int(float64(termWidth) * 0.7)
+		selectorHeight := int(float64(termHeight) * 0.6)
+
+		// Ensure minimum width for each column
+		if majorWidth < 15 {
+			majorWidth = 15
+		}
+		if minorWidth-majorWidth < 15 {
+			minorWidth = majorWidth + 15
+		}
+		if termWidth-minorWidth < 20 {
+			minorWidth = termWidth - 20
+		}
+
+		// Ensure minimum height for selectors
+		if selectorHeight < 10 {
+			selectorHeight = 10
+		}
+		if selectorHeight > termHeight-4 {
+			selectorHeight = termHeight - 4
+		}
+
 		// Always show the tweak panel below the selectors
-		majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), int(float64(termHeight)*0.6))
-		minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), int(float64(termHeight)*0.6))
-		optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, int(float64(termHeight)*0.6))
-		tweakPanel.SetRect(0, int(float64(termHeight)*0.6), termWidth, termHeight-2)
+		majorClassList.SetRect(0, 1, majorWidth, selectorHeight)
+		minorClassList.SetRect(majorWidth, 1, minorWidth, selectorHeight)
+		optionsList.SetRect(minorWidth, 1, termWidth, selectorHeight)
+		tweakPanel.SetRect(0, selectorHeight, termWidth, termHeight-2)
 		instructions.SetRect(0, termHeight-2, termWidth, termHeight)
 		termui.Render(title, majorClassList, minorClassList, optionsList, tweakPanel, instructions)
 	}
@@ -311,6 +377,11 @@ func runTUIInteractive() error {
 	for {
 		e := <-uiEvents
 		switch e.ID {
+		case "<Resize>":
+			// Update terminal dimensions on resize
+			updateDimensions()
+			// Re-render with new dimensions
+			updateLayout()
 		case "q", "<C-c>":
 			return nil
 		case "<Right>":
@@ -438,10 +509,26 @@ func runTUIInteractive() error {
 				errorMsg.TextStyle.Fg = termui.ColorRed
 				errorMsg.Border = true
 
+				// Update dimensions before showing error
+				updateDimensions()
+
+				// Calculate layout dimensions for error display
+				majorWidth := int(float64(termWidth) * 0.4)
+				minorWidth := int(float64(termWidth) * 0.7)
+				if majorWidth < 15 {
+					majorWidth = 15
+				}
+				if minorWidth-majorWidth < 15 {
+					minorWidth = majorWidth + 15
+				}
+				if termWidth-minorWidth < 20 {
+					minorWidth = termWidth - 20
+				}
+
 				// Temporarily show error
-				majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
-				minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
-				optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+				majorClassList.SetRect(0, 1, majorWidth, termHeight-2)
+				minorClassList.SetRect(majorWidth, 1, minorWidth, termHeight-2)
+				optionsList.SetRect(minorWidth, 1, termWidth, termHeight-2)
 				errorMsg.SetRect(0, termHeight-2, termWidth, termHeight)
 				instructions.SetRect(0, termHeight-1, termWidth, termHeight)
 				termui.Render(title, majorClassList, minorClassList, optionsList, errorMsg, instructions)
@@ -461,10 +548,26 @@ func runTUIInteractive() error {
 				successMsg.TextStyle.Fg = termui.ColorGreen
 				successMsg.Border = true
 
+				// Update dimensions before showing success
+				updateDimensions()
+
+				// Calculate layout dimensions for success display
+				majorWidth := int(float64(termWidth) * 0.4)
+				minorWidth := int(float64(termWidth) * 0.7)
+				if majorWidth < 15 {
+					majorWidth = 15
+				}
+				if minorWidth-majorWidth < 15 {
+					minorWidth = majorWidth + 15
+				}
+				if termWidth-minorWidth < 20 {
+					minorWidth = termWidth - 20
+				}
+
 				// Temporarily show success
-				majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
-				minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
-				optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+				majorClassList.SetRect(0, 1, majorWidth, termHeight-2)
+				minorClassList.SetRect(majorWidth, 1, minorWidth, termHeight-2)
+				optionsList.SetRect(minorWidth, 1, termWidth, termHeight-2)
 				successMsg.SetRect(0, termHeight-2, termWidth, termHeight)
 				instructions.SetRect(0, termHeight-1, termWidth, termHeight)
 				termui.Render(title, majorClassList, minorClassList, optionsList, successMsg, instructions)
@@ -501,10 +604,26 @@ func runTUIInteractive() error {
 				errorMsg.TextStyle.Fg = termui.ColorRed
 				errorMsg.Border = true
 
+				// Update dimensions before showing error
+				updateDimensions()
+
+				// Calculate layout dimensions for error display
+				majorWidth := int(float64(termWidth) * 0.4)
+				minorWidth := int(float64(termWidth) * 0.7)
+				if majorWidth < 15 {
+					majorWidth = 15
+				}
+				if minorWidth-majorWidth < 15 {
+					minorWidth = majorWidth + 15
+				}
+				if termWidth-minorWidth < 20 {
+					minorWidth = termWidth - 20
+				}
+
 				// Temporarily show error
-				majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
-				minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
-				optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+				majorClassList.SetRect(0, 1, majorWidth, termHeight-2)
+				minorClassList.SetRect(majorWidth, 1, minorWidth, termHeight-2)
+				optionsList.SetRect(minorWidth, 1, termWidth, termHeight-2)
 				errorMsg.SetRect(0, termHeight-2, termWidth, termHeight)
 				instructions.SetRect(0, termHeight-1, termWidth, termHeight)
 				termui.Render(title, majorClassList, minorClassList, optionsList, errorMsg, instructions)
@@ -525,10 +644,26 @@ func runTUIInteractive() error {
 					errorMsg.TextStyle.Fg = termui.ColorRed
 					errorMsg.Border = true
 
+					// Update dimensions before showing error
+					updateDimensions()
+
+					// Calculate layout dimensions for error display
+					majorWidth := int(float64(termWidth) * 0.4)
+					minorWidth := int(float64(termWidth) * 0.7)
+					if majorWidth < 15 {
+						majorWidth = 15
+					}
+					if minorWidth-majorWidth < 15 {
+						minorWidth = majorWidth + 15
+					}
+					if termWidth-minorWidth < 20 {
+						minorWidth = termWidth - 20
+					}
+
 					// Temporarily show error
-					majorClassList.SetRect(0, 1, int(float64(termWidth)*0.4), termHeight-2)
-					minorClassList.SetRect(int(float64(termWidth)*0.4), 1, int(float64(termWidth)*0.7), termHeight-2)
-					optionsList.SetRect(int(float64(termWidth)*0.7), 1, termWidth, termHeight-2)
+					majorClassList.SetRect(0, 1, majorWidth, termHeight-2)
+					minorClassList.SetRect(majorWidth, 1, minorWidth, termHeight-2)
+					optionsList.SetRect(minorWidth, 1, termWidth, termHeight-2)
 					errorMsg.SetRect(0, termHeight-2, termWidth, termHeight)
 					instructions.SetRect(0, termHeight-1, termWidth, termHeight)
 					termui.Render(title, majorClassList, minorClassList, optionsList, errorMsg, instructions)

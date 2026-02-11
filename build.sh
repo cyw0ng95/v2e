@@ -380,15 +380,34 @@ build_project() {
     if [ -f "go.mod" ]; then
         local binary_path="$BUILD_DIR/v2e"
         local rebuild_needed=true
-        
+
         # Get ldflags from config
         local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
-        
+
+        # ============================================================
+        # INCREMENTAL BUILD DETECTION
+        # ============================================================
+        # This section implements incremental build detection by comparing
+        # file modification timestamps. A rebuild is only triggered if
+        # source files have been modified since the last build.
+        #
+        # Timestamp comparison operators (bash test -nt/-ot):
+        #   file1 -nt file2  -> true if file1 is newer than file2
+        #   file1 -ot file2  -> true if file1 is older than file2
+        #
+        # The find command uses -newer option to find files modified
+        # more recently than the reference file ($binary_path).
+        # ============================================================
+
         # Check if binary exists and if any source files are newer
         if [ -f "$binary_path" ]; then
-            # Check if any .go files are newer than the binary
+            # First, check if any .go source files are newer than the binary
+            # find -newer: returns files with modification time newer than the reference
+            # -print -quit: stops after finding first match (optimization)
+            # grep -q .: returns true if any output was found
             if ! find . -name "*.go" -not -path "./.build/*" -newer "$binary_path" -print -quit | grep -q .; then
-                # No .go files newer than binary, check go.mod and go.sum
+                # No .go files are newer than binary - now check dependency files
+                # go.mod and go.sum changes also require rebuild (new dependencies)
                 local mod_files_newer=false
                 if [ go.mod -nt "$binary_path" ] 2>/dev/null; then
                     mod_files_newer=true
@@ -397,7 +416,8 @@ build_project() {
                     mod_files_newer=true
                 fi
                 if [ "$mod_files_newer" = false ]; then
-                    # All source files and dependency files are older than binary
+                    # All source files (.go) and dependency files (go.mod, go.sum)
+                    # are older than the binary - no rebuild needed
                     rebuild_needed=false
                     if [ "$VERBOSE" = true ]; then
                         log_debug "Binary is up-to-date, skipping rebuild"

@@ -50,7 +50,7 @@ type UserPresetModel struct {
 	Theme       string         `gorm:"type:text;not null" json:"theme"`         // JSON object for CanvasPresetTheme
 	Behavior    string         `gorm:"type:text;not null" json:"behavior"`      // JSON object for CanvasPresetBehavior
 	NodeTypes   string         `gorm:"type:text;not null" json:"node_types"`    // JSON array of NodeTypeDefinition
-	Relations   string         `gorm:"type:text;not null" json:"relationships"` // JSON array of RelationshipDefinition
+	Relations   string         `gorm:"type:text;not null" json:"relations"` // JSON array of RelationshipDefinition
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
@@ -60,7 +60,7 @@ type UserPresetModel struct {
 type ShareLinkModel struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
 	LinkID    string         `gorm:"uniqueIndex;not null" json:"link_id"` // Short unique identifier for URL
-	GraphID   string         `gorm:"index;not null" json:"graph_id"`      // References GraphModel.GraphID
+	GraphID   string         `gorm:"index;not null;references:GraphID;constraint:OnDelete:CASCADE" json:"graph_id"` // References GraphModel.GraphID with CASCADE delete
 	Password  string         `json:"password,omitempty"`                  // Optional password protection (hashed)
 	ExpiresAt *time.Time     `json:"expires_at,omitempty"`
 	ViewCount int            `gorm:"default:0" json:"view_count"`

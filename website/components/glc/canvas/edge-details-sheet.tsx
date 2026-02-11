@@ -27,7 +27,7 @@ function EdgeDetailsSheetContent({ edgeId, onClose }: EdgeDetailsSheetProps) {
   const sourceNode = graph?.nodes.find((n) => n.id === edge?.source);
   const targetNode = graph?.nodes.find((n) => n.id === edge?.target);
 
-  const availableRelationships = currentPreset?.relationships.filter(
+  const availableRelationships = currentPreset?.relations.filter(
     (r) =>
       (r.sourceTypes.includes(sourceNode?.data.typeId || '') ||
         r.sourceTypes.length === 0) &&
@@ -49,7 +49,7 @@ function EdgeDetailsSheetContent({ edgeId, onClose }: EdgeDetailsSheetProps) {
   if (!edge || !currentPreset) return null;
 
   const theme = currentPreset.theme;
-  const selectedRelationship = currentPreset.relationships.find(
+  const selectedRelationship = currentPreset.relations.find(
     (r) => r.id === relationshipId
   );
 

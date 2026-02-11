@@ -413,3 +413,133 @@ func TestPutMessage(t *testing.T) {
 	})
 
 }
+
+func TestUnmarshalBatch(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestUnmarshalBatch", nil, func(t *testing.T, tx *gorm.DB) {
+		// Create a batch of messages
+		messages := []*Message{
+			{Type: MessageTypeRequest, ID: "req-1", Target: "service-a"},
+			{Type: MessageTypeResponse, ID: "resp-1", Source: "service-a"},
+			{Type: MessageTypeEvent, ID: "evt-1", Source: "service-b"},
+		}
+
+		// Marshal to JSON array
+		data, err := sonic.Marshal(messages)
+		if err != nil {
+			t.Fatalf("Failed to marshal batch: %v", err)
+		}
+
+		// Unmarshal using UnmarshalBatch
+		result, err := UnmarshalBatch(data)
+		if err != nil {
+			t.Fatalf("UnmarshalBatch failed: %v", err)
+		}
+
+		if len(result) != len(messages) {
+			t.Fatalf("Expected %d messages, got %d", len(messages), len(result))
+		}
+
+		for i, msg := range result {
+			if msg.Type != messages[i].Type {
+				t.Errorf("Message %d: Expected type %s, got %s", i, messages[i].Type, msg.Type)
+			}
+			if msg.ID != messages[i].ID {
+				t.Errorf("Message %d: Expected ID %s, got %s", i, messages[i].ID, msg.ID)
+			}
+		}
+
+		// Return messages to pool
+		for _, msg := range result {
+			PutMessage(msg)
+		}
+	})
+
+}
+
+func TestUnmarshalBatch_Empty(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestUnmarshalBatch_Empty", nil, func(t *testing.T, tx *gorm.DB) {
+		data := []byte(`[]`)
+
+		result, err := UnmarshalBatch(data)
+		if err != nil {
+			t.Fatalf("UnmarshalBatch failed: %v", err)
+		}
+
+		if len(result) != 0 {
+			t.Errorf("Expected 0 messages, got %d", len(result))
+		}
+	})
+
+}
+
+func TestUnmarshalBatch_InvalidJSON(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestUnmarshalBatch_InvalidJSON", nil, func(t *testing.T, tx *gorm.DB) {
+		data := []byte(`{invalid json}`)
+
+		_, err := UnmarshalBatch(data)
+		if err == nil {
+			t.Error("Expected error when unmarshaling invalid JSON")
+		}
+	})
+
+}
+
+func TestUnmarshalBatch_InvalidMessageInBatch(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestUnmarshalBatch_InvalidMessageInBatch", nil, func(t *testing.T, tx *gorm.DB) {
+		// Valid first message, invalid second message
+		data := []byte(`[{"type":"request","id":"req-1"}, {"type":123}]`)
+
+		_, err := UnmarshalBatch(data)
+		if err == nil {
+			t.Error("Expected error when unmarshaling batch with invalid message")
+		}
+	})
+
+}
+
+func TestUnmarshalBatch_WithPayload(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestUnmarshalBatch_WithPayload", nil, func(t *testing.T, tx *gorm.DB) {
+		// Create messages with payload
+		messages := []*Message{
+			{Type: MessageTypeRequest, ID: "req-1", Payload: json.RawMessage(`{"command":"test"}`)},
+			{Type: MessageTypeResponse, ID: "resp-1", Payload: json.RawMessage(`{"status":"ok"}`)},
+		}
+
+		data, err := sonic.Marshal(messages)
+		if err != nil {
+			t.Fatalf("Failed to marshal batch: %v", err)
+		}
+
+		result, err := UnmarshalBatch(data)
+		if err != nil {
+			t.Fatalf("UnmarshalBatch failed: %v", err)
+		}
+
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 messages, got %d", len(result))
+		}
+
+		// Verify payloads
+		var payload1 map[string]string
+		if err := result[0].UnmarshalPayload(&payload1); err != nil {
+			t.Fatalf("Failed to unmarshal payload1: %v", err)
+		}
+		if payload1["command"] != "test" {
+			t.Errorf("Expected command 'test', got '%s'", payload1["command"])
+		}
+
+		var payload2 map[string]string
+		if err := result[1].UnmarshalPayload(&payload2); err != nil {
+			t.Fatalf("Failed to unmarshal payload2: %v", err)
+		}
+		if payload2["status"] != "ok" {
+			t.Errorf("Expected status 'ok', got '%s'", payload2["status"])
+		}
+
+		// Return messages to pool
+		for _, msg := range result {
+			PutMessage(msg)
+		}
+	})
+
+}

@@ -10,12 +10,6 @@ import (
 // metricCollector is a function that collects a specific metric and adds it to the metrics map.
 type metricCollector func(m map[string]interface{}) error
 
-// collectMetric is a helper function that executes a metric collector and handles errors.
-// If the collector fails, the error is logged but the metric is simply omitted from the result.
-func collectMetric(m map[string]interface{}, collector metricCollector) {
-	collector(m)
-}
-
 // Metric sampling configuration
 
 // metricSampler tracks the last collection time for each metric type.

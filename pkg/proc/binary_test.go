@@ -499,3 +499,193 @@ func containsSubstringHelper(s, substr string) bool {
 	}
 	return false
 }
+
+// TestFixedBytesToStringEdgeCases tests the fixedBytesToString function with edge cases
+func TestFixedBytesToStringEdgeCases(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestFixedBytesToStringEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+		tests := []struct {
+			name     string
+			input    []byte
+			expected string
+		}{
+			{
+				name:     "all zero bytes (32 bytes)",
+				input:    make([]byte, 32),
+				expected: "",
+			},
+			{
+				name:     "all zero bytes (20 bytes)",
+				input:    make([]byte, 20),
+				expected: "",
+			},
+			{
+				name:     "empty slice",
+				input:    []byte{},
+				expected: "",
+			},
+			{
+				name:     "single null byte",
+				input:    []byte{0},
+				expected: "",
+			},
+			{
+				name:     "non-zero followed by null",
+				input:    append([]byte{'a', 'b', 'c'}, 0),
+				expected: "abc",
+			},
+			{
+				name:     "null in middle",
+				input:    []byte{'a', 0, 'b'},
+				expected: "a",
+			},
+			{
+				name:     "no null bytes",
+				input:    []byte{'a', 'b', 'c'},
+				expected: "abc",
+			},
+			{
+				name:     "single non-zero byte",
+				input:    []byte{'x'},
+				expected: "x",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := fixedBytesToString(tt.input)
+				if result != tt.expected {
+					t.Errorf("fixedBytesToString(%v) = %q, want %q", tt.input, result, tt.expected)
+				}
+			})
+		}
+	})
+}
+
+// TestStringToFixedBytesEdgeCases tests the stringToFixedBytes function with edge cases
+func TestStringToFixedBytesEdgeCases(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestStringToFixedBytesEdgeCases", nil, func(t *testing.T, tx *gorm.DB) {
+		tests := []struct {
+			name     string
+			input    string
+			size     int
+			expected []byte
+		}{
+			{
+				name:     "empty string to 32 bytes",
+				input:    "",
+				size:     32,
+				expected: make([]byte, 32),
+			},
+			{
+				name:     "empty string to 20 bytes",
+				input:    "",
+				size:     20,
+				expected: make([]byte, 20),
+			},
+			{
+				name:     "single char to 32 bytes",
+				input:    "a",
+				size:     32,
+				expected: func() []byte {
+					b := make([]byte, 32)
+					b[0] = 'a'
+					return b
+				}(),
+			},
+			{
+				name:     "long string truncated",
+				input:    "this-is-a-very-long-string-that-exceeds-32-bytes",
+				size:     32,
+				expected: func() []byte {
+					b := make([]byte, 32)
+					copy(b, "this-is-a-very-long-string-that-exceeds") // First 32 bytes: "this-is-a-very-long-string-that-exceeds"
+					return b
+				}(),
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := stringToFixedBytes(tt.input, tt.size)
+				if len(result) != len(tt.expected) {
+					t.Errorf("stringToFixedBytes(%q, %d) length = %d, want %d", tt.input, tt.size, len(result), len(tt.expected))
+				}
+				if !equalBytes(result, tt.expected) {
+					t.Errorf("stringToFixedBytes(%q, %d) = %v, want %v", tt.input, tt.size, result, tt.expected)
+				}
+			})
+		}
+	})
+}
+
+// equalBytes compares two byte slices for equality
+func equalBytes(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// TestFixedBytesRoundTrip tests round-trip conversion string -> bytes -> string
+func TestFixedBytesRoundTrip(t *testing.T) {
+	testutils.Run(t, testutils.Level1, "TestFixedBytesRoundTrip", nil, func(t *testing.T, tx *gorm.DB) {
+		testStrings := []string{
+			"",
+			"a",
+			"test-message-id",
+			"source-process",
+			"target-process",
+			"correlation-12345",
+			"a\x00b", // string with embedded null (should be truncated)
+		}
+
+		for _, s := range testStrings {
+			t.Run(s, func(t *testing.T) {
+				// Convert to fixed bytes and back
+				bytes32 := stringToFixedBytes(s, 32)
+				result32 := fixedBytesToString(bytes32)
+
+				bytes20 := stringToFixedBytes(s, 20)
+				result20 := fixedBytesToString(bytes20)
+
+				// For strings without embedded nulls, round trip should work
+				if !contains(s, "\x00") {
+					if result32 != s {
+						t.Errorf("Round trip 32 bytes: %q -> %q, want %q", s, result32, s)
+					}
+					if result20 != s {
+						t.Errorf("Round trip 20 bytes: %q -> %q, want %q", s, result20, s)
+					}
+				} else {
+					// For strings with embedded nulls, verify truncation
+					expected := s[:1] // Should truncate at first null
+					if result32 != expected {
+						t.Errorf("Truncation 32 bytes: %q -> %q, want %q", s, result32, expected)
+					}
+					if result20 != expected {
+						t.Errorf("Truncation 20 bytes: %q -> %q, want %q", s, result20, expected)
+					}
+				}
+			})
+		}
+	})
+}
+
+// contains checks if s contains substr
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
+}
+
+func containsHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

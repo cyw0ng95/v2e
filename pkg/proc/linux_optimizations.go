@@ -22,13 +22,15 @@ type LinuxOptimizations struct {
 func SetSocketOptions(fd int) error {
 	// Enable TCP_NODELAY to disable Nagle's algorithm for low latency
 	if err := syscall.SetsockoptInt(fd, syscall.IPPROTO_TCP, syscall.TCP_NODELAY, 1); err != nil {
-		return err
+		return fmt.Errorf("failed to set TCP_NODELAY: %w", err)
 	}
 
 	// Enable TCP_QUICKACK for immediate ACK responses
 	if err := syscall.SetsockoptInt(fd, syscall.IPPROTO_TCP, unix.TCP_QUICKACK, 1); err != nil {
-		// TCP_QUICKACK might not be available on all systems, don't fail
-		_ = err
+		// TCP_QUICKACK might not be supported on older kernels or all configurations
+		// Log the error for debugging but don't fail socket setup
+		// This option is a performance optimization, not a requirement
+		fmt.Printf("warning: TCP_QUICKACK not available on this system: %v\n", err)
 	}
 
 	// Set SO_SNDBUF and SO_RCVBUF for optimal buffer sizes

@@ -70,7 +70,7 @@ export default function GLCLandingPage() {
               <CardContent>
                 <div className="flex gap-4 text-sm text-textMuted">
                   <span>{preset.nodeTypes.length} node types</span>
-                  <span>{preset.relationships.length} relationships</span>
+                  <span>{preset.relations.length} relations</span>
                 </div>
               </CardContent>
               <CardFooter>

@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/cyw0ng95/v2e/pkg/proc"
@@ -38,7 +39,9 @@ func (tm *TransportManager) UnregisterTransport(processID string) {
 	if transport, exists := tm.transports[processID]; exists {
 		// Close the transport before removing it from the map
 		// This ensures the listener is closed and acceptLoop goroutines can exit cleanly
-		_ = transport.Close()
+		if err := transport.Close(); err != nil {
+			log.Printf("[TransportManager] Error closing transport for process '%s': %v", processID, err)
+		}
 	}
 	delete(tm.transports, processID)
 }
@@ -101,14 +104,38 @@ func (tm *TransportManager) SetUdsBasePath(path string) {
 }
 
 // CloseAll closes all registered transports. This should be called during broker shutdown.
-func (tm *TransportManager) CloseAll() {
+// Returns an error if any transport close failed, with all errors aggregated.
+func (tm *TransportManager) CloseAll() error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
+	var closeErrors []error
 	for processID, transport := range tm.transports {
-		_ = transport.Close()
+		if err := transport.Close(); err != nil {
+			closeErrors = append(closeErrors, fmt.Errorf("process '%s': %w", processID, err))
+			log.Printf("[TransportManager] Error closing transport for %s: %v", processID, err)
+		}
 		delete(tm.transports, processID)
 	}
+
+	if len(closeErrors) > 0 {
+		log.Printf("[TransportManager] Completed CloseAll with %d error(s)", len(closeErrors))
+		return fmt.Errorf("failed to close %d transport(s): %w", len(closeErrors), joinErrors(closeErrors))
+	}
+
+	return nil
+}
+
+// joinErrors combines multiple errors into a single error message
+func joinErrors(errs []error) error {
+	var errMsg string
+	for i, err := range errs {
+		if i > 0 {
+			errMsg += "; "
+		}
+		errMsg += err.Error()
+	}
+	return fmt.Errorf("%s", errMsg)
 }
 
 // IsTransportConnected checks if a transport is connected for a given process.

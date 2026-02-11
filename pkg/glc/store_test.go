@@ -562,8 +562,11 @@ func TestShareLinkOperations(t *testing.T) {
 			t.Fatalf("Failed to create expiring share link: %v", err)
 		}
 
-		if expiringLink.Password != "secret" {
-			t.Error("Expected password to be set")
+		if expiringLink.Password == "" {
+			t.Error("Expected password hash to be set")
+		}
+		if expiringLink.Password == "secret" {
+			t.Error("Password should be hashed, not stored in plaintext")
 		}
 		if expiringLink.ExpiresAt == nil {
 			t.Error("Expected ExpiresAt to be set")
@@ -587,7 +590,16 @@ func TestShareLinkOperations(t *testing.T) {
 			t.Errorf("Expected GraphID '%s', got '%s'", graph.GraphID, sharedGraph.GraphID)
 		}
 
-		// Test password-protected link
+		// Test password-protected link with correct password
+		protectedGraph, err := testStore.GetGraphByShareLink(context.Background(), expiringLink.LinkID, "secret")
+		if err != nil {
+			t.Fatalf("Failed to get graph with correct password: %v", err)
+		}
+		if protectedGraph.GraphID != graph.GraphID {
+			t.Errorf("Expected GraphID '%s', got '%s'", graph.GraphID, protectedGraph.GraphID)
+		}
+
+		// Test password-protected link with wrong password
 		_, err = testStore.GetGraphByShareLink(context.Background(), expiringLink.LinkID, "wrong")
 		if err == nil {
 			t.Error("Expected error with wrong password")
