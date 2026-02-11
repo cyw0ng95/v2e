@@ -138,7 +138,6 @@
 | TODO-213 | ume | Feature | Remove or complete shared memory transport - current implementation is incomplete and cannot be used for cross-process communication, should either implement actual fd passing or remove entirely | 150 | High | |
 | TODO-219 | ume | Feature | Add connection pooling to UDS transport - UDS transport uses single connection per pair, not a pool for efficiency, should implement connection reuse | 180 | High | |
 | TODO-220 | ume | Feature | Add message delivery guarantees - router currently provides no delivery confirmation, messages can be silently dropped, should implement ack/nack mechanism | 200 | High | |
-| TODO-222 | ume | Bug Fix | Fix transport manager CloseAll ignoring errors - errors from individual transport Close() calls are silently discarded, making debugging difficult, should be logged or aggregated | 80 | Medium | |
 | TODO-224 | ume | Feature | Implement actual fd passing to subprocesses - shared memory transport needs mechanism to pass file descriptors to subprocesses for true IPC, not memfd_create which is same-process only | 250 | High | |
 | TODO-225 | ume | Feature | Implement SelectTarget method in Router interface - task description mentioned SelectTarget method but router interface doesn't define it, routing cannot select targets dynamically | 150 | High | |
 | TODO-226 | ume | Refactor | Add pool statistics for Message Pool - ResponseBufferPool is missing hit/miss tracking which is needed for optimization and debugging | 80 | Medium | |
