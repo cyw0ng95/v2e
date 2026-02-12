@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMemoryCards } from '@/lib/mcards/hooks';
 import { Flashcard } from './flashcard';
 import { RatingButtons, type Rating } from './rating-buttons';
@@ -102,14 +102,20 @@ function calculateIntervals(card: any): Record<Rating, string> {
 export default function McardsStudy() {
   // Fetch cards with learning_state filter
   const { data: cardsData, isLoading } = useMemoryCards({});
-
+ 
   const cards = useMemo(() => {
     if (!cardsData) return [];
     // Handle RPCResponse structure
     const response = cardsData as unknown as { payload?: { memory_cards?: any[] } };
     return response.payload?.memory_cards || [];
   }, [cardsData]);
-
+ 
+  // Use ref to store latest cards to avoid closure issues
+  const cardsRef = useRef<CardType[]>(cards);
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+ 
   // Study session state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -140,9 +146,11 @@ export default function McardsStudy() {
 
   // Rate card mutation
   const rateCard = useCallback(async (rating: Rating) => {
-    if (currentIndex >= cards.length) return;
-
-    const card = cards[currentIndex];
+    // Use ref to access latest cards to avoid closure issues
+    const currentCards = cardsRef.current;
+    if (currentIndex >= currentCards.length) return;
+    
+    const card = currentCards[currentIndex];
     await fetch('/restful/rpc', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -155,14 +163,14 @@ export default function McardsStudy() {
 
     setReviewed([...reviewed, card.id]);
 
-    // Move to next card
-    if (currentIndex + 1 >= cards.length) {
+    // Move to next card - use ref to access latest cards
+    if (currentIndex + 1 >= currentCards.length) {
       setIsComplete(true);
     } else {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     }
-  }, [currentIndex, cards, reviewed]);
+  }, [currentIndex, reviewed]);
 
   const currentCard = useMemo(() => {
     if (currentIndex >= cards.length || currentIndex < 0) return null;
