@@ -55,6 +55,8 @@ type BaseProviderFSM struct {
 	permitsHeld    int32
 	executor       func() error
 	eventQueue     chan *Event
+	ctx            context.Context
+	cancel         context.CancelFunc
 
 	// Common configuration for all providers
 	batchSize  int
@@ -108,19 +110,20 @@ func NewBaseProviderFSM(config ProviderConfig) (*BaseProviderFSM, error) {
 	}
 
 	p := &BaseProviderFSM{
-		id:                config.ID,
+		id:                 config.ID,
 		providerType:       config.ProviderType,
-		state:             ProviderIdle,
-		storage:           config.Storage,
-		createdAt:         time.Now(),
-		updatedAt:         time.Now(),
-		executor:          config.Executor,
-		batchSize:         batchSize,
-		maxRetries:        maxRetries,
-		retryDelay:        retryDelay,
-		dependencies:      config.Dependencies,
+		state:              ProviderIdle,
+		storage:            config.Storage,
+		createdAt:          time.Now(),
+		updatedAt:          time.Now(),
+		executor:           config.Executor,
+		batchSize:          batchSize,
+		maxRetries:         maxRetries,
+		retryDelay:         retryDelay,
+		dependencies:       config.Dependencies,
 		transitionStrategy: NewProviderTransitionStrategy(),
 	}
+	p.ctx, p.cancel = context.WithCancel(context.Background())
 
 	// Try to load existing state from storage only if it exists
 	if config.Storage != nil {
@@ -238,6 +241,7 @@ func (p *BaseProviderFSM) Transition(newState ProviderState) error {
 	p.mu.Lock()
 
 	oldState := p.state
+	oldUpdatedAt := p.updatedAt
 
 	// Validate transition using strategy
 	if err := p.transitionStrategy.Validate(oldState, newState); err != nil {
@@ -267,8 +271,9 @@ func (p *BaseProviderFSM) Transition(newState ProviderState) error {
 	// Persist to storage
 	if p.storage != nil {
 		if err := p.storage.SaveProviderState(providerState); err != nil {
-			// Rollback state on persistence failure
+			// Rollback state and updatedAt on persistence failure
 			p.state = oldState
+			p.updatedAt = oldUpdatedAt
 			providerStatePool.Put(providerState)
 			p.mu.Unlock()
 			return fmt.Errorf("failed to persist state transition: %w", err)
@@ -378,6 +383,11 @@ func (p *BaseProviderFSM) Stop() error {
 		return err
 	}
 
+	// Cancel context to stop any goroutines
+	if p.cancel != nil {
+		p.cancel()
+	}
+
 	// Emit event
 	p.emitEvent(EventProviderCompleted)
 
@@ -422,8 +432,15 @@ func (p *BaseProviderFSM) OnQuotaGranted(grantedCount int) error {
 		// Emit event
 		p.emitEvent(EventQuotaGranted)
 
-		// Start execution
-		go p.executeAsync()
+		// Start execution with context check
+		go func() {
+			select {
+			case <-p.ctx.Done():
+				return
+			default:
+				p.executeAsync()
+			}
+		}()
 	} else if currentState == ProviderWaitingQuota {
 		// Retry acquisition
 		if err := p.Transition(ProviderAcquiring); err != nil {
@@ -448,10 +465,14 @@ func (p *BaseProviderFSM) OnRateLimited(retryAfter time.Duration) error {
 
 		// Schedule retry after backoff
 		go func() {
-			time.Sleep(retryAfter)
-			// Transition back to ACQUIRING
-			if p.GetState() == ProviderWaitingBackoff {
-				p.Transition(ProviderAcquiring)
+			select {
+			case <-p.ctx.Done():
+				return
+			case <-time.After(retryAfter):
+				// Transition back to ACQUIRING
+				if p.GetState() == ProviderWaitingBackoff {
+					p.Transition(ProviderAcquiring)
+				}
 			}
 		}()
 	}
@@ -469,6 +490,11 @@ func (p *BaseProviderFSM) Execute() error {
 
 // executeAsync runs the executor in a goroutine
 func (p *BaseProviderFSM) executeAsync() {
+	select {
+	case <-p.ctx.Done():
+		return
+	default:
+	}
 	if err := p.Execute(); err != nil {
 		p.mu.Lock()
 		p.errorCount++

@@ -401,5 +401,19 @@ func truncateString(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}
-	return s[:n]
+	if n <= 0 {
+		return ""
+	}
+	for n > 0 {
+		if n >= len(s) {
+			n = len(s) - 1
+		}
+		b := s[n]
+		if b >= 0x80 && b < 0xC0 {
+			n--
+		} else {
+			return s[:n]
+		}
+	}
+	return ""
 }

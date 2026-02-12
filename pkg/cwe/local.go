@@ -46,9 +46,9 @@ func (a associationSavers) deleteAllAndSave(tx *gorm.DB, parentID string) error 
 // sliceAssociationSaver is a generic saver for slice-based associations.
 // It handles the common pattern of deleting existing records by parent ID and inserting new ones.
 type sliceAssociationSaver[T any, S any] struct {
-	modelSlice      []S
-	foreignKeyCol   string
-	modelToDBFn     func(S, string) T
+	modelSlice    []S
+	foreignKeyCol string
+	modelToDBFn   func(S, string) T
 }
 
 func (s *sliceAssociationSaver[T, S]) deleteExisting(tx *gorm.DB, parentID string) error {
@@ -76,7 +76,13 @@ func (s *DemonstrativeExamplesAssociationSaver) deleteExisting(tx *gorm.DB, pare
 }
 
 func (s *DemonstrativeExamplesAssociationSaver) save(tx *gorm.DB, parentID string) error {
+	if s.examples == nil {
+		return nil
+	}
 	for _, de := range s.examples {
+		if de.Entries == nil {
+			continue
+		}
 		for _, entry := range de.Entries {
 			dem := DemonstrativeExampleModel{
 				CWEID:       parentID,
@@ -105,7 +111,7 @@ func buildCWEAssociationSavers(item *CWEItem) associationSavers {
 			foreignKeyCol: "cwe_id",
 			modelToDBFn: func(rw RelatedWeakness, cweID string) RelatedWeaknessModel {
 				return RelatedWeaknessModel{
-					CWEID:  cweID,
+					CWEID:   cweID,
 					Nature:  rw.Nature,
 					CweID:   rw.CweID,
 					ViewID:  rw.ViewID,
