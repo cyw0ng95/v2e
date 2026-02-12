@@ -14,7 +14,7 @@ import type { DesktopIcon as DesktopIconType } from '@/types/desktop';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getAppById } from '@/lib/desktop/app-registry';
 import { ClockWidget } from './ClockWidget';
-import { Threads } from './Threads';
+import Threads from './Threads';
 import type { WidgetConfig } from '@/types/desktop';
 
 /**
