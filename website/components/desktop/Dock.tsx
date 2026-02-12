@@ -227,6 +227,15 @@ export function Dock() {
     }
   }, [dock.autoHide, dock.autoHideDelay, setDockVisibility]);
 
+  // Show dock when mouse moves to bottom edge
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dock.autoHide) return;
+    const threshold = 50; // Distance from bottom edge to trigger reveal
+    if (window.innerHeight - e.clientY < threshold) {
+      setDockVisibility(true);
+    }
+  }, [dock.autoHide, setDockVisibility]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -240,16 +249,9 @@ export function Dock() {
   useEffect(() => {
     if (!dock.autoHide) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const threshold = 50; // Distance from bottom edge to trigger reveal
-      if (window.innerHeight - e.clientY < threshold) {
-        setDockVisibility(true);
-      }
-    };
-
     document.addEventListener('mousemove', handleMouseMove);
     return () => document.removeEventListener('mousemove', handleMouseMove);
-  }, [dock.autoHide, setDockVisibility]);
+  }, [dock.autoHide, handleMouseMove]);
 
   // Ensure dock is visible on mount (fixes hidden dock from persisted state)
   useEffect(() => {
