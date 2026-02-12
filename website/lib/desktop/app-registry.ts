@@ -56,7 +56,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -69,7 +69,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight:  800,
     minWidth: 800,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -82,7 +82,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -95,7 +95,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 900,
     minWidth: 900,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -108,7 +108,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 600,
     minHeight: 500,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -121,7 +121,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 900,
     minWidth: 900,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -134,7 +134,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -147,7 +147,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 700,
     minHeight: 500,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -160,7 +160,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 600,
     minHeight: 500,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
 ];
@@ -179,7 +179,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 700,
     minHeight: 500,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'planned',
   },
   {
@@ -192,7 +192,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'planned',
   },
   {
@@ -205,7 +205,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'planned',
   },
   {
@@ -218,7 +218,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'planned',
   },
 ];

@@ -14,6 +14,7 @@ import { useDesktopStore } from '@/lib/desktop/store';
 import { Z_INDEX, type WindowConfig } from '@/types/desktop';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MinimizeAnimation } from './MinimizeAnimation';
+import { AppComponent } from './AppComponents';
 
 /**
  * Window controls component
@@ -87,16 +88,6 @@ function WindowTitlebar({ window }: { window: WindowConfig }) {
       y: e.clientY,
     };
   }, [focusWindow, window.id]);
-    // Focus window on click
-    focusWindow(window.id);
-
-    // Initialize drag
-    setIsDragging(true);
-    dragStartPosRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-  }, [focusWindow, window.id]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging || !dragStartPosRef.current) return;
@@ -108,16 +99,16 @@ function WindowTitlebar({ window }: { window: WindowConfig }) {
 
     // Calculate new position with boundary constraints
     const newPosition = {
-      x: win.position.x + deltaX,
-      y: win.position.y + deltaY,
+      x: window.position.x + deltaX,
+      y: window.position.y + deltaY,
     };
 
     // Constrain to viewport bounds (with menu and dock)
     const browserWindow = (globalThis as unknown as Window);
     const viewportWidth = browserWindow.innerWidth || 1024;
     const viewportHeight = browserWindow.innerHeight || 768;
-    const maxX = viewportWidth - win.size.width - 20; // 20px margin
-    const maxY = viewportHeight - win.size.height - 28 - 80 - 20; // Menu + Dock + margin
+    const maxX = viewportWidth - window.size.width - 20; // 20px margin
+    const maxY = viewportHeight - window.size.height - 28 - 80 - 20; // Menu + Dock + margin
     const minY = 28; // Below menu bar
 
     newPosition.x = Math.max(0, Math.min(newPosition.x, maxX));
@@ -131,7 +122,7 @@ function WindowTitlebar({ window }: { window: WindowConfig }) {
       x: e.clientX,
       y: e.clientY,
     };
-  }, [isDragging, win.position.x, win.position.y, win.size.width, win.size.height, window.id, updateWindowPosition]);
+  }, [isDragging, window.position.x, window.position.y, window.size.width, window.size.height, window.id, updateWindowPosition]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -165,9 +156,9 @@ function WindowTitlebar({ window }: { window: WindowConfig }) {
       {/* App icon and title */}
       <div className="flex items-center gap-2 select-none">
         <div className="w-4 h-4 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <span className="text-white text-xs font-bold">{win.appId[0]}</span>
+          <span className="text-white text-xs font-bold">{window.appId[0]}</span>
         </div>
-        <span className="text-sm font-medium text-gray-700 select-none">{win.title}</span>
+        <span className="text-sm font-medium text-gray-700 select-none">{window.title}</span>
       </div>
 
       {/* Window controls */}
@@ -372,20 +363,14 @@ export function AppWindow({ window }: { window: WindowConfig }) {
         </>
       )}
 
-      {/* Window content - iframe with APP_REGISTRY integration */}
+      {/* Window content - direct component rendering for SPA architecture */}
       <div className="absolute inset-0 top-10 bg-gray-50">
         {win.isMinimized ? (
           <div className="h-full flex items-center justify-center text-gray-400">
             <p>Window minimized</p>
           </div>
         ) : (
-          <iframe
-            src={win.appId} // Use APP_REGISTRY path directly
-            title={win.title}
-            className="w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            loading="lazy"
-          />
+          <AppComponent appId={win.appId} title={win.title} windowId={win.id} />
         )}
       </div>
     </motion.div>
