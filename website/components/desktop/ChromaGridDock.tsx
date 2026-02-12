@@ -11,7 +11,6 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { gsap } from 'gsap';
 import { Z_INDEX, WindowState } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
-import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
 
 interface ChromaAppItem {
@@ -46,10 +45,6 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   autoHide = false,
   autoHideDelay = 3000,
 }) => {
-  const { windows, openWindow, minimizeWindow, restoreWindow, focusWindow, dock, setDockVisibility } = useDesktopStore();
-  const contextMenu = useContextMenu();
-  const [isHovering, setIsHovering] = useState(false);
-  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const fadeRef = useRef<HTMLDivElement>(null);
@@ -177,16 +172,6 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
     }
   };
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, appId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const isRunning = runningAppIds.has(appId);
-    const preset = isRunning
-      ? ContextMenuPresets.dockItemRunning(appId)
-      : ContextMenuPresets.dockItemNotRunning(appId);
-    contextMenu.show(e.clientX, e.clientY, preset);
-  }, [runningAppIds, contextMenu]);
-
   if (!shouldShow) {
     return null;
   }
@@ -214,11 +199,10 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
               <div
                 key={item.id}
                 onClick={() => handleAppClick(item)}
-                onContextMenu={(e) => handleContextMenu(e, item.id)}
                 className="relative flex-1 items-center gap-2 px-3 py-2 rounded-t-lg border-2 border-transparent transition-all duration-300 cursor-pointer group"
                 style={{
                   background: item.gradient,
-                  borderColor: isRunning ? '#22c55e' : item.borderColor,
+                  borderColor: item.borderColor,
                 } as React.CSSProperties}
               >
                 {/* App icon/color indicator */}
@@ -273,14 +257,6 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
           }}
         />
       </div>
-
-      {/* Dock context menu */}
-      <ContextMenu
-        isVisible={contextMenu.isVisible}
-        position={contextMenu.position}
-        items={contextMenu.items}
-        onClose={contextMenu.hide}
-      />
     </>
   );
 };
