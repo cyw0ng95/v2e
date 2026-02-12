@@ -18,8 +18,8 @@ import { Z_INDEX } from '@/types/desktop';
  */
 export function WindowManager() {
   const { windows, focusedWindowId } = useDesktopStore();
-  // Only render non-minimized windows
-  const windowList = Object.values(windows).filter(w => !w.isMinimized);
+  // Only render non-minimized windows with safe access
+  const windowList = Object.values(windows || {}).filter(w => !w.isMinimized);
 
   return (
     <div
