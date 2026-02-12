@@ -122,9 +122,9 @@ export default function McardsStudy() {
   const [isPaused, setIsPaused] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [startTime] = useState(() => Date.now());
+  const [startTime, setStartTime] = useState(() => Date.now());
   const [reviewed, setReviewed] = useState<number[]>([]);
-
+  
   // Timer effect
   useEffect(() => {
     if (!isPaused && !isComplete) {
@@ -133,7 +133,7 @@ export default function McardsStudy() {
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [isPaused, isComplete, startTime]);
+  }, [isPaused, isComplete]);
 
   // Reset when cards change
   useEffect(() => {
@@ -142,6 +142,7 @@ export default function McardsStudy() {
     setIsComplete(false);
     setReviewed([]);
     setElapsed(0);
+    setStartTime(Date.now());
   }, [cards]);
 
   // Rate card mutation
