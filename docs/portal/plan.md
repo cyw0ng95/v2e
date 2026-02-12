@@ -1187,18 +1187,329 @@ This phase requires the following from previous phases:
 
 ---
 
-## Cost Estimates
+## Code Size Estimates (LoC)
 
-### Total Project Cost
+### Total Project LoC
 
-| Phase | Hours | Avg Rate | Cost |
-|-------|-------|----------|------|
-| Phase 1: Core Infrastructure | 30 | $57/hr | $1,720 |
-| Phase 2: Window System | 64 | $75/hr | $4,820 |
-| Phase 3: Dock & Quick Launch | 40 | $59/hr | $2,354 |
-| Phase 4: Content Integration | 54 | $64/hr | $3,440 |
-| Phase 5: Polish & Launch | 52 | $62/hr | $3,240 |
-| **Total** | **240** | | **$15,574** |
+| Phase | LoC (Implementation) | LoC (Tests) | LoC (Types) | Total LoC |
+|-------|----------------------|-------------|--------------|-----------|
+| Phase 1: Core Infrastructure | 350 | 200 | 150 | 700 |
+| Phase 2: Window System | 850 | 500 | 200 | 1,550 |
+| Phase 3: Dock & Quick Launch | 500 | 300 | 120 | 920 |
+| Phase 4: Content Integration | 600 | 350 | 150 | 1,100 |
+| Phase 5: Polish & Launch | 400 | 250 | 80 | 730 |
+| **Total** | **2,700** | **1,600** | **700** | **5,000** |
+
+### LoC Breakdown by Component Type
+
+| Component Type | Implementation LoC | Test LoC | Total LoC | % of Project |
+|----------------|-------------------|----------|-----------|--------------|
+| State Management (Zustand) | 250 | 150 | 400 | 8.0% |
+| Desktop Layout Components | 300 | 180 | 480 | 9.6% |
+| Window System (drag/resize/animations) | 900 | 550 | 1,450 | 29.0% |
+| Dock & Quick Launch | 450 | 280 | 730 | 14.6% |
+| Context Menus | 200 | 120 | 320 | 6.4% |
+| App Registry & Integration | 350 | 200 | 550 | 11.0% |
+| Desktop Widgets | 150 | 80 | 230 | 4.6% |
+| Theme System | 120 | 60 | 180 | 3.6% |
+| Performance Optimization | 150 | 100 | 250 | 5.0% |
+| Documentation & Types | 380 | - | 380 | 7.6% |
+| **Total** | **3,250** | **1,720** | **4,970** | **100%** |
+
+### Effort Estimation Assumptions
+
+- **Implementation Productivity**: ~12-15 LoC/hour (includes TypeScript, React components, hooks)
+- **Test Coverage**: 80%+ coverage target (unit tests + integration tests)
+- **Test LoC Ratio**: ~1:2 (test code:implementation code)
+- **Type Definitions**: Separate from implementation, 20% of implementation LoC
+
+---
+
+## Multi-Agent Collaboration Strategy
+
+### Overview
+
+This implementation plan is designed for parallel execution by multiple AI agents working simultaneously. Each phase is divided into independent work packages that can be assigned to different agents with minimal coordination overhead.
+
+### Agent Assignment Matrix
+
+| Phase | Work Package | LoC | Agent Type | Parallelizable | Dependencies |
+|-------|--------------|-----|------------|----------------|--------------|
+| **Phase 1** | State Management Setup | 400 | Frontend Architect | No | None (foundational) |
+| | Desktop Layout Components | 480 | Frontend Developer | Yes | State Management |
+| | Type Definitions | 150 | TypeScript Specialist | Yes | None |
+| **Phase 2** | Window Component Structure | 550 | Frontend Developer | Yes | Phase 1 complete |
+| | Window Drag Logic | 350 | Interaction Specialist | Yes | Component Structure |
+| | Window Resize Logic | 300 | Interaction Specialist | Yes | Component Structure |
+| | Window Animations | 250 | Animation Engineer | Yes | Component Structure |
+| | Window State Persistence | 100 | State Management | Yes | Window Logic |
+| **Phase 3** | Dock Interactions | 350 | Frontend Developer | Yes | Phase 2 complete |
+| | Quick Launch Modal | 280 | Frontend Developer | Yes | None (within Phase 3) |
+| | Context Menus System | 320 | Frontend Developer | Yes | None (within Phase 3) |
+| **Phase 4** | App Registry | 200 | Frontend Developer | Yes | Phase 3 complete |
+| | Window Content Loading | 400 | Integration Specialist | Yes | App Registry |
+| | Desktop Widgets | 230 | UI Developer | Yes | None (within Phase 4) |
+| | Wallpaper & Theme | 260 | UI Developer | Yes | None (within Phase 4) |
+| **Phase 5** | Performance Optimization | 250 | Performance Engineer | Yes | Phase 4 complete |
+| | Browser Testing | 200 | QA Specialist | Yes | None (within Phase 5) |
+| | Accessibility Audit | 220 | Accessibility Specialist | Yes | None (within Phase 5) |
+| | Documentation | 260 | Technical Writer | Yes | None (within Phase 5) |
+
+### Parallel Execution Strategy
+
+#### Intra-Phase Parallelism (Work-After-Me Pattern)
+
+**Phase 1** (max 2 agents in parallel):
+```
+Timeline:
+[Agent 1: State Management (400 LoC)]
+        |
+        v
+    [Agent 1: State Management Complete]
+        |
+        +------------------+------------------+
+        |                  |                  |
+        v                  v                  v
+[Agent 2: Desktop]  [Agent 3: Types]   [Agent 4: Tests]
+(480 LoC)           (150 LoC)           (200 LoC)
+```
+
+**Phase 2** (max 4 agents in parallel after Window Structure):
+```
+Timeline:
+[Agent 1: Window Component Structure (550 LoC)]
+        |
+        v
+    [Window Structure Complete]
+        |
+        +-----------------+-----------------+-----------------+
+        |                 |                 |                 |
+        v                 v                 v                 v
+[Agent 2: Drag]  [Agent 3: Resize]  [Agent 4: Animations]  [Agent 5: Tests]
+(350 LoC)         (300 LoC)          (250 LoC)             (100 LoC)
+```
+
+**Phase 3** (max 3 agents fully parallel):
+```
+Timeline:
+[Agent 1: Dock] ---- [Dock Complete]
+[Agent 2: Quick Launch] ---- [QL Complete]
+[Agent 3: Context Menus] ---- [Menus Complete]
+        |
+        +-----------------+-----------------+
+        |                 |                 |
+        v                 v                 v
+    [Integration Point: All Phase 3 Complete]
+```
+
+**Phase 4** (max 4 agents in parallel after App Registry):
+```
+Timeline:
+[Agent 1: App Registry (200 LoC)]
+        |
+        v
+    [Registry Complete]
+        |
+        +------------------+------------------+------------------+
+        |                  |                  |                  |
+        v                  v                  v                  v
+[Agent 2: Content]  [Agent 3: Widgets]  [Agent 4: Wallpaper]  [Agent 5: Tests]
+(400 LoC)           (230 LoC)           (260 LoC)             (200 LoC)
+```
+
+**Phase 5** (max 4 agents fully parallel):
+```
+Timeline:
+[Agent 1: Performance]  [Agent 2: Browser Tests]
+[Agent 3: Accessibility]  [Agent 4: Documentation]
+        |
+        +-----------------+-----------------+
+        |                 |                 |
+        v                 v                 v
+    [Integration Point: Launch Ready]
+```
+
+#### Inter-Phase Parallelism (Look-Ahead Pattern)
+
+Agents can begin **Phase N+1** work packages that don't depend on **Phase N** completion:
+
+| Phase | Look-Ahead Work Package | Can Start When |
+|-------|------------------------|----------------|
+| Phase 1 | Documentation, Types | Day 1 |
+| Phase 2 | Animation prototypes | After window structure |
+| Phase 3 | Context menu components | After Phase 1 |
+| Phase 4 | Desktop widgets | After Phase 1 |
+| Phase 5 | Documentation drafts | After Phase 4 |
+
+### Agent Communication Protocol
+
+#### 1. Shared State Convention
+
+All agents must follow this convention for shared files:
+
+```typescript
+// File: website/lib/desktop/shared-types.ts
+// Convention: All agents coordinate changes to this file via agent-lead
+
+// Agent modification protocol:
+// 1. Read current file
+// 2. Add new types at the END of the file
+// 3. Do NOT modify existing types (use extension interfaces)
+// 4. Comment with agent-id: // Added by Agent: window-drag
+
+export interface WindowState {
+  // Core state (Agent: state-mgmt)
+  id: string;
+  isOpen: boolean;
+  // ... more core properties
+}
+
+// Extension interface (Agent: window-drag)
+export interface WindowDragState extends WindowState {
+  isDragging: boolean;
+  dragOffset: { x: number; y: number };
+}
+```
+
+#### 2. Integration Point Protocol
+
+When an agent completes a work package:
+
+```markdown
+## Integration Checkpoint: [Work Package Name]
+
+**Agent:** [Agent Name/ID]
+**Work Package:** [Package Name]
+**LoC Completed:** [Number]
+**Files Modified:** [List of files]
+
+### Integration Actions Required:
+- [ ] Review and merge changes to `shared-types.ts`
+- [ ] Update imports in dependent components
+- [ ] Run `npm run build` to verify no TypeScript errors
+- [ ] Run `npm run test` to verify no test failures
+- [ ] Cross-agent testing: [Specific tests for other agents to run]
+
+### Breaking Changes:
+- [ ] No breaking changes (default)
+- [ ] Breaking changes documented below:
+
+### Next Work Package Unblocked:
+- [Agent Name] can now start [Work Package]
+```
+
+#### 3. Conflict Resolution Protocol
+
+When two agents modify the same file:
+
+1. **Last-write-wins for additions**: New types/props appended to existing files
+2. **Coordinator approval for modifications**: Changes to existing code require agent-lead review
+3. **Integration tests as truth**: Integration tests define expected behavior
+
+Example conflict scenario:
+```
+Agent A adds to WindowState: { isDragging: boolean }
+Agent B adds to WindowState: { isResizing: boolean }
+
+Resolution: Both properties coexist, integration test verifies:
+  - isDragging and isResizing are mutually exclusive
+```
+
+### Agent Work Assignment Instructions
+
+#### For Human Coordinator (Assigning Work)
+
+1. **Start Phase 1**: Assign 1 agent to State Management (foundational)
+2. **After State Management**: Assign 2-3 agents to parallel work packages
+3. **Phase 2-5**: Assign all agents to parallel work packages simultaneously
+4. **Monitor integration points**: After each integration checkpoint, verify and unblock next work package
+
+#### For AI Agents (Receiving Work)
+
+When assigned a work package:
+
+1. **Read this plan**: Understand the work package scope and LoC estimate
+2. **Identify dependencies**: Check if dependent work packages are complete
+3. **Check integration points**: Look for "Integration Checkpoint" markers in previous agent commits
+4. **Execute work**: Implement according to phase acceptance criteria
+5. **Create integration checkpoint**: Commit work with integration checkpoint message
+6. **Notify coordinator**: Signal completion and unblock next work package
+
+### Agent Orchestration Example
+
+```bash
+# Human coordinator starts Phase 1
+Agent-1: State Management (400 LoC, foundational)
+  → Creates: website/lib/desktop/store.ts
+  → Creates: website/lib/desktop/shared-types.ts
+  → Integration Checkpoint: State management complete
+
+# Human coordinator unblocks parallel work
+Agent-2: Desktop Layout (480 LoC)
+Agent-3: Type Definitions (150 LoC)
+Agent-4: Unit Tests (200 LoC)
+  → All work in parallel on separate files
+  → All use shared-types.ts (read-only)
+
+# Human coordinator verifies integration
+→ npm run build (TypeScript check)
+→ npm run test (unit tests pass)
+→ All agents proceed to Phase 2
+
+# Phase 2: Window System (parallel after structure)
+Agent-1: Window Structure (550 LoC, foundational)
+  → Integration Checkpoint: Window components complete
+
+Agent-2: Drag Logic (350 LoC)
+Agent-3: Resize Logic (300 LoC)
+Agent-4: Animations (250 LoC)
+  → All extend WindowState in shared-types.ts
+  → All coordinate via integration checkpoints
+
+# Continue for Phases 3-5...
+```
+
+### LoC-Based Estimation for Agent Capacity Planning
+
+| Agent Type | LoC/Day | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 |
+|-----------|---------|---------|---------|---------|---------|---------|
+| Frontend Architect | 120 | State Mgmt | Window Structure | - | App Registry | Performance |
+| Frontend Developer | 150 | Desktop | Drag/Resize | Dock | Content | Testing |
+| UI/UX Developer | 150 | - | Animations | Widgets | Theme | Docs |
+| QA/Testing Specialist | 120 | Tests | Tests | Tests | Tests | Browser/A11y |
+
+**Timeline with 4 Agents (Recommended):**
+- **Phase 1**: 3 days (Agent 1 foundational, then parallel)
+- **Phase 2**: 5 days (Agent 1 foundational, then parallel)
+- **Phase 3**: 4 days (fully parallel)
+- **Phase 4**: 5 days (Agent 1 foundational, then parallel)
+- **Phase 5**: 4 days (fully parallel)
+- **Total**: **21 days** (vs 41 days sequential)
+
+**Speedup from Parallelization:**
+- Sequential: 41 days
+- 4 Agents: 21 days
+- **Speedup: 1.95x** (nearly 2x faster)
+
+### Implementation Checklist for Multi-Agent Execution
+
+#### Before Starting:
+- [ ] Clone repository and create feature branch
+- [ ] Install dependencies: `cd website && npm install`
+- [ ] Create `.agent-workflow/` directory for coordination
+- [ ] Assign agents to work packages using the matrix above
+
+#### During Execution:
+- [ ] Each agent reads integration checkpoints before starting
+- [ ] Each agent creates integration checkpoint on completion
+- [ ] Coordinator verifies integration points with `npm run build && npm run test`
+- [ ] Coordinator updates progress tracking matrix
+
+#### After Phase Completion:
+- [ ] All phase acceptance criteria verified
+- [ ] Integration tests passing
+- [ ] Code review complete
+- [ ] Ready to proceed to next phase
 
 ### Cost Breakdown by Role
 
