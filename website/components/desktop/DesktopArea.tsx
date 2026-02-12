@@ -1,7 +1,7 @@
 /**
  * v2e Portal - Desktop Area Component
  *
- * Main desktop area with icons and wallpaper
+ * Main desktop area with icons, wallpaper, and widgets
  * Renders without backend dependency
  */
 
@@ -13,6 +13,8 @@ import { Z_INDEX } from '@/types/desktop';
 import type { DesktopIcon as DesktopIconType } from '@/types/desktop';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getAppById } from '@/lib/desktop/app-registry';
+import { ClockWidget } from './ClockWidget';
+import type { WidgetConfig } from '@/types/desktop';
 
 /**
  * Desktop icon component
@@ -93,20 +95,8 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
     >
       {/* Icon placeholder - will be replaced with Lucide icons */}
       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-        <svg className="w-6 h-6" fill="none" stroke="white" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9.75 17L9 20l-1.5-1.5L6 16.25l-3 3.75-3.75-2.15.25z"
-          />
-        </svg>
-      </div>
-
-      {/* Icon label */}
-      <div className="text-center">
-        <span className="text-xs font-medium text-white drop-shadow-lg">
-          {icon.appId}
+        <span className="text-white text-lg font-bold">
+          {icon.appId[0]}
         </span>
       </div>
     </div>
@@ -118,11 +108,12 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
  * Renders wallpaper and desktop icons
  */
 export function DesktopArea() {
-  const { desktopIcons, theme } = useDesktopStore();
+  const { desktopIcons, widgets, theme } = useDesktopStore();
   const contextMenu = useContextMenu();
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     contextMenu.show(e.clientX, e.clientY, ContextMenuPresets.desktop());
   };
 
@@ -144,6 +135,14 @@ export function DesktopArea() {
             <DesktopIcon key={icon.id} icon={icon} />
           ))}
         </div>
+
+        {/* Desktop widgets */}
+        {widgets.filter(w => w.isVisible).map(widget => (
+          widget.type === 'clock' ? (
+            <ClockWidget key={widget.id} widget={widget} />
+          ) : null
+        ))}
+      </div>
       </main>
 
       {/* Global context menu */}

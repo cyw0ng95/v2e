@@ -359,7 +359,7 @@ export function AppWindow({ window }: { window: WindowConfig }) {
         </>
       )}
 
-      {/* Window content - iframe placeholder */}
+      {/* Window content - iframe with APP_REGISTRY integration */}
       <div className="absolute inset-0 top-10 bg-gray-50">
         {window.isMinimized ? (
           <div className="h-full flex items-center justify-center text-gray-400">
@@ -367,7 +367,7 @@ export function AppWindow({ window }: { window: WindowConfig }) {
           </div>
         ) : (
           <iframe
-            src={`/website${window.appId}`} // Will be updated in Phase 4
+            src={window.appId} // Use APP_REGISTRY path directly
             title={window.title}
             className="w-full h-full border-0"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
