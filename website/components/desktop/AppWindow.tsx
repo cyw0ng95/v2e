@@ -2,13 +2,14 @@
  * v2e Portal - App Window Component
  *
  * Complete window management with titlebar, controls, content area
- * Phase 2: Window System
+ * Phase 2: Window System - Enhanced with drag, resize, persistence
+ * Iteration 2: Adding full window interaction support
  */
 
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Minus, Square, Copy } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Minus, Square, Copy, Maximize2 } from 'lucide-react';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { Z_INDEX, type WindowConfig } from '@/types/desktop';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,7 +55,7 @@ function WindowControls({ window }: { window: WindowConfig }) {
         title={window.isMaximized ? "Restore (⌘⌥)" : "Maximize (⌘⌃)"}
       >
         {window.isMaximized ? (
-          <Copy className="w-3.5 h-3.5 text-gray-600" />
+          <Maximize2 className="w-3.5 h-3.5 text-gray-600" />
         ) : (
           <Square className="w-3.5 h-3.5 text-gray-600" />
         )}
@@ -65,31 +66,94 @@ function WindowControls({ window }: { window: WindowConfig }) {
 
 /**
  * Window titlebar component
+ * Handles window dragging with 60fps performance
  */
 function WindowTitlebar({ window }: { window: WindowConfig }) {
-  const { focusWindow } = useDesktopStore();
+  const { focusWindow, updateWindowPosition } = useDesktopStore();
   const titlebarRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     // Focus window on click
     focusWindow(window.id);
-    // TODO: Will initiate drag in Phase 2 (Agent 2)
-    console.log('Titlebar mouse down - prepare for drag');
-  };
+
+    // Initialize drag
+    setIsDragging(true);
+    dragStartPosRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+  }, [focusWindow, window.id]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !dragStartPosRef.current) return;
+
+    e.preventDefault();
+
+    const deltaX = e.clientX - dragStartPosRef.current.x;
+    const deltaY = e.clientY - dragStartPosRef.current.y;
+
+    // Calculate new position with boundary constraints
+    const newPosition = {
+      x: window.position.x + deltaX,
+      y: window.position.y + deltaY,
+    };
+
+    // Constrain to viewport bounds (with menu and dock)
+    const maxX = window.innerWidth - window.size.width - 20; // 20px margin
+    const maxY = window.innerHeight - window.size.height - 28 - 80 - 20; // Menu + Dock + margin
+    const minY = 28; // Below menu bar
+
+    newPosition.x = Math.max(0, Math.min(newPosition.x, maxX));
+    newPosition.y = Math.max(minY, Math.min(newPosition.y, maxY));
+
+    // Update position (will trigger re-render)
+    updateWindowPosition(window.id, newPosition);
+
+    // Update drag start position for next frame
+    dragStartPosRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+  }, [isDragging, window.position.x, window.position.y, window.size.width, window.size.height, window.id, updateWindowPosition]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    dragStartPosRef.current = null;
+  }, []);
+
+  // Add global mouse move/up listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   return (
     <div
       ref={titlebarRef}
       onMouseDown={handleMouseDown}
-      className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 select-none"
-      style={{ cursor: 'move' }}
+      className={`
+        flex items-center justify-between px-3 py-2
+        bg-gradient-to-r from-gray-50 to-gray-100
+        border-b border-gray-200 select-none
+        ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
+      `}
     >
       {/* App icon and title */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 select-none">
         <div className="w-4 h-4 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
           <span className="text-white text-xs font-bold">{window.appId[0]}</span>
         </div>
-        <span className="text-sm font-medium text-gray-700">{window.title}</span>
+        <span className="text-sm font-medium text-gray-700 select-none">{window.title}</span>
       </div>
 
       {/* Window controls */}
@@ -100,26 +164,117 @@ function WindowTitlebar({ window }: { window: WindowConfig }) {
 
 /**
  * Window resize handle component
+ * Handles live window resizing with 8 directions
  */
 function WindowResizeHandle({
   position,
   onResizeStart,
+  window,
 }: {
   position: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
-  onResizeStart: (e: React.MouseEvent) => void;
+  onResizeStart: (direction: string, e: React.MouseEvent) => void;
+  window: WindowConfig;
 }) {
+  const { updateWindowSize } = useDesktopStore();
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartPosRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsResizing(true);
+    resizeStartPosRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      width: window.size.width,
+      height: window.size.height,
+    };
+    onResizeStart(position, e);
+  };
+
+  // Handle resize with requestAnimationFrame for 60fps
+  useEffect(() => {
+    if (!isResizing) return;
+
+    let rafId: number | null = null;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !resizeStartPosRef.current) return;
+
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        const deltaX = e.clientX - resizeStartPosRef.current.x;
+        const deltaY = e.clientY - resizeStartPosRef.current.y;
+
+        let newWidth = resizeStartPosRef.current.width;
+        let newHeight = resizeStartPosRef.current.height;
+
+        // Calculate new size based on resize direction
+        if (position.includes('right')) {
+          newWidth = Math.max(window.minWidth, resizeStartPosRef.current.width + deltaX);
+        } else if (position.includes('left')) {
+          newWidth = Math.max(window.minWidth, resizeStartPosRef.current.width - deltaX);
+        }
+
+        if (position.includes('bottom')) {
+          newHeight = Math.max(window.minHeight, resizeStartPosRef.current.height + deltaY);
+        } else if (position.includes('top')) {
+          newHeight = Math.max(window.minHeight, resizeStartPosRef.current.height - deltaY);
+        }
+
+        // Apply max constraints if set
+        const maxWidth = window.maxWidth ?? window.innerWidth - 40;
+        newWidth = Math.min(newWidth, maxWidth);
+
+        // Update window size
+        updateWindowSize(window.id, { width: newWidth, height: newHeight });
+
+        // Update start position for next frame
+        resizeStartPosRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          width: newWidth,
+          height: newHeight,
+        };
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      setIsResizing(false);
+      resizeStartPosRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isResizing, position, window.minWidth, window.minHeight, window.maxWidth, window.id, updateWindowSize]);
+
+  // Cursor styles based on resize direction
+  const getCursorClass = () => {
+    if (position === 'top' || position === 'bottom') return 'cursor-ns-resize';
+    if (position === 'left' || position === 'right') return 'cursor-ew-resize';
+    return 'cursor-nwse-resize';
+  };
+
   return (
     <div
-      onMouseDown={onResizeStart}
+      onMouseDown={handleMouseDown}
       className={`
-        absolute
-        ${position === 'left' || position === 'right' ? 'w-1 h-full cursor-ew-resize' : ''}
-        ${position === 'top' || position === 'bottom' ? 'h-1 w-full cursor-ns-resize' : ''}
-        ${position.includes('left') ? 'left-0' : position.includes('right') ? 'right-0' : ''}
-        ${position.includes('top') ? 'top-0' : position.includes('bottom') ? 'bottom-0' : ''}
-        hover:bg-blue-500/30
+        absolute bg-transparent hover:bg-blue-500/30
+        ${getCursorClass()}
+        transition-colors duration-150
+        ${isResizing ? 'z-50' : 'z-10'}
       `}
       style={{ zIndex: Z_INDEX.CONTEXT_MENU + 1 }}
+      aria-label={`Resize window ${position}`}
     />
   );
 }
