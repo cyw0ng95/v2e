@@ -1,32 +1,58 @@
 /**
- * v2e Portal - Dock Component
+ * v2e Portal - Dock Component (React Bits Integration)
  *
- * Bottom dock with glass morphism effect
- * Renders without backend dependency
+ * Bottom dock with glass morphism effect using React Bits Dock component
+ * Integrates with desktop store for window management
  */
 
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import {
+  motion,
+  MotionValue,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  AnimatePresence
+} from 'motion/react';
 import { Z_INDEX, WindowState } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
-import { getActiveApps, getAppById } from '@/lib/desktop/app-registry';
+import { getActiveApps } from '@/lib/desktop/app-registry';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 
 /**
- * Dock item component
+ * Dock item component with React Bits magnification animation
  */
-function DockItem({ app, isRunning, isIndicator }: {
+interface DockItemProps {
   app: AppRegistryEntry;
   isRunning: boolean;
   isIndicator: boolean;
-}) {
+  mouseX: MotionValue<number>;
+  spring: { mass: number; stiffness: number; damping: number };
+  distance: number;
+  baseItemSize: number;
+  magnification: number;
+}
+
+function DockItem({
+  app,
+  isRunning,
+  isIndicator,
+  mouseX,
+  spring,
+  distance,
+  baseItemSize,
+  magnification
+}: DockItemProps) {
   const { openWindow, windows, minimizeWindow } = useDesktopStore();
   const contextMenu = useContextMenu();
   const existingWindow = Object.values(windows).find(w => w.appId === app.id);
+  const ref = useRef<HTMLDivElement>(null);
+  const isHovered = useMotionValue(0);
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     if (existingWindow) {
       // Window exists - focus or minimize based on state
       if (existingWindow.isFocused) {
@@ -34,7 +60,6 @@ function DockItem({ app, isRunning, isIndicator }: {
         minimizeWindow(existingWindow.id);
       } else {
         // Not focused - bring to front
-        // Window already exists, just need to focus it
         const { focusWindow } = useDesktopStore.getState();
         focusWindow(existingWindow.id);
       }
@@ -61,28 +86,45 @@ function DockItem({ app, isRunning, isIndicator }: {
         state: WindowState.Open,
       });
     }
-  };
+  }, [app, existingWindow, openWindow, minimizeWindow]);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const preset = isRunning
       ? ContextMenuPresets.dockItemRunning(app.id)
       : ContextMenuPresets.dockItemNotRunning(app.id);
     contextMenu.show(e.clientX, e.clientY, preset);
-  };
+  }, [isRunning, app.id, contextMenu]);
+
+  const mouseDistance = useTransform(mouseX, val => {
+    const rect = ref.current?.getBoundingClientRect() ?? {
+      x: 0,
+      width: baseItemSize
+    };
+    return val - rect.x - baseItemSize / 2;
+  });
+
+  const targetSize = useTransform(mouseDistance, [-distance, 0, distance], [baseItemSize, magnification, baseItemSize]);
+  const size = useSpring(targetSize, spring);
 
   return (
-    <button
+    <motion.div
+      ref={ref}
+      style={{ width: size, height: size }}
+      onHoverStart={() => isHovered.set(1)}
+      onHoverEnd={() => isHovered.set(0)}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      className="relative flex flex-col items-center p-2 rounded-lg hover:scale-110 transition-all duration-200"
+      className="relative inline-flex items-center justify-center"
+      tabIndex={0}
+      role="button"
       aria-label={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
       title={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
     >
       {/* App icon with app color */}
       <div
-        className="w-10 h-10 rounded-full flex items-center justify-center"
+        className="rounded-full flex items-center justify-center"
         style={{ backgroundColor: app.iconColor || '#3b82f6' }}
       >
         <span className="text-white text-lg font-bold">
@@ -91,42 +133,41 @@ function DockItem({ app, isRunning, isIndicator }: {
       </div>
 
       {/* Active indicator */}
-      {isIndicator && isRunning && (
-        <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500" />
-      )}
-    </button>
+      <AnimatePresence>
+        {isIndicator && isRunning && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0 }}
+            className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500"
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
 /**
- * Dock component
- * Fixed at bottom with glass morphism and auto-hide
+ * Dock component using React Bits animation system
+ * Provides macOS-style magnification effect
  */
 export function Dock() {
   const { dock, windows, setDockVisibility } = useDesktopStore();
   const contextMenu = useContextMenu();
   const [isHovering, setIsHovering] = useState(false);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const dockRef = useRef<HTMLDivElement>(null);
 
-  const sizeClasses = {
-    small: 'h-12',
-    medium: 'h-20',
-    large: 'h-24',
-  };
+  // React Bits Dock spring configuration
+  const spring = { mass: 0.1, stiffness: 150, damping: 12 };
+  const magnification = 70;
+  const distance = 200;
+  const panelHeight = 68;
+
+  const mouseX = useMotionValue(Infinity);
+  const isHovered = useMotionValue(0);
 
   // Get apps from registry
   const registryApps = getActiveApps();
-
-  // Build dock items with running state
-  const dockItems = registryApps.map(app => {
-    const isRunning = Object.values(windows).some(w => w.appId === app.id);
-    return {
-      app,
-      isRunning,
-      isIndicator: isRunning,
-    };
-  });
 
   // Auto-hide logic
   const handleMouseEnter = useCallback(() => {
@@ -188,34 +229,47 @@ export function Dock() {
 
   return (
     <>
-      <nav
-        ref={dockRef}
+      <motion.div
+        onMouseMove={({ pageX }) => {
+          isHovered.set(1);
+          mouseX.set(pageX);
+        }}
+        onMouseLeave={() => {
+          isHovered.set(0);
+          mouseX.set(Infinity);
+        }}
         onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         className={`
-          fixed bottom-4 left-1/2 right-1/2 -translate-x-1/2
+          fixed bottom-4 left-1/2 transform -translate-x-1/2
           bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl
-          flex items-end justify-center gap-1 p-2
+          flex items-end justify-center gap-2 p-2
           transition-transform duration-300
           ${dock.autoHide ? 'hover:scale-105' : ''}
         `}
         style={{
           zIndex: Z_INDEX.DOCK,
+          height: panelHeight,
         }}
         role="navigation"
         aria-label="Application dock"
       >
-        <div className={sizeClasses[dock.size] + ' flex items-end gap-2'}>
-          {dockItems.map((item, index) => (
+        {registryApps.map((app, index) => {
+          const isRunning = Object.values(windows).some(w => w.appId === app.id);
+          return (
             <DockItem
-              key={`${item.app.id}-${index}`}
-              app={item.app}
-              isRunning={item.isRunning}
-              isIndicator={item.isIndicator}
+              key={`${app.id}-${index}`}
+              app={app}
+              isRunning={isRunning}
+              isIndicator={isRunning}
+              mouseX={mouseX}
+              spring={spring}
+              distance={distance}
+              magnification={magnification}
+              baseItemSize={50}
             />
-          ))}
-        </div>
-      </nav>
+          );
+        })}
+      </motion.div>
 
       {/* Dock context menu */}
       <ContextMenu

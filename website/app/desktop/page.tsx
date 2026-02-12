@@ -5,9 +5,11 @@
  * Works completely without backend dependency
  */
 
+'use client';
+
 import { MenuBar } from '@/components/desktop/MenuBar';
 import { DesktopArea } from '@/components/desktop/DesktopArea';
-import { DockDraggable } from '@/components/desktop/DockDraggable';
+import { Dock } from '@/components/desktop/Dock';
 import { QuickLaunchModal, useQuickLaunchShortcut } from '@/components/desktop/QuickLaunchModal';
 import { WallpaperSelector } from '@/components/desktop/WallpaperSelector';
 import { WindowManager } from '@/components/desktop/WindowManager';
@@ -34,8 +36,8 @@ export default function DesktopPage() {
         {/* Window Manager - Handles all windows */}
         <WindowManager />
 
-        {/* Dock - Bottom navigation with drag-to-reorder */}
-        <DockDraggable />
+        {/* Dock - Bottom navigation with React Bits animation */}
+        <Dock />
 
         {/* Quick Launch Modal - Cmd+K triggered */}
         <QuickLaunchModal
