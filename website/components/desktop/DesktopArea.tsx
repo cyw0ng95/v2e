@@ -11,21 +11,47 @@ import React from 'react';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { Z_INDEX } from '@/types/desktop';
 import type { DesktopIcon as DesktopIconType } from '@/types/desktop';
+import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
+import { getAppById } from '@/lib/desktop/app-registry';
 
 /**
  * Desktop icon component
  */
 function DesktopIcon({ icon }: { icon: DesktopIconType }) {
-  const { selectDesktopIcon } = useDesktopStore();
+  const { selectDesktopIcon, openWindow } = useDesktopStore();
   const { updateDesktopIconPosition } = useDesktopStore();
+  const contextMenu = useContextMenu();
 
   const handleClick = () => {
     selectDesktopIcon(icon.id);
   };
 
   const handleDoubleClick = () => {
-    // TODO: Will be implemented in Phase 2 with window system
-    console.log('Launch app:', icon.appId);
+    // Open app window using registry metadata
+    const app = getAppById(icon.appId);
+    if (app) {
+      openWindow({
+        appId: app.id,
+        title: app.name,
+        position: {
+          x: Math.max(0, (window.innerWidth - app.defaultWidth) / 2),
+          y: Math.max(28, (window.innerHeight - app.defaultHeight) / 2),
+        },
+        size: {
+          width: app.defaultWidth,
+          height: app.defaultHeight,
+        },
+        minWidth: app.minWidth,
+        minHeight: app.minHeight,
+        maxWidth: app.maxWidth,
+        maxHeight: app.maxHeight,
+        isFocused: true,
+        isMinimized: false,
+        isMaximized: false,
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+      });
+    }
   };
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -33,10 +59,17 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
     e.dataTransfer.setData('text/plain', icon.id);
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenu.show(e.clientX, e.clientY, ContextMenuPresets.desktopIcon(icon.id, icon.appId));
+  };
+
   return (
     <div
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       draggable
       onDragStart={handleDragStart}
       className={`
@@ -86,23 +119,40 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
  */
 export function DesktopArea() {
   const { desktopIcons, theme } = useDesktopStore();
+  const contextMenu = useContextMenu();
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    contextMenu.show(e.clientX, e.clientY, ContextMenuPresets.desktop());
+  };
 
   return (
-    <main
-      className="absolute inset-0 overflow-hidden"
-      style={{
-        background: theme.wallpaper,
-        zIndex: Z_INDEX.DESKTOP_WALLPAPER,
-      }}
-      role="main"
-      aria-label="Desktop area"
-    >
-      {/* Desktop icons grid */}
-      <div className="relative w-full h-full">
-        {desktopIcons.map(icon => (
-          <DesktopIcon key={icon.id} icon={icon} />
-        ))}
-      </div>
-    </main>
+    <>
+      <main
+        className="absolute inset-0 overflow-hidden"
+        style={{
+          background: theme.wallpaper,
+          zIndex: Z_INDEX.DESKTOP_WALLPAPER,
+        }}
+        onContextMenu={handleContextMenu}
+        role="main"
+        aria-label="Desktop area"
+      >
+        {/* Desktop icons grid */}
+        <div className="relative w-full h-full">
+          {desktopIcons.map(icon => (
+            <DesktopIcon key={icon.id} icon={icon} />
+          ))}
+        </div>
+      </main>
+
+      {/* Global context menu */}
+      <ContextMenu
+        isVisible={contextMenu.isVisible}
+        position={contextMenu.position}
+        items={contextMenu.items}
+        onClose={contextMenu.hide}
+      />
+    </>
   );
 }

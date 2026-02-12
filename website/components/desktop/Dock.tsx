@@ -10,66 +10,85 @@
 import React from 'react';
 import { Z_INDEX } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
+import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
+import { getActiveApps, getAppById } from '@/lib/desktop/app-registry';
+import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 
 /**
  * Dock item component
  */
-function DockItem({ appId, isRunning, isIndicator }: {
-  appId: string;
+function DockItem({ app, isRunning, isIndicator }: {
+  app: AppRegistryEntry;
   isRunning: boolean;
   isIndicator: boolean;
 }) {
-  const { openWindow, windows } = useDesktopStore();
-  const window = windows[appId];
+  const { openWindow, windows, minimizeWindow } = useDesktopStore();
+  const contextMenu = useContextMenu();
+  const window = Object.values(windows).find(w => w.appId === app.id);
 
   const handleClick = () => {
     if (window) {
       // Window exists - focus or minimize based on state
       if (window.isFocused) {
         // Focused window - minimize it
-        // TODO: Will be implemented in Phase 2
-        console.log('Minimize window:', appId);
+        minimizeWindow(window.id);
       } else {
         // Not focused - bring to front
-        openWindow({
-          appId,
-          title: appId.charAt(0).toUpperCase() + appId.slice(1),
-          position: { x: 100, y: 100 },
-          size: { width: 1200, height: 800 },
-          minWidth: 800,
-          minHeight: 600,
-        });
+        // Window already exists, just need to focus it
+        const { focusWindow } = useDesktopStore.getState();
+        focusWindow(window.id);
       }
     } else {
       // No window - open new
       openWindow({
-        appId,
-        title: appId.charAt(0).toUpperCase() + appId.slice(1),
-        position: { x: 100, y: 100 },
-        size: { width: 1200, height: 800 },
-        minWidth: 800,
-        minHeight: 600,
+        appId: app.id,
+        title: app.name,
+        position: {
+          x: Math.max(0, (window.innerWidth - app.defaultWidth) / 2),
+          y: Math.max(28, (window.innerHeight - app.defaultHeight) / 2),
+        },
+        size: {
+          width: app.defaultWidth,
+          height: app.defaultHeight,
+        },
+        minWidth: app.minWidth,
+        minHeight: app.minHeight,
+        maxWidth: app.maxWidth,
+        maxHeight: app.maxHeight,
+        isFocused: true,
+        isMinimized: false,
+        isMaximized: false,
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
       });
     }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const preset = isRunning
+      ? ContextMenuPresets.dockItemRunning(app.id)
+      : ContextMenuPresets.dockItemNotRunning(app.id);
+    contextMenu.show(e.clientX, e.clientY, preset);
   };
 
   return (
     <button
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       className="relative flex flex-col items-center p-2 rounded-lg hover:scale-110 transition-all duration-200"
-      aria-label={`${isRunning ? 'Focus' : 'Launch'} ${appId}`}
-      title={`${isRunning ? 'Focus' : 'Launch'} ${appId}`}
+      aria-label={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
+      title={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
     >
-      {/* App icon placeholder */}
-      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-        <svg className="w-6 h-6" fill="none" stroke="white" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9.75 17L9 20l-1.5-1.5L6 16.25l-3 3.75-3.75-2.15.25z"
-          />
-        </svg>
+      {/* App icon with app color */}
+      <div
+        className="w-10 h-10 rounded-full flex items-center justify-center"
+        style={{ backgroundColor: app.iconColor || '#3b82f6' }}
+      >
+        <span className="text-white text-lg font-bold">
+          {app.name[0]}
+        </span>
       </div>
 
       {/* Active indicator */}
@@ -85,49 +104,65 @@ function DockItem({ appId, isRunning, isIndicator }: {
  * Fixed at bottom with glass morphism
  */
 export function Dock() {
-  const { dock } = useDesktopStore();
+  const { dock, windows } = useDesktopStore();
+  const contextMenu = useContextMenu();
   const sizeClasses = {
     small: 'h-12',
     medium: 'h-20',
     large: 'h-24',
   };
 
-  // Default dock items - will be replaced with APP_REGISTRY in Phase 4
-  const defaultItems = [
-    { appId: 'cve', isRunning: false, isIndicator: true },
-    { appId: 'cwe', isRunning: false, isIndicator: true },
-    { appId: 'capec', isRunning: false, isIndicator: true },
-    { appId: 'attack', isRunning: false, isIndicator: true },
-  ];
+  // Get apps from registry
+  const registryApps = getActiveApps();
+
+  // Build dock items with running state
+  const dockItems = registryApps.map(app => {
+    const isRunning = Object.values(windows).some(w => w.appId === app.id);
+    return {
+      app,
+      isRunning,
+      isIndicator: isRunning,
+    };
+  });
 
   if (!dock.isVisible) {
     return null; // Auto-hide - will be implemented in Phase 3
   }
 
   return (
-    <nav
-      className={`
-        fixed bottom-4 left-1/2 right-1/2 -translate-x-1/2
-        bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl
-        flex items-end justify-center gap-1 p-2
-        transition-transform duration-300
-      `}
-      style={{
-        zIndex: Z_INDEX.DOCK,
-      }}
-      role="navigation"
-      aria-label="Application dock"
-    >
-      <div className={sizeClasses[dock.size] + ' flex items-end gap-2'}>
-        {defaultItems.map((item, index) => (
-          <DockItem
-            key={`${item.appId}-${index}`}
-            appId={item.appId}
-            isRunning={item.isRunning}
-            isIndicator={item.isIndicator}
-          />
-        ))}
-      </div>
-    </nav>
+    <>
+      <nav
+        className={`
+          fixed bottom-4 left-1/2 right-1/2 -translate-x-1/2
+          bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl
+          flex items-end justify-center gap-1 p-2
+          transition-transform duration-300
+        `}
+        style={{
+          zIndex: Z_INDEX.DOCK,
+        }}
+        role="navigation"
+        aria-label="Application dock"
+      >
+        <div className={sizeClasses[dock.size] + ' flex items-end gap-2'}>
+          {dockItems.map((item, index) => (
+            <DockItem
+              key={`${item.app.id}-${index}`}
+              app={item.app}
+              isRunning={item.isRunning}
+              isIndicator={item.isIndicator}
+            />
+          ))}
+        </div>
+      </nav>
+
+      {/* Dock context menu */}
+      <ContextMenu
+        isVisible={contextMenu.isVisible}
+        position={contextMenu.position}
+        items={contextMenu.items}
+        onClose={contextMenu.hide}
+      />
+    </>
   );
 }

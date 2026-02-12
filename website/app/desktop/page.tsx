@@ -8,6 +8,8 @@
 import { MenuBar } from '@/components/desktop/MenuBar';
 import { DesktopArea } from '@/components/desktop/DesktopArea';
 import { Dock } from '@/components/desktop/Dock';
+import { QuickLaunchModal, useQuickLaunchShortcut } from '@/components/desktop/QuickLaunchModal';
+import { WindowManager } from '@/components/desktop/WindowManager';
 import { useDesktopStore } from '@/lib/desktop/store';
 
 /**
@@ -16,6 +18,7 @@ import { useDesktopStore } from '@/lib/desktop/store';
  */
 export default function DesktopPage() {
   const { desktopIcons } = useDesktopStore();
+  const quickLaunch = useQuickLaunchShortcut();
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-gray-100">
@@ -25,8 +28,17 @@ export default function DesktopPage() {
       {/* Desktop Area - Main workspace */}
       <DesktopArea />
 
+      {/* Window Manager - Handles all windows */}
+      <WindowManager />
+
       {/* Dock - Bottom navigation */}
       <Dock />
+
+      {/* Quick Launch Modal - Cmd+K triggered */}
+      <QuickLaunchModal
+        isVisible={quickLaunch.isVisible}
+        onClose={quickLaunch.hide}
+      />
 
       {/* Initial state notice - shown when no icons exist */}
       {desktopIcons.length === 0 && (
