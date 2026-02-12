@@ -201,6 +201,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* Enhanced focus styles for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
   }
@@ -471,6 +477,16 @@ html {
     @apply bg-primary/12 text-primary dark:text-primary/90 border border-primary/30;
   }
 
+  /* Accessible link styles */
+  .link-accessible {
+    @apply text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none;
+  }
+
+  /* Accessible button reset */
+  .button-reset {
+    @apply bg-transparent border-0 p-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none;
+  }
+
   /* Skeleton loading */
   .skeleton-pulse {
     @apply animate-pulse bg-muted/50;
@@ -507,8 +523,54 @@ html {
 }
 
 /* ============================================
-   Learn Mode Styles - Focus on Content
-   ============================================ */
+    Accessibility Utilities
+    ============================================ */
+
+/* Visually hidden but accessible to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Show on focus (for skip links) */
+.sr-only-focusable:focus-visible {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  padding: 1rem;
+  background: var(--background);
+  color: var(--foreground);
+  border: 2px solid var(--primary);
+  outline: none;
+  width: auto;
+  height: auto;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Skip to main content link */
+.skip-link {
+  @apply sr-only sr-only-focusable;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  * {
+    border-color: var(--foreground) !important;
+  }
+}
+
+/* ============================================
+    Learn Mode Styles - Focus on Content
+    ============================================ */
 
 [data-learn-mode="true"] {
   --learn-focus-bg: oklch(1 0 0);
