@@ -9,7 +9,7 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { X, Minus, Square, Copy, Maximize2 } from 'lucide-react';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { Z_INDEX, type WindowConfig } from '@/types/desktop';
