@@ -36,6 +36,9 @@ export default function HomePage() {
   // Initialize network status detection
   useNetworkStatus();
 
+  // Determine background class based on theme
+  const bgClass = theme === 'light' ? 'bg-black' : 'bg-white';
+
   // Handle deep linking via URL query parameters
   useEffect(() => {
     const appParam = searchParams.get('app');
@@ -76,7 +79,7 @@ export default function HomePage() {
 
   return (
     <DndContext>
-      <div className={`h-screen w-screen overflow-hidden relative ${theme === 'light' ? 'bg-black' : 'bg-white'}`}>
+      <div className={`h-screen w-screen overflow-hidden relative transition-colors duration-300 ${bgClass}`}>
         {/* Threads Background - animated threads */}
         <Threads />
         {/* Menu Bar - Always on top */}
