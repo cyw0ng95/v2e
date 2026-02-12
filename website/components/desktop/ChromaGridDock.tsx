@@ -124,7 +124,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
       hideTimeoutRef.current = null;
     }
     setDockVisibility(true);
-  }, [setDockVisibility, autoHide, setIsHovering]);
+  }, [setDockVisibility, autoHide]);
 
   // Ensure dock is visible on mount
   useEffect(() => {
