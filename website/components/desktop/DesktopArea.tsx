@@ -9,11 +9,12 @@
 
 import React from 'react';
 import { useDesktopStore } from '@/lib/desktop/store';
-import { Z_INDEX } from '@/types/desktop';
+import { Z_INDEX, WindowState } from '@/types/desktop';
 import type { DesktopIcon as DesktopIconType } from '@/types/desktop';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getAppById } from '@/lib/desktop/app-registry';
 import { ClockWidget } from './ClockWidget';
+import { Threads } from './Threads';
 import type { WidgetConfig } from '@/types/desktop';
 
 /**
@@ -50,8 +51,7 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
         isFocused: true,
         isMinimized: false,
         isMaximized: false,
-        innerWidth: window.innerWidth,
-        innerHeight: window.innerHeight,
+        state: WindowState.Open,
       });
     }
   };
@@ -119,6 +119,24 @@ export function DesktopArea() {
 
   return (
     <>
+      {/* Threads animation background */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{
+          zIndex: Z_INDEX.DESKTOP_WALLPAPER,
+          pointerEvents: 'none',
+        }}
+        aria-hidden="true"
+      >
+        <Threads
+          color={[0.6941176470588235, 0.6666666666666666, 0.6666666666666666]}
+          amplitude={1}
+          distance={0.2}
+          enableMouseInteraction
+          className="w-full h-full"
+        />
+      </div>
+
       <main
         className="absolute inset-0 overflow-hidden"
         style={{
