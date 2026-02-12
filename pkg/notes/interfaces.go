@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// BookmarkServiceInterface defines the interface for the bookmark service
+// BookmarkServiceInterface defines the interface for bookmark service
 type BookmarkServiceInterface interface {
 	CreateBookmark(ctx context.Context, globalItemID, itemType, itemID, title, description string) (*BookmarkModel, *MemoryCardModel, error)
 	GetBookmarkByID(ctx context.Context, id uint) (*BookmarkModel, error)
@@ -20,7 +20,7 @@ type BookmarkServiceInterface interface {
 	GetBookmarkStats(ctx context.Context, bookmarkID uint) (map[string]interface{}, error)
 }
 
-// NoteServiceInterface defines the interface for the note service
+// NoteServiceInterface defines the interface for note service
 type NoteServiceInterface interface {
 	AddNote(ctx context.Context, bookmarkID uint, content string, author *string, isPrivate bool) (*NoteModel, error)
 	GetNoteByID(ctx context.Context, id uint) (*NoteModel, error)
@@ -30,7 +30,7 @@ type NoteServiceInterface interface {
 	DeleteNote(ctx context.Context, id uint) error
 }
 
-// MemoryCardServiceInterface defines the interface for the memory card service
+// MemoryCardServiceInterface defines the interface for memory card service
 type MemoryCardServiceInterface interface {
 	CreateMemoryCard(ctx context.Context, bookmarkID uint, front, back string) (*MemoryCardModel, error)
 	GetMemoryCardByID(ctx context.Context, id uint) (*MemoryCardModel, error)
@@ -45,7 +45,7 @@ type MemoryCardServiceInterface interface {
 	ListMemoryCards(ctx context.Context, bookmarkID *uint, learningState *string, author *string, isPrivate *bool, offset, limit int) ([]*MemoryCardModel, int64, error)
 }
 
-// CrossReferenceServiceInterface defines the interface for the cross-reference service
+// CrossReferenceServiceInterface defines the interface for cross-reference service
 type CrossReferenceServiceInterface interface {
 	CreateCrossReference(ctx context.Context, sourceItemID, targetItemID, sourceType, targetType, relationshipType string, strength float32, description *string) (*CrossReferenceModel, error)
 	GetCrossReferencesBySource(ctx context.Context, sourceItemID string) ([]*CrossReferenceModel, error)
@@ -54,7 +54,7 @@ type CrossReferenceServiceInterface interface {
 	GetBidirectionalCrossReferences(ctx context.Context, itemID1, itemID2 string) ([]*CrossReferenceModel, error)
 }
 
-// HistoryServiceInterface defines the interface for the history service
+// HistoryServiceInterface defines the interface for history service
 type HistoryServiceInterface interface {
 	GetHistoryByBookmarkID(ctx context.Context, bookmarkID uint) ([]*BookmarkHistoryModel, error)
 	RevertBookmarkState(ctx context.Context, bookmarkID uint, timestamp interface{}) error
@@ -86,18 +86,5 @@ func NewServiceContainer(db *gorm.DB) *ServiceContainer {
 		CrossReferenceService: crossRefService,
 		HistoryService:        historyService,
 		URNIndex:              urnIndex,
-	}
-}
-
-// NewRPCServiceContainer creates a new service container with RPC implementations
-func NewRPCServiceContainer(client *RPCClient) *ServiceContainer {
-	bookmarkService, noteService, memoryCardService, crossRefService, historyService := client.GetRPCClients()
-
-	return &ServiceContainer{
-		BookmarkService:       bookmarkService,
-		NoteService:           noteService,
-		MemoryCardService:     memoryCardService,
-		CrossReferenceService: crossRefService,
-		HistoryService:        historyService,
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 )
@@ -21,6 +20,36 @@ var contextPool = sync.Pool{
 		// Return a new pooledContext struct - will be initialized on Get()
 		return &pooledContext{}
 	},
+}
+
+// pooledContext holds a context with its cancel function for pooling
+type pooledContext struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+// getPooledContext retrieves or creates a new timeout context from pool. Returns the context, its cancel function, and the pooled wrapper for cleanup.
+func getPooledContext(timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, pc *pooledContext) {
+	// Get a pooled context object
+	pc = contextPool.Get().(*pooledContext)
+
+	// Create a new context with timeout
+	// Note: We cannot reuse the context itself because canceled contexts
+	// are not safe to reuse. However, we reuse the pooledContext struct
+	// to reduce allocations of the wrapper struct.
+	pc.ctx, pc.cancel = context.WithTimeout(context.Background(), timeout)
+	return pc.ctx, pc.cancel, pc
+}
+
+// putPooledContext returns the pooled wrapper to the pool for reuse
+func putPooledContext(pc *pooledContext) {
+	if pc != nil {
+		// Reset the pooled struct before returning to pool
+		// Note: The context is already canceled by the deferred cancel() call
+		pc.ctx = nil
+		pc.cancel = nil
+		contextPool.Put(pc)
+	}
 }
 
 // HTTP response helpers for reducing boilerplate in handlers
@@ -103,8 +132,8 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 			// Context is not done, proceed with RPC
 		}
 
-		// Create a separate context for the RPC call to avoid cancellation from HTTP context
-		// This prevents the RPC call from being canceled when the HTTP client disconnects
+		// Create a separate context for RPC call to avoid cancellation from HTTP context
+		// This prevents RPC call from being canceled when the HTTP client disconnects
 		// Use sync.Pool to reduce allocations for frequently created timeout contexts
 		rpcCtx, cancel, pc := getPooledContext(rpcClient.rpcTimeout)
 		defer cancel()
@@ -120,6 +149,7 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 			common.Warn("HTTP request context canceled after RPC call: %v", err)
 		default:
 			// Context is still active
+		}
 		}
 
 		if err != nil {
@@ -155,72 +185,4 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 		common.Info(LogMsgRPCForwardingComplete, request.Method, target)
 		common.Debug(LogMsgHTTPRequestProcessed, c.Request.Method, c.Request.URL.Path, http.StatusOK)
 	})
-}
-
-// MockRPCClient is a mock implementation of RPCClient for testing
-// Add methods as needed to simulate behavior
-type MockRPCClient struct{}
-
-func (m *MockRPCClient) InvokeRPCWithTarget(ctx context.Context, target, method string, params interface{}) (*subprocess.Message, error) {
-	return &subprocess.Message{
-		Type:    subprocess.MessageTypeResponse,
-		Payload: []byte(`{"mock": "response"}`),
-	}, nil
-}
-
-func (m *MockRPCClient) Run(ctx context.Context) error {
-	return nil
-}
-
-// MockSubprocess is a mock implementation of subprocess.Subprocess for testing
-// Add methods as needed to simulate behavior
-type MockSubprocess struct {
-	ID       string
-	handlers map[string]subprocess.Handler
-}
-
-func (m *MockSubprocess) RegisterHandler(messageType string, handler subprocess.Handler) {
-	if m.handlers == nil {
-		m.handlers = make(map[string]subprocess.Handler)
-	}
-	m.handlers[messageType] = handler
-}
-
-func (m *MockSubprocess) Send(ctx context.Context, msg *subprocess.Message) error {
-	return nil
-}
-
-func (m *MockSubprocess) Run(ctx context.Context) error {
-	return nil
-}
-
-// pooledContext holds a context with its cancel function for pooling
-type pooledContext struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-// getPooledContext retrieves or creates a new timeout context from pool
-// Returns the context, its cancel function, and the pooled wrapper for cleanup
-func getPooledContext(timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, pc *pooledContext) {
-	// Get a pooled context object
-	pc = contextPool.Get().(*pooledContext)
-
-	// Create a new context with timeout
-	// Note: We cannot reuse the context itself because canceled contexts
-	// are not safe to reuse. However, we reuse the pooledContext struct
-	// to reduce allocations of the wrapper struct.
-	pc.ctx, pc.cancel = context.WithTimeout(context.Background(), timeout)
-	return pc.ctx, pc.cancel, pc
-}
-
-// putPooledContext returns the pooled wrapper to the pool for reuse
-func putPooledContext(pc *pooledContext) {
-	if pc != nil {
-		// Reset the pooled struct before returning to pool
-		// Note: The context is already canceled by the deferred cancel() call
-		pc.ctx = nil
-		pc.cancel = nil
-		contextPool.Put(pc)
-	}
 }
