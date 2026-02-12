@@ -68,8 +68,8 @@ export default function HomePage() {
                </p>
                <p className={`text-sm ${theme === 'light' ? 'text-white/70' : 'text-gray-500'}`}>
                  All features work offline.
-               </p>
-             </div>
+              </p>
+               </div>
            </div>
          )}
        </div>
