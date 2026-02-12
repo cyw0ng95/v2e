@@ -13,6 +13,7 @@ import { X, Minus, Square, Copy, Maximize2 } from 'lucide-react';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { Z_INDEX, type WindowConfig } from '@/types/desktop';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MinimizeAnimation } from './MinimizeAnimation';
 
 /**
  * Window controls component
