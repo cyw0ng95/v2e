@@ -76,7 +76,7 @@ const CLAMP = (num: number, min: number, max: number): number =>
 const V3_MAPS: V3LookupMaps = {
   av: { N: 0.85, A: 0.62, L: 0.55, P: 0.2 },
   ac: { L: 0.77, H: 0.44 },
-  pr: { N: 0.85, L: 0.62, H: 0.27 },
+  pr: { N: 0.85, L: 0.62, H: 0.50 },
   ui: { N: 0.85, R: 0.62 },
   s: { U: 0, C: 1 },
   c: { H: 0.56, L: 0.22, N: 0 },
@@ -326,7 +326,7 @@ const V4_MAPS: V4LookupMaps = {
   av: { N: 0.85, A: 0.62, L: 0.55, P: 0.2 },
   ac: { L: 0.77, H: 0.44 },
   at: { N: 0.85, P: 0.75, R: 0.6 },
-  pr: { N: 0.85, L: 0.62, H: 0.27 },
+  pr: { N: 0.85, L: 0.62, H: 0.50 },
   ui: { N: 0.85, P: 0.62, A: 0.5 }
 };
 
