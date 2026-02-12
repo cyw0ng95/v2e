@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Z_INDEX } from '@/types/desktop';
+import { Z_INDEX, WindowState } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps, getAppById } from '@/lib/desktop/app-registry';
@@ -24,19 +24,19 @@ function DockItem({ app, isRunning, isIndicator }: {
 }) {
   const { openWindow, windows, minimizeWindow } = useDesktopStore();
   const contextMenu = useContextMenu();
-  const window = Object.values(windows).find(w => w.appId === app.id);
+  const existingWindow = Object.values(windows).find(w => w.appId === app.id);
 
   const handleClick = () => {
-    if (window) {
+    if (existingWindow) {
       // Window exists - focus or minimize based on state
-      if (window.isFocused) {
+      if (existingWindow.isFocused) {
         // Focused window - minimize it
-        minimizeWindow(window.id);
+        minimizeWindow(existingWindow.id);
       } else {
         // Not focused - bring to front
         // Window already exists, just need to focus it
         const { focusWindow } = useDesktopStore.getState();
-        focusWindow(window.id);
+        focusWindow(existingWindow.id);
       }
     } else {
       // No window - open new
@@ -58,8 +58,7 @@ function DockItem({ app, isRunning, isIndicator }: {
         isFocused: true,
         isMinimized: false,
         isMaximized: false,
-        innerWidth: window.innerWidth,
-        innerHeight: window.innerHeight,
+        state: WindowState.Open,
       });
     }
   };
@@ -171,6 +170,14 @@ export function Dock() {
     document.addEventListener('mousemove', handleMouseMove);
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [dock.autoHide, setDockVisibility]);
+
+  // Ensure dock is visible on mount (fixes hidden dock from persisted state)
+  useEffect(() => {
+    // Only force visible if dock was hidden and auto-hide is disabled
+    if (!dock.isVisible && !dock.autoHide) {
+      setDockVisibility(true);
+    }
+  }, []); // Run once on mount
 
   // Should show dock (either visible or hovering during auto-hide)
   const shouldShow = dock.isVisible || (dock.autoHide && isHovering);

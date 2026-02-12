@@ -9,7 +9,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Z_INDEX } from '@/types/desktop';
+import { Z_INDEX, WindowState } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
@@ -33,15 +33,15 @@ interface DraggableDockItemProps {
 function DraggableDockItem({ app, isRunning, isIndicator, index, isDragging, onDragStart, onDragOver, onDragEnd }: DraggableDockItemProps) {
   const { openWindow, windows, minimizeWindow } = useDesktopStore();
   const contextMenu = useContextMenu();
-  const window = Object.values(windows).find(w => w.appId === app.id);
+  const existingWindow = Object.values(windows).find(w => w.appId === app.id);
 
   const handleClick = useCallback(() => {
-    if (window) {
-      if (window.isFocused) {
-        minimizeWindow(window.id);
+    if (existingWindow) {
+      if (existingWindow.isFocused) {
+        minimizeWindow(existingWindow.id);
       } else {
         const { focusWindow } = useDesktopStore.getState();
-        focusWindow(window.id);
+        focusWindow(existingWindow.id);
       }
     } else {
       openWindow({
@@ -62,11 +62,10 @@ function DraggableDockItem({ app, isRunning, isIndicator, index, isDragging, onD
         isFocused: true,
         isMinimized: false,
         isMaximized: false,
-        innerWidth: window.innerWidth,
-        innerHeight: window.innerHeight,
+        state: WindowState.Open,
       });
     }
-  }, [app, window, openWindow, minimizeWindow]);
+  }, [app, existingWindow, openWindow, minimizeWindow]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -191,6 +190,14 @@ export function DockDraggable() {
     document.addEventListener('mousemove', handleMouseMove);
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [dock.autoHide, setDockVisibility]);
+
+  // Ensure dock is visible on mount (fixes hidden dock from persisted state)
+  React.useEffect(() => {
+    // Only force visible if dock was hidden and auto-hide is disabled
+    if (!dock.isVisible && !dock.autoHide) {
+      setDockVisibility(true);
+    }
+  }, []); // Run once on mount
 
   // Drag handlers
   const handleDragStart = useCallback((index: number) => {
