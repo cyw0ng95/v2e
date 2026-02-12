@@ -10,6 +10,7 @@
 import { lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { CVSSProvider } from '@/lib/cvss-context';
 
 // Lazy load application components for better performance
 const CVSSCalculator = lazy(() => import('@/components/cvss/calculator').then(m => ({ default: m.default })));
@@ -81,9 +82,11 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
   switch (appId) {
     case 'cvss':
       return (
-        <div className="h-full overflow-auto">
-          <CVSSCalculator />
-        </div>
+        <CVSSProvider>
+          <div className="h-full overflow-auto">
+            <CVSSCalculator />
+          </div>
+        </CVSSProvider>
       );
 
     case 'etl':
