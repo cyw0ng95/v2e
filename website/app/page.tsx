@@ -11,7 +11,7 @@ import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MenuBar } from '@/components/desktop/MenuBar';
 import { DesktopArea } from '@/components/desktop/DesktopArea';
-import { Dock } from '@/components/desktop/Dock';
+import ChromaGridDock from '@/components/desktop/ChromaGridDock';
 import { QuickLaunchModal, useQuickLaunchShortcut } from '@/components/desktop/QuickLaunchModal';
 import { WindowManager } from '@/components/desktop/WindowManager';
 import { useDesktopStore } from '@/lib/desktop/store';
@@ -83,8 +83,8 @@ export default function HomePage() {
         {/* Window Manager - Handles all windows */}
         <WindowManager />
 
-        {/* Dock - Bottom navigation with React Bits animation */}
-        <Dock />
+        {/* Dock - Bottom navigation with ChromaGrid effect */}
+        <ChromaGridDock />
 
         {/* Quick Launch Modal - Cmd+K triggered */}
         <QuickLaunchModal
