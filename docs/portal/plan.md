@@ -26,12 +26,44 @@
 
 This document outlines the implementation plan for the v2e Portal - a macOS Desktop-inspired web application portal. The implementation is divided into 5 phases, each with specific deliverables, LoC estimates, and acceptance criteria.
 
+### Architecture Principles
+
+#### Backend Independence Rule
+
+**CRITICAL: The portal MUST function fully without backend support.**
+
+The v2e Portal is a standalone frontend application that must operate independently of the Go backend services. This requirement ensures:
+
+1. **Offline Functionality**: All desktop features (window management, dock, quick launch, widgets) work without backend
+2. **Graceful Degradation**: If backend services are unavailable, the portal still renders and provides UI
+3. **Progressive Enhancement**: Backend features add value but are not required for core functionality
+4. **Development Isolation**: Frontend can be developed and tested independently of Go services
+
+**Implementation Requirements:**
+- No runtime dependency on `/restful/rpc` for initial page load
+- All UI components render without API calls
+- App registry and desktop state managed purely in frontend
+- Iframe content degrades gracefully when apps are unavailable
+- No blocking calls to backend during desktop initialization
+
+**Allowed Backend Interactions:**
+- App content loading via iframes (apps may call backend independently)
+- Optional bookmark synchronization (non-blocking, with fallback)
+- User preferences stored in localStorage (not backend-dependent)
+- Desktop state persisted to localStorage (not database-dependent)
+
+**Prohibited:**
+- Blocking page load on backend API calls
+- Failing to render desktop when backend is down
+- Making desktop features dependent on backend availability
+
 ### Success Criteria
 
 - Lighthouse score > 90
 - WCAG 2.1 AA compliance
 - Smooth 60fps animations
 - Production-ready deployment
+- **Backend independence: Desktop functions fully without Go services**
 
 ---
 
@@ -186,7 +218,9 @@ This phase requires the following to be in place before starting:
 | Tailwind CSS v4 configured | Styling | Project setup | ✓ Complete |
 | Lucide React available | Icons | npm package | ✓ Complete |
 | `/desktop` route created | Routing | website/app/desktop/page.tsx | Pending |
-| Base RPC client | API | website/lib/rpc-client.ts | ✓ Complete |
+| Base RPC client | API | website/lib/rpc-client.ts | ✓ Complete (optional, for app content only) |
+
+**Note**: Backend RPC client is optional for Phase 1. The desktop MUST render and function without backend connectivity per the [Backend Independence Rule](#architecture-principles).
 
 ### Change Requests
 
@@ -208,11 +242,13 @@ This phase requires the following to be in place before starting:
 | Glass morphism performance on older browsers | Low | Medium | Provide fallback to solid backgrounds via @supports queries |
 | Route conflicts with existing pages | Medium | Low | Use unique path `/desktop` and verify no collisions in app directory |
 | TypeScript type definition drift | Medium | Medium | Use strict mode and enable noUncheckedIndexedAccess |
+| **Backend dependency creep** | **High** | **Medium** | **Enforced: Desktop must work without backend per Architecture Principles** |
 
 ### Acceptance Criteria
 
 #### Functional Tests
 - [ ] Desktop loads at `/desktop` route without console errors
+- [ ] Desktop loads successfully without backend running (test: stop broker, verify desktop renders)
 - [ ] Desktop icons can be selected with single click (visual feedback: blue selection border)
 - [ ] Desktop icons launch apps on double-click (delegate to Phase 2)
 - [ ] State persists across page reloads (verify: localStorage key `v2e-desktop-state` exists)
@@ -710,6 +746,7 @@ Integrate existing apps as window content and complete desktop functionality.
 3. **Window Content Strategy** - Hybrid approach: iframes for existing pages, direct component integration for new desktop-only features
 4. **Widget System Scope** - Reduced scope: clock widget only (calendar moved to Phase 5)
 5. **Cross-Origin Considerations** - Added same-origin iframe loading requirement for RPC communication
+6. **Backend Independence** - Desktop MUST function without backend; app content loading degrades gracefully when backend unavailable
 
 **No pending change requests.** All scope refinements have been incorporated into this plan.
 
@@ -796,6 +833,8 @@ interface AppRegistryEntry {
 | **Large app bundle sizes** | Low | Medium | Implement lazy loading; code-split by app route |
 | **Browser storage quota exceeded** | Medium | Low | Implement storage monitoring; cleanup old state |
 | **Theme propagation to iframe content** | Low | Low | Use CSS custom properties for theme; propagate via postMessage |
+| **Backend dependency in desktop** | **High** | **Low** | **Enforced per Architecture Principles: desktop works without backend** |
+| **App unavailability breaks desktop** | **Medium** | **Medium** | **Iframe errors isolated, show error state, desktop continues functioning** |
 
 ### Acceptance Criteria
 
@@ -820,6 +859,9 @@ interface AppRegistryEntry {
 - [ ] Window titlebar shows correct app name and icon
 - [ ] Window content receives focus when window is clicked
 - [ ] Iframe content propagates title changes to window titlebar
+- [ ] Desktop functions correctly when backend is unavailable (test: stop broker, verify desktop renders)
+- [ ] Iframe errors handled gracefully (test: unavailable app shows error state, doesn't break desktop)
+- [ ] App loading failures don't crash desktop (test: 404/500 errors in iframe contained, desktop continues)
 
 #### Functional Tests - Desktop Widgets
 - [ ] Clock widget displays on desktop
@@ -945,6 +987,7 @@ Final polish, optimization, testing, and deployment.
 - [ ] Total Blocking Time (TBT) < 200ms
 - [ ] Bundle size (gzipped) < 300KB initial load
 - [ ] Animations maintain 60fps (16.67ms frame budget)
+- [ ] Desktop loads without backend dependency (test: backend stopped, desktop fully functional)
 
 #### Accessibility Requirements
 - [ ] WCAG 2.1 AA compliant (all criteria)
@@ -1411,6 +1454,7 @@ Agent-4: Animations (250 LoC)
 | Performance on lower-end devices | Medium | Low | Implement lazy loading and code splitting |
 | Browser compatibility issues | Medium | Medium | Use progressive enhancement, test early |
 | State persistence complexity | Low | Medium | Use Zustand persist middleware, test thoroughly |
+| **Backend dependency creep** | **High** | **Low** | **Enforced: Architecture principles mandate backend-independent operation** |
 
 ### Schedule Risks
 
