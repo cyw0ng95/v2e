@@ -54,8 +54,12 @@ function DockItem({
 
   const handleClick = useCallback(() => {
     if (existingWindow) {
-      // Window exists - focus or minimize based on state
-      if (existingWindow.isFocused) {
+      // Window exists - handle based on current state
+      if (existingWindow.isMinimized) {
+        // Minimized window - restore and focus it
+        const { restoreWindow } = useDesktopStore.getState();
+        restoreWindow(existingWindow.id);
+      } else if (existingWindow.isFocused) {
         // Focused window - minimize it
         minimizeWindow(existingWindow.id);
       } else {

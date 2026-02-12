@@ -18,7 +18,8 @@ import { Z_INDEX } from '@/types/desktop';
  */
 export function WindowManager() {
   const { windows, focusedWindowId } = useDesktopStore();
-  const windowList = Object.values(windows);
+  // Only render non-minimized windows
+  const windowList = Object.values(windows).filter(w => !w.isMinimized);
 
   return (
     <div
