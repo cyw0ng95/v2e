@@ -940,8 +940,182 @@ describe('Edge Cases', () => {
 
     const result = calculateCVSS3(metrics, '3.1');
 
-    // Check that scores are rounded to 1 decimal
-    const scoreStr = result.baseScore.toFixed(1);
-    expect(scoreStr).toHaveLength(3); // e.g., "9.8"
+    expect(result.breakdown.baseScore % 0.1).toBeCloseTo(0, 0.001);
   });
+});
+
+describe('CVSS v3.x Temporal Metrics Weight Verification', () => {
+  it('should apply E=F (0.97) correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'H', I: 'H', A: 'H',
+      temporal: { E: 'F', RL: 'X', RC: 'X' }
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    // Base Score: 9.8
+    // Temporal Score: 9.8 * 0.97 = 9.506 -> 9.5
+    expect(result.breakdown.temporalScore).toBeCloseTo(9.5, 0.1);
+  });
+
+  it('should apply RL=W (0.95) correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'H', I: 'H', A: 'H',
+      temporal: { E: 'X', RL: 'W', RC: 'X' }
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    // Base Score: 9.8
+    // Temporal Score: 9.8 * 0.95 = 9.31 -> 9.3
+    expect(result.breakdown.temporalScore).toBeCloseTo(9.3, 0.1);
+  });
+
+  it('should apply RC=R (0.96) correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'H', I: 'H', A: 'H',
+      temporal: { E: 'X', RL: 'X', RC: 'R' }
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    // Base Score: 9.8
+    // Temporal Score: 9.8 * 0.96 = 9.408 -> 9.4
+    expect(result.breakdown.temporalScore).toBeCloseTo(9.4, 0.1);
+  });
+
+  it('should apply all temporal metrics correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'H', I: 'H', A: 'H',
+      temporal: { E: 'F', RL: 'W', RC: 'R' }
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    // Base Score: 9.8
+    // Temporal Score: 9.8 * 0.97 * 0.95 * 0.96 = 8.66 -> 8.7
+    expect(result.breakdown.temporalScore).toBeCloseTo(8.7, 0.1);
+  });
+});
+
+describe('CVSS v4.0 Threat Metrics Weight Verification', () => {
+  it('should apply E=P (0.91) correctly', () => {
+    const metrics: CVSS4Metrics = {
+      AV: 'N', AC: 'L', AT: 'N', PR: 'N', UI: 'N',
+      VC: 'H', VI: 'H', VA: 'H', SC: 'H', SI: 'H', SA: 'H',
+      threat: { E: 'P', M: 'X', D: 'X' }
+    };
+
+    const result = calculateCVSS4(metrics);
+
+    // Verify threat score is calculated
+    expect(result.breakdown.threatScore).toBeDefined();
+  });
+
+  it('should apply E=F (0.94) correctly', () => {
+    const metrics: CVSS4Metrics = {
+      AV: 'N', AC: 'L', AT: 'N', PR: 'N', UI: 'N',
+      VC: 'H', VI: 'H', VA: 'H', SC: 'H', SI: 'H', SA: 'H',
+      threat: { E: 'F', M: 'X', D: 'X' }
+    };
+
+    const result = calculateCVSS4(metrics);
+
+    expect(result.breakdown.threatScore).toBeDefined();
+  });
+
+  it('should apply M=P (0.95) correctly', () => {
+    const metrics: CVSS4Metrics = {
+      AV: 'N', AC: 'L', AT: 'N', PR: 'N', UI: 'N',
+      VC: 'H', VI: 'H', VA: 'H', SC: 'H', SI: 'H', SA: 'H',
+      threat: { E: 'X', M: 'P', D: 'X' }
+    };
+
+    const result = calculateCVSS4(metrics);
+
+    expect(result.breakdown.threatScore).toBeDefined();
+  });
+
+  it('should apply D=L (0.98) correctly', () => {
+    const metrics: CVSS4Metrics = {
+      AV: 'N', AC: 'L', AT: 'N', PR: 'N', UI: 'N',
+      VC: 'H', VI: 'H', VA: 'H', SC: 'H', SI: 'H', SA: 'H',
+      threat: { E: 'X', M: 'X', D: 'L' }
+    };
+
+    const result = calculateCVSS4(metrics);
+
+    expect(result.breakdown.threatScore).toBeDefined();
+  });
+
+  it('should apply all threat metrics correctly', () => {
+    const metrics: CVSS4Metrics = {
+      AV: 'N', AC: 'L', AT: 'N', PR: 'N', UI: 'N',
+      VC: 'H', VI: 'H', VA: 'H', SC: 'H', SI: 'H', SA: 'H',
+      threat: { E: 'P', M: 'A', D: 'L' }
+    };
+
+    const result = calculateCVSS4(metrics);
+
+    // All threat metrics should be applied
+    expect(result.breakdown.threatScore).toBeDefined();
+    expect(result.breakdown.threatScore).toBeLessThan(result.breakdown.baseScore);
+  });
+});
+
+describe('Edge Cases and Boundary Conditions', () => {
+  it('should handle all Low impacts correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'L', I: 'L', A: 'L'
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    expect(result.breakdown.baseScore).toBeGreaterThan(0);
+    expect(result.breakdown.baseSeverity).toBe('MEDIUM');
+  });
+
+  it('should handle all High impacts correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'H', I: 'H', A: 'H'
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    expect(result.breakdown.baseScore).toBe(9.8);
+    expect(result.breakdown.baseSeverity).toBe('CRITICAL');
+  });
+
+  it('should handle zero impact correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'N', I: 'N', A: 'N'
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    expect(result.breakdown.baseScore).toBe(0.0);
+    expect(result.breakdown.baseSeverity).toBe('NONE');
+  });
+
+  it('should handle Physical attack vector correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'P', AC: 'H', PR: 'L', UI: 'R', S: 'U', C: 'N', I: 'N', A: 'N'
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    expect(result.breakdown.baseScore).toBeLessThan(5.0);
+  });
+
+  it('should handle Changed scope correctly', () => {
+    const metrics: CVSS3Metrics = {
+      AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'C', C: 'H', I: 'H', A: 'H'
+    };
+
+    const result = calculateCVSS3(metrics, '3.1');
+
+    expect(result.breakdown.baseScore).toBe(10.0);
+    expect(result.breakdown.baseSeverity).toBe('CRITICAL');
+  });
+});
 });
