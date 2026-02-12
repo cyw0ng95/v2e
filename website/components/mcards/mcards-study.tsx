@@ -99,7 +99,7 @@ function calculateIntervals(card: any): Record<Rating, string> {
   return { again, hard, good, easy };
 }
 
-export function McardsStudy() {
+export default function McardsStudy() {
   // Fetch cards with learning_state filter
   const { data: cardsData, isLoading } = useMemoryCards({});
 

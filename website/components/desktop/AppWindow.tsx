@@ -208,10 +208,11 @@ function WindowResizeHandle({
     let rafId: number | null = null;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !resizeStartPosRef.current) return;
+      if (!isResizing || resizeStartPosRef.current === null) return;
 
       if (rafId) return;
       rafId = requestAnimationFrame(() => {
+        if (!resizeStartPosRef.current) return;
         const deltaX = e.clientX - resizeStartPosRef.current.x;
         const deltaY = e.clientY - resizeStartPosRef.current.y;
 
@@ -232,7 +233,7 @@ function WindowResizeHandle({
         }
 
         // Apply max constraints if set
-        const maxWidth = window.maxWidth ?? window.innerWidth - 40;
+        const maxWidth = window.maxWidth ?? (globalThis as unknown as { innerWidth: number }).innerWidth - 40;
         newWidth = Math.min(newWidth, maxWidth);
 
         // Update window size

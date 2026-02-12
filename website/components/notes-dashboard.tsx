@@ -10,6 +10,7 @@ interface RecentItem {
   date: string;
   item_type: string;
   item_id: string;
+  urn?: string;
 }
 
 const NotesDashboard: React.FC = () => {
@@ -99,7 +100,7 @@ const NotesDashboard: React.FC = () => {
       if (recentBookmarksResponse.retcode === 0 && recentBookmarksResponse.payload) {
         for (const bookmark of recentBookmarksResponse.payload.bookmarks.slice(0, 5)) {
           recentItemsData.push({
-            type: 'bookmark',
+            type: 'bookmark' as const,
             title: bookmark.title,
             date: new Date(bookmark.created_at).toLocaleDateString(),
             item_type: bookmark.item_type,

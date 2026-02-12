@@ -143,7 +143,7 @@ const Threads = ({
   style = {},
 }: ThreadsProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationFrameId = useRef<number>();
+  const animationFrameId = useRef<number>(0);
 
   useEffect(() => {
     if (!containerRef.current) return;

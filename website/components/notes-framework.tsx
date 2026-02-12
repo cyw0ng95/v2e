@@ -770,9 +770,6 @@ const CrossReferenceForm: React.FC<CrossReferenceFormProps> = ({ onCreate }) => 
       setRelationshipType('related_to');
     }
   };
-      setToItemId('');
-    }
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2 p-2 bg-gray-50 rounded border">

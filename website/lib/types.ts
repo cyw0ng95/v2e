@@ -4488,6 +4488,8 @@ export interface CVSS3ScoreBreakdown {
   temporalSeverity?: CVSSSeverity;
   /** Environmental severity */
   environmentalSeverity?: CVSSSeverity;
+  /** Overall score */
+  score?: number;
   /** Final severity (computed from sub-scores) */
   finalSeverity?: CVSSSeverity;
 }

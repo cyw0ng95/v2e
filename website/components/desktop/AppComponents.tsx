@@ -17,7 +17,7 @@ const CVSSCalculator = lazy(() => import('@/components/cvss/calculator').then(m 
 const ETLEnginePage = lazy(() => import('@/app/etl/page').then(m => ({ default: m.default })));
 const GLCLandingPage = lazy(() => import('@/app/glc/page').then(m => ({ default: m.default })));
 const McardsStudy = lazy(() => import('@/components/mcards/mcards-study').then(m => ({ default: m.default })));
-const BookmarkTable = lazy(() => import('@/components/bookmark-table').then(m => ({ default: m.BookmarkTable })));
+const BookmarkTable = lazy(() => import('@/components/bookmark-table').then(m => ({ default: m.default })));
 
 /**
  * Loading component for lazy-loaded apps

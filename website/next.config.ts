@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* Static Site Generation (SSG) configuration */
+  /* SPA Configuration with Static Export */
   output: 'export',
 
   /* Disable image optimization for static export to reduce build size */
   images: {
-    unoptimized: false,
+    unoptimized: true,
   },
 
   /* Use relative paths for assets */

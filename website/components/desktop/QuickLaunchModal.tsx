@@ -13,7 +13,7 @@ import { Search, AppWindow } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { getActiveApps } from '@/lib/desktop/app-registry';
-import { Z_INDEX } from '@/types/desktop';
+import { Z_INDEX, WindowState } from '@/types/desktop';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 
 interface QuickLaunchModalProps {
@@ -112,8 +112,7 @@ export function QuickLaunchModal({ isVisible, onClose }: QuickLaunchModalProps) 
       isFocused: true,
       isMinimized: false,
       isMaximized: false,
-      innerWidth: window.innerWidth,
-      innerHeight: window.innerHeight,
+      state: WindowState.Open,
     });
     setSearchQuery('');
     onClose();
