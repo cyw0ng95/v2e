@@ -4315,3 +4315,519 @@ export interface GetGLCShareEmbedDataResponse {
   /** The shared graph */
   graph: GLCGraph;
 }
+
+// ============================================================================
+// CVSS Calculator Types
+// ============================================================================
+
+/**
+ * Supported CVSS versions
+ */
+export type CVSSVersion = '3.0' | '3.1' | '4.0';
+
+/**
+ * CVSS severity rating levels
+ */
+export type CVSSSeverity = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+/**
+ * Validated metric value with display name
+ */
+export interface MetricValue<T = string> {
+  /** Value identifier */
+  value: T;
+  /** Display name for UI */
+  label: string;
+  /** Detailed description */
+  description: string;
+}
+
+// ============================================================================
+// CVSS v3.0 / v3.1 Types
+// ============================================================================
+
+/**
+ * CVSS v3 Attack Vector metric
+ */
+export type AV = 'N' | 'A' | 'L' | 'P';
+
+/**
+ * CVSS v3 Attack Complexity metric
+ */
+export type AC = 'L' | 'H';
+
+/**
+ * CVSS v3 Privileges Required metric
+ */
+export type PR = 'N' | 'L' | 'H';
+
+/**
+ * CVSS v3 User Interaction metric
+ */
+export type UI = 'N' | 'R';
+
+/**
+ * CVSS v3 Scope metric
+ */
+export type S = 'U' | 'C';
+
+/**
+ * CVSS v3 Confidentiality Impact metric
+ */
+export type C = 'H' | 'L' | 'N';
+
+/**
+ * CVSS v3 Integrity Impact metric
+ */
+export type I = 'H' | 'L' | 'N';
+
+/**
+ * CVSS v3 Availability Impact metric
+ */
+export type A = 'H' | 'L' | 'N';
+
+/**
+ * CVSS v3.0 / v3.1 base metrics
+ */
+export interface CVSS3BaseMetrics {
+  /** Attack Vector (N/A/L/P) */
+  AV: AV;
+  /** Attack Complexity (L/H) */
+  AC: AC;
+  /** Privileges Required (N/L/H) */
+  PR: PR;
+  /** User Interaction (N/R) */
+  UI: UI;
+  /** Scope (U/C) */
+  S: S;
+  /** Confidentiality Impact (H/L/N) */
+  C: C;
+  /** Integrity Impact (H/L/N) */
+  I: I;
+  /** Availability Impact (H/L/N) */
+  A: A;
+  /** Provider (E for Exploitability, M for Impact) */
+  E: 'X' | 'U' | 'R';
+  /** Confidentiality Requirement (H/M/L/N) - v3.1 only */
+  CR?: 'H' | 'M' | 'L' | 'N';
+  /** Integrity Requirement (H/M/L/N) - v3.1 only */
+  IR?: 'H' | 'M' | 'L' | 'N';
+  /** Availability Requirement (H/M/L/N) - v3.1 only */
+  AR?: 'H' | 'M' | 'L' | 'N';
+  /** Modified Base Scope (X/U/C) - v3.1 only */
+  MS?: 'X' | 'U' | 'C';
+  /** Modified Confidentiality (H/L/N) - v3.1 only */
+  MC?: 'H' | 'L' | 'N';
+  /** Modified Integrity (H/L/N) - v3.1 only */
+  MI?: 'H' | 'L' | 'N';
+  /** Modified Availability (H/L/N) - v3.1 only */
+  MA?: 'H' | 'L' | 'N';
+}
+
+/**
+ * CVSS v3 temporal metrics
+ */
+export interface CVSS3TemporalMetrics {
+  /** Exploit Code Maturity (X/U/F/P/H/R) */
+  E: 'X' | 'U' | 'F' | 'P' | 'H' | 'R';
+  /** Remediation Level (X/U/O/T/W) */
+  RL: 'X' | 'U' | 'O' | 'T' | 'W';
+  /** Report Confidence (X/U/C/R) */
+  RC: 'X' | 'U' | 'C' | 'R';
+}
+
+/**
+ * CVSS v3 environmental metrics
+ */
+export interface CVSS3EnvironmentalMetrics {
+  /** Confidentiality Requirement (H/M/L/N) */
+  CR: 'H' | 'M' | 'L' | 'N';
+  /** Integrity Requirement (H/M/L/N) */
+  IR: 'H' | 'M' | 'L' | 'N';
+  /** Availability Requirement (H/M/L/N) */
+  AR: 'H' | 'M' | 'L' | 'N';
+  /** Modified Base Scope (X/U/C) */
+  MS: 'X' | 'U' | 'C';
+  /** Modified Confidentiality (H/L/N) */
+  MC: 'H' | 'L' | 'N';
+  /** Modified Integrity (H/L/N) */
+  MI: 'H' | 'L' | 'N';
+  /** Modified Availability (H/L/N) */
+  MA: 'H' | 'L' | 'N';
+}
+
+/**
+ * Complete CVSS v3 metrics
+ */
+export interface CVSS3Metrics extends CVSS3BaseMetrics {
+  /** Temporal metrics */
+  temporal?: CVSS3TemporalMetrics;
+  /** Environmental metrics */
+  environmental?: CVSS3EnvironmentalMetrics;
+}
+
+/**
+ * CVSS v3 score breakdown
+ */
+export interface CVSS3ScoreBreakdown {
+  /** Base score (0.0-10.0) */
+  baseScore: number;
+  /** Temporal score */
+  temporalScore?: number;
+  /** Environmental score */
+  environmentalScore?: number;
+  /** Exploitability sub-score */
+  exploitabilityScore?: number;
+  /** Impact sub-score */
+  impactScore?: number;
+  /** Base severity */
+  baseSeverity: CVSSSeverity;
+  /** Temporal severity */
+  temporalSeverity?: CVSSSeverity;
+  /** Environmental severity */
+  environmentalSeverity?: CVSSSeverity;
+}
+
+// ============================================================================
+// CVSS v4.0 Types
+// ============================================================================
+
+/**
+ * CVSS v4.0 Attack Vector metrics
+ */
+export type AV4 = 'N' | 'A' | 'L' | 'P';
+
+/**
+ * CVSS v4.0 Attack Complexity metrics
+ */
+export type AC4 = 'L' | 'H';
+
+/**
+ * CVSS v4.0 Attack Requirements metrics
+ */
+export type AT4 = 'N' | 'P' | 'R';
+
+/**
+ * CVSS v4.0 Privileges Required metrics
+ */
+export type PR4 = 'N' | 'L' | 'H';
+
+/**
+ * CVSS v4.0 User Interaction metrics
+ */
+export type UI4 = 'N' | 'P' | 'A';
+
+/**
+ * CVSS v4.0 Vulnerable System Impact metrics
+ */
+export type VC4 = 'H' | 'L' | 'N';
+
+/**
+ * CVSS v4.0 Subsequent System Impact metrics
+ */
+export type VS4 = 'H' | 'L' | 'N';
+
+/**
+ * CVSS v4.0 Safety metrics
+ */
+export type S4 = 'X' | 'N' | 'P';
+
+/**
+ * CVSS v4.0 Automation Impact metrics
+ */
+export type AU4 = 'N' | 'P' | 'A';
+
+/**
+ * CVSS v4.0 Base metrics
+ */
+export interface CVSS4BaseMetrics {
+  /** Attack Vector (N/A/L/P) */
+  AV: AV4;
+  /** Attack Complexity (L/H) */
+  AC: AC4;
+  /** Attack Requirements (N/P/R) */
+  AT: AT4;
+  /** Privileges Required (N/L/H) */
+  PR: PR4;
+  /** User Interaction (N/P/A) */
+  UI: UI4;
+  /** Vulnerable System Confidentiality (H/L/N) */
+  VC: VC4;
+  /** Vulnerable System Integrity (H/L/N) */
+  VI: VS4;
+  /** Vulnerable System Availability (H/L/N) */
+  VA: VS4;
+  /** Subsequent System Confidentiality (H/L/N) */
+  SC: VS4;
+  /** Subsequent System Integrity (H/L/N) */
+  SI: VS4;
+  /** Subsequent System Availability (H/L/N) */
+  SA: VS4;
+  /** Safety (X/N/P) */
+  S: S4;
+  /** Automation (N/P/A) */
+  AU: AU4;
+}
+
+/**
+ * CVSS v4.0 Threat metrics
+ */
+export interface CVSS4ThreatMetrics {
+  /** Exploit Maturity (X/U/P/F/H/A/R) */
+  E: 'X' | 'U' | 'P' | 'F' | 'H' | 'A' | 'R';
+  /** Motivation (X/N/P/A/R/E) */
+  M: 'X' | 'N' | 'P' | 'A' | 'R' | 'E';
+  /** Value Density (X/N/L/M/H) */
+  D: 'X' | 'N' | 'L' | 'M' | 'H';
+  /** Provider (E for Impact, X for None) */
+  I: 'E' | 'X';
+}
+
+/**
+ * CVSS v4.0 base score ranges for I:E
+ */
+export interface CVSS4ImpactRanges {
+  /** IS or VS range for N/H/L/I/S */
+  N?: [number, number];
+  /** IS or VS range for N/H/L/I/S */
+  H?: [number, number];
+  /** IS or VS range for N/H/L/I/S */
+  L?: [number, number];
+}
+
+/**
+ * CVSS v4.0 Environmental metrics
+ */
+export interface CVSS4EnvironmentalMetrics {
+  /** Confidentiality Requirement (H/M/L/N) */
+  CR: 'H' | 'M' | 'L' | 'N';
+  /** Integrity Requirement (H/M/L/N) */
+  IR: 'H' | 'M' | 'L' | 'N';
+  /** Availability Requirement (H/M/L/N) */
+  AR: 'H' | 'M' | 'L' | 'N';
+  /** Modified Base Attack Vector */
+  MAV?: AV4;
+  /** Modified Base Attack Complexity */
+  MAC?: AC4;
+  /** Modified Base Attack Requirements */
+  MAT?: AT4;
+  /** Modified Base Privileges Required */
+  MPR?: PR4;
+  /** Modified Base User Interaction */
+  MUI?: UI4;
+  /** Modified Vulnerable System Confidentiality */
+  MVC?: VC4;
+  /** Modified Vulnerable System Integrity */
+  MVI?: VS4;
+  /** Modified Vulnerable System Availability */
+  MVA?: VS4;
+  /** Modified Subsequent System Confidentiality */
+  MSC?: VS4;
+  /** Modified Subsequent System Integrity */
+  MSI?: VS4;
+  /** Modified Subsequent System Availability */
+  MSA?: VS4;
+  /** Safety (X/N/P) */
+  MS?: S4;
+  /** Automation (N/P/A) */
+  MAU?: AU4;
+  /** Provider (E for Impact, X for None) */
+  MI?: 'E' | 'X';
+}
+
+/**
+ * CVSS v4.0 score ranges for environmental impact
+ */
+export interface CVSS4ModifiedRanges {
+  /** Modified IS or VS range */
+  MVS?: [number, number];
+  /** Modified IS or VS range */
+  MH?: [number, number];
+  /** Modified IS or VS range */
+  ML?: [number, number];
+}
+
+/**
+ * Complete CVSS v4.0 metrics
+ */
+export interface CVSS4Metrics extends CVSS4BaseMetrics {
+  /** Threat metrics */
+  threat?: CVSS4ThreatMetrics;
+  /** Environmental metrics */
+  environmental?: CVSS4EnvironmentalMetrics;
+}
+
+/**
+ * CVSS v4.0 score breakdown
+ */
+export interface CVSS4ScoreBreakdown {
+  /** Base score (0.0-10.0) */
+  baseScore: number;
+  /** Threat score */
+  threatScore?: number;
+  /** Environmental score */
+  environmentalScore?: number;
+  /** Base severity */
+  baseSeverity: CVSSSeverity;
+  /** Threat severity */
+  threatSeverity?: CVSSSeverity;
+  /** Environmental severity */
+  environmentalSeverity?: CVSSSeverity;
+}
+
+// ============================================================================
+// CVSS Calculator State
+// ============================================================================
+
+/**
+ * Current CVSS calculator state
+ */
+export interface CVSSCalculatorState {
+  /** Selected CVSS version */
+  version: CVSSVersion;
+  /** Current metrics based on version */
+  metrics: CVSS3Metrics | CVSS4Metrics;
+  /** Calculated score breakdown */
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
+  /** Generated vector string */
+  vectorString: string;
+}
+
+/**
+ * CVSS calculator configuration
+ */
+export interface CVSSCalculatorConfig {
+  /** Default version */
+  defaultVersion?: CVSSVersion;
+  /** Enable temporal metrics */
+  enableTemporal?: boolean;
+  /** Enable environmental metrics */
+  enableEnvironmental?: boolean;
+  /** Show metric descriptions */
+  showDescriptions?: boolean;
+}
+
+// ============================================================================
+// CVSS Export Types
+// ============================================================================
+
+/**
+ * Export format for CVSS data
+ */
+export type CVSSExportFormat = 'json' | 'csv' | 'url';
+
+/**
+ * JSON export structure
+ */
+export interface CVSSExportJSON {
+  /** CVSS version */
+  version: CVSSVersion;
+  /** Vector string */
+  vectorString: string;
+  /** Base score */
+  baseScore: number;
+  /** Severity rating */
+  severity: CVSSSeverity;
+  /** All metrics */
+  metrics: CVSS3Metrics | CVSS4Metrics;
+  /** Score breakdown */
+  scoreBreakdown: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
+  /** Export timestamp */
+  exportedAt: string;
+}
+
+/**
+ * CSV export row
+ */
+export interface CVSSExportCSV {
+  /** CVSS version */
+  version: string;
+  /** Vector string */
+  vectorString: string;
+  /** Base score */
+  baseScore: string;
+  /** Severity */
+  severity: string;
+  /** Metrics as JSON string */
+  metrics: string;
+  /** Export timestamp */
+  exportedAt: string;
+}
+
+/**
+ * URL sharing configuration
+ */
+export interface CVSSShareURL {
+  /** Generated URL */
+  url: string;
+  /** Shortened URL (optional) */
+  shortUrl?: string;
+  /** QR code data URL (optional) */
+  qrCodeUrl?: string;
+  /** Expiration timestamp */
+  expiresAt?: string;
+}
+
+/**
+ * CVSS export result
+ */
+export interface CVSSExportResult {
+  /** Export format */
+  format: CVSSExportFormat;
+  /** Exported data */
+  data: CVSSExportJSON | CVSSExportCSV | CVSSShareURL;
+  /** Success status */
+  success: boolean;
+}
+
+// ============================================================================
+// CVSS Metric Metadata
+// ============================================================================
+
+/**
+ * Metric definition for UI selector
+ */
+export interface MetricDefinition<T = string> {
+  /** Metric value */
+  value: T;
+  /** Display label */
+  label: string;
+  /** Short description */
+  shortDesc: string;
+  /** Full description */
+  description: string;
+  /** Weight in formula (if applicable) */
+  weight?: number;
+}
+
+/**
+ * Metric group for UI organization
+ */
+export interface MetricGroup {
+  /** Group identifier */
+  id: string;
+  /** Group name */
+  name: string;
+  /** Group description */
+  description: string;
+  /** Metrics in this group */
+  metrics: MetricDefinition<string>[];
+}
+
+/**
+ * CVSS version metadata
+ */
+export interface CVSSVersionMetadata {
+  /** Version identifier */
+  version: CVSSVersion;
+  /** Display name */
+  name: string;
+  /** Specification URL */
+  specUrl: string;
+  /** Release date */
+  releaseDate?: string;
+  /** Metric groups */
+  metricGroups: MetricGroup[];
+  /** Available metrics */
+  availableMetrics: Record<string, MetricDefinition<string>[]>;
+}
