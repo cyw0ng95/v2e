@@ -41,8 +41,8 @@ import {
 /**
  * Map app icon names from app-registry to icon components
  */
-function getAppIcon(appId: string): React.ComponentType<{ size?: number; className?: string }> {
-  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+function getAppIcon(appId: string): React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }> {
+  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>> = {
     cve: Star,           // Shield alternative
     cwe: Bug,            // Direct match
     capec: Crosshair,     // Target icon

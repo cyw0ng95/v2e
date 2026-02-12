@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // unsafe-inline needed for styled-components/inline styles
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' http://localhost:* https:",
+              "connect-src 'self' http://localhost:* https: http://localhost:*",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

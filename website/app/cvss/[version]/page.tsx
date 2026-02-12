@@ -3,7 +3,7 @@
 /**
  * CVSS Calculator Page - Dynamic Route
  * /cvss/[version] where version is 3.0, 3.1, or 4.0
- * DEPRECATED: Redirects to /desktop?app=cvss&version=X
+ * Redirects to desktop and opens CVSS calculator with version
  */
 
 import { useEffect } from 'react';

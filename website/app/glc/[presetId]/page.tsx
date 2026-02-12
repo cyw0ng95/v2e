@@ -3,7 +3,7 @@
 /**
  * GLC Canvas Page - Dynamic Route
  * /glc/[presetId] where presetId is d3fend, topo, etc.
- * DEPRECATED: Redirects to /desktop?app=glc&preset=X
+ * Redirects to desktop and opens GLC app with preset
  */
 
 import { useEffect } from 'react';

@@ -2,13 +2,11 @@
  * v2e Portal - Single Page Application Entry
  *
  * Main SPA entry point that renders the desktop UI
- * Supports deep linking via URL query parameters (e.g., ?app=cvss)
+ * Components can only be accessed from within desktop environment
  */
 
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { MenuBar } from '@/components/desktop/MenuBar';
 import { DesktopArea } from '@/components/desktop/DesktopArea';
 import ChromaGridDock from '@/components/desktop/ChromaGridDock';
@@ -17,66 +15,27 @@ import { WindowManager } from '@/components/desktop/WindowManager';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { useNetworkStatus } from '@/lib/hooks/useNetworkStatus';
 import { DndContext } from '@dnd-kit/core';
-import { getAppById } from '@/lib/desktop/app-registry';
-import { WindowState } from '@/types/desktop';
 import Threads from '@/components/backgrounds/Threads';
 import { useTheme } from 'next-themes';
 
 /**
  * SPA Root Page - Desktop Application
- * Orchestrates all desktop components and handles deep linking
+ * Orchestrates all desktop components
  */
 export default function HomePage() {
-  const searchParams = useSearchParams();
-  const { desktopIcons, openWindow } = useDesktopStore();
+  const { desktopIcons } = useDesktopStore();
   const quickLaunch = useQuickLaunchShortcut();
-  const hasOpenedAppRef = useRef(false);
   const { theme } = useTheme();
 
   // Initialize network status detection
   useNetworkStatus();
 
-  // Handle deep linking via URL query parameters
-  useEffect(() => {
-    const appParam = searchParams.get('app');
-
-    // Only attempt to open app once
-    if (appParam && !hasOpenedAppRef.current) {
-      const app = getAppById(appParam);
-      if (app) {
-        // Mark that we've attempted to open
-        hasOpenedAppRef.current = true;
-
-        // Small delay to ensure store is hydrated from localStorage
-        setTimeout(() => {
-          openWindow({
-            appId: app.id,
-            title: app.name,
-            position: {
-              x: Math.max(0, (window.innerWidth - app.defaultWidth) / 2),
-              y: Math.max(28, (window.innerHeight - app.defaultHeight) / 2),
-            },
-            size: {
-              width: app.defaultWidth,
-              height: app.defaultHeight,
-            },
-            minWidth: app.minWidth,
-            minHeight: app.minHeight,
-            maxWidth: app.maxWidth,
-            maxHeight: app.maxHeight,
-            isFocused: true,
-            isMinimized: false,
-            isMaximized: false,
-            state: WindowState.Open,
-          });
-        }, 100);
-      }
-    }
-  }, [searchParams, openWindow]);
+  // Determine background class based on theme
+  const bgClass = theme === 'light' ? 'bg-black' : 'bg-white';
 
   return (
     <DndContext>
-      <div className={`h-screen w-screen overflow-hidden relative ${theme === 'light' ? 'bg-black' : 'bg-white'}`}>
+      <div className={`h-screen w-screen overflow-hidden relative transition-colors duration-300 ${bgClass}`}>
         {/* Threads Background - animated threads */}
         <Threads />
         {/* Menu Bar - Always on top */}
