@@ -4,7 +4,6 @@
  * Windows-style taskbar with chromatic aberration effect
  * Running apps show green bar indicator
  */
-
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -45,13 +44,13 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   autoHide = false,
   autoHideDelay = 3000,
 }) => {
-
   const rootRef = useRef<HTMLDivElement>(null);
   const fadeRef = useRef<HTMLDivElement>(null);
   const setX = useRef<SetterFn | null>(null);
   const setY = useRef<SetterFn | null>(null);
   const pos = useRef({ x: 0, y: 0 });
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isHovering, setIsHovering] = useState(false);
   const { windows, dock, setDockVisibility, setDockAutoHide, addDockItem, openWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, selectDesktopIcon } = useDesktopStore();
 
   // Convert apps to chroma items
@@ -66,7 +65,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
       gradient: style.gradient,
       borderColor: style.borderColor,
     };
-  });
+    });
 
   // Get running app IDs
   const runningAppIds = new Set(Object.values(windows).map(w => w.appId));
@@ -108,14 +107,10 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
       duration: 0.4,
       overwrite: true
     });
-
-    // Auto-hide logic
-    if (autoHide) {
-      hideTimeoutRef.current = setTimeout(() => {
-        setDockVisibility(false);
-      }, autoHideDelay);
-    }
   };
+
+  // Auto-hide logic
+  const autoHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = useCallback(() => {
     setIsHovering(true);
@@ -124,7 +119,16 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
       hideTimeoutRef.current = null;
     }
     setDockVisibility(true);
-  }, [setDockVisibility, autoHide]);
+  }, [setDockVisibility, autoHide, setIsHovering]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovering(false);
+    if (autoHide) {
+      hideTimeoutRef.current = setTimeout(() => {
+        setDockVisibility(false);
+      }, autoHideDelay);
+    }
+  }, [setIsHovering, autoHide]);
 
   // Ensure dock is visible on mount
   useEffect(() => {
@@ -235,11 +239,11 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
           style={{
             backdropFilter: 'grayscale(1) brightness(0.75)',
             WebkitBackdropFilter: 'grayscale(1) brightness(0.75)',
-            background: 'rgba(0,0,0,0.001)',
+            background: 'rgba(0, 0, 0, 0.001)',
             maskImage:
-              'radial-gradient(circle var(--r) at var(--x) var(--y), transparent 0%, transparent 15%, rgba(0,0,0,0.10) 30%, rgba(0,0,0,0.22) 45%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.50) 75%, rgba(0,0,0,0.68) 88%, white 100%)',
+              'radial-gradient(circle at var(--r) at var(--x) var(--y), transparent 0%, transparent 15%, rgba(0, 0, 0.10) 30%, rgba(0, 0, 0.22) 45%, rgba(0, 0, 0.35) 60%, rgba(0, 0, 0.50) 75%, rgba(0, 0, 0.68) 88%, white 100%)',
             WebkitMaskImage:
-              'radial-gradient(circle var(--r) at var(--x) var(--y), transparent 0%, transparent 15%, rgba(0,0,0,0.10) 30%, rgba(0,0,0,0.22) 45%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.50) 75%, rgba(0,0,0,0.68) 88%, white 100%)'
+              'radial-gradient(circle at var(--r) at var(--x) var(--y), transparent 0%, transparent 15%, rgba(0, 0, 0.10) 30%, rgba(0, 0, 0.22) 45%, rgba(0, 0, 0.35) 60%, rgba(0, 0, 0.50) 75%, rgba(0, 0, 0.68) 88%, white 100%)'
           }}
         />
 
@@ -250,11 +254,9 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
           style={{
             backdropFilter: 'grayscale(1) brightness(0.75)',
             WebkitBackdropFilter: 'grayscale(1) brightness(0.75)',
-            background: 'rgba(0,0,0,0.001)',
+            background: 'rgba(0, 0, 0, 0.001)',
             maskImage:
-              'radial-gradient(circle var(--r) at var(--x) var(--y), white 0%, white 15%, rgba(255,255,255,0.90) 30%, rgba(255,255,255,0.78) 45%, rgba(255,255,255,0.65) 60%, rgba(255,255,255,0.50) 75%, rgba(255,255,255,0.32) 88%, transparent 100%)',
-            WebkitMaskImage:
-              'radial-gradient(circle var(--r) at var(--x) var(--y), white 0%, white 15%, rgba(255,255,255,0.90) 30%, rgba(255,255,255,0.78) 45%, rgba(255,255,255,0.65) 60%, rgba(255,255,255,0.50) 75%, rgba(255,255,255,0.32) 88%, transparent 100%)',
+              'radial-gradient(circle at var(--r) at var(--x) var(--y), transparent 0%, transparent 15%, rgba(0, 0, 0.10) 30%, rgba(0, 0, 0.22) 45%, rgba(0, 0, 0.35) 60%, rgba(0, 0, 0.50) 75%, rgba(0, 0, 0.68) 88%, white 100%)',
             opacity: 1
           }}
         />
@@ -264,7 +266,3 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
 };
 
 export default ChromaGridDock;
-
-/**
- * Fix: windows was not defined - should be destructured from useDesktopStore
- */
