@@ -7,7 +7,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import type { CVSSScoreBreakdown, CVSSSeverity } from '@/lib/types';
+import type { CVSS3ScoreBreakdown, CVSS4ScoreBreakdown, CVSSSeverity } from '@/lib/types';
 
 // ============================================================================
 // Types
@@ -20,7 +20,7 @@ export interface ScreenReaderAnnouncerProps {
 }
 
 export interface ScoreAnnouncerProps {
-  scores: CVSSScoreBreakdown;
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
   previousScore?: number;
   previousSeverity?: CVSSSeverity;
 }
@@ -85,14 +85,14 @@ export function ScoreAnnouncer({
     const messages: string[] = [];
 
     // Score change
-    if (previousScore !== undefined && scores.finalScore !== previousScore) {
-      const difference = scores.finalScore - previousScore;
+    if (previousScore !== undefined && scores.baseScore !== previousScore) {
+      const difference = scores.baseScore - previousScore;
       if (difference > 0) {
         messages.push(`Score increased by ${difference.toFixed(1)} points`);
       } else if (difference < 0) {
         messages.push(`Score decreased by ${Math.abs(difference).toFixed(1)} points`);
       }
-      messages.push(`New score is ${scores.finalScore.toFixed(1)}`);
+      messages.push(`New score is ${scores.baseScore.toFixed(1)}`);
     }
 
     // Severity change
@@ -103,7 +103,7 @@ export function ScoreAnnouncer({
     // Full announcement for new scores
     if (previousScore === undefined) {
       messages.push(
-        `CVSS score calculated: ${scores.finalScore.toFixed(1)}, Severity: ${scores.finalSeverity}`
+        `CVSS score calculated: ${scores.baseScore.toFixed(1)}, Severity: ${scores.finalSeverity}`
       );
     }
 
@@ -111,7 +111,7 @@ export function ScoreAnnouncer({
   };
 
   const message = getMessage();
-  const messageId = `${scores.finalScore}-${scores.finalSeverity}`;
+  const messageId = `${scores.baseScore}-${scores.finalSeverity}`;
 
   // Only announce if the state actually changed
   if (messageId === announcedRef.current) {
@@ -398,7 +398,7 @@ export function useAnnouncer() {
 // ============================================================================
 
 export interface ScreenReaderScoreTableProps {
-  scores: CVSSScoreBreakdown;
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
 }
 
 export function ScreenReaderScoreTable({ scores }: ScreenReaderScoreTableProps) {
@@ -441,7 +441,7 @@ export function ScreenReaderScoreTable({ scores }: ScreenReaderScoreTableProps) 
           )}
           <tr>
             <td><strong>Final Score</strong></td>
-            <td><strong>{scores.finalScore.toFixed(1)}</strong></td>
+            <td><strong>{scores.baseScore.toFixed(1)}</strong></td>
             <td><strong>{scores.finalSeverity}</strong></td>
           </tr>
         </tbody>

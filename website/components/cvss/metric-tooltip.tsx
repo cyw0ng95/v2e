@@ -523,32 +523,6 @@ const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     ],
     icon: <Info className="h-5 w-5" />
   },
-  // Safety (v4.0)
-  S: {
-    title: 'Safety (S)',
-    description: 'This metric measures the potential for harm to people or property if the vulnerability is exploited.',
-    values: [
-      {
-        value: 'X',
-        label: 'Not Defined',
-        explanation: 'Value is not defined or is being omitted.',
-        example: 'Used when safety impact is not applicable (e.g., pure software)'
-      },
-      {
-        value: 'N',
-        label: 'Negligible',
-        explanation: 'There is no impact to safety.',
-        example: 'Vulnerability has no physical safety implications'
-      },
-      {
-        value: 'P',
-        label: 'Present',
-        explanation: 'Exploitation could result in harm to people or property.',
-        example: 'Medical device vulnerability, industrial control system exploit'
-      }
-    ],
-    icon: <AlertCircle className="h-5 w-5" />
-  },
   // Automation (v4.0)
   AU: {
     title: 'Automation (AU)',

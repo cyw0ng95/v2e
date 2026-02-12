@@ -4405,13 +4405,10 @@ export interface CVSS3BaseMetrics {
   /** Confidentiality Impact (H/L/N) */
   C: C;
   /** Integrity Impact (H/L/N) */
-/  /** Modified Base Scope (X/U/C) - v3.1 only */
-  /** Final severity (computed from sub-scores) */
-  finalSeverity?: CVSSSeverity;
   I: I;
   /** Availability Impact (H/L/N) */
   A: A;
-  /** Provider (E for Exploitability, M for Impact) */
+  /** Exploit Code Maturity (X/U/F/P/H/R) - for temporal metrics */
   E: 'X' | 'U' | 'R';
   /** Confidentiality Requirement (H/M/L/N) - v3.1 only */
   CR?: 'H' | 'M' | 'L' | 'N';
@@ -4680,6 +4677,8 @@ export interface CVSS4ScoreBreakdown {
   threatSeverity?: CVSSSeverity;
   /** Environmental severity */
   environmentalSeverity?: CVSSSeverity;
+  /** Final severity (computed from sub-scores) */
+  finalSeverity?: CVSSSeverity;
 }
 
 // ============================================================================

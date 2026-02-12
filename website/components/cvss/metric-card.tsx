@@ -89,7 +89,7 @@ function MetricOptionButton({
   onSelect,
   size,
   showDescription,
-  disabled,
+  disabled = false,
   orientation,
 }: MetricOptionButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -297,7 +297,7 @@ export function MetricCard({
               onSelect={() => onChange(option.value)}
               size={size}
               showDescription={showDescriptions}
-              disabled={disabled || option.disabled}
+              disabled={disabled ?? option.disabled ?? false}
               orientation={orientation}
             />
           ))}
