@@ -232,7 +232,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
                 key={item.id}
                 onClick={() => handleAppClick(item)}
                 onContextMenu={(e) => handleContextMenu(e, item.id)}
-                className="group relative flex items-center justify-center px-5 py-2.5 rounded-[12px] overflow-hidden border-2 border-transparent transition-all duration-300 cursor-pointer"
+                className="group relative flex flex-col items-center justify-center px-4 py-3 rounded-[12px] overflow-hidden border-2 border-transparent transition-all duration-300 cursor-pointer"
                 style={
                   {
                     '--card-border': item.borderColor,
@@ -240,9 +240,14 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
                   } as React.CSSProperties
                 }
               >
-                {/* Text label */}
-                <div className="relative z-10 text-white font-medium text-sm tracking-wide">
-                  {item.name.toUpperCase()}
+                {/* Text label - two lines */}
+                <div className="relative z-10 text-white text-center">
+                  <div className="text-lg font-semibold tracking-wide">
+                    {item.name.toUpperCase()}
+                  </div>
+                  <div className="text-xs opacity-70 tracking-wide">
+                    {item.id.toUpperCase()}
+                  </div>
                 </div>
 
                 {/* Running indicator */}
