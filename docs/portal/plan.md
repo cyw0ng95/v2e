@@ -301,23 +301,173 @@ Implement complete window management with drag, resize, and animations.
 - Window state persists
 
 ### Cost Estimate
-| Task | Hours | Rate | Cost |
-|------|-------|------|------|
-| Window Components | 12 | $50/hr | $600 |
-| Window Logic | 16 | $60/hr | $960 |
-| Window Animations | 8 | $55/hr | $440 |
-| State Persistence | 6 | $50/hr | $300 |
-| Desktop Integration | 6 | $50/hr | $300 |
-| **Total** | **48** | | **$2,600** |
+| Task | Hours | Rate (2025-2026) | Cost |
+|------|-------|------------------|------|
+| Window Components | 12 | $55/hr | $660 |
+| Window Logic | 16 | $65/hr | $1,040 |
+| Window Animations | 8 | $60/hr | $480 |
+| State Persistence | 6 | $58/hr | $348 |
+| Desktop Integration | 6 | $58/hr | $348 |
+| Type Definitions | 2 | $60/hr | $120 |
+| **Total** | **52** | | **$2,996** |
+
+### Dependencies
+
+This phase requires the following from Phase 1:
+
+| Dependency | Type | Source | Status |
+|------------|------|--------|--------|
+| Phase 1: Core Infrastructure Complete | Foundation | Phase 1 deliverable | Required |
+| Desktop state store with window actions | State Management | Phase 1 implementation | Required |
+| Menu bar component (for window controls placement) | UI Component | Phase 1 | Required |
+| Lucide React icons (window controls) | Library | npm package | Installed |
+| Zustand persist middleware for windows | State | Phase 1 | Required |
+| Desktop icon double-click handler | Event Handler | Phase 1 | Required |
+| CSS animation utilities | Utilities | Tailwind CSS | Required |
+
+### Change Requests
+
+**Scope Changes (as of 2026-02-12):**
+
+1. **Window Resize Implementation** - Using react-resizable-panels library instead of custom implementation for better cross-browser support and touch handling
+2. **Window Drag Implementation** - Using react-draggable library with proper boundary detection instead of native HTML5 drag API
+3. **Animation Strategy** - CSS-based animations preferred over JS libraries for better performance (use CSS transforms with GPU acceleration)
+4. **Focus Management** - Implementing click-to-focus with proper z-index management using a focused-window stack
+5. **Minimize Strategy** - Using dock thumbnails for minimized windows (was previously "hide window")
+6. **Window State Machine** - Added formal FSM-based window state management (see Technical Specifications)
+
+**No pending change requests.** All scope refinements have been incorporated into this plan.
+
+### Technical Specifications
+
+#### Window State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unopened
+    Unopened --> Opening: User double-clicks icon
+    Opening --> Open: Animation completes (200ms)
+
+    Open --> Focusing: User clicks window
+    Open --> Minimizing: User clicks minimize button
+    Open --> Maximizing: User clicks maximize button
+    Open --> Closing: User clicks close button
+
+    Focusing --> Focused: Window on top, has glow effect
+    Focused --> Focusing: Another window clicked
+
+    Minimizing --> Minimized: Genie animation to dock (300ms)
+    Minimized --> Restoring: User clicks dock thumbnail
+
+    Maximizing --> Maximized: Fills available space
+    Maximized --> Restoring: User clicks maximize button
+    Restoring --> Focused: Previous size/position restored
+
+    Closing --> Closed: Close animation (150ms)
+    Closed --> [*]
+
+    note FocusedWindowStack: "Last clicked window is on top"
+```
+
+#### Z-Index Layering Rules
+
+| Layer | Z-Index Range | Description |
+|--------|--------------|-------------|
+| Menu Bar | 2000-2009 | Always on top, contains search and theme controls |
+| Quick Launch Modal | 1500-1599 | When open, overlays everything except menu bar |
+| Context Menu | 1000-1099 | Right-click menus, positioned at cursor |
+| Focused Window | Base + 100 | Active window, increments on each focus | `max(zIndex of all windows) + 100` |
+| Dock | 50 | Bottom dock, always below windows |
+| Desktop Icons | 10 | Desktop icon layer, lowest UI element |
+| Desktop Wallpaper | 0 | Background gradient, bottom layer |
+
+#### Event Handling Flow
+
+```mermaid
+graph TD
+    A["User Action"] --> B{"Action Type?"}
+    B -->|Icon Click| C["Check if already open"]
+    C -->|Yes| D["Focus existing window"]
+    C -->|No| E["Create new window state"]
+
+    B --> F["Update z-index: bring to front"]
+    E --> G["Apply glow effect"]
+    D --> H["Update dock indicator"]
+
+    E -->|Titlebar Drag| I["Enable drag mode"]
+    I --> J["Track mouse movement"]
+    J --> K["Update window position"]
+    K --> L["Constrain to viewport bounds"]
+
+    E -->|Resize Handle Drag| M["Enable resize mode"]
+    M --> N["Track delta"]
+    N --> O["Calculate new size"]
+    O --> P["Constrain to min/max"]
+    P --> Q["Update window state"]
+    Q --> R["Request iframe reflow if needed"]
+```
+
+### Risks
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Window drag performance on low-end devices | Medium | Medium | Use requestAnimationFrame for updates; throttle mouse events; test on 4GB RAM devices |
+| Resize handle overlapping with iframe content | Medium | Medium | Use CSS-only resize handles with `resize: both` to avoid iframe layout thrashing |
+| Focus state synchronization bugs | High | Medium | Implement focused-window stack pattern; use atomic z-index updates |
+| Z-index conflicts with third-party libraries | Medium | Low | Reserve specific ranges (100-9999) for v2e; use React Portal context |
+| Window close animation not triggering | Low | Medium | Use animation cleanup properly; ensure promise resolution before state update |
+| Minimize genie effect browser compatibility | Medium | Medium | Test CSS animations in Safari; provide fallback to simple fade for older browsers |
+| Window state persistence corruption | Medium | Low | Implement schema validation on load; provide "reset desktop" option; backup state before save |
+| Cascade positioning conflicts with viewport | Low | Medium | Calculate available viewport area; implement "smart positioning" with collision detection |
+| GPU memory leak with multiple windows | High | Low | Profile with Chrome DevTools; implement window content cleanup on unmount; limit concurrent windows to 10 |
 
 ### Acceptance Criteria
-- [ ] Windows open with animation
-- [ ] Windows can be dragged by titlebar
-- [ ] Windows can be resized from edges/corners
-- [ ] Close/min/max buttons work correctly
-- [ ] Window positions persist across sessions
-- [ ] Animations run at 60fps
-- [ ] Window z-index updates correctly on focus
+
+#### Functional Tests
+- [ ] Windows open with animation when double-clicking desktop icon (test: double-click CVE icon, window opens with scale/fade animation)
+- [ ] Windows can be dragged by titlebar (test: drag CVE window by titlebar, verify window follows mouse)
+- [ ] Windows can be resized from 8 edge/corner handles (test: drag bottom-right corner, verify size updates live)
+- [ ] Close button closes window with animation (test: click X button, window closes with scale/fade animation)
+- [ ] Minimize button minimizes window to dock (test: click -, window hides with genie animation to dock)
+- [ ] Maximize button expands window to fill available space (test: click + button, window fills desktop minus menu/dock)
+- [ ] Restore button returns window to previous size/position (test: click + again on maximized window, window restores)
+- [ ] Window positions persist across sessions (test: open CVE window, move to new position, reload page, verify position restored)
+- [ ] Window z-index updates correctly on focus (test: click CVE window, verify it comes to front with glow effect)
+- [ ] Focused window has visual glow effect (test: focused window shows blue/purple glow border)
+- [ ] Unfocused windows appear dimmed (test: background windows have reduced opacity)
+
+#### Window State Machine Tests
+- [ ] Window transitions: Unopened → Opening → Open (test: double-click icon, verify all state transitions complete)
+- [ ] Window transitions: Open → Focused → Minimized (test: click window, then minimize button, verify state machine)
+- [ ] Window transitions: Minimized → Restoring → Focused (test: click dock thumbnail, verify restore animation)
+- [ ] Window transitions: Any state → Closing → Closed (test: close window, verify cleanup happens)
+- [ ] Focused window stack maintained (test: open 3 windows, click each, verify z-index increments correctly)
+- [ ] Cascade positioning for new windows (test: open 3 CVE windows, verify each is offset by 20px)
+
+#### Performance Tests
+- [ ] Window open animation completes within 200ms (test: measure from double-click to animation complete)
+- [ ] Window close animation completes within 150ms (test: measure from close button click to animation complete)
+- [ ] Minimize genie animation completes within 300ms (test: measure from minimize button to dock thumbnail appear)
+- [ ] Window drag maintains 60fps (test: use Chrome Performance panel, verify no dropped frames during drag)
+- [ ] Window resize maintains 60fps (test: resize window rapidly, verify smooth updates)
+- [ ] Multiple windows (5+) can be open without lag (test: open CVE, CWE, CAPEC windows, verify no stuttering)
+- [ ] Z-index updates are atomic (test: rapid window clicking, verify no flicker or incorrect layering)
+
+#### Accessibility Tests
+- [ ] Window titles announced by screen reader (test: use NVDA, verify "CVE Browser" is announced)
+- [ ] Window controls have aria-label (test: close button has `aria-label="Close window"`)
+- [ ] Keyboard can focus windows (test: press Tab, verify focus moves to next window)
+- [ ] Escape key closes focused window (test: press Escape on focused window, verify window closes)
+- [ ] Minimized windows are hidden from screen reader (test: minimize window, verify it's not in accessibility tree)
+- [ ] Focus indicators visible on all windows (test: focused window has visible border/glow)
+
+#### Code Quality Tests
+- [ ] TypeScript compiles without errors (test: `npm run type-check` passes)
+- [ ] ESLint passes with zero warnings (test: `npm run lint` passes)
+- [ ] All window components have default exports (test: AppWindow, WindowTitlebar, WindowControls can be imported)
+- [ ] Storybook stories created for window components (test: AppWindow, WindowControls, WindowResize stories exist)
+- [ ] Window state machine is unit tested (test: window-state-fsm.test.ts has >80% coverage)
+- [ ] Z-index management uses constants (test: Z_INDEX constants defined and used consistently)
 
 ---
 
