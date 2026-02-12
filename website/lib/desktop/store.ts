@@ -19,6 +19,7 @@ import type {
   WindowState,
 } from '@/types/desktop';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
+import { getAppById } from '@/lib/desktop/app-registry';
 
 // ============================================================================
 // INITIAL STATE
@@ -180,6 +181,40 @@ const useDesktopStore = create<DesktopStore>()(
       // Window Actions
       openWindow: (config) =>
         set(state => {
+          // Check if app allows multiple windows
+          const app = getAppById(config.appId);
+          const allowMultiple = app?.allowMultipleWindows ?? false;
+
+          // If multiple windows not allowed, check for existing window with same appId
+          if (!allowMultiple) {
+            const existingWindow = Object.values(state.windows).find(
+              w => w.appId === config.appId
+            );
+
+            // If window exists, focus it instead of opening new one
+            if (existingWindow) {
+              // Focus existing window and update dock indicator
+              return {
+                windows: {
+                  ...state.windows,
+                  [existingWindow.id]: {
+                    ...existingWindow,
+                    state: 'focused' as WindowState,
+                    zIndex: getNextFocusZIndex(state.windows),
+                  },
+                },
+                focusedWindowId: existingWindow.id,
+                dock: {
+                  ...state.dock,
+                  items: state.dock.items.map(item =>
+                    item.appId === config.appId ? { ...item, isRunning: true, isIndicator: true } : item
+                  ),
+                },
+              };
+            }
+          }
+
+          // No existing window, open new one
           const id = crypto.randomUUID();
           const windowOrder = Object.keys(state.windows).length;
 
