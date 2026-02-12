@@ -24,8 +24,7 @@ class DevLogTransport {
     // Only enable in development mode
     this.isEnabled =
       typeof window !== 'undefined' &&
-      (process.env.NODE_ENV === 'development') &&
-      (process.env.NEXT_PUBLIC_API_BASE_URL !== undefined);
+      (process.env.NODE_ENV === 'development');
 
     if (this.isEnabled) {
       this.originalError = console.error;

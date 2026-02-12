@@ -338,6 +338,18 @@ Per `.github/agents/v2e-go.agent.md`:
 6. **NO flaky remote API tests** - never add tests that access NVD, GitHub, or other external services
 7. **NO new documentation files** - only update existing `README.md` or `cmd/*/service.md`. Never create new markdown files (DESIGN.md, TODO.md, etc.)
 
+### Git Push Workflow
+
+**NEVER use force push** (`git push -f`, `git push --force`).
+
+When pushing commits:
+1. Commit your changes locally
+2. Fetch remote changes: `git fetch`
+3. Merge or rebase locally: `git merge origin/main` or `git rebase origin/main`
+4. Push normally: `git push`
+
+This preserves git history and prevents data loss for collaborators.
+
 ## ETL Provider Management (UEE Architecture)
 
 The meta service orchestrates data population using the Unified ETL Engine (UEE) framework with hierarchical FSM-based providers:
