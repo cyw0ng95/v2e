@@ -18,6 +18,7 @@ import type {
   WidgetConfig,
   WindowState,
 } from '@/types/desktop';
+import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 
 // ============================================================================
 // INITIAL STATE
@@ -110,6 +111,7 @@ interface DesktopActions {
   addDockItem: (item: Omit<DockItem, 'isRunning'>) => void;
   removeDockItem: (appId: string) => void;
   updateDockItemRunning: (appId: string, isRunning: boolean) => void;
+  updateDockItems: (items: Array<{ app: AppRegistryEntry; isRunning: boolean; isIndicator: boolean }>) => void;
   setDockVisibility: (isVisible: boolean) => void;
   setDockSize: (size: 'small' | 'medium' | 'large') => void;
 
@@ -366,6 +368,11 @@ const useDesktopStore = create<DesktopStore>()(
       setDockAutoHide: (autoHide) =>
         set(state => ({
           dock: { ...state.dock, autoHide },
+        })),
+
+      updateDockItems: (items) =>
+        set(state => ({
+          dock: { ...state.dock, items },
         })),
 
       // Theme Actions
