@@ -129,9 +129,9 @@ export function DesktopArea() {
         aria-hidden="true"
       >
         <Threads
-          color={[0.6941176470588235, 0.6666666666666666, 0.6666666666666666]}
+          color={[0.7450980392156863, 0.741764705882353, 0.7607843137254902]}
           amplitude={1}
-          distance={0.2}
+          distance={0}
           enableMouseInteraction
           className="w-full h-full"
         />
