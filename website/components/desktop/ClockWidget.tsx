@@ -15,9 +15,12 @@ import type { WidgetConfig } from '@/types/desktop';
  * Clock widget component
  */
 export function ClockWidget({ widget }: { widget: WidgetConfig }) {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
+    // Initialize time on client side only to prevent hydration mismatch
+    setTime(new Date());
+
     // Update time every second
     const interval = setInterval(() => {
       setTime(new Date());
@@ -49,12 +52,12 @@ export function ClockWidget({ widget }: { widget: WidgetConfig }) {
           {formatTime(time)}
         </div>
         <div className="text-sm text-gray-500 mt-1">
-          {time.toLocaleDateString('en-US', {
+          {time ? time.toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-          })}
+          }) : '--'}
         </div>
       </div>
     </div>
