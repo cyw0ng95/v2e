@@ -25,6 +25,14 @@ type TokenBucket struct {
 // Example: NewTokenBucket(100, time.Second) allows 100 requests per second,
 // with burst capacity of up to 100 requests.
 func NewTokenBucket(maxTokens int, refillInterval time.Duration) *TokenBucket {
+	if maxTokens <= 0 || refillInterval <= 0 {
+		return &TokenBucket{
+			tokens:     1,
+			maxTokens:  1,
+			refillRate: time.Second,
+			lastRefill: time.Now(),
+		}
+	}
 	now := time.Now()
 	return &TokenBucket{
 		tokens:     maxTokens,
@@ -75,6 +83,13 @@ type ClientLimiter struct {
 // maxTokens is the maximum tokens per bucket.
 // refillInterval is how often to add one token.
 func NewClientLimiter(maxTokens int, refillInterval time.Duration) *ClientLimiter {
+	if maxTokens <= 0 || refillInterval <= 0 {
+		return &ClientLimiter{
+			limiters:   make(map[string]*TokenBucket),
+			maxTokens:  1,
+			refillRate: time.Second,
+		}
+	}
 	return &ClientLimiter{
 		limiters:   make(map[string]*TokenBucket),
 		maxTokens:  maxTokens,

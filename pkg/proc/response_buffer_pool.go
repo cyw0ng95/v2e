@@ -6,22 +6,22 @@ import (
 
 // ResponseBufferPool manages a pool of response buffers
 type ResponseBufferPool struct {
-	mu              sync.RWMutex
-	smallPool       []bufferEntry
-	mediumPool      []bufferEntry
-	largePool       []bufferEntry
-	hugePool        []bufferEntry
-	smallNext       int
-	mediumNext      int
-	largeNext       int
-	hugeNext        int
-	hitCount        map[BufferClass]int
-	missCount       map[BufferClass]int
+	mu         sync.RWMutex
+	smallPool  []bufferEntry
+	mediumPool []bufferEntry
+	largePool  []bufferEntry
+	hugePool   []bufferEntry
+	smallNext  int
+	mediumNext int
+	largeNext  int
+	hugeNext   int
+	hitCount   map[BufferClass]int
+	missCount  map[BufferClass]int
 }
 
 // bufferEntry represents a pooled buffer with availability flag
 type bufferEntry struct {
-	buffer  []byte
+	buffer    []byte
 	available bool // true if buffer is available in pool
 }
 
@@ -33,6 +33,10 @@ const (
 	BufferClassMedium                    // < 32KB
 	BufferClassLarge                     // < 256KB
 	BufferClassHuge                      // >= 256KB
+)
+
+const (
+	maxPoolSize = 1024
 )
 
 // BufferStats tracks buffer pool statistics
@@ -106,7 +110,10 @@ func (rbp *ResponseBufferPool) Put(buf *[]byte) {
 		}
 	}
 
-	// No empty slot, append to end
+	// No empty slot, check if pool is at max capacity
+	if len(pool) >= maxPoolSize {
+		return
+	}
 	pool = append(pool, entry)
 	rbp.setPool(class, pool)
 }

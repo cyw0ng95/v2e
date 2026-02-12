@@ -12,8 +12,7 @@ import type {
   CVSS3BaseMetrics, CVSS4BaseMetrics,
   CVSS3TemporalMetrics, CVSS3EnvironmentalMetrics,
   CVSS4ThreatMetrics, CVSS4EnvironmentalMetrics,
-  CVSSSeverity, CVSSScoreBreakdown,
-  CVSS3ScoreBreakdown, CVSS4ScoreBreakdown
+  CVSSSeverity, CVSS3ScoreBreakdown, CVSS4ScoreBreakdown
 } from './types';
 
 // ============================================================================
@@ -152,6 +151,7 @@ function calculateV3BaseScore(metrics: CVSS3BaseMetrics): number {
  */
 function applyV3TemporalAdjustments(
   baseScore: number,
+  baseMetrics: CVSS3BaseMetrics,
   temporal: CVSS3TemporalMetrics
 ): { score: number; breakdown: CVSS3ScoreBreakdown } {
   const eMap: Record<string, number> = {
@@ -171,12 +171,15 @@ function applyV3TemporalAdjustments(
   const adjustedScore = baseScore * e * rl * rc;
 
   return {
-    baseScore: ROUND(baseScore),
-    temporalScore: ROUND(adjustedScore),
-    exploitabilityScore: ROUND(calculateV3Exploitability),
-    impactScore: ROUND(calculateV3Impact),
-    baseSeverity: getSeverity(ROUND(baseScore)),
-    temporalSeverity: getSeverity(ROUND(adjustedScore))
+    score: ROUND(baseScore),
+    breakdown: {
+      baseScore: ROUND(baseScore),
+      temporalScore: ROUND(adjustedScore),
+      exploitabilityScore: ROUND(calculateV3Exploitability(baseMetrics)),
+      impactScore: ROUND(calculateV3Impact(baseMetrics)),
+      baseSeverity: getSeverity(ROUND(baseScore)),
+      temporalSeverity: getSeverity(ROUND(adjustedScore))
+    }
   };
 }
 
@@ -236,19 +239,11 @@ function applyV3EnvironmentalAdjustments(
   const modifiedImpact =
     (1 - mcValue) * (1 - miValue) * (1 - maValue);
 
-  // Recalculate exploitability with environmental adjustments
-  const mav = getEnvValue(environmental.MAV, baseMetrics.AV, baseMetrics.AV);
-  const mac = getEnvValue(environmental.MAC, baseMetrics.AC, baseMetrics.AC);
-  const mpr = getEnvValue(environmental.MPR, baseMetrics.PR, baseMetrics.PR);
-  const mui = getEnvValue(environmental.MUI, baseMetrics.UI, baseMetrics.UI);
-
-  const av = V3_MAPS.av[mav];
-  const ac = V3_MAPS.ac[mac];
-  const pr = V3_MAPS.pr[mpr];
-  const ui = V3_MAPS.ui[mui];
-
+  // Environmental metrics in CVSS v3 only adjust the impact and requirements
+  // They do not modify the exploitability vector (AV/AC/PR/UI)
+  // So we use the original exploitability score but adjust with requirements
   const modifiedExploitability =
-    8.22 * av * ac * pr * ui * cr * ir * ar;
+    calculateV3Exploitability(baseMetrics) * cr * ir * ar;
 
   const msValue = msModified;
   const sMap: Record<S, number> = { U: 0, C: 1 };
@@ -258,12 +253,15 @@ function applyV3EnvironmentalAdjustments(
     modifiedExploitability;
 
   return {
-    baseScore: baseScore,
-    environmentalScore: ROUND(adjustedScore),
-    exploitabilityScore: ROUND(modifiedExploitability),
-    impactScore: ROUND(modifiedImpact * 10.41),
-    baseSeverity: getSeverity(baseScore),
-    environmentalSeverity: getSeverity(ROUND(adjustedScore))
+    score: ROUND(adjustedScore),
+    breakdown: {
+      baseScore: baseScore,
+      environmentalScore: ROUND(adjustedScore),
+      exploitabilityScore: ROUND(modifiedExploitability),
+      impactScore: ROUND(modifiedImpact * 10.41),
+      baseSeverity: getSeverity(baseScore),
+      environmentalSeverity: getSeverity(ROUND(adjustedScore))
+    }
   };
 }
 
@@ -284,21 +282,19 @@ function generateV3VectorString(
   let vector = `${prefix}/${base}`;
 
   const { E, RL, RC } = metrics.temporal;
-  if (E !== 'X') vector += `/E:${E}`;
-  if (RL !== 'X') vector += `/RL:${RL}`;
-  if (RC !== 'X') vector += `/RC:${RC}`;
+  if (E !== undefined && (E as any) !== 'X') vector += `/E:${E}`;
+  if (RL !== undefined && (RL as any) !== 'X') vector += `/RL:${RL}`;
+  if (RC !== undefined && (RC as any) !== 'X') vector += `/RC:${RC}`;
 
   if (metrics.environmental) {
     const env = metrics.environmental;
     vector += `/CR:${env.CR}/IR:${env.IR}/AR:${env.AR}`;
-    if (env.MAV !== 'X') vector += `/MAV:${env.MAV}`;
-    if (env.MAC !== 'X') vector += `/MAC:${env.MAC}`;
-    if (env.MPR !== 'X') vector += `/MPR:${env.MPR}`;
-    if (env.MUI !== 'X') vector += `/MUI:${env.MUI}`;
-    if (env.MS !== 'X') vector += `/MS:${env.MS}`;
-    if (env.MC !== 'X') vector += `/MC:${env.MC}`;
-    if (env.MI !== 'X') vector += `/MI:${env.MI}`;
-    if (env.MA !== 'X') vector += `/MA:${env.MA}`;
+    // CVSS v3 environmental metrics do not include modified AV/AC/PR/UI
+    // These are only in CVSS v4
+    if (env.MS !== undefined && (env.MS as any) !== 'X') vector += `/MS:${env.MS}`;
+    if (env.MC !== undefined && (env.MC as any) !== 'X') vector += `/MC:${env.MC}`;
+    if (env.MI !== undefined && (env.MI as any) !== 'X') vector += `/MI:${env.MI}`;
+    if (env.MA !== undefined && (env.MA as any) !== 'X') vector += `/MA:${env.MA}`;
   }
 
   return vector;
@@ -337,7 +333,7 @@ const V4_MAPS: V4LookupMaps = {
 /**
  * Calculates CVSS v4.0 base score
  */
-function calculateV4BaseScore(metrics: CVSS4BaseMetrics): {
+function calculateV4BaseScore(metrics: CVSS4BaseMetrics, threat?: CVSS4ThreatMetrics): {
   score: number;
   breakdown: CVSS4ScoreBreakdown;
 } {
@@ -350,8 +346,8 @@ function calculateV4BaseScore(metrics: CVSS4BaseMetrics): {
   const iq = ROUND(10 * av * ac * at);
   const ss = ROUND(10 * pr * ui);
 
-  // Determine I:E value
-  const provider = metrics.E ?? 'X';
+  // Determine I:E value - check threat metrics for Provider I
+  const provider = threat?.I ?? 'X';
   const ieKey = provider === 'E' ? `${metrics.VC}:${metrics.SI}` : 'N:N';
   const impactLookup = V4_IMPACT_LOOKUP[ieKey];
 
@@ -360,8 +356,11 @@ function calculateV4BaseScore(metrics: CVSS4BaseMetrics): {
   const baseScore = iq * iqFactor + ss * ssFactor + isc * 10;
 
   return {
-    baseScore: ROUND(baseScore),
-    baseSeverity: getSeverity(ROUND(baseScore))
+    score: ROUND(baseScore),
+    breakdown: {
+      baseScore: ROUND(baseScore),
+      baseSeverity: getSeverity(ROUND(baseScore))
+    }
   };
 }
 
@@ -460,8 +459,9 @@ function applyV4EnvironmentalAdjustments(
 
   const modifiedBaseScore = modifiedIQ * iqFactor + modifiedSS * ssFactor + isc * 10;
 
+  const baseResult = calculateV4BaseScore(baseMetrics);
   return {
-    baseScore: calculateV4BaseScore(baseMetrics).baseScore,
+    baseScore: baseResult.breakdown.baseScore,
     adjustedScore: ROUND(modifiedBaseScore)
   };
 }
@@ -502,18 +502,22 @@ function generateV4VectorString(metrics: CVSS4Metrics): string {
 
   if (metrics.environmental) {
     const {
-      CR, IR, AR, MAV, MAC, MPR, MUI,
-      MS, MC, MI, MA
+      CR, IR, AR, MAV, MAC, MAT, MPR, MUI,
+      MS, MVC, MVI, MVA, MSC, MSI, MSA
     } = metrics.environmental;
     parts.push(`CR:${CR}`, `IR:${IR}`, `AR:${AR}`);
-    if (MAV !== 'X') parts.push(`MAV:${MAV}`);
-    if (MAC !== 'X') parts.push(`MAC:${MAC}`);
-    if (MPR !== 'X') parts.push(`MPR:${MPR}`);
-    if (MUI !== 'X') parts.push(`MUI:${MUI}`);
-    if (MS !== 'X') parts.push(`MS:${MS}`);
-    if (MC !== 'X') parts.push(`MC:${MC}`);
-    if (MI !== 'X') parts.push(`MI:${MI}`);
-    if (MA !== 'X') parts.push(`MA:${MA}`);
+    if (MAV !== undefined) parts.push(`MAV:${MAV}`);
+    if (MAC !== undefined) parts.push(`MAC:${MAC}`);
+    if (MAT !== undefined) parts.push(`MAT:${MAT}`);
+    if (MPR !== undefined) parts.push(`MPR:${MPR}`);
+    if (MUI !== undefined) parts.push(`MUI:${MUI}`);
+    if (MS !== undefined && (MS as any) !== 'X') parts.push(`MS:${MS}`);
+    if (MVC !== undefined) parts.push(`MVC:${MVC}`);
+    if (MVI !== undefined) parts.push(`MVI:${MVI}`);
+    if (MVA !== undefined) parts.push(`MVA:${MVA}`);
+    if (MSC !== undefined) parts.push(`MSC:${MSC}`);
+    if (MSI !== undefined) parts.push(`MSI:${MSI}`);
+    if (MSA !== undefined) parts.push(`MSA:${MSA}`);
   }
 
   return parts.join('/');
@@ -557,9 +561,9 @@ export function calculateCVSS3(
   let finalScore = baseScore;
 
   if (metrics.temporal) {
-    const temporalResult = applyV3TemporalAdjustments(baseScore, metrics.temporal);
-    breakdown = { ...breakdown, ...temporalResult };
-    finalScore = temporalResult.temporalScore;
+    const temporalResult = applyV3TemporalAdjustments(baseScore, metrics, metrics.temporal);
+    breakdown = { ...breakdown, ...temporalResult.breakdown };
+    finalScore = temporalResult.breakdown.temporalScore ?? finalScore;
   }
 
   if (metrics.environmental) {
@@ -568,15 +572,13 @@ export function calculateCVSS3(
       metrics,
       metrics.environmental
     );
-    breakdown = { ...breakdown, ...envResult };
-    finalScore = envResult.environmentalScore;
+    breakdown = { ...breakdown, ...envResult.breakdown };
+    finalScore = envResult.breakdown.environmentalScore ?? finalScore;
   }
 
-  breakdown.vectorString = generateV3VectorString(metrics, version);
-  breakdown.finalScore = ROUND(finalScore);
-  breakdown.finalSeverity = getSeverity(ROUND(finalScore));
+  const vectorString = generateV3VectorString(metrics, version);
 
-  return breakdown;
+  return { vectorString, breakdown };
 }
 
 /**
@@ -585,12 +587,12 @@ export function calculateCVSS3(
 export function calculateCVSS4(
   metrics: CVSS4Metrics
 ): { vectorString: string; breakdown: CVSS4ScoreBreakdown } {
-  const baseResult = calculateV4BaseScore(metrics);
-  let finalScore = baseResult.baseScore;
+  const baseResult = calculateV4BaseScore(metrics, metrics.threat);
+  let finalScore = baseResult.breakdown.baseScore;
 
   let breakdown: CVSS4ScoreBreakdown = {
-    baseScore: baseResult.baseScore,
-    baseSeverity: baseResult.baseSeverity
+    baseScore: baseResult.breakdown.baseScore,
+    baseSeverity: baseResult.breakdown.baseSeverity
   };
 
   if (metrics.threat) {
@@ -607,11 +609,9 @@ export function calculateCVSS4(
     finalScore = envResult.adjustedScore;
   }
 
-  breakdown.vectorString = generateV4VectorString(metrics);
-  breakdown.finalScore = ROUND(finalScore);
-  breakdown.finalSeverity = getSeverity(ROUND(finalScore));
+  const vectorString = generateV4VectorString(metrics);
 
-  return breakdown;
+  return { vectorString, breakdown };
 }
 
 /**
@@ -622,10 +622,12 @@ export function calculateCVSS(
   metrics: CVSS3Metrics | CVSS4Metrics
 ): { vectorString: string; breakdown: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown } {
   if (version === '3.0' || version === '3.1') {
-    return calculateCVSS3(metrics as CVSS3Metrics, version);
+    const result = calculateCVSS3(metrics as CVSS3Metrics, version);
+    return { vectorString: result.vectorString, breakdown: result.breakdown };
   }
   if (version === '4.0') {
-    return calculateCVSS4(metrics as CVSS4Metrics);
+    const result = calculateCVSS4(metrics as CVSS4Metrics);
+    return { vectorString: result.vectorString, breakdown: result.breakdown };
   }
   throw new Error(`Unsupported CVSS version: ${version}`);
 }
@@ -637,14 +639,13 @@ export function getDefaultMetrics(version: CVSSVersion): CVSS3BaseMetrics | CVSS
   if (version === '3.0' || version === '3.1') {
     return {
       AV: 'N', AC: 'L', PR: 'N', UI: 'N',
-      S: 'U', C: 'N', I: 'N', A: 'N',
-      E: 'X'
+      S: 'U', C: 'N', I: 'N', A: 'N'
     };
   }
   return {
     AV: 'N', AC: 'L', AT: 'N', PR: 'N', UI: 'N',
     VC: 'N', VI: 'N', VA: 'N', SC: 'N', SI: 'N', SA: 'N',
-    S: 'N', AU: 'N', E: 'X'
+    S: 'N', AU: 'N'
   };
 }
 

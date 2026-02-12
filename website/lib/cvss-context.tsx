@@ -8,7 +8,8 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import type {
   CVSSVersion, CVSSCalculatorState, CVSS3Metrics, CVSS4Metrics,
-  CVSS3ScoreBreakdown, CVSS4ScoreBreakdown, CVSSSeverity
+  CVSS3ScoreBreakdown, CVSS4ScoreBreakdown, CVSSSeverity,
+  CVSS3EnvironmentalMetrics, CVSS4ThreatMetrics, CVSS4EnvironmentalMetrics
 } from './types';
 import {
   calculateCVSS,
@@ -63,26 +64,32 @@ export function CVSSProvider({
   const [metrics, setMetrics] = useState<CVSS3Metrics | CVSS4Metrics>(() => {
     const defaults = getDefaultMetrics(initialVersion);
     if (enableTemporal && (initialVersion === '3.0' || initialVersion === '3.1')) {
-      const temporal = { E: 'X', RL: 'X', RC: 'X' };
-      return { ...defaults, temporal };
+      const temporal = { E: 'X' as const, RL: 'X' as const, RC: 'X' as const };
+      return { ...defaults, temporal } as CVSS3Metrics;
     }
     if (enableEnvironmental) {
       if (initialVersion === '3.0' || initialVersion === '3.1') {
-        const environmental = { CR: 'N', IR: 'N', AR: 'N' };
+        const environmental: CVSS3EnvironmentalMetrics = { 
+          CR: 'N', IR: 'N', AR: 'N',
+          MS: 'X', MC: 'N', MI: 'N', MA: 'N'
+        };
         return {
           ...defaults,
           temporal: enableTemporal ? { E: 'X', RL: 'X', RC: 'X' } : undefined,
           environmental
-        };
+        } as CVSS3Metrics;
       }
-      const threat = { E: 'X', M: 'X', D: 'N' };
-      const environmental = { CR: 'N', IR: 'N', AR: 'N' };
-      return { ...defaults, threat, environmental };
+      const threat: CVSS4ThreatMetrics = { E: 'X', M: 'X', D: 'N', I: 'X' };
+      const environmental: CVSS4EnvironmentalMetrics = { 
+        CR: 'N', IR: 'N', AR: 'N'
+      };
+      return { ...defaults, threat, environmental } as CVSS4Metrics;
     }
     return defaults;
   });
 
-  const [scores, setScores] = useState<CVSS3ScoreBreakdown | CVSS4ScoreBreakdown | null>(null);
+  const [scores, setScores] = useState<CVSS3ScoreBreakdown | CVSS4ScoreBreakdown>({} as CVSS3ScoreBreakdown);
+  const [vectorString, setVectorString] = useState<string>('');
 
   const [showTemporal, setShowTemporal] = useState(enableTemporal);
   const [showEnvironmental, setShowEnvironmental] = useState(enableEnvironmental);
@@ -92,7 +99,8 @@ export function CVSSProvider({
   const calculateScores = useCallback(() => {
     try {
       const result = calculateCVSS(version, metrics);
-      setScores(result as CVSS3ScoreBreakdown | CVSS4ScoreBreakdown);
+      setScores(result.breakdown as CVSS3ScoreBreakdown | CVSS4ScoreBreakdown);
+      setVectorString(result.vectorString);
     } catch (error) {
       console.error('CVSS calculation error:', error);
     }
@@ -113,7 +121,7 @@ export function CVSSProvider({
     setVersion(newVersion);
     const defaults = getDefaultMetrics(newVersion);
     if (showTemporal && (newVersion === '3.0' || newVersion === '3.1')) {
-      setMetrics({ ...defaults, temporal: { E: 'X', RL: 'X', RC: 'X' } });
+      setMetrics({ ...defaults, temporal: { E: 'X', RL: 'X', RC: 'X' } } as CVSS3Metrics | CVSS4Metrics);
     } else if (showEnvironmental) {
       if (newVersion === '3.0' || newVersion === '3.1') {
         const env = { CR: 'N', IR: 'N', AR: 'N' };
@@ -121,16 +129,17 @@ export function CVSSProvider({
           ...defaults,
           temporal: showTemporal ? { E: 'X', RL: 'X', RC: 'X' } : undefined,
           environmental: env
-        });
+        } as CVSS3Metrics | CVSS4Metrics);
       } else {
-        const threat = { E: 'X', M: 'X', D: 'N' };
+        const threat = { E: 'X', M: 'X', D: 'N', I: 'X' };
         const env = { CR: 'N', IR: 'N', AR: 'N' };
-        setMetrics({ ...defaults, threat, environmental: env });
+        setMetrics({ ...defaults, threat, environmental: env } as CVSS3Metrics | CVSS4Metrics);
       }
     } else {
       setMetrics(defaults);
     }
-    setScores(null);
+    setScores({} as CVSS3ScoreBreakdown);
+    setVectorString('');
   }, [showTemporal, showEnvironmental]);
 
   const resetMetrics = useCallback(() => {
@@ -162,7 +171,7 @@ export function CVSSProvider({
         if (version === '3.0' || version === '3.1') {
           setMetrics((prevMetrics: any) => ({
             ...prevMetrics,
-            environmental: { CR: 'N', IR: 'N', AR: 'N' }
+            environmental: { CR: 'N', IR: 'N', AR: 'N', MS: 'X', MC: 'N', MI: 'N', MA: 'N' }
           }));
         } else {
           setMetrics((prevMetrics: any) => ({
@@ -171,8 +180,10 @@ export function CVSSProvider({
           }));
         }
       } else {
-        const { environmental, ...rest } = prevMetrics as any;
-        setMetrics(rest);
+        setMetrics((prevMetrics: any) => {
+          const { environmental, ...rest } = prevMetrics;
+          return rest;
+        });
       }
       return newValue;
     });
@@ -184,12 +195,10 @@ export function CVSSProvider({
     const metadata = getCVSSMetadata(version);
     const data = {
       version,
-      vectorString: scores.vectorString,
+      vectorString,
       baseScore: scores.baseScore,
       severity: scores.finalSeverity,
-      metrics,
-      scoreBreakdown: scores,
-      exportedAt: new Date().toISOString()
+      metrics
     };
 
     if (format === 'json') {
@@ -202,13 +211,14 @@ export function CVSSProvider({
       URL.revokeObjectURL(url);
     } else if (format === 'csv') {
       const metricsStr = JSON.stringify(metrics);
+      const exportedAt = new Date().toISOString();
       const csv = [
         version,
-        scores.vectorString,
+        vectorString,
         scores.baseScore.toFixed(1),
         scores.finalSeverity,
         `"${metricsStr}"`,
-        data.exportedAt
+        exportedAt
       ].join(',');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -219,12 +229,12 @@ export function CVSSProvider({
       URL.revokeObjectURL(url);
     } else if (format === 'url') {
       const params = new URLSearchParams();
-      params.set('v', scores.vectorString);
+      params.set('v', vectorString);
       const shareUrl = `${window.location.origin}/cvss/${version}?${params.toString()}`;
       await navigator.clipboard.writeText(shareUrl);
       alert('CVSS URL copied to clipboard!');
     }
-  }, [version, metrics, scores]);
+  }, [version, metrics, scores, vectorString]);
 
   const importFromVector = useCallback((vectorString: string): boolean => {
     try {
@@ -295,10 +305,9 @@ export function CVSSProvider({
       version,
       metrics,
       scores,
-      vectorString: scores?.vectorString ?? '',
+      vectorString,
       showTemporal,
       showEnvironmental,
-      showDescriptions,
       viewMode
     },
     version,

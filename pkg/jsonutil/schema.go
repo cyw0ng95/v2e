@@ -4,19 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/xeipuuv/gojsonschema"
 )
 
 // ValidationError represents a single validation error with context
 type ValidationError struct {
-	Field       string   `json:"field"`
-	Type        string   `json:"type"`
-	Message     string   `json:"message"`
-	Expected    string   `json:"expected,omitempty"`
-	Actual      string   `json:"actual,omitempty"`
-	Path        string   `json:"path"`
-	Description string   `json:"description,omitempty"`
+	Field       string `json:"field"`
+	Type        string `json:"type"`
+	Message     string `json:"message"`
+	Expected    string `json:"expected,omitempty"`
+	Actual      string `json:"actual,omitempty"`
+	Path        string `json:"path"`
+	Description string `json:"description,omitempty"`
 }
 
 // ValidationResult contains the result of a schema validation
@@ -29,6 +30,7 @@ type ValidationResult struct {
 
 // SchemaLoader handles loading and caching JSON schemas
 type SchemaLoader struct {
+	mu      sync.RWMutex
 	schemas map[string]gojsonschema.JSONLoader
 }
 
@@ -41,6 +43,8 @@ func NewSchemaLoader() *SchemaLoader {
 
 // AddSchema adds a schema by name from a JSON byte slice
 func (sl *SchemaLoader) AddSchema(name string, schemaJSON []byte) error {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
 	if sl.schemas == nil {
 		sl.schemas = make(map[string]gojsonschema.JSONLoader)
 	}
@@ -64,18 +68,24 @@ func (sl *SchemaLoader) AddSchemaFromStruct(name string, v interface{}) error {
 
 // GetSchema retrieves a schema loader by name
 func (sl *SchemaLoader) GetSchema(name string) (gojsonschema.JSONLoader, bool) {
+	sl.mu.RLock()
+	defer sl.mu.RUnlock()
 	loader, ok := sl.schemas[name]
 	return loader, ok
 }
 
 // HasSchema checks if a schema exists by name
 func (sl *SchemaLoader) HasSchema(name string) bool {
+	sl.mu.RLock()
+	defer sl.mu.RUnlock()
 	_, ok := sl.schemas[name]
 	return ok
 }
 
 // RemoveSchema removes a schema by name
 func (sl *SchemaLoader) RemoveSchema(name string) {
+	sl.mu.Lock()
+	defer sl.mu.Unlock()
 	delete(sl.schemas, name)
 }
 
