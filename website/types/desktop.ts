@@ -12,6 +12,17 @@
 // ============================================================================
 
 /**
+ * Application categories for organizing apps in the dock
+ */
+export type AppCategory =
+  | 'Security'
+  | 'Database'
+  | 'Learning'
+  | 'System'
+  | 'Utility'
+  | 'Reference';
+
+/**
  * Desktop icon representation
  * Used for desktop shortcut icons
  */

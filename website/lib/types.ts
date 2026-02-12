@@ -4408,22 +4408,6 @@ export interface CVSS3BaseMetrics {
   I: I;
   /** Availability Impact (H/L/N) */
   A: A;
-  /** Exploit Code Maturity (X/U/F/P/H/R) - for temporal metrics */
-  E: 'X' | 'U' | 'R';
-  /** Confidentiality Requirement (H/M/L/N) - v3.1 only */
-  CR?: 'H' | 'M' | 'L' | 'N';
-  /** Integrity Requirement (H/M/L/N) - v3.1 only */
-  IR?: 'H' | 'M' | 'L' | 'N';
-  /** Availability Requirement (H/M/L/N) - v3.1 only */
-  AR?: 'H' | 'M' | 'L' | 'N';
-  /** Modified Base Scope (X/U/C) - v3.1 only */
-  MS?: 'X' | 'U' | 'C';
-  /** Modified Confidentiality (H/L/N) - v3.1 only */
-  MC?: 'H' | 'L' | 'N';
-  /** Modified Integrity (H/L/N) - v3.1 only */
-  MI?: 'H' | 'L' | 'N';
-  /** Modified Availability (H/L/N) - v3.1 only */
-  MA?: 'H' | 'L' | 'N';
 }
 
 /**
@@ -4703,6 +4687,10 @@ export interface CVSSCalculatorState {
   showTemporal?: boolean;
   showExploitability?: boolean;
   showEnvironmental?: boolean;
+  /** Show descriptions */
+  showDescriptions?: boolean;
+  /** View mode */
+  viewMode?: 'compact' | 'full';
 }
 
 /**
