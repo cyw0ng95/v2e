@@ -190,8 +190,8 @@ function WindowResizeHandle({
     resizeStartPosRef.current = {
       x: e.clientX,
       y: e.clientY,
-      width: win.size.width,
-      height: win.size.height,
+      width: window.size.width,
+      height: window.size.height,
     };
     onResizeStart(position, e);
   };
@@ -301,10 +301,10 @@ export function AppWindow({ window }: { window: WindowConfig }) {
 
   // Calculate window size based on state
   const windowStyle: React.CSSProperties = {
-    left: `${win.position.x}px`,
-    top: `${win.position.y}px`,
-    width: `${win.size.width}px`,
-    height: `${win.size.height}px`,
+    left: `${window.position.x}px`,
+    top: `${window.position.y}px`,
+    width: `${window.size.width}px`,
+    height: `${window.size.height}px`,
     minWidth: `${window.minWidth}px`,
     minHeight: `${window.minHeight}px`,
   };
@@ -330,17 +330,17 @@ export function AppWindow({ window }: { window: WindowConfig }) {
         scale: 0.95,
       }}
       transition={{
-        duration: win.state === 'closing' ? 0.15 : 0.2,
+        duration: window.state === 'closing' ? 0.15 : 0.2,
         ease: 'easeInOut',
       }}
       className={`
         absolute bg-white rounded-lg shadow-2xl overflow-hidden pointer-events-auto
         ${window.isFocused ? 'ring-2 ring-blue-500' : ''}
-        ${win.isMinimized ? 'opacity-0' : ''}
+        ${window.isMinimized ? 'opacity-0' : ''}
       `}
       style={{
         ...windowStyle,
-        zIndex: win.zIndex,
+        zIndex: window.zIndex,
       }}
       role="dialog"
       aria-labelledby={`window-title-${window.id}`}
@@ -365,12 +365,12 @@ export function AppWindow({ window }: { window: WindowConfig }) {
 
       {/* Window content - direct component rendering for SPA architecture */}
       <div className="absolute inset-0 top-10 bg-gray-50">
-        {win.isMinimized ? (
+        {window.isMinimized ? (
           <div className="h-full flex items-center justify-center text-gray-400">
             <p>Window minimized</p>
           </div>
         ) : (
-          <AppComponent appId={win.appId} title={win.title} windowId={win.id} />
+          <AppComponent appId={window.appId} title={window.title} windowId={window.id} />
         )}
       </div>
     </motion.div>
