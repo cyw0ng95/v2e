@@ -368,8 +368,26 @@ html, body, #__next {
   }
 
   @keyframes scale-in {
-    from { opacity: 0; transform: scale(0.96); }
+    from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(30, 64, 175, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(30, 64, 175, 0);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
   }
 
   .animate-in {
@@ -377,7 +395,7 @@ html, body, #__next {
   }
 
   .fade-in {
-    animation: fade-in 250ms ease-out;
+    animation: fade-in 200ms ease-out;
   }
 
   .slide-up {
@@ -392,19 +410,49 @@ html, body, #__next {
     animation: scale-in 200ms ease-out;
   }
 
+  .pulse-glow {
+    animation: pulse-glow 2s infinite;
+  }
+
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+
   .slide-in-from-bottom-4 {
     animation: slide-up 250ms ease-out;
   }
 
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 
-  /* Page transition wrapper */
-  .page-transition {
-    @apply animate-in fade-in duration-250;
+  html {
+    scroll-behavior: auto;
   }
+
+  .animate-shimmer,
+  .animate-pulse,
+  .pulse-glow,
+  .float {
+    animation: none;
+  }
+}
+
+/* Page transition wrapper */
+.page-transition {
+  @apply animate-in fade-in duration-300;
+}
 
   /* Status badge colors - refined */
   .badge-success {
