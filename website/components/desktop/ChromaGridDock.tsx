@@ -51,7 +51,8 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   const setX = useRef<SetterFn | null>(null);
   const setY = useRef<SetterFn | null>(null);
   const pos = useRef({ x: 0, y: 0 });
-  const { windows } = useDesktopStore();
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { windows, dock, setDockVisibility, setDockAutoHide, addDockItem, openWindow, focusWindow, minimizeWindow, restoreWindow, closeWindow, selectDesktopIcon } = useDesktopStore();
 
   // Convert apps to chroma items
   const registryApps = getActiveApps();
@@ -123,7 +124,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
       hideTimeoutRef.current = null;
     }
     setDockVisibility(true);
-  }, [setDockVisibility, autoHide]);
+  }, [setDockVisibility, autoHide, setIsHovering]);
 
   // Ensure dock is visible on mount
   useEffect(() => {
