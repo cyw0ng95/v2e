@@ -74,12 +74,12 @@ gantt
 
 | Phase | Cost | Cumulative | % of Total |
 |-------|------|------------|------------|
-| Phase 1: Core Infrastructure | $1,720 | $1,720 | 13.7% |
-| Phase 2: Window System | $2,600 | $4,320 | 20.8% |
-| Phase 3: Dock & Quick Launch | $2,354 | $6,674 | 18.8% |
-| Phase 4: Content Integration | $3,440 | $10,114 | 27.5% |
-| Phase 5: Polish & Launch | $2,410 | $12,524 | 19.2% |
-| **Total** | **$12,524** | | **100%** |
+| Phase 1: Core Infrastructure | $1,720 | $1,720 | 11.7% |
+| Phase 2: Window System | $4,820 | $6,540 | 33.0% |
+| Phase 3: Dock & Quick Launch | $2,354 | $8,894 | 16.1% |
+| Phase 4: Content Integration | $3,440 | $12,334 | 23.5% |
+| Phase 5: Polish & Launch | $3,240 | $15,574 | 20.7% |
+| **Total** | **$15,574** | | **100%** |
 
 ### Risk Summary
 
@@ -303,13 +303,19 @@ Implement complete window management with drag, resize, and animations.
 ### Cost Estimate
 | Task | Hours | Rate (2025-2026) | Cost |
 |------|-------|------------------|------|
-| Window Components | 12 | $55/hr | $660 |
-| Window Logic | 16 | $65/hr | $1,040 |
-| Window Animations | 8 | $60/hr | $480 |
-| State Persistence | 6 | $58/hr | $348 |
-| Desktop Integration | 6 | $58/hr | $348 |
-| Type Definitions | 2 | $60/hr | $120 |
-| **Total** | **52** | | **$2,996** |
+| Window Components | 14 | $70/hr | $980 |
+| Window Logic | 18 | $85/hr | $1,530 |
+| Window Animations | 10 | $80/hr | $800 |
+| State Persistence | 8 | $70/hr | $560 |
+| Desktop Integration | 8 | $70/hr | $560 |
+| Testing & QA | 6 | $65/hr | $390 |
+| **Total** | **64** | | **$4,820** |
+
+**Rate Notes (2025-2026 Market Rates):**
+- Senior Frontend Developer: $75-95/hr (complex window logic, state management)
+- Mid-level Frontend Developer: $55-75/hr (component implementation)
+- Animation Specialist: $70-90/hr (Framer Motion, CSS animations)
+- QA Engineer: $60-80/hr (performance testing, cross-browser)
 
 ### Dependencies
 
@@ -376,10 +382,19 @@ stateDiagram-v2
 | Menu Bar | 2000-2009 | Always on top, contains search and theme controls |
 | Quick Launch Modal | 1500-1599 | When open, overlays everything except menu bar |
 | Context Menu | 1000-1099 | Right-click menus, positioned at cursor |
-| Focused Window | Base + 100 | Active window, increments on each focus | `max(zIndex of all windows) + 100` |
+| Focused Window | Base + 100 | Active window, calculated as `max(zIndex of all windows) + 100` |
+| Inactive Windows | 100-999 | All other open windows, incremented on each focus |
 | Dock | 50 | Bottom dock, always below windows |
 | Desktop Icons | 10 | Desktop icon layer, lowest UI element |
 | Desktop Wallpaper | 0 | Background gradient, bottom layer |
+
+**Z-Index Assignment Algorithm:**
+```
+1. On window focus: window.zIndex = max(allWindowZIndices) + 100
+2. Cap maximum window z-index at 999 to prevent overflow to context menu layer
+3. Reset z-index to base (100 + windowOrder) when minimized
+4. Reclaim unused z-indices during garbage collection (every 10 focus changes)
+```
 
 #### Event Handling Flow
 
@@ -411,15 +426,20 @@ graph TD
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| Window drag performance on low-end devices | Medium | Medium | Use requestAnimationFrame for updates; throttle mouse events; test on 4GB RAM devices |
-| Resize handle overlapping with iframe content | Medium | Medium | Use CSS-only resize handles with `resize: both` to avoid iframe layout thrashing |
-| Focus state synchronization bugs | High | Medium | Implement focused-window stack pattern; use atomic z-index updates |
+| Window drag performance on low-end devices | Medium | Medium | Use requestAnimationFrame for updates; throttle mouse events; use `transform` instead of `top/left` |
+| Resize handle overlapping with iframe content | Medium | Medium | Use CSS-only resize handles with `resize: both` to avoid iframe layout thrashing; increase hit area |
+| Focus state synchronization bugs | High | Medium | Implement focused-window stack pattern; use atomic z-index updates; debounce focus events (50ms) |
 | Z-index conflicts with third-party libraries | Medium | Low | Reserve specific ranges (100-9999) for v2e; use React Portal context |
 | Window close animation not triggering | Low | Medium | Use animation cleanup properly; ensure promise resolution before state update |
-| Minimize genie effect browser compatibility | Medium | Medium | Test CSS animations in Safari; provide fallback to simple fade for older browsers |
-| Window state persistence corruption | Medium | Low | Implement schema validation on load; provide "reset desktop" option; backup state before save |
+| Minimize genie effect browser compatibility | Medium | Medium | Test CSS animations in Safari; provide fallback to simple scale/fade for older browsers |
+| Window state persistence corruption | Medium | Low | Implement Zod schema validation on load; provide "reset desktop" option; version state schema |
 | Cascade positioning conflicts with viewport | Low | Medium | Calculate available viewport area; implement "smart positioning" with collision detection |
 | GPU memory leak with multiple windows | High | Low | Profile with Chrome DevTools; implement window content cleanup on unmount; limit concurrent windows to 10 |
+| Drag performance on high-DPI/Retina screens | High | Medium | Enable GPU acceleration with `will-change: transform`; use `transform3d` for hardware acceleration |
+| Race condition in rapid window operations | Medium | Low | Use Zustand immer middleware; implement operation queue; single source of truth in store |
+| Browser zoom change during drag/resize | Low | Low | Listen to `resize` event; cancel ongoing operations; recalculate bounds |
+| Window bounds outside viewport after restore | Medium | High | Implement bounds checking on restore; clamp to visible area with 20px margin; handle monitor disconnect |
+| Framer Motion bundle size impact | Low | Medium | Tree-shake unused features; use `m` component for minimal footprint; consider CSS alternative for simple animations |
 
 ### Acceptance Criteria
 
@@ -468,6 +488,18 @@ graph TD
 - [ ] Storybook stories created for window components (test: AppWindow, WindowControls, WindowResize stories exist)
 - [ ] Window state machine is unit tested (test: window-state-fsm.test.ts has >80% coverage)
 - [ ] Z-index management uses constants (test: Z_INDEX constants defined and used consistently)
+
+#### Edge Case Tests
+- [ ] Rapid open/close (10 clicks in 2 seconds) handles gracefully without visual artifacts
+- [ ] Drag window to screen edge stops at boundary (no negative coordinates, no partial off-screen)
+- [ ] Resize window to minimum size stops at constraint (no smaller than 400x300)
+- [ ] Browser zoom (125%, 150%) handled correctly (window positions recalculated)
+- [ ] Window opened during drag operation does not cause z-index race
+- [ ] Multiple windows maintain correct z-index after closing middle window
+- [ ] Window with iframe content handles focus correctly (iframe clicks bubble to desktop)
+- [ ] Window state survives browser back/forward navigation
+- [ ] Monitor disconnect during session (saved position off-screen) handled on restore
+- [ ] Memory usage stable after opening/closing 20 windows (test: Chrome DevTools Memory profiler, <5MB delta)
 
 ---
 
@@ -1162,11 +1194,11 @@ This phase requires the following from previous phases:
 | Phase | Hours | Avg Rate | Cost |
 |-------|-------|----------|------|
 | Phase 1: Core Infrastructure | 30 | $57/hr | $1,720 |
-| Phase 2: Window System | 48 | $54/hr | $2,600 |
+| Phase 2: Window System | 64 | $75/hr | $4,820 |
 | Phase 3: Dock & Quick Launch | 40 | $59/hr | $2,354 |
 | Phase 4: Content Integration | 54 | $64/hr | $3,440 |
-| Phase 5: Polish & Launch | 42 | $57/hr | $2,410 |
-| **Total** | **214** | | **$12,524** |
+| Phase 5: Polish & Launch | 52 | $62/hr | $3,240 |
+| **Total** | **240** | | **$15,574** |
 
 ### Cost Breakdown by Role
 
