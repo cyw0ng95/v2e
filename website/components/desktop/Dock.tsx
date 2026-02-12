@@ -24,19 +24,19 @@ import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 import {
   Star,
   Bug,
-  Crosshairs,
-  Gauge,
-  Sitemap,
+  Crosshair,
+  Activity,
+  GitGraph,
   BookOpen,
-  Bolt,
-  Pin,
-  Files,
-  Sparkle,
-  Dial,
+  Zap,
+  Bookmark,
+  Folder,
+  Sparkles,
+  Calculator,
   Grid,
-  TabOpen,
+  Square,
   Heart,
-} from 'nucleo-glass-icons/react';
+} from 'lucide-react';
 
 /**
  * Adjust color brightness for gradient effect
@@ -58,13 +58,13 @@ function getAppGlassIcon(appId: string): React.ComponentType<{ size?: number; cl
   const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string; stopColor1?: string; stopColor2?: string }>> = {
     cve: Star,           // Shield alternative
     cwe: Bug,            // Direct match
-    capec: Crosshairs,    // Target alternative
-    attack: Crosshairs,   // Crosshair alternative
-    cvss: Dial,           // Calculator alternative
-    glc: Sitemap,        // Git-graph alternative
+    capec: Crosshair,     // Target icon
+    attack: Crosshair,     // Crosshair icon
+    cvss: Calculator,     // Calculator
+    glc: GitGraph,        // Git-graph alternative
     mcards: BookOpen,     // Library alternative
-    etl: Bolt,           // Activity alternative
-    bookmarks: TabOpen,   // Bookmark alternative
+    etl: Activity,        // Activity alternative
+    bookmarks: Bookmark,   // Bookmark icon
   };
 
   return iconMap[appId] || Star; // Default to Star if no match
