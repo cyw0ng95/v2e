@@ -9,6 +9,7 @@ import { MenuBar } from '@/components/desktop/MenuBar';
 import { DesktopArea } from '@/components/desktop/DesktopArea';
 import { DockDraggable } from '@/components/desktop/DockDraggable';
 import { QuickLaunchModal, useQuickLaunchShortcut } from '@/components/desktop/QuickLaunchModal';
+import { WallpaperSelector } from '@/components/desktop/WallpaperSelector';
 import { WindowManager } from '@/components/desktop/WindowManager';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { DndContext } from '@dnd-kit/core';
