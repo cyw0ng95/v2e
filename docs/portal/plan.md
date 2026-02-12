@@ -16,16 +16,15 @@
 5. [Phase 3: Dock & Quick Launch](#phase-3-dock--quick-launch)
 6. [Phase 4: Content Integration](#phase-4-content-integration)
 7. [Phase 5: Polish & Launch](#phase-5-polish--launch)
-8. [Team Composition](#team-composition)
-9. [Cost Estimates](#cost-estimates)
-10. [Acceptance Criteria](#acceptance-criteria)
-11. [Risk Management](#risk-management)
+8. [Code Size Estimates (LoC)](#code-size-estimates-loc)
+9. [Multi-Agent Collaboration Strategy](#multi-agent-collaboration-strategy)
+10. [Risk Management](#risk-management)
 
 ---
 
 ## 1. Overview
 
-This document outlines the implementation plan for the v2e Portal - a macOS Desktop-inspired web application portal. The implementation is divided into 5 phases, each with specific deliverables, cost estimates, and acceptance criteria.
+This document outlines the implementation plan for the v2e Portal - a macOS Desktop-inspired web application portal. The implementation is divided into 5 phases, each with specific deliverables, LoC estimates, and acceptance criteria.
 
 ### Success Criteria
 
@@ -40,7 +39,7 @@ This document outlines the implementation plan for the v2e Portal - a macOS Desk
 
 ### Project Scope
 
-The v2e Portal is a desktop-only (1024px+) web application that recreates the macOS desktop experience in a browser. The portal features a complete window management system with drag, resize, and minimize/maximize capabilities, a functional dock with quick launch, and seamless integration of 9 existing security tools (CVE, CWE, CAPEC, ATT&CK, CVSS, GLC, Mcards, ETL Monitor, and Bookmarks). The implementation spans 5 phases over 29-41 days with a budget of approximately $12,524.
+The v2e Portal is a desktop-only (1024px+) web application that recreates the macOS desktop experience in a browser. The portal features a complete window management system with drag, resize, and minimize/maximize capabilities, a functional dock with quick launch, and seamless integration of 9 existing security tools (CVE, CWE, CAPEC, ATT&CK, CVSS, GLC, Mcards, ETL Monitor, and Bookmarks). The implementation spans 5 phases totaling approximately 5,000 LoC (2,700 implementation, 1,600 tests, 700 types) over 21-41 days depending on parallelization strategy.
 
 ### Critical Path
 
@@ -70,16 +69,18 @@ gantt
 | Phase 4 | Content Integration Complete | Day 34 | All 9 apps load in windows, preferences persist, app registry complete |
 | Phase 5 | Production Launch | Day 41 | Lighthouse > 90, WCAG AA compliant, deployed |
 
-### Budget Summary
+### Size Summary
 
-| Phase | Cost | Cumulative | % of Total |
-|-------|------|------------|------------|
-| Phase 1: Core Infrastructure | $1,720 | $1,720 | 11.7% |
-| Phase 2: Window System | $4,820 | $6,540 | 33.0% |
-| Phase 3: Dock & Quick Launch | $2,354 | $8,894 | 16.1% |
-| Phase 4: Content Integration | $3,440 | $12,334 | 23.5% |
-| Phase 5: Polish & Launch | $3,240 | $15,574 | 20.7% |
-| **Total** | **$15,574** | | **100%** |
+| Phase | Implementation LoC | Test LoC | Total LoC | % of Total |
+|-------|-------------------|------------|-----------|------------|
+| Phase 1: Core Infrastructure | 350 | 200 | 700 | 14.0% |
+| Phase 2: Window System | 850 | 500 | 1,550 | 31.0% |
+| Phase 3: Dock & Quick Launch | 500 | 300 | 920 | 18.4% |
+| Phase 4: Content Integration | 600 | 350 | 1,100 | 22.0% |
+| Phase 5: Polish & Launch | 400 | 250 | 730 | 14.6% |
+| **Total** | **2,700** | **1,600** | **5,000** | **100%** |
+
+**See [Code Size Estimates (LoC)](#code-size-estimates-loc) section for detailed breakdown.**
 
 ### Risk Summary
 
@@ -174,17 +175,6 @@ Establish the foundational desktop environment with basic layout and state manag
 - Basic dock renders with default items
 - Menu bar with placeholder controls
 - State persists to localStorage
-
-### Cost Estimate
-| Task | Hours | Rate (2025-2026) | Cost |
-|------|-------|------------------|------|
-| Project Structure | 2 | $55/hr | $110 |
-| State Management | 6 | $65/hr | $390 |
-| Desktop Layout | 8 | $55/hr | $440 |
-| Desktop Icon | 6 | $55/hr | $330 |
-| Basic Dock | 6 | $55/hr | $330 |
-| Type Definitions | 2 | $60/hr | $120 |
-| **Total** | **30** | | **$1,720** |
 
 ### Dependencies
 
@@ -299,23 +289,6 @@ Implement complete window management with drag, resize, and animations.
 - Window controls work correctly
 - Smooth animations for all operations
 - Window state persists
-
-### Cost Estimate
-| Task | Hours | Rate (2025-2026) | Cost |
-|------|-------|------------------|------|
-| Window Components | 14 | $70/hr | $980 |
-| Window Logic | 18 | $85/hr | $1,530 |
-| Window Animations | 10 | $80/hr | $800 |
-| State Persistence | 8 | $70/hr | $560 |
-| Desktop Integration | 8 | $70/hr | $560 |
-| Testing & QA | 6 | $65/hr | $390 |
-| **Total** | **64** | | **$4,820** |
-
-**Rate Notes (2025-2026 Market Rates):**
-- Senior Frontend Developer: $75-95/hr (complex window logic, state management)
-- Mid-level Frontend Developer: $55-75/hr (component implementation)
-- Animation Specialist: $70-90/hr (Framer Motion, CSS animations)
-- QA Engineer: $60-80/hr (performance testing, cross-browser)
 
 ### Dependencies
 
@@ -547,16 +520,6 @@ Complete dock functionality with quick launch modal and search.
 - Context menus work everywhere
 - Dock state persists
 
-### Cost Estimate
-| Task | Hours | Rate (2025-2026) | Cost |
-|------|-------|------------------|------|
-| Dock Interactions | 10 | $58/hr | $580 |
-| Quick Launch | 12 | $62/hr | $744 |
-| Context Menus | 10 | $58/hr | $580 |
-| Dock State Management | 6 | $55/hr | $330 |
-| Type Definitions | 2 | $60/hr | $120 |
-| **Total** | **40** | | **$2,354** |
-
 ### Dependencies
 
 This phase requires the following to be in place before starting:
@@ -737,17 +700,6 @@ Integrate existing apps as window content and complete desktop functionality.
 - Desktop layout saves between sessions
 - Widgets display correctly
 - Theme switching works
-
-### Cost Estimate
-| Task | Hours | Rate (2025-2026) | Cost |
-|------|-------|------------------|------|
-| App Registry | 8 | $65/hr | $520 |
-| Content Loading | 16 | $70/hr | $1,120 |
-| Desktop Widgets | 8 | $60/hr | $480 |
-| Wallpaper System | 6 | $60/hr | $360 |
-| Theme Integration | 6 | $60/hr | $360 |
-| App Integration Testing | 10 | $60/hr | $600 |
-| **Total** | **54** | | **$3,440** |
 
 ### Change Requests
 
@@ -979,24 +931,6 @@ Final polish, optimization, testing, and deployment.
 - Consider adding Playwright automated E2E tests (requires additional 8-12 hours)
 - Consider adding performance monitoring in production (e.g., Web Vitals tracking)
 
-### Cost Estimate
-
-| Task | Hours | Rate | Cost |
-|------|-------|------|------|
-| Performance Optimization | 12 | $70/hr | $840 |
-| Browser Testing | 10 | $55/hr | $550 |
-| Accessibility Audit | 12 | $65/hr | $780 |
-| Documentation | 10 | $55/hr | $550 |
-| Deployment & CI/CD | 8 | $65/hr | $520 |
-| **Total** | **52** | | **$3,240** |
-
-**Rate Notes (2025-2026 Market Rates):**
-- Senior Performance Engineer: $70/hr (increased from $65/hr)
-- QA/Automation Engineer: $55/hr (specialized browser testing)
-- Accessibility Specialist: $65/hr (WCAG expertise premium)
-- Technical Writer: $55/hr
-- DevOps Engineer: $65/hr
-
 ### Acceptance Criteria
 
 #### Performance Benchmarks
@@ -1138,52 +1072,6 @@ This phase requires the following from previous phases:
 - Accessibility audit may require significant UI changes
 - Browser testing may reveal platform-specific issues (especially Safari)
 - Documentation scope may expand beyond estimates
-
----
-
-## Team Composition
-
-### Recommended Team
-
-#### Lead Developer (Frontend)
-- **Role**: Architecture, core components, state management
-- **Hours**: ~120 hours
-- **Rate**: $60-65/hr
-- **Responsibilities**:
-  - Desktop architecture decisions
-  - Window management system
-  - State management implementation
-  - Performance optimization
-
-#### Frontend Developer
-- **Role**: Component implementation, UI development
-- **Hours**: ~100 hours
-- **Rate**: $50-55/hr
-- **Responsibilities**:
-  - Desktop components (menu bar, dock, icons)
-  - Window components
-  - Quick launch modal
-  - Context menus
-
-#### UX/UI Developer
-- **Role**: Animations, styling, polish
-- **Hours**: ~50 hours
-- **Rate**: $55/hr
-- **Responsibilities**:
-  - Animation implementation
-  - Visual styling
-  - Responsive design
-  - Dark/light themes
-
-#### QA Engineer
-- **Role**: Testing, accessibility, browser compatibility
-- **Hours**: ~40 hours
-- **Rate**: $50/hr
-- **Responsibilities**:
-  - Cross-browser testing
-  - Accessibility audit
-  - Performance testing
-  - Bug verification
 
 ---
 
@@ -1510,100 +1398,6 @@ Agent-4: Animations (250 LoC)
 - [ ] Integration tests passing
 - [ ] Code review complete
 - [ ] Ready to proceed to next phase
-
-### Cost Breakdown by Role
-
-| Role | Hours | Rate | Cost |
-|------|-------|------|------|
-| Lead Developer | 120 | $60/hr | $7,200 |
-| Frontend Developer | 100 | $50/hr | $5,000 |
-| UX/UI Developer | 50 | $55/hr | $2,750 |
-| QA Engineer | 40 | $50/hr | $2,000 |
-| **Total** | **310** | | **$16,950** |
-
-### Estimated Timeline
-
-| Phase | Duration | Start | End |
-|-------|----------|-------|-----|
-| Phase 1 | 5-7 days | Week 1 | Week 1-2 |
-| Phase 2 | 7-10 days | Week 2 | Week 3-4 |
-| Phase 3 | 5-7 days | Week 4 | Week 5 |
-| Phase 4 | 7-10 days | Week 5 | Week 7 |
-| Phase 5 | 5-7 days | Week 7 | Week 8-9 |
-| **Total** | **29-41 days** | | |
-
----
-
-## Acceptance Criteria
-
-### Phase 1 Acceptance
-- [x] Desktop loads at `/desktop` route - **COMPLETED**: Basic desktop page renders, structure in place
-- [x] Icons visible and selectable - **COMPLETED**: Icon component built with selection state
-- [x] State persists to localStorage - **COMPLETED**: Zustand store with persist middleware configured
-- [x] Dock renders with default items - **COMPLETED**: Dock component with glass morphism styling
-- [x] Menu bar with placeholder controls - **COMPLETED**: Menu bar at 28px height with placeholder elements
-
-**Remaining Work**: Type definitions refinement, performance optimization, comprehensive testing
-
-### Phase 2 Acceptance
-- [ ] Windows open with animation
-- [ ] Windows draggable by titlebar
-- [ ] Windows resizable from edges
-- [ ] Close/min/max buttons work
-- [ ] Window positions persist
-- [ ] Animations at 60fps
-
-### Phase 3 Acceptance
-- [ ] Dock launches apps on click
-- [ ] Dock items reorderable
-- [ ] Cmd+K opens quick launch
-- [ ] Search filters apps
-- [ ] Context menus work
-
-### Phase 4 Acceptance
-- [ ] All apps open in windows
-- [ ] Window content loads
-- [ ] Desktop widgets display
-- [ ] Wallpaper changes work
-- [ ] Theme switching works
-
-### Phase 5 Acceptance
-
-#### Performance Benchmarks
-- [ ] Lighthouse Performance score > 90
-- [ ] Lighthouse Accessibility score > 90
-- [ ] Lighthouse Best Practices score > 90
-- [ ] FCP < 1.5s, LCP < 2.5s, CLS < 0.1
-- [ ] TTI < 3.0s, TBT < 200ms
-- [ ] Bundle size (gzipped) < 300KB
-- [ ] Animations maintain 60fps
-
-#### Accessibility Requirements
-- [ ] WCAG 2.1 AA compliant (all criteria)
-- [ ] Keyboard navigation fully functional
-- [ ] Screen reader tested (NVDA, JAWS, VoiceOver)
-- [ ] Color contrast ratios met (4.5:1 normal, 3:1 large)
-- [ ] ARIA labels on all icons and controls
-
-#### Browser Compatibility
-- [ ] Chrome 120+ tested and working
-- [ ] Firefox 121+ tested and working
-- [ ] Safari 17+ tested and working
-- [ ] Edge 120+ tested and working
-
-#### Documentation Deliverables
-- [ ] User guide complete
-- [ ] Component documentation complete
-- [ ] Deployment playbook written
-- [ ] API documentation for desktop hooks
-- [ ] Troubleshooting guide created
-
-#### Production Readiness
-- [ ] Deployed to production environment
-- [ ] Smoke tests passing
-- [ ] Monitoring configured
-- [ ] Error tracking enabled
-- [ ] Rollback procedure tested
 
 ---
 
