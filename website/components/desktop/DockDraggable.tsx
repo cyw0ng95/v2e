@@ -14,6 +14,7 @@ import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
+import { WindowThumbnail } from './MinimizeThumbnails';
 
 /**
  * Dock item with drag support
@@ -245,11 +246,22 @@ export function DockDraggable() {
               isIndicator={item.isIndicator}
               index={index}
               isDragging={draggedIndex === index}
+              isMinimized={minimizedWindows.some(w => w.appId === item.app.id)}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             />
           ))}
+        </div>
+
+        {/* Minimized window thumbnails */}
+        {minimizedWindows.map(win => (
+          <WindowThumbnail
+            key={win.id}
+            window={win}
+            onRestore={() => restoreWindow(win.id)}
+          />
+        ))}
         </div>
       </nav>
 
