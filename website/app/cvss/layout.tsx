@@ -6,7 +6,7 @@ import React from 'react';
  */
 
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, GitHub } from 'lucide-react';
+import { ArrowLeft, BookOpen, Github } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function CVSSLayout({
@@ -77,10 +77,10 @@ export default function CVSSLayout({
                   'rounded-lg text-sm font-medium transition-all duration-200',
                   'bg-slate-900 text-white hover:bg-slate-800'
                 )}
-                aria-label="View source code on GitHub (opens in new tab)"
+                aria-label="View source code on Github (opens in new tab)"
               >
-                <GitHub className="h-4 w-4" />
-                <span className="hidden sm:inline">GitHub</span>
+                <Github className="h-4 w-4" />
+                <span className="hidden sm:inline">Github</span>
               </a>
             </div>
           </div>

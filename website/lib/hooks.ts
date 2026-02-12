@@ -1195,9 +1195,6 @@ export function useASVSList(params: { offset?: number; limit?: number; chapter?:
     };
   }, [offset, limit, chapter, level, isMounted, setStateIfMounted]);
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit, chapter, level]);
 
   return { data, isLoading, error };
 }

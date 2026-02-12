@@ -128,42 +128,6 @@ interface DesktopActions {
   // Global
   resetDesktop: () => void;
 }
-  // Desktop Icons
-  addDesktopIcon: (icon: Omit<DesktopIcon, 'id'>) => void;
-  removeDesktopIcon: (id: string) => void;
-  selectDesktopIcon: (id: string) => void;
-  updateDesktopIconPosition: (id: string, position: { x: number; y: number }) => void;
-
-  // Windows
-  openWindow: (config: Omit<WindowConfig, 'id' | 'zIndex'>) => void;
-  closeWindow: (id: string) => void;
-  focusWindow: (id: string) => void;
-  minimizeWindow: (id: string) => void;
-  maximizeWindow: (id: string) => void;
-  restoreWindow: (id: string) => void;
-  updateWindowPosition: (id: string, position: { x: number; y: number }) => void;
-  updateWindowSize: (id: string, size: { width: number; height: number }) => void;
-
-  // Dock
-  addDockItem: (item: Omit<DockItem, 'isRunning'>) => void;
-  removeDockItem: (appId: string) => void;
-  updateDockItemRunning: (appId: string, isRunning: boolean) => void;
-  setDockVisibility: (isVisible: boolean) => void;
-  setDockSize: (size: 'small' | 'medium' | 'large') => void;
-
-  // Theme
-  setThemeMode: (mode: 'light' | 'dark') => void;
-  setWallpaper: (wallpaper: string) => void;
-
-  // Widgets
-  addWidget: (widget: Omit<WidgetConfig, 'id'>) => void;
-  removeWidget: (id: string) => void;
-  updateWidgetPosition: (id: string, position: { x: number; y: number }) => void;
-  setWidgetVisibility: (id: string, isVisible: boolean) => void;
-
-  // Global
-  resetDesktop: () => void;
-}
 
 type DesktopStore = DesktopState & DesktopActions & {
   transitionWindow: (id: string, fromState: WindowState, toState: WindowState) => void;
@@ -454,3 +418,6 @@ export const selectFocusedWindow = (state: DesktopState): WindowConfig | undefin
 export const selectRunningDockItems = (state: DesktopState): DockItem[] => {
   return state.dock.items.filter(item => item.isRunning);
 };
+
+// Export the store hook
+export { useDesktopStore };

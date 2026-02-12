@@ -125,13 +125,16 @@ function DraggableDockItem({ app, isRunning, isIndicator, index, isDragging, onD
  * Dock component with drag-to-reorder
  */
 export function DockDraggable() {
-  const { dock, windows, setDockVisibility, updateDockItems } = useDesktopStore();
+  const { dock, windows, setDockVisibility, updateDockItems, minimizeWindow, restoreWindow } = useDesktopStore();
   const [isHovering, setIsHovering] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const contextMenu = useContextMenu();
+
+  // Filter minimized windows
+  const minimizedWindows = Object.values(windows).filter(w => w.isMinimized);
 
   const sizeClasses = {
     small: 'h-12',
@@ -246,22 +249,20 @@ export function DockDraggable() {
               isIndicator={item.isIndicator}
               index={index}
               isDragging={draggedIndex === index}
-              isMinimized={minimizedWindows.some(w => w.appId === item.app.id)}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             />
           ))}
-        </div>
 
-        {/* Minimized window thumbnails */}
-        {minimizedWindows.map(win => (
-          <WindowThumbnail
-            key={win.id}
-            window={win}
-            onRestore={() => restoreWindow(win.id)}
-          />
-        ))}
+          {/* Minimized window thumbnails */}
+          {minimizedWindows.map(win => (
+            <WindowThumbnail
+              key={win.id}
+              window={win}
+              onRestore={() => restoreWindow(win.id)}
+            />
+          ))}
         </div>
       </nav>
 

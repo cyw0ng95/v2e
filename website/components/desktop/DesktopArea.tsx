@@ -142,7 +142,6 @@ export function DesktopArea() {
             <ClockWidget key={widget.id} widget={widget} />
           ) : null
         ))}
-      </div>
       </main>
 
       {/* Global context menu */}

@@ -92,10 +92,11 @@ function WindowThumbnail({ window, onRestore }: WindowThumbnailProps) {
           Hover to preview
         </div>
       </motion.div>
-      </div>
     </div>
   );
 }
+
+export { WindowThumbnail };
 
 /**
  * Enhanced dock with thumbnails component
@@ -124,6 +125,7 @@ export function DockWithThumbnails({ className = '' }: DockWithThumbnailsProps) 
       {/* Regular dock items */}
       {dock.items.map(item => {
         const isAppMinimized = minimizedWindows.some(w => w.appId === item.appId);
+        const minimizedWindow = minimizedWindows.find(w => w.appId === item.appId);
 
         return (
           <div key={item.appId} className="relative flex flex-col items-center group">
@@ -131,24 +133,19 @@ export function DockWithThumbnails({ className = '' }: DockWithThumbnailsProps) 
             <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500" />
 
             {/* Minimized window thumbnail */}
-            {minimizedWindows.map(win => {
-              if (win.appId === item.appId) {
-                return (
-                  <WindowThumbnail
-                    key={win.id}
-                    window={win}
-                    onRestore={() => {
-                      const { restoreWindow } = useDesktopStore.getState();
-                      restoreWindow(win.id);
-                    }}
-                  />
-                );
-              }
-            })?.[0] // Show first minimized window
-          )}
+            {minimizedWindow && (
+              <WindowThumbnail
+                key={minimizedWindow.id}
+                window={minimizedWindow}
+                onRestore={() => {
+                  const { restoreWindow } = useDesktopStore.getState();
+                  restoreWindow(minimizedWindow.id);
+                }}
+              />
+            )}
           </div>
-        </div>
-      )}
+        );
+      })}
     </nav>
   );
 }

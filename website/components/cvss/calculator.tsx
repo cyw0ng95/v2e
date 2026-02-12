@@ -137,8 +137,10 @@ export default function CVSSCalculator() {
   const metadata = getCVSSMetadata(state.version);
 
   const handleCopyVector = async () => {
-    if (state.scores?.vectorString) {
-      await navigator.clipboard.writeText(state.scores.vectorString);
+    // Check if vectorString exists (for CVSS 4.x which has vector strings)
+    const vectorString = (state.scores as any)?.vectorString;
+    if (vectorString) {
+      await navigator.clipboard.writeText(vectorString);
       setCopiedVector(true);
       setTimeout(() => setCopiedVector(false), 2000);
     }
@@ -343,7 +345,7 @@ export default function CVSSCalculator() {
 
           <div className="lg:col-span-1 space-y-6">
             <section className={`rounded-2xl shadow-lg p-8 border-2 ${
-              state.scores
+              (state.scores && 'finalSeverity' in state.scores && state.scores.finalSeverity)
                 ? severityColors[state.scores.finalSeverity]
                 : 'bg-slate-100 border-slate-200'
             }`}>

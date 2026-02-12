@@ -4486,6 +4486,8 @@ export interface CVSS3ScoreBreakdown {
   temporalSeverity?: CVSSSeverity;
   /** Environmental severity */
   environmentalSeverity?: CVSSSeverity;
+  /** Final severity (computed from sub-scores) */
+  finalSeverity?: CVSSSeverity;
 }
 
 // ============================================================================
@@ -4691,6 +4693,10 @@ export interface CVSSCalculatorState {
   scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
   /** Generated vector string */
   vectorString: string;
+  /** Show/hide state for metric sections */
+  showTemporal?: boolean;
+  showExploitability?: boolean;
+  showEnvironmental?: boolean;
 }
 
 /**
