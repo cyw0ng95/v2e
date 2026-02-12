@@ -641,30 +641,30 @@ graph TD
 ### Acceptance Criteria
 
 #### Functional Tests
-- [ ] Dock items launch apps on single click (verify: window opens with animation)
+- [x] Dock items launch apps on single click (verify: window opens with animation)
 - [ ] Dock items can be reordered by drag (test: drag item A to position B, verify order persists after reload)
-- [ ] Dock active indicator dot shows for running apps (verify: dot appears below icon)
-- [ ] Cmd+K opens quick launch modal (test: press keyboard combo, modal appears centered)
-- [ ] Cmd+K closes quick launch modal when already open (test: toggle behavior)
-- [ ] Search filters apps in real-time (test: type "cve", verify only matching apps shown)
-- [ ] Search is case-insensitive (test: "CVE", "cve", "Cve" all match)
-- [ ] Arrow keys navigate app list in quick launch (test: up/down moves selection)
-- [ ] Enter launches selected app (test: press Enter on selected item, window opens)
-- [ ] Escape closes quick launch modal (test: press Escape, modal closes)
-- [ ] Context menus appear on right-click (test: right-click dock item, menu appears at cursor)
-- [ ] Context menus close on outside click (test: click elsewhere, menu dismisses)
-- [ ] Dock state persists across sessions (verify: localStorage key `v2e-dock-state` exists)
-- [ ] Dock auto-hide works (test: move mouse away, dock hides; move to edge, dock reveals)
+- [x] Dock active indicator dot shows for running apps (verify: dot appears below icon)
+- [x] Cmd+K opens quick launch modal (test: press keyboard combo, modal appears centered)
+- [x] Cmd+K closes quick launch modal when already open (test: toggle behavior)
+- [x] Search filters apps in real-time (test: type "cve", verify only matching apps shown)
+- [x] Search is case-insensitive (test: "CVE", "cve", "Cve" all match)
+- [x] Arrow keys navigate app list in quick launch (test: up/down moves selection)
+- [x] Enter launches selected app (test: press Enter on selected item, window opens)
+- [x] Escape closes quick launch modal (test: press Escape, modal closes)
+- [x] Context menus appear on right-click (test: right-click dock item, menu appears at cursor)
+- [x] Context menus close on outside click (test: click elsewhere, menu dismisses)
+- [x] Dock state persists across sessions (verify: localStorage key `v2e-dock-state` exists)
+- [x] Dock auto-hide works (test: move mouse away, dock hides; move to edge, dock reveals)
 - [ ] Minimized window thumbnails show on dock hover (test: hover minimized app, see preview)
-- [ ] Dock size options work (test: change to small/medium/large, verify icon size changes)
-- [ ] Context menu positioning handles viewport edges (test: right-click near screen edge, menu flips inward)
+- [x] Dock size options work (test: change to small/medium/large, verify icon size changes)
+- [x] Context menu positioning handles viewport edges (test: right-click near screen edge, menu flips inward)
 
 #### Keyboard Shortcut Tests
-- [ ] Cmd+K does not conflict with browser dev tools (test: Chrome DevTools closed, verify shortcut works)
+- [x] Cmd+K does not conflict with browser dev tools (test: Chrome DevTools closed, verify shortcut works)
 - [ ] Tab focuses dock items sequentially (test: press Tab, verify focus ring moves)
 - [ ] Space/Enter activates focused dock item (test: focus item, press Space, app launches)
-- [ ] Escape closes all open menus/modals (test: open quick launch + context menu, Escape closes both)
-- [ ] Arrow keys navigate quick launch results (test: open quick launch, press ArrowDown, selection moves)
+- [x] Escape closes all open menus/modals (test: open quick launch + context menu, Escape closes both)
+- [x] Arrow keys navigate quick launch results (test: open quick launch, press ArrowDown, selection moves)
 
 #### Accessibility Tests
 - [ ] All dock items have aria-label (test: inspect with axe DevTools)
@@ -674,18 +674,18 @@ graph TD
 - [ ] Screen reader announces dock item states (test: "running", "not running")
 
 #### Performance Tests
-- [ ] Quick launch renders in < 100ms (test: measure from Cmd+K to visible)
-- [ ] Search filters 100+ apps in < 16ms (test: measure search input to result update)
+- [x] Quick launch renders in < 100ms (test: measure from Cmd+K to visible)
+- [x] Search filters 100+ apps in < 16ms (test: measure search input to result update)
 - [ ] Dock reorder animation runs at 60fps (test: use Chrome Performance panel)
-- [ ] Dock auto-hide animation is smooth (test: no jank during hide/reveal)
+- [x] Dock auto-hide animation is smooth (test: no jank during hide/reveal)
 
 #### Code Quality Tests
-- [ ] TypeScript compiles without errors
+- [x] TypeScript compiles without errors
 - [ ] ESLint passes with zero warnings
-- [ ] All dock components have default exports
+- [x] All dock components have default exports
 - [ ] Storybook stories created for Dock, QuickLaunch, ContextMenu
-- [ ] Keyboard shortcuts are centralized in one configuration file
-- [ ] Context menu items use type-safe enums
+- [x] Keyboard shortcuts are centralized in one configuration file
+- [x] Context menu items use type-safe enums
 
 ---
 
