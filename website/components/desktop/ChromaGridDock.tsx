@@ -1,8 +1,8 @@
 /**
- * v2e Portal - ChromaGrid Dock Component
+ * v2e Portal - ChromaGrid Dock Component (Windows Taskbar Style)
  *
- * Chromatic aberration grid dock using React Bits ChromaGrid pattern
- * Integrates with desktop store for window management
+ * Windows-style taskbar with chromatic aberration effect
+ * Running apps show green bar indicator
  */
 
 'use client';
@@ -13,7 +13,6 @@ import { Z_INDEX, WindowState } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
-import type { AppRegistryEntry } from '@/types/desktop';
 
 interface ChromaAppItem {
   id: string;
@@ -24,10 +23,6 @@ interface ChromaAppItem {
 
 interface ChromaGridDockProps {
   className?: string;
-  radius?: number;
-  damping?: number;
-  fadeOut?: number;
-  ease?: string;
   autoHide?: boolean;
   autoHideDelay?: number;
 }
@@ -48,10 +43,6 @@ const iconGradients: Record<string, { gradient: string; borderColor: string }> =
 
 const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   className = '',
-  radius = 250,
-  damping = 0.35,
-  fadeOut = 0.4,
-  ease = 'power2.out',
   autoHide = false,
   autoHideDelay = 3000,
 }) => {
@@ -98,8 +89,8 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
     gsap.to(pos.current, {
       x,
       y,
-      duration: damping,
-      ease,
+      duration: 0.35,
+      ease: 'power2.out',
       onUpdate: () => {
         setX.current?.(pos.current.x);
         setY.current?.(pos.current.y);
@@ -117,7 +108,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   const handleLeave = () => {
     gsap.to(fadeRef.current, {
       opacity: 1,
-      duration: fadeOut,
+      duration: 0.4,
       overwrite: true
     });
 
@@ -207,56 +198,54 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
         onMouseEnter={handleMouseEnter}
-        className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 ${className}`}
-        style={
-          {
-            '--r': `${radius}px`,
-            '--x': '50%',
-            '--y': '50%',
-            zIndex: Z_INDEX.DOCK,
-            maxWidth: '95vw',
-          } as React.CSSProperties
-        }
+        className={`fixed bottom-0 left-0 right-0 h-14 bg-white/10 backdrop-blur-md border-t border-white/20 rounded-xl ${className}`}
+        style={{
+          '--x': '50%',
+          '--y': '50%',
+          zIndex: Z_INDEX.DOCK,
+        } as React.CSSProperties
       >
-        <div className="relative w-full h-full flex flex-wrap justify-center items-start gap-3">
+        {/* Taskbar-style horizontal bar */}
+        <div className="relative w-full h-full flex items-center px-2 gap-1">
           {items.map((item) => {
             const isRunning = runningAppIds.has(item.id);
 
             return (
-              <article
+              <div
                 key={item.id}
                 onClick={() => handleAppClick(item)}
                 onContextMenu={(e) => handleContextMenu(e, item.id)}
-                className="group relative flex flex-col items-center justify-center px-4 py-3 rounded-[12px] overflow-hidden border-2 border-transparent transition-all duration-300 cursor-pointer"
-                style={
-                  {
-                    '--card-border': item.borderColor,
-                    background: item.gradient,
-                  } as React.CSSProperties
-                }
+                className="relative flex-1 items-center gap-2 px-3 py-2 rounded-t-lg border-2 border-transparent transition-all duration-300 cursor-pointer group"
+                style={{
+                  background: item.gradient,
+                  borderColor: isRunning ? '#22c55e' : item.borderColor,
+                } as React.CSSProperties}
               >
-                {/* Text label - two lines */}
-                <div className="relative z-10 text-white text-center">
-                  <div className="text-lg font-semibold tracking-wide">
-                    {item.name.toUpperCase()}
-                  </div>
-                  <div className="text-xs opacity-70 tracking-wide">
-                    {item.id.toUpperCase()}
-                  </div>
+                {/* App icon/color indicator */}
+                <div
+                  className="relative w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: isRunning ? 'rgba(34, 197, 94, 0.3)' : 'transparent' }}
+                >
+                  <div className="w-3 h-3 rounded-full bg-green-500" style={{ opacity: isRunning ? 1 : 0 }} />
                 </div>
 
-                {/* Running indicator */}
+                {/* App name */}
+                <div className="flex-1 text-white text-xs font-medium tracking-wide">
+                  {item.name}
+                </div>
+
+                {/* Running indicator bar */}
                 {isRunning && (
-                  <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-500" />
                 )}
-              </article>
+              </div>
             );
           })}
         </div>
 
         {/* Chroma overlay - grayscale effect */}
         <div
-          className="absolute inset-0 pointer-events-none z-30 rounded-2xl"
+          className="absolute inset-0 pointer-events-none z-30 rounded-xl"
           style={{
             backdropFilter: 'grayscale(1) brightness(0.75)',
             WebkitBackdropFilter: 'grayscale(1) brightness(0.75)',
@@ -271,7 +260,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
         {/* Fade overlay */}
         <div
           ref={fadeRef}
-          className="absolute inset-0 pointer-events-none transition-opacity duration-[200ms] z-40 rounded-2xl"
+          className="absolute inset-0 pointer-events-none transition-opacity duration-[200ms] z-40 rounded-xl"
           style={{
             backdropFilter: 'grayscale(1) brightness(0.75)',
             WebkitBackdropFilter: 'grayscale(1) brightness(0.75)',
