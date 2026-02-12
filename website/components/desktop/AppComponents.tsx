@@ -14,8 +14,7 @@ import { CVSSProvider } from '@/lib/cvss-context';
 
 // Lazy load application components for better performance
 const CVSSCalculator = lazy(() => import('@/components/cvss/calculator').then(m => ({ default: m.default })));
-const ETLEnginePage = lazy(() => import('@/app/etl/page').then(m => ({ default: m.default })));
-const GLCLandingPage = lazy(() => import('@/app/glc/page').then(m => ({ default: m.default })));
+// Note: ETL and GLC apps use placeholder until desktop components are implemented
 const McardsStudy = lazy(() => import('@/components/mcards/mcards-study').then(m => ({ default: m.default })));
 const BookmarkTable = lazy(() => import('@/components/bookmark-table').then(m => ({ default: m.default })));
 
@@ -89,20 +88,6 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
         </CVSSProvider>
       );
 
-    case 'etl':
-      return (
-        <div className="h-full overflow-auto bg-background">
-          <ETLEnginePage />
-        </div>
-      );
-
-    case 'glc':
-      return (
-        <div className="h-full overflow-auto bg-background">
-          <GLCLandingPage />
-        </div>
-      );
-
     case 'mcards':
       return (
         <div className="h-full overflow-auto bg-background">
@@ -119,6 +104,7 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
 
     // Database apps (CVE, CWE, CAPEC, ATT&CK) - still using route-based pages
     // These can be progressively migrated to components
+    // ETL and GLC also use placeholder until desktop components are implemented
     case 'cve':
     case 'cwe':
     case 'capec':
@@ -127,6 +113,8 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
     case 'cce':
     case 'ssg':
     case 'asvs':
+    case 'etl':
+    case 'glc':
     default:
       return <AppPlaceholder appId={appId} title={title} />;
   }
@@ -136,6 +124,6 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
  * Check if an app has a component implementation
  */
 export function hasAppComponent(appId: string): boolean {
-  const componentApps = ['cvss', 'etl', 'glc', 'mcards', 'bookmarks'];
+  const componentApps = ['cvss', 'mcards', 'bookmarks'];
   return componentApps.includes(appId);
 }
