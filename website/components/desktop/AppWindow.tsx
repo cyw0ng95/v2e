@@ -343,7 +343,7 @@ export function AppWindow({ window }: { window: WindowConfig }) {
         ease: 'easeInOut',
       }}
       className={`
-        absolute bg-white rounded-lg shadow-2xl overflow-hidden
+        absolute bg-white rounded-lg shadow-2xl overflow-hidden pointer-events-auto
         ${window.isFocused ? 'ring-2 ring-blue-500' : ''}
         ${win.isMinimized ? 'opacity-0' : ''}
       `}
