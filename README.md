@@ -47,6 +47,11 @@ IDLE → ACQUIRING → RUNNING → WAITING_QUOTA/WAITING_BACKOFF → PAUSED → 
 - CWEProvider - MITRE CWE import
 - CAPECProvider - MITRE CAPEC with XSD validation
 - ATTACKProvider - MITRE ATT&CK techniques
+- SSGProvider - SCAP Security Guide import
+- ASVSProvider - OWASP ASVS import
+- CCEProvider - Common Configuration Enumeration import
+- NoteProvider - Note import
+- MemoryCardProvider - Memory card import
 
 ### UDA - Unified Data Analysis
 
@@ -190,15 +195,117 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 - `CreateEmptyTipTapDocument()`: Create empty document structure
 - `CreateTipTapDocumentFromText(text string)`: Convert plain text to TipTap JSON
 
+### GLC - Graphized Learning Canvas
+
+**Purpose**: Interactive visual canvas for creating and managing knowledge graphs with customizable node types and relationships.
+
+**Why GLC?**
+- Visual knowledge organization with drag-and-drop canvas
+- Customizable node types with user-defined presets
+- Version history for undo/restore operations
+- Share links for collaboration and embedding
+
+**Core Components**:
+
+**Graph Model** - `pkg/glc/`
+- GraphModel: Main graph entity with nodes, edges, viewport state
+- GraphVersionModel: Version snapshots for undo functionality
+- UserPresetModel: Custom presets with themes and node type definitions
+- ShareLinkModel: Shareable links with optional password protection
+
+**Node and Edge System**:
+- CADNode: Canvas nodes with position, size, style, and data
+- CADEdge: Connections between nodes with styling options
+- Viewport: Camera state (zoom, pan) for canvas navigation
+
+**Preset System**:
+- Built-in presets for common use cases
+- User-defined presets with custom themes and behaviors
+- NodeTypeDefinition: Custom node types with styling
+- RelationshipDefinition: Typed connections between nodes
+
+**Key Features**:
+- Real-time collaboration ready
+- Version control with automatic snapshots
+- Export/import in multiple formats
+- Responsive canvas with smooth pan/zoom
+
+**RPC Operations**:
+- Graph CRUD: Create, Get, Update, Delete, List, ListRecent
+- Version management: Get, List, Restore
+- Preset management: Create, Get, Update, Delete, List
+- Share links: Create, Get, Delete
+
+**Storage**:
+- SQLite via GORM with soft delete support
+- Automatic version creation on graph updates
+- Cascade delete for related entities
+
+---
+
+## Advanced Features
+
+### Auto-Scaling (`cmd/v2broker/scaling/`)
+
+The broker includes an intelligent auto-scaling system for dynamic resource management:
+
+**Components**:
+- **AutoScaler**: Makes scaling decisions based on predicted load
+- **LoadPredictor**: Time-series forecasting for proactive scaling
+- **AnomalyDetector**: Identifies unusual patterns in metrics
+- **SelfHealing**: Automatic recovery from failures
+
+**Scaling Decisions**:
+- `scale_up`: Increase worker count based on load prediction
+- `scale_down`: Decrease workers during low load periods
+- `none`: No action needed
+
+**Configuration**:
+- Min/Max workers bounds
+- Scale thresholds (CPU, memory, latency)
+- Prediction horizon for proactive scaling
+- Cooldown periods to prevent thrashing
+
+### eBPF Monitoring (`cmd/v2broker/monitor/`)
+
+Low-overhead kernel-level monitoring for deep observability:
+
+**Probe Types**:
+- `uds`: Unix Domain Socket performance
+- `sharedmem`: Shared memory operations
+- `locks`: Lock contention analysis
+- `scheduling`: CPU scheduling events
+- `memory`: Memory allocation patterns
+- `io`: I/O operations
+- `goroutines`: Go runtime scheduler events
+- `gc`: Garbage collection pauses
+
+**Features**:
+- Sub-microsecond overhead
+- Stack trace capture for profiling
+- Configurable sample rates
+- Alert thresholds for anomalies
+- Flame graph generation support
+
+### Message Queue (`cmd/v2broker/mq/`)
+
+High-performance message bus for internal communication:
+
+**Features**:
+- In-memory message queue with configurable buffering
+- Pub/sub pattern for event broadcasting
+- Backpressure handling with flow control
+- Dead letter queue for failed messages
+
 ---
 
 ## Service-Framework Matrix
 
 | Service | UEE | UDA | UME | ULP | Key Responsibilities |
 |---------|:---:|:---:|:---:|:-----:|----------------------|
-| **v2broker** | - | - | X | - | Central orchestrator, process management, message routing, permit management |
+| **v2broker** | - | - | X | - | Central orchestrator, process management, message routing, permit management, auto-scaling, eBPF monitoring |
 | **v2access** | - | - | X | - | REST gateway, frontend communication, HTTP to RPC translation |
-| **v2local** | X | X | - | X | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), CRUD operations, caching, bookmarks, learning sessions, memory cards |
+| **v2local** | X | X | - | X | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), CRUD operations, caching, bookmarks, learning sessions, memory cards, GLC graphs |
 | **v2remote** | X | - | - | - | External API integration (NVD, MITRE), rate limiting, retry mechanisms |
 | **v2meta** | X | - | X | - | ETL orchestration, provider management, URN checkpointing, state machines |
 | **v2sysmon** | - | - | X | - | System metrics collection, health monitoring, performance reporting |
@@ -211,7 +318,7 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 | **UEE** (Unified ETL Engine) | v2meta | v2local, v2remote | URN (checkpointing), RPC (coordination) |
 | **UDA** (Unified Data Analysis) | v2analysis | v2local (data source) | URN (node IDs), RPC (queries) |
 | **UME** (Unified Message Exchanging) | v2broker | All services | RPC (message protocol), Binary Protocol |
-| **ULP** (Unified Learning Portal) | v2local (bookmarks, memory cards, learning sessions) | v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (SQLite) |
+| **ULP** (Unified Learning Portal) | v2local (bookmarks, memory cards, learning sessions, GLC graphs) | v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (SQLite) |
 
 ---
 
@@ -340,9 +447,9 @@ v2e::ssg::ssg::rhel9-guide-ospp
 
 ```
   cmd/
-    v2broker/           # Broker service (UME framework)
+    v2broker/           # Broker service (UME framework), auto-scaling, eBPF monitoring
     v2access/           # REST gateway
-    v2local/            # Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), bookmarks, memory cards, learning sessions
+    v2local/            # Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), bookmarks, memory cards, learning sessions, GLC graphs
     v2remote/           # External API integration
     v2meta/             # ETL orchestration (UEE framework)
     v2sysmon/           # System monitoring
@@ -359,6 +466,8 @@ v2e::ssg::ssg::rhel9-guide-ospp
     ssg/                # SSG (SCAP Security Guide) parsing and models
     cce/                # CCE (Common Configuration Enumeration) models
     asvs/               # ASVS (Application Security Verification Standard) models
+    glc/                # GLC (Graphized Learning Canvas) models and storage
+    jsonutil/           # JSON utilities with Sonic optimization
   website/              # Next.js frontend
   assets/               # Data assets (CWE, CAPEC, ATT&CK)
 ```
@@ -369,11 +478,12 @@ v2e::ssg::ssg::rhel9-guide-ospp
 
 - [cmd/v2meta](cmd/v2meta) - UEE framework documentation
 - [cmd/v2analysis](cmd/v2analysis) - UDA framework documentation
-- [cmd/v2broker](cmd/v2broker) - Broker implementation
-- [cmd/v2local](cmd/v2local) - Local data storage, bookmarks, memory cards, and learning sessions
+- [cmd/v2broker](cmd/v2broker) - Broker implementation, auto-scaling, eBPF monitoring
+- [cmd/v2local](cmd/v2local) - Local data storage, bookmarks, memory cards, learning sessions, GLC graphs
 - [pkg/urn](pkg/urn) - URN identifier implementation
 - [cmd/v2meta/providers](cmd/v2meta/providers) - ETL provider implementations
 - [pkg/notes](pkg/notes) - ULP (Unified Learning Portal) framework documentation
+- [pkg/glc](pkg/glc) - GLC (Graphized Learning Canvas) models and storage
 
 ---
 
