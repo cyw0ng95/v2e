@@ -178,11 +178,16 @@ function WindowResizeHandle({
 }: {
   position: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   onResizeStart: (direction: string, e: React.MouseEvent) => void;
-  window: WindowConfig;
+  window?: WindowConfig;
 }) {
   const { updateWindowSize } = useDesktopStore();
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartPosRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  // Guard clause for undefined window
+  if (!window) {
+    return null;
+  }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -352,14 +357,14 @@ export function AppWindow({ window }: { window: WindowConfig }) {
       {/* Resize handles - 8 directions */}
       {!window.isMaximized && (
         <>
-          <WindowResizeHandle position="top-left" onResizeStart={() => handleResizeStart('top-left')} />
-          <WindowResizeHandle position="top" onResizeStart={() => handleResizeStart('top')} />
-          <WindowResizeHandle position="top-right" onResizeStart={() => handleResizeStart('top-right')} />
-          <WindowResizeHandle position="left" onResizeStart={() => handleResizeStart('left')} />
-          <WindowResizeHandle position="right" onResizeStart={() => handleResizeStart('right')} />
-          <WindowResizeHandle position="bottom-left" onResizeStart={() => handleResizeStart('bottom-left')} />
-          <WindowResizeHandle position="bottom" onResizeStart={() => handleResizeStart('bottom')} />
-          <WindowResizeHandle position="bottom-right" onResizeStart={() => handleResizeStart('bottom-right')} />
+          <WindowResizeHandle position="top-left" onResizeStart={() => handleResizeStart('top-left')} window={window} />
+          <WindowResizeHandle position="top" onResizeStart={() => handleResizeStart('top')} window={window} />
+          <WindowResizeHandle position="top-right" onResizeStart={() => handleResizeStart('top-right')} window={window} />
+          <WindowResizeHandle position="left" onResizeStart={() => handleResizeStart('left')} window={window} />
+          <WindowResizeHandle position="right" onResizeStart={() => handleResizeStart('right')} window={window} />
+          <WindowResizeHandle position="bottom-left" onResizeStart={() => handleResizeStart('bottom-left')} window={window} />
+          <WindowResizeHandle position="bottom" onResizeStart={() => handleResizeStart('bottom')} window={window} />
+          <WindowResizeHandle position="bottom-right" onResizeStart={() => handleResizeStart('bottom-right')} window={window} />
         </>
       )}
 
