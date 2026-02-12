@@ -14,31 +14,12 @@ import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
 import type { AppRegistryEntry } from '@/types/desktop';
-import {
-  Star,
-  Bug,
-  Crosshair,
-  Calculator,
-  GitGraph,
-  BookOpen,
-  Activity,
-  Bookmark,
-  Folder,
-  Sparkles,
-  Grid,
-  Square,
-  Heart,
-} from 'lucide-react';
 
 interface ChromaAppItem {
   id: string;
   name: string;
-  description: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  iconColor: string;
   gradient: string;
   borderColor: string;
-  url?: string;
 }
 
 interface ChromaGridDockProps {
@@ -70,18 +51,6 @@ const iconComponents: Record<string, React.ComponentType<{ size?: number; classN
   heart: Heart,
 };
 
-const iconGradients: Record<string, { gradient: string; borderColor: string }> = {
-  cve: { gradient: 'linear-gradient(145deg, #4F46E5, #000)', borderColor: '#4F46E5' },
-  cwe: { gradient: 'linear-gradient(210deg, #10B981, #000)', borderColor: '#10B981' },
-  capec: { gradient: 'linear-gradient(165deg, #F59E0B, #000)', borderColor: '#F59E0B' },
-  attack: { gradient: 'linear-gradient(195deg, #EF4444, #000)', borderColor: '#EF4444' },
-  cvss: { gradient: 'linear-gradient(225deg, #8B5CF6, #000)', borderColor: '#8B5CF6' },
-  glc: { gradient: 'linear-gradient(135deg, #06B6D4, #000)', borderColor: '#06B6D4' },
-  mcards: { gradient: 'linear-gradient(145deg, #EC4899, #000)', borderColor: '#EC4899' },
-  etl: { gradient: 'linear-gradient(210deg, #14B8A6, #000)', borderColor: '#14B8A6' },
-  bookmarks: { gradient: 'linear-gradient(165deg, #F97316, #000)', borderColor: '#F97316' },
-};
-
 const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   className = '',
   radius = 250,
@@ -105,16 +74,12 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   // Convert apps to chroma items
   const registryApps = getActiveApps();
   const items: ChromaAppItem[] = registryApps.map((app) => {
-    const IconComponent = iconComponents[app.id as keyof typeof iconComponents] || Star;
     const defaultStyle = { gradient: 'linear-gradient(145deg, #3b82f6, #000)', borderColor: '#3b82f6' };
     const style = iconGradients[app.id] || defaultStyle;
 
     return {
       id: app.id,
       name: app.name,
-      description: app.description || 'Desktop Application',
-      icon: IconComponent,
-      iconColor: app.iconColor || '#3b82f6',
       gradient: style.gradient,
       borderColor: style.borderColor,
     };
@@ -236,13 +201,6 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
     contextMenu.show(e.clientX, e.clientY, preset);
   }, [runningAppIds, contextMenu]);
 
-  const handleCardMove: React.MouseEventHandler<HTMLElement> = e => {
-    const c = e.currentTarget as HTMLElement;
-    const rect = c.getBoundingClientRect();
-    c.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
-    c.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
-  };
-
   if (!shouldShow) {
     return null;
   }
@@ -265,47 +223,31 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
           } as React.CSSProperties
         }
       >
-        <div className="relative w-full h-full flex flex-wrap justify-center items-start gap-2">
+        <div className="relative w-full h-full flex flex-wrap justify-center items-start gap-3">
           {items.map((item) => {
-            const IconComponent = item.icon;
             const isRunning = runningAppIds.has(item.id);
 
             return (
               <article
                 key={item.id}
-                onMouseMove={handleCardMove}
                 onClick={() => handleAppClick(item)}
                 onContextMenu={(e) => handleContextMenu(e, item.id)}
-                className="group relative flex flex-col w-[80px] h-[80px] rounded-[16px] overflow-hidden border-2 border-transparent transition-all duration-300 cursor-pointer"
+                className="group relative flex items-center justify-center px-5 py-2.5 rounded-[12px] overflow-hidden border-2 border-transparent transition-all duration-300 cursor-pointer"
                 style={
                   {
                     '--card-border': item.borderColor,
                     background: item.gradient,
-                    '--spotlight-color': 'rgba(255,255,255,0.25)',
                   } as React.CSSProperties
                 }
               >
-                {/* Spotlight effect */}
-                <div
-                  className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-20 opacity-0 group-hover:opacity-100"
-                  style={{
-                    background:
-                      'radial-gradient(circle at var(--mouse-x) var(--mouse-y), var(--spotlight-color), transparent 70%)'
-                  }}
-                />
-
-                {/* Icon container */}
-                <div className="relative z-10 flex-1 flex items-center justify-center p-2 box-border">
-                  <IconComponent
-                    size={36}
-                    className="transition-transform duration-300 group-hover:scale-110"
-                    style={{ color: item.iconColor }}
-                  />
+                {/* Text label */}
+                <div className="relative z-10 text-white font-medium text-sm tracking-wide">
+                  {item.name.toUpperCase()}
                 </div>
 
                 {/* Running indicator */}
                 {isRunning && (
-                  <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full bg-white shadow-lg" />
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
                 )}
               </article>
             );
