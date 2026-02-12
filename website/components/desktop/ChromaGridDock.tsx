@@ -202,8 +202,8 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
         style={{
           '--x': '50%',
           '--y': '50%',
-          zIndex: Z_INDEX.DOCK,
-        } as React.CSSProperties
+          zIndex: Z_INDEX.DOCK
+        }}
       >
         {/* Taskbar-style horizontal bar */}
         <div className="relative w-full h-full flex items-center px-2 gap-1">
