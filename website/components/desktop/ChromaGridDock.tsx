@@ -34,21 +34,16 @@ interface ChromaGridDockProps {
 
 type SetterFn = (v: number | string) => void;
 
-const iconComponents: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  cve: Star,
-  cwe: Bug,
-  capec: Crosshair,
-  attack: Crosshair,
-  cvss: Calculator,
-  glc: GitGraph,
-  mcards: BookOpen,
-  etl: Activity,
-  bookmarks: Bookmark,
-  folder: Folder,
-  sparkles: Sparkles,
-  grid: Grid,
-  square: Square,
-  heart: Heart,
+const iconGradients: Record<string, { gradient: string; borderColor: string }> = {
+  cve: { gradient: 'linear-gradient(145deg, #4F46E5, #000)', borderColor: '#4F46E5' },
+  cwe: { gradient: 'linear-gradient(210deg, #10B981, #000)', borderColor: '#10B981' },
+  capec: { gradient: 'linear-gradient(165deg, #F59E0B, #000)', borderColor: '#F59E0B' },
+  attack: { gradient: 'linear-gradient(195deg, #EF4444, #000)', borderColor: '#EF4444' },
+  cvss: { gradient: 'linear-gradient(225deg, #8B5CF6, #000)', borderColor: '#8B5CF6' },
+  glc: { gradient: 'linear-gradient(135deg, #06B6D4, #000)', borderColor: '#06B6D4' },
+  mcards: { gradient: 'linear-gradient(145deg, #EC4899, #000)', borderColor: '#EC4899' },
+  etl: { gradient: 'linear-gradient(210deg, #14B8A6, #000)', borderColor: '#14B8A6' },
+  bookmarks: { gradient: 'linear-gradient(165deg, #F97316, #000)', borderColor: '#F97316' },
 };
 
 const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
