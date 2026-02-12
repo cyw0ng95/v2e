@@ -40,7 +40,7 @@ This document outlines the implementation plan for the v2e Portal - a macOS Desk
 
 ### Project Scope
 
-The v2e Portal is a desktop-only (1024px+) web application that recreates the macOS desktop experience in a browser. The portal features a complete window management system with drag, resize, and minimize/maximize capabilities, a functional dock with quick launch, and seamless integration of 9 existing security tools (CVE, CWE, CAPEC, ATT&CK, OWASP ASVS, SSG, CCE, Learning Session, and Analysis Graph). The implementation spans 5 phases over 29-41 days with a budget of approximately $10,450.
+The v2e Portal is a desktop-only (1024px+) web application that recreates the macOS desktop experience in a browser. The portal features a complete window management system with drag, resize, and minimize/maximize capabilities, a functional dock with quick launch, and seamless integration of 9 existing security tools (CVE, CWE, CAPEC, ATT&CK, CVSS, GLC, Mcards, ETL Monitor, and Bookmarks). The implementation spans 5 phases over 29-41 days with a budget of approximately $12,524.
 
 ### Critical Path
 
@@ -67,19 +67,19 @@ gantt
 | Phase 1 | Core Desktop Infrastructure Complete | Day 7 | Desktop renders, state persists, basic dock functional |
 | Phase 2 | Window System Operational | Day 17 | Windows open/drag/resize, animations at 60fps |
 | Phase 3 | Dock & Quick Launch Ready | Day 24 | Quick launch (Cmd+K) works, context menus functional |
-| Phase 4 | Content Integration Complete | Day 34 | All 9 apps load in windows, preferences persist |
+| Phase 4 | Content Integration Complete | Day 34 | All 9 apps load in windows, preferences persist, app registry complete |
 | Phase 5 | Production Launch | Day 41 | Lighthouse > 90, WCAG AA compliant, deployed |
 
 ### Budget Summary
 
 | Phase | Cost | Cumulative | % of Total |
 |-------|------|------------|------------|
-| Phase 1: Core Infrastructure | $1,460 | $1,460 | 14.0% |
-| Phase 2: Window System | $2,600 | $4,060 | 24.9% |
-| Phase 3: Dock & Quick Launch | $2,354 | $6,414 | 19.6% |
-| Phase 4: Content Integration | $2,020 | $8,040 | 19.3% |
-| Phase 5: Polish & Launch | $2,410 | $10,450 | 23.0% |
-| **Total** | **$10,804** | | **100%** |
+| Phase 1: Core Infrastructure | $1,720 | $1,720 | 13.7% |
+| Phase 2: Window System | $2,600 | $4,320 | 20.8% |
+| Phase 3: Dock & Quick Launch | $2,354 | $6,674 | 18.8% |
+| Phase 4: Content Integration | $3,440 | $10,114 | 27.5% |
+| Phase 5: Polish & Launch | $2,410 | $12,524 | 19.2% |
+| **Total** | **$12,524** | | **100%** |
 
 ### Risk Summary
 
@@ -557,22 +557,179 @@ Integrate existing apps as window content and complete desktop functionality.
 - Theme switching works
 
 ### Cost Estimate
-| Task | Hours | Rate | Cost |
-|------|-------|------|------|
-| App Registry | 6 | $50/hr | $300 |
-| Content Loading | 12 | $60/hr | $720 |
-| Desktop Widgets | 8 | $50/hr | $400 |
-| Wallpaper System | 6 | $50/hr | $300 |
-| Theme Integration | 6 | $50/hr | $300 |
-| **Total** | **38** | | **$2,020** |
+| Task | Hours | Rate (2025-2026) | Cost |
+|------|-------|------------------|------|
+| App Registry | 8 | $65/hr | $520 |
+| Content Loading | 16 | $70/hr | $1,120 |
+| Desktop Widgets | 8 | $60/hr | $480 |
+| Wallpaper System | 6 | $60/hr | $360 |
+| Theme Integration | 6 | $60/hr | $360 |
+| App Integration Testing | 10 | $60/hr | $600 |
+| **Total** | **54** | | **$3,440** |
+
+### Change Requests
+
+**Scope Changes (as of 2026-02-12):**
+
+1. **App Registry Expansion** - Originally planned for 7 apps, now supports 9 active apps + 4 planned apps
+2. **Iframe Communication Protocol** - Added postMessage-based iframe-to-desktop communication for state sync
+3. **Window Content Strategy** - Hybrid approach: iframes for existing pages, direct component integration for new desktop-only features
+4. **Widget System Scope** - Reduced scope: clock widget only (calendar moved to Phase 5)
+5. **Cross-Origin Considerations** - Added same-origin iframe loading requirement for RPC communication
+
+**No pending change requests.** All scope refinements have been incorporated into this plan.
+
+### App Registry Specification
+
+The app registry defines all applications available on v2e desktop. Each app has metadata defining its appearance, behavior, and integration points.
+
+#### Active Apps (9)
+
+| App ID | Name | Path | Icon (Lucide) | Default Window | Min Window | Category |
+|--------|------|------|---------------|----------------|------------|----------|
+| `cve` | CVE Browser | `/cve` | `shield-alert` | 1200x800 | 800x600 | Database |
+| `cwe` | CWE Database | `/cwe` | `bug` | 1200x800 | 800x600 | Database |
+| `capec` | CAPEC Encyclopedia | `/capec` | `target` | 1200x800 | 800x600 | Database |
+| `attack` | ATT&CK Explorer | `/attack` | `crosshair` | 1400x900 | 900x600 | Database |
+| `cvss` | CVSS Calculator | `/cvss` | `calculator` | 900x700 | 600x500 | Tool |
+| `glc` | Graphized Learning Canvas | `/glc` | `git-graph` | 1400x900 | 900x600 | Learning |
+| `mcards` | Mcards | `/mcards` | `library` | 1200x800 | 800x600 | Learning |
+| `etl` | ETL Monitor | `/etl` | `activity` | 1000x700 | 700x500 | System |
+| `bookmarks` | Bookmarks | `/bookmarks` | `bookmark` | 900x700 | 600x500 | Utility |
+
+#### Planned Apps (4)
+
+| App ID | Name | Planned Icon | Default Window | Min Window | Category | Status |
+|--------|------|--------------|----------------|------------|----------|--------|
+| `sysmon` | System Monitor | `gauge` | 1000x700 | 700x500 | System | Planned |
+| `cce` | CCE Database | `file-check` | 1200x800 | 800x600 | Database | Planned |
+| `ssg` | SSG Guides | `scroll-text` | 1200x800 | 800x600 | Reference | Planned |
+| `asvs` | ASVS | `check-circle` | 1200x800 | 800x600 | Reference | Planned |
+
+#### App Metadata Schema
+
+```typescript
+interface AppRegistryEntry {
+  id: string;           // Unique app identifier
+  name: string;         // Display name
+  path: string;         // Route path (for iframe loading)
+  icon: string;         // Lucide React icon name
+  category: AppCategory; // Database | Tool | Learning | System | Utility | Reference
+
+  // Window defaults
+  defaultWidth: number;
+  defaultHeight: number;
+  minWidth: number;
+  minHeight: number;
+
+  // Desktop icon
+  iconColor: string;    // Accent color for icon background
+  defaultPosition?: { x: number; y: number }; // Optional desktop position
+
+  // Behavior flags
+  allowMultipleWindows?: boolean;  // Allow multiple instances
+  resizable?: boolean;    // Allow window resizing
+  maximizable?: boolean; // Allow maximize button
+  minimizable?: boolean; // Allow minimize to dock
+
+  // Integration
+  contentMode: 'iframe' | 'component'; // How content is loaded
+  status: 'active' | 'planned' | 'deprecated';
+}
+```
+
+### Dependencies
+
+| Dependency | Type | Source | Status |
+|------------|------|--------|--------|
+| Phase 1: Core Infrastructure Complete | Foundation | Phase 1 deliverable | Required |
+| Phase 2: Window System Complete | Foundation | Phase 2 deliverable | Required |
+| Phase 3: Dock & Quick Launch Complete | Foundation | Phase 3 deliverable | Required |
+| Existing app pages implemented | Content | `/cve`, `/cwe`, `/capec`, etc. | Required |
+| RPC client for iframe communication | API | `lib/rpc-client.ts` | Required |
+| Lucide React icons | UI | npm package | Installed |
+| Zustand store extensions | State | `lib/desktop/` | Pending |
+
+### Risks
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| **Iframe cross-origin issues** | High | Medium | All apps share same origin; use postMessage for iframe-to-desktop communication |
+| **RPC call blocking inside iframes** | Medium | Medium | Batch RPC calls; implement loading states; cache responses |
+| **Window content focus loss** | Medium | Low | Implement proper focus management on window activation |
+| **App page not designed for iframed view** | Medium | Medium | Review each app for iframe compatibility; add CSS overrides if needed |
+| **State synchronization complexity** | Medium | Medium | Use postMessage protocol; debounce state updates |
+| **Large app bundle sizes** | Low | Medium | Implement lazy loading; code-split by app route |
+| **Browser storage quota exceeded** | Medium | Low | Implement storage monitoring; cleanup old state |
+| **Theme propagation to iframe content** | Low | Low | Use CSS custom properties for theme; propagate via postMessage |
 
 ### Acceptance Criteria
-- [ ] All 9 active apps open in windows
-- [ ] Window content loads correctly
-- [ ] Desktop widgets display properly
-- [ ] Wallpaper can be changed
-- [ ] Dark/light theme works
-- [ ] All preferences persist
+
+#### Functional Tests - App Registry
+- [ ] `APP_REGISTRY` constant defined in `lib/desktop/app-registry.ts`
+- [ ] All 9 active apps registered with correct metadata
+- [ ] 4 planned apps registered with `status: 'planned'`
+- [ ] Each app has valid Lucide icon name
+- [ ] Default window sizes appropriate per app category
+- [ ] Planned apps show "Coming Soon" state when launched
+
+#### Functional Tests - Window Content Loading
+- [ ] CVE app opens in window, loads `/cve` content in iframe
+- [ ] CWE app opens in window, loads `/cwe` content in iframe
+- [ ] CAPEC app opens in window, loads `/capec` content in iframe
+- [ ] ATT&CK app opens in window, loads `/attack` content in iframe
+- [ ] CVSS calculator opens in window, loads `/cvss` content in iframe
+- [ ] GLC app opens in window, loads `/glc` content in iframe
+- [ ] Mcards app opens in window, loads `/mcards` content in iframe
+- [ ] ETL Monitor opens in window, loads `/etl` content in iframe
+- [ ] Bookmarks app opens in window, loads `/bookmarks` content in iframe
+- [ ] Window titlebar shows correct app name and icon
+- [ ] Window content receives focus when window is clicked
+- [ ] Iframe content propagates title changes to window titlebar
+
+#### Functional Tests - Desktop Widgets
+- [ ] Clock widget displays on desktop
+- [ ] Clock updates every second
+- [ ] Clock format: HH:MM (24-hour) or HH:MM AM/PM (12-hour)
+- [ ] Widget can be repositioned via drag
+- [ ] Widget position persists to localStorage
+- [ ] Widget can be hidden via context menu
+
+#### Functional Tests - Wallpaper System
+- [ ] Wallpaper selector accessible from menu bar or context menu
+- [ ] At least 5 gradient wallpaper options available
+- [ ] Wallpaper preview shown before selection
+- [ ] Selected wallpaper applies immediately
+- [ ] Wallpaper preference persists to localStorage
+- [ ] Wallpaper respects dark/light theme mode
+
+#### Functional Tests - Theme Integration
+- [ ] Theme toggle button in menu bar
+- [ ] Light mode uses correct color palette
+- [ ] Dark mode uses correct color palette
+- [ ] Theme transition is smooth (200ms fade)
+- [ ] Theme preference persists to localStorage
+- [ ] Iframe content receives theme updates via postMessage
+
+#### Integration Tests - App-to-Desktop Communication
+- [ ] Iframe can send title updates to desktop via postMessage
+- [ ] Iframe can send theme requests to desktop
+- [ ] Desktop sends theme changes to all open iframe windows
+- [ ] Iframe can request window resize from desktop
+- [ ] Messages are properly namespaced to avoid conflicts
+
+#### Performance Tests
+- [ ] Window open animation completes within 200ms
+- [ ] App content loads within 2 seconds on 3G connection
+- [ ] Multiple windows (3+) open without significant lag
+- [ ] Frame rate remains above 55fps during window operations
+
+#### Accessibility Tests
+- [ ] All window titles announced by screen reader
+- [ ] Iframe content has proper title attribute
+- [ ] Keyboard focus moves correctly between windows
+- [ ] Theme toggle is keyboard accessible
+- [ ] All interactive elements have visible focus indicators
 
 ---
 
@@ -627,25 +784,178 @@ Final polish, optimization, testing, and deployment.
 - Production-ready deployment
 - Complete documentation
 
+### Change Requests
+
+**Scope Changes (as of 2026-02-12):**
+
+1. **Browser Testing Scope** - Extended to include Edge 120+ (previously Chrome/Firefox/Safari only)
+2. **Documentation Requirements** - Added deployment playbook (previously out of scope)
+3. **Performance Budgets** - Added specific bundle size limits (was previously vague)
+4. **CI/CD Pipeline** - Added automated testing in pipeline (previously manual only)
+
+**Pending Change Requests:**
+- Consider adding Playwright automated E2E tests (requires additional 8-12 hours)
+- Consider adding performance monitoring in production (e.g., Web Vitals tracking)
+
 ### Cost Estimate
+
 | Task | Hours | Rate | Cost |
 |------|-------|------|------|
-| Performance | 10 | $65/hr | $650 |
-| Browser Testing | 8 | $50/hr | $400 |
-| Accessibility | 10 | $60/hr | $600 |
-| Documentation | 8 | $50/hr | $400 |
-| Deployment | 6 | $60/hr | $360 |
-| **Total** | **42** | | **$2,410** |
+| Performance Optimization | 12 | $70/hr | $840 |
+| Browser Testing | 10 | $55/hr | $550 |
+| Accessibility Audit | 12 | $65/hr | $780 |
+| Documentation | 10 | $55/hr | $550 |
+| Deployment & CI/CD | 8 | $65/hr | $520 |
+| **Total** | **52** | | **$3,240** |
+
+**Rate Notes (2025-2026 Market Rates):**
+- Senior Performance Engineer: $70/hr (increased from $65/hr)
+- QA/Automation Engineer: $55/hr (specialized browser testing)
+- Accessibility Specialist: $65/hr (WCAG expertise premium)
+- Technical Writer: $55/hr
+- DevOps Engineer: $65/hr
 
 ### Acceptance Criteria
+
+#### Performance Benchmarks
 - [ ] Lighthouse Performance score > 90
 - [ ] Lighthouse Accessibility score > 90
 - [ ] Lighthouse Best Practices score > 90
-- [ ] WCAG 2.1 AA compliant
-- [ ] Works on all supported browsers
-- [ ] Animations run at 60fps
-- [ ] Documentation complete
-- [ ] Deployed to production
+- [ ] Lighthouse SEO score > 90 (if applicable)
+- [ ] First Contentful Paint (FCP) < 1.5s
+- [ ] Largest Contentful Paint (LCP) < 2.5s
+- [ ] Cumulative Layout Shift (CLS) < 0.1
+- [ ] Time to Interactive (TTI) < 3.0s
+- [ ] Total Blocking Time (TBT) < 200ms
+- [ ] Bundle size (gzipped) < 300KB initial load
+- [ ] Animations maintain 60fps (16.67ms frame budget)
+
+#### Accessibility Requirements
+- [ ] WCAG 2.1 AA compliant (all criteria)
+- [ ] Keyboard navigation fully functional (no mouse required)
+- [ ] Screen reader tested (NVDA, JAWS, VoiceOver)
+- [ ] Color contrast ratio >= 4.5:1 for normal text
+- [ ] Color contrast ratio >= 3:1 for large text
+- [ ] Focus indicators visible on all interactive elements
+- [ ] ARIA labels on all icons and controls
+- [ ] Skip navigation link implemented
+- [ ] Forms have proper labels and error descriptions
+
+#### Browser Compatibility
+- [ ] Chrome 120+ (Windows, macOS, Linux)
+- [ ] Firefox 121+ (Windows, macOS, Linux)
+- [ ] Safari 17+ (macOS, iOS)
+- [ ] Edge 120+ (Windows, macOS)
+
+#### Documentation Deliverables
+- [ ] User guide (keyboard shortcuts, features)
+- [ ] Component documentation (props, usage examples)
+- [ ] Deployment playbook
+- [ ] API documentation for desktop hooks
+- [ ] Troubleshooting guide
+
+#### Production Readiness
+- [ ] Deployed to production environment
+- [ ] Smoke tests passing
+- [ ] Monitoring configured
+- [ ] Error tracking enabled
+- [ ] Backup procedures documented
+
+### Deployment Checklist
+
+#### Pre-Launch Checklist
+- [ ] All acceptance criteria from Phases 1-4 verified
+- [ ] Lighthouse scores > 90 on production build
+- [ ] WCAG 2.1 AA audit passed
+- [ ] Cross-browser testing completed
+- [ ] Performance budgets met
+- [ ] Security review completed (no exposed secrets, XSS prevention)
+- [ ] Environment variables configured
+- [ ] CDN/proxy configuration verified
+- [ ] SSL certificates valid
+- [ ] DNS records configured
+- [ ] Analytics/monitoring enabled
+- [ ] Error tracking configured
+- [ ] Backup plan documented
+- [ ] Rollback procedure tested
+
+#### Production Environment Specifications
+
+**Minimum Requirements:**
+- Node.js 20+ for build
+- Static hosting with gzip/brotli compression
+- CDN for static assets
+- SSL/TLS termination
+- 99.9% uptime SLA
+
+**Recommended Stack:**
+- Hosting: Vercel, Netlify, or equivalent static hosting
+- CDN: Cloudflare or AWS CloudFront
+- Monitoring: Vercel Analytics or Google Analytics
+- Error Tracking: Sentry or equivalent
+
+#### Rollback Procedure
+
+**Trigger Conditions:**
+- Lighthouse scores drop below 80
+- Critical functional bugs reported
+- Security vulnerability identified
+- Uptime drops below 95%
+
+**Rollback Steps:**
+1. Verify issue severity and impact
+2. Notify stakeholders of impending rollback
+3. Revert to last known good deployment
+4. Verify rollback success (smoke tests)
+5. Monitor metrics for 1 hour post-rollback
+6. Document incident and root cause
+
+**Rollback Command Examples:**
+```bash
+# Vercel
+vercel rollback [deployment-url]
+
+# Netlify
+netlify deploy --prod --site [site-id] --message "Rollback"
+```
+
+### Dependencies
+
+This phase requires the following from previous phases:
+
+| Dependency | Source Phase | Status | Notes |
+|------------|--------------|--------|-------|
+| Complete desktop UI | Phase 1 | Required | Must be feature complete |
+| Window system | Phase 2 | Required | All window operations working |
+| Dock and quick launch | Phase 3 | Required | Full navigation functional |
+| App integration | Phase 4 | Required | All apps load correctly |
+| Build configuration | Phase 1 | Required | Static export configured |
+| Base documentation | Phase 1-4 | Required | Components documented |
+
+**External Dependencies:**
+- Lighthouse CLI installed
+- Browser testing tools (Playwright recommended)
+- CI/CD platform access
+- Production hosting credentials
+
+### Risks
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Lighthouse score regression blocking launch | High | Medium | Run Lighthouse in CI, set up alerts for score drops |
+| WCAG compliance requires unexpected refactoring | High | Low | Conduct accessibility audit early in Phase 4, not Phase 5 |
+| Browser-specific bugs discovered late | Medium | Medium | Start browser testing in Phase 3, not Phase 5 |
+| Bundle size exceeds budget | High | Medium | Implement bundle analyzer early, use code splitting |
+| Animation performance issues on low-end devices | Medium | Medium | Add GPU acceleration, test on minimum spec devices |
+| Deployment issues delay launch | High | Low | Test deployment to staging first, document procedure |
+| CI/CD pipeline failures | Medium | Low | Have manual deployment procedure as backup |
+| Third-party dependency breaking changes | Medium | Low | Lock dependency versions, use Dependabot |
+
+**Specific Phase 5 Concerns:**
+- Performance optimization may reveal architectural issues requiring Phase 2-4 refactoring
+- Accessibility audit may require significant UI changes
+- Browser testing may reveal platform-specific issues (especially Safari)
+- Documentation scope may expand beyond estimates
 
 ---
 
@@ -704,9 +1014,9 @@ Final polish, optimization, testing, and deployment.
 | Phase 1: Core Infrastructure | 30 | $57/hr | $1,720 |
 | Phase 2: Window System | 48 | $54/hr | $2,600 |
 | Phase 3: Dock & Quick Launch | 40 | $59/hr | $2,354 |
-| Phase 4: Content Integration | 38 | $53/hr | $2,020 |
+| Phase 4: Content Integration | 54 | $64/hr | $3,440 |
 | Phase 5: Polish & Launch | 42 | $57/hr | $2,410 |
-| **Total** | **198** | | **$11,104** |
+| **Total** | **214** | | **$12,524** |
 
 ### Cost Breakdown by Role
 
@@ -765,11 +1075,42 @@ Final polish, optimization, testing, and deployment.
 - [ ] Theme switching works
 
 ### Phase 5 Acceptance
-- [ ] Lighthouse scores > 90
-- [ ] WCAG 2.1 AA compliant
-- [ ] All browsers supported
-- [ ] Documentation complete
-- [ ] Deployed to production
+
+#### Performance Benchmarks
+- [ ] Lighthouse Performance score > 90
+- [ ] Lighthouse Accessibility score > 90
+- [ ] Lighthouse Best Practices score > 90
+- [ ] FCP < 1.5s, LCP < 2.5s, CLS < 0.1
+- [ ] TTI < 3.0s, TBT < 200ms
+- [ ] Bundle size (gzipped) < 300KB
+- [ ] Animations maintain 60fps
+
+#### Accessibility Requirements
+- [ ] WCAG 2.1 AA compliant (all criteria)
+- [ ] Keyboard navigation fully functional
+- [ ] Screen reader tested (NVDA, JAWS, VoiceOver)
+- [ ] Color contrast ratios met (4.5:1 normal, 3:1 large)
+- [ ] ARIA labels on all icons and controls
+
+#### Browser Compatibility
+- [ ] Chrome 120+ tested and working
+- [ ] Firefox 121+ tested and working
+- [ ] Safari 17+ tested and working
+- [ ] Edge 120+ tested and working
+
+#### Documentation Deliverables
+- [ ] User guide complete
+- [ ] Component documentation complete
+- [ ] Deployment playbook written
+- [ ] API documentation for desktop hooks
+- [ ] Troubleshooting guide created
+
+#### Production Readiness
+- [ ] Deployed to production environment
+- [ ] Smoke tests passing
+- [ ] Monitoring configured
+- [ ] Error tracking enabled
+- [ ] Rollback procedure tested
 
 ---
 
