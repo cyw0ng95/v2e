@@ -5,11 +5,14 @@
  * Adapted from ReactBits: https://www.reactbits.dev/backgrounds/threads
  *
  * A WebGL-based animated threads background using OGL
+ * Light mode: black background with white lines
+ * Dark mode: white background with black lines
  */
 
 import { useEffect, useRef } from 'react';
 import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
 import { useTheme } from 'next-themes';
+import './Threads.css';
 
 interface ThreadsProps {
   /** Line color as RGB array [r, g, b] (0-1 range) - auto-detected from theme if not provided */
@@ -20,6 +23,8 @@ interface ThreadsProps {
   distance?: number;
   /** Enable mouse interaction (default: false) */
   enableMouseInteraction?: boolean;
+  /** CSS class name */
+  className?: string;
 }
 
 const vertexShader = `
@@ -157,7 +162,8 @@ export default function Threads({
   // Auto-detect color from theme if not provided
   // Light mode: white lines on black bg = [1, 1, 1]
   // Dark mode: black lines on white bg = [0, 0, 0]
-  const effectiveColor = color ?? (theme === 'light' ? [1, 1, 1] : [0, 0, 0]);
+  const currentTheme = (theme === 'system' ? systemTheme : theme) ?? 'light';
+  const effectiveColor = color ?? (currentTheme === 'light' ? [1, 1, 1] : [0, 0, 0]);
 
   useEffect(() => {
     if (!containerRef.current) return;

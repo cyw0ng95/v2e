@@ -1,0 +1,21 @@
+/* Threads Background Container - Portal Page Specific */
+.portal-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Light mode: black background with white lines */
+.portal-page:not(.dark) {
+  background-color: #000000;
+}
+
+/* Dark mode: white background with black lines */
+.portal-page.dark {
+  background-color: #ffffff;
+}
+
+/* Smooth transition for theme changes */
+.portal-page {
+  transition: background-color 300ms ease-in-out;
+}
