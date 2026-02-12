@@ -635,7 +635,32 @@ html {
 
 /* Skip to main content link */
 .skip-link {
-  @apply sr-only sr-only-focusable;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.skip-link:focus-visible,
+.skip-link:focus {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  padding: 1rem;
+  background: var(--background);
+  color: var(--foreground);
+  border: 2px solid var(--primary);
+  outline: none;
+  width: auto;
+  height: auto;
+  clip: auto;
+  white-space: normal;
 }
 
 /* High contrast mode support */
