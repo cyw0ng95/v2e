@@ -908,6 +908,7 @@ interface AppRegistryEntry {
 
 ---
 
+Duration\n**5-7 days**\* (2025-02-12 to 2025-02-19)\n\n### Objectives\nFinal polish, optimization, testing, and deployment.\n\n### Tasks
 ## Phase 5: Polish & Launch
 
 ### Duration
