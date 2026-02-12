@@ -1,22 +1,29 @@
 /**
  * v2e Portal - Menu Bar Component
  *
- * Desktop-top menu bar with glass morphism effect
+ * Desktop-top menu bar with glassmorphism effect
  * Renders without backend dependency
  */
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Z_INDEX } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
+import { useTheme } from 'next-themes';
 
 /**
  * Menu bar component
  * Fixed at top, always on top (z-index: 2000)
  */
 export function MenuBar() {
-  const { theme, setThemeMode, dock, setDockAutoHide } = useDesktopStore();
+  const { dock, setDockAutoHide } = useDesktopStore();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <header
@@ -31,57 +38,37 @@ export function MenuBar() {
           <span className="text-sm font-medium text-gray-700">v2e</span>
         </div>
 
-        {/* Center: Search placeholder */}
-        <div className="flex-1 flex justify-center">
-          <div className="w-96 h-5 bg-white/20 rounded-lg flex items-center px-3 text-gray-400 text-sm">
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <span className="ml-2">Search</span>
-          </div>
-        </div>
-
         {/* Right side: Controls */}
         <div className="flex items-center gap-3">
           {/* Theme toggle */}
-          <button
-            onClick={() => setThemeMode(theme.mode === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg hover:bg-white/20 transition-colors"
-            aria-label={`Switch to ${theme.mode === 'dark' ? 'light' : 'dark'} mode`}
-            title={`Switch to ${theme.mode === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme.mode === 'dark' ? (
-              // Sun icon
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v1m0 8v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            ) : (
-              // Moon icon
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
-                />
-              </svg>
-            )}
-          </button>
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-lg hover:bg-white/20 transition-colors"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v1m0 8v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 18 0z"
+                  />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 12.79A9 9 0 1111.21 3 7 0 0021 12.79z"
+                  />
+                </svg>
+              )}
+            </button>
+          )}
 
           {/* Dock auto-hide toggle */}
           <button
@@ -95,7 +82,7 @@ export function MenuBar() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"
+                d="M4 6a2 2 0 012 2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"
               />
               <path
                 strokeLinecap="round"
@@ -117,7 +104,7 @@ export function MenuBar() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 15a3 3 0 11-6 0 3 3 0 016 0zm5.25-5.25a5.25 5.25 0 01-7.07 0 5.25 5.25 0 007.07 7.07zm-9.9 1.95a9.9 9.9 0 0111.3 0 9.9 9.9 0 01-11.3 0"
+                d="M12 15a3 3 0 11-6 0 3 3 0 0 16 0zm5.25-5.25a5.25 5.25 0 01-7.07 0 5.25 5.25 0 007.07 7.07zm-9.9 1.95a9.9 9.9 0 0111.3 0 9.9 9.9 0 01-11.3 0"
               />
             </svg>
           </button>

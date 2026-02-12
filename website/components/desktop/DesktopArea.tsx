@@ -14,7 +14,6 @@ import type { DesktopIcon as DesktopIconType } from '@/types/desktop';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getAppById } from '@/lib/desktop/app-registry';
 import { ClockWidget } from './ClockWidget';
-import Threads from './Threads';
 import type { WidgetConfig } from '@/types/desktop';
 
 /**
@@ -144,28 +143,9 @@ export function DesktopArea() {
 
   return (
     <>
-      {/* Threads animation background */}
-      <div
-        className="absolute inset-0 overflow-hidden"
-        style={{
-          zIndex: Z_INDEX.DESKTOP_WALLPAPER,
-          pointerEvents: 'none',
-        }}
-        aria-hidden="true"
-      >
-        <Threads
-          color={[0.7450980392156863, 0.741764705882353, 0.7607843137254902]}
-          amplitude={1}
-          distance={0}
-          enableMouseInteraction
-          className="w-full h-full"
-        />
-      </div>
-
       <main
-        className="absolute inset-0 overflow-hidden"
+        className="absolute inset-0 overflow-hidden bg-background"
         style={{
-          background: theme.wallpaper,
           zIndex: Z_INDEX.DESKTOP_WALLPAPER,
         }}
         onContextMenu={handleContextMenu}

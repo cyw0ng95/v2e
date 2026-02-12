@@ -136,8 +136,8 @@ interface ThreadsProps {
 
 const Threads = ({
   color = [0.7450980392156863, 0.7411764705882353, 0.7607843137254902],
-  amplitude = 1,
-  distance = 0,
+  amplitude = 2.5,
+  distance = 1.5,
   enableMouseInteraction = false,
   className = '',
   style = {},

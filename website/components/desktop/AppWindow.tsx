@@ -4,11 +4,12 @@
  * Complete window management with titlebar, controls, content area
  * Phase 2: Window System - Enhanced with drag, resize, persistence
  * Iteration 2: Adding full window interaction support
+ * Optimized: 60fps drag performance with requestAnimationFrame
  */
 
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { X, Minus, Square, Copy, Maximize2 } from 'lucide-react';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { Z_INDEX, type WindowConfig } from '@/types/desktop';
@@ -68,79 +69,110 @@ function WindowControls({ window }: { window: WindowConfig }) {
 
 /**
  * Window titlebar component
- * Handles window dragging with 60fps performance
+ * Handles window dragging with 60fps performance using requestAnimationFrame
  */
 function WindowTitlebar({ window }: { window: WindowConfig }) {
   const { focusWindow, updateWindowPosition } = useDesktopStore();
   const titlebarRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
-  const windowRef = useRef<HTMLDivElement>(null);
+
+  // Use refs for drag state to avoid re-renders during drag
+  const dragStateRef = useRef({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    windowStartX: 0,
+    windowStartY: 0,
+  });
+
+  // Stable refs that don't change
+  const windowIdRef = useRef(window.id);
+  const windowSizeRef = useRef({ width: window.size.width, height: window.size.height });
+
+  // Update refs when window changes
+  useEffect(() => {
+    windowIdRef.current = window.id;
+    windowSizeRef.current = { width: window.size.width, height: window.size.height };
+  }, [window.id, window.size.width, window.size.height]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only left button
+    if (e.button !== 0) return;
+
     // Focus window on click
     focusWindow(window.id);
 
-    // Initialize drag
+    // Initialize drag state
+    dragStateRef.current = {
+      isDragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      windowStartX: window.position.x,
+      windowStartY: window.position.y,
+    };
     setIsDragging(true);
-    dragStartPosRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-  }, [focusWindow, window.id]);
+  }, [focusWindow, window.id, window.position.x, window.position.y]);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !dragStartPosRef.current) return;
-
-    e.preventDefault();
-
-    const deltaX = e.clientX - dragStartPosRef.current.x;
-    const deltaY = e.clientY - dragStartPosRef.current.y;
-
-    // Calculate new position with boundary constraints
-    const newPosition = {
-      x: window.position.x + deltaX,
-      y: window.position.y + deltaY,
-    };
-
-    // Constrain to viewport bounds (with menu and dock)
-    const browserWindow = (globalThis as unknown as Window);
-    const viewportWidth = browserWindow.innerWidth || 1024;
-    const viewportHeight = browserWindow.innerHeight || 768;
-    const maxX = viewportWidth - window.size.width - 20; // 20px margin
-    const maxY = viewportHeight - window.size.height - 28 - 80 - 20; // Menu + Dock + margin
-    const minY = 28; // Below menu bar
-
-    newPosition.x = Math.max(0, Math.min(newPosition.x, maxX));
-    newPosition.y = Math.max(minY, Math.min(newPosition.y, maxY));
-
-    // Update position (will trigger re-render)
-    updateWindowPosition(window.id, newPosition);
-
-    // Update drag start position for next frame
-    dragStartPosRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-  }, [isDragging, window.position.x, window.position.y, window.size.width, window.size.height, window.id, updateWindowPosition]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-    dragStartPosRef.current = null;
-  }, []);
-
-  // Add global mouse move/up listeners
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
+    const { isDragging, startX, startY, windowStartX, windowStartY } = dragStateRef.current;
+
+    if (!isDragging) return;
+
+    let rafId: number | null = null;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStateRef.current.isDragging) return;
+
+      if (rafId) return; // Skip if frame is pending
+
+      rafId = requestAnimationFrame(() => {
+        const state = dragStateRef.current;
+        if (!state.isDragging) return;
+
+        const deltaX = e.clientX - state.startX;
+        const deltaY = e.clientY - state.startY;
+
+        // Calculate new position with boundary constraints
+        let newX = state.windowStartX + deltaX;
+        let newY = state.windowStartY + deltaY;
+
+        // Boundary constraints
+        const viewportWidth = globalThis.innerWidth || 1024;
+        const viewportHeight = globalThis.innerHeight || 768;
+        const windowWidth = windowSizeRef.current.width;
+        const windowHeight = windowSizeRef.current.height;
+
+        const maxX = viewportWidth - windowWidth - 20;
+        const maxY = viewportHeight - windowHeight - 28 - 80 - 20;
+        const minY = 28;
+
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(minY, Math.min(newY, maxY));
+
+        // Batch update position
+        updateWindowPosition(windowIdRef.current, { x: newX, y: newY });
+        rafId = null;
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      dragStateRef.current.isDragging = false;
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove, { passive: true });
+    document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, updateWindowPosition]);
 
   return (
     <div
@@ -150,8 +182,8 @@ function WindowTitlebar({ window }: { window: WindowConfig }) {
         flex items-center justify-between px-3 py-2
         bg-gradient-to-r from-gray-50 to-gray-100
         border-b border-gray-200 select-none
-        ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
       `}
+      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
     >
       {/* App icon and title */}
       <div className="flex items-center gap-2 select-none">
@@ -182,70 +214,69 @@ function WindowResizeHandle({
 }) {
   const { updateWindowSize } = useDesktopStore();
   const [isResizing, setIsResizing] = useState(false);
-  const resizeStartPosRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  const resizeStateRef = useRef({
+    isResizing: false,
+    startX: 0,
+    startY: 0,
+    startWidth: 0,
+    startHeight: 0,
+  });
 
-  // Guard clause for undefined window
   if (!window) {
     return null;
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsResizing(true);
-    resizeStartPosRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      width: window.size.width,
-      height: window.size.height,
+    resizeStateRef.current = {
+      isResizing: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: window.size.width,
+      startHeight: window.size.height,
     };
+    setIsResizing(true);
     onResizeStart(position, e);
   };
 
-  // Handle resize with requestAnimationFrame for 60fps
   useEffect(() => {
-    if (!isResizing) return;
+    if (!resizeStateRef.current.isResizing) return;
 
     let rafId: number | null = null;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || resizeStartPosRef.current === null) return;
+      if (!resizeStateRef.current.isResizing) return;
 
       if (rafId) return;
       rafId = requestAnimationFrame(() => {
-        if (!resizeStartPosRef.current) return;
-        const deltaX = e.clientX - resizeStartPosRef.current.x;
-        const deltaY = e.clientY - resizeStartPosRef.current.y;
+        const state = resizeStateRef.current;
+        if (!state.isResizing) return;
 
-        let newWidth = resizeStartPosRef.current.width;
-        let newHeight = resizeStartPosRef.current.height;
+        const deltaX = e.clientX - state.startX;
+        const deltaY = e.clientY - state.startY;
+
+        let newWidth = state.startWidth;
+        let newHeight = state.startHeight;
 
         // Calculate new size based on resize direction
         if (position.includes('right')) {
-          newWidth = Math.max(window.minWidth, resizeStartPosRef.current.width + deltaX);
+          newWidth = Math.max(window.minWidth, state.startWidth + deltaX);
         } else if (position.includes('left')) {
-          newWidth = Math.max(window.minWidth, resizeStartPosRef.current.width - deltaX);
+          newWidth = Math.max(window.minWidth, state.startWidth - deltaX);
         }
 
         if (position.includes('bottom')) {
-          newHeight = Math.max(window.minHeight, resizeStartPosRef.current.height + deltaY);
+          newHeight = Math.max(window.minHeight, state.startHeight + deltaY);
         } else if (position.includes('top')) {
-          newHeight = Math.max(window.minHeight, resizeStartPosRef.current.height - deltaY);
+          newHeight = Math.max(window.minHeight, state.startHeight - deltaY);
         }
 
         // Apply max constraints if set
-        const maxWidth = window.maxWidth ?? (globalThis as unknown as { innerWidth: number }).innerWidth - 40;
+        const maxWidth = window.maxWidth ?? globalThis.innerWidth - 40;
         newWidth = Math.min(newWidth, maxWidth);
 
-        // Update window size
         updateWindowSize(window.id, { width: newWidth, height: newHeight });
-
-        // Update start position for next frame
-        resizeStartPosRef.current = {
-          x: e.clientX,
-          y: e.clientY,
-          width: newWidth,
-          height: newHeight,
-        };
+        rafId = null;
       });
     };
 
@@ -254,11 +285,11 @@ function WindowResizeHandle({
         cancelAnimationFrame(rafId);
         rafId = null;
       }
+      resizeStateRef.current.isResizing = false;
       setIsResizing(false);
-      resizeStartPosRef.current = null;
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mousemove', handleMouseMove, { passive: true });
     document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
@@ -266,9 +297,8 @@ function WindowResizeHandle({
       document.removeEventListener('mouseup', handleMouseUp);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [isResizing, position, window.minWidth, window.minHeight, window.maxWidth, window.id, updateWindowSize]);
+  }, [isResizing, position, window.id, window.minWidth, window.minHeight, window.maxWidth, updateWindowSize]);
 
-  // Cursor styles based on resize direction
   const getCursorClass = () => {
     if (position === 'top' || position === 'bottom') return 'cursor-ns-resize';
     if (position === 'left' || position === 'right') return 'cursor-ew-resize';
@@ -282,7 +312,6 @@ function WindowResizeHandle({
         absolute bg-transparent hover:bg-blue-500/30
         ${getCursorClass()}
         transition-colors duration-150
-        ${isResizing ? 'z-50' : 'z-10'}
       `}
       style={{ zIndex: Z_INDEX.CONTEXT_MENU + 1 }}
       aria-label={`Resize window ${position}`}
@@ -295,33 +324,41 @@ function WindowResizeHandle({
  * Complete window with titlebar, resize handles, content area
  */
 export function AppWindow({ window }: { window: WindowConfig }) {
-  const { updateWindowSize, updateWindowPosition } = useDesktopStore();
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeDirectionRef = useRef<string | null>(null);
+  const handleResizeStart = useCallback((direction: string) => {
+    return () => {};
+  }, []);
 
-  const handleResizeStart = (direction: string) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsResizing(true);
-    resizeDirectionRef.current = direction;
-  };
+  // Memoize window style to avoid recalculating on every render
+  const windowStyle = useMemo<React.CSSProperties>(() => {
+    const style: React.CSSProperties = {
+      left: `${window.position.x}px`,
+      top: `${window.position.y}px`,
+      width: `${window.size.width}px`,
+      height: `${window.size.height}px`,
+      minWidth: `${window.minWidth}px`,
+      minHeight: `${window.minHeight}px`,
+      zIndex: window.zIndex,
+    };
 
-  // Calculate window size based on state
-  const windowStyle: React.CSSProperties = {
-    left: `${window.position.x}px`,
-    top: `${window.position.y}px`,
-    width: `${window.size.width}px`,
-    height: `${window.size.height}px`,
-    minWidth: `${window.minWidth}px`,
-    minHeight: `${window.minHeight}px`,
-  };
+    if (window.isMaximized) {
+      style.left = '0';
+      style.top = '28px';
+      style.width = '100%';
+      style.height = 'calc(100vh - 28px - 80px)';
+    }
 
-  if (window.isMaximized) {
-    // Maximized - fill available space (minus menu and dock)
-    windowStyle.left = '0';
-    windowStyle.top = '28px'; // Below menu bar
-    windowStyle.width = '100%';
-    windowStyle.height = 'calc(100vh - 28px - 80px)'; // Minus menu and dock
-  }
+    return style;
+  }, [window.position.x, window.position.y, window.size.width, window.size.height,
+      window.minWidth, window.minHeight, window.maxWidth, window.zIndex, window.isMaximized]);
+
+  // Memoize class names to avoid recalculating
+  const windowClassName = useMemo(() => {
+    return [
+      'absolute bg-white rounded-lg shadow-2xl overflow-hidden pointer-events-auto',
+      window.isFocused ? 'ring-2 ring-blue-500' : '',
+      window.isMinimized ? 'opacity-0' : '',
+    ].filter(Boolean).join(' ');
+  }, [window.isFocused, window.isMinimized]);
 
   return (
     <motion.div
@@ -339,15 +376,8 @@ export function AppWindow({ window }: { window: WindowConfig }) {
         duration: window.state === 'closing' ? 0.15 : 0.2,
         ease: 'easeInOut',
       }}
-      className={`
-        absolute bg-white rounded-lg shadow-2xl overflow-hidden pointer-events-auto
-        ${window.isFocused ? 'ring-2 ring-blue-500' : ''}
-        ${window.isMinimized ? 'opacity-0' : ''}
-      `}
-      style={{
-        ...windowStyle,
-        zIndex: window.zIndex,
-      }}
+      className={windowClassName}
+      style={windowStyle}
       role="dialog"
       aria-labelledby={`window-title-${window.id}`}
       aria-modal={window.isFocused ? 'true' : 'false'}
