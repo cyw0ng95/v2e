@@ -51,6 +51,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
   const setX = useRef<SetterFn | null>(null);
   const setY = useRef<SetterFn | null>(null);
   const pos = useRef({ x: 0, y: 0 });
+  const { windows } = useDesktopStore();
 
   // Convert apps to chroma items
   const registryApps = getActiveApps();
@@ -262,3 +263,7 @@ const ChromaGridDock: React.FC<ChromaGridDockProps> = ({
 };
 
 export default ChromaGridDock;
+
+/**
+ * Fix: windows was not defined - should be destructured from useDesktopStore
+ */
