@@ -39,23 +39,10 @@ import {
 } from 'lucide-react';
 
 /**
- * Adjust color brightness for gradient effect
- * Negative percent darkens, positive lightens
+ * Map app icon names from app-registry to icon components
  */
-function adjustColor(hex: string, percent: number): string {
-  const num = parseInt(hex.replace('#', ''), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
-  const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
-  const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
-  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
-}
-
-/**
- * Map app icon names from app-registry to glass icon components
- */
-function getAppGlassIcon(appId: string): React.ComponentType<{ size?: number; className?: string; stopColor1?: string; stopColor2?: string }> {
-  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string; stopColor1?: string; stopColor2?: string }>> = {
+function getAppIcon(appId: string): React.ComponentType<{ size?: number; className?: string }> {
+  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
     cve: Star,           // Shield alternative
     cwe: Bug,            // Direct match
     capec: Crosshair,     // Target icon
@@ -100,8 +87,8 @@ function DockItem({
   const ref = useRef<HTMLDivElement>(null);
   const isHovered = useMotionValue(0);
 
-  // Get glass icon component for this app
-  const GlassIcon = getAppGlassIcon(app.id);
+  // Get icon component for this app
+  const AppIcon = getAppIcon(app.id);
 
   const handleClick = useCallback(() => {
     if (existingWindow) {
@@ -177,12 +164,11 @@ function DockItem({
       aria-label={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
       title={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
     >
-      {/* Glass icon with app-specific gradient colors */}
-      <GlassIcon
+      {/* App icon */}
+      <AppIcon
         size={40}
-        stopColor1={app.iconColor || '#3b82f6'}
-        stopColor2={adjustColor(app.iconColor || '#3b82f6', -30)}
         className="opacity-90 hover:opacity-100 transition-opacity"
+        style={{ color: app.iconColor || '#3b82f6' }}
       />
 
       {/* Active indicator */}
