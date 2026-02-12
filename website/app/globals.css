@@ -51,18 +51,23 @@
   --spacing-8: 2rem;
   --spacing-10: 2.5rem;
   --spacing-12: 3rem;
-  
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.625rem;
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
   --radius-3xl: 1.5rem;
-  
+
+  /* Minimum touch target size (44px for accessibility) */
+  --touch-target: 2.75rem;
+
   --transition-fast: 150ms ease-out;
-  --transition-normal: 300ms ease-out;
-  --transition-slow: 500ms ease-out;
-  
+  --transition-normal: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+
   --z-dropdown: 1000;
   --z-sticky: 1020;
   --z-fixed: 1030;
@@ -70,7 +75,9 @@
   --z-modal: 1050;
   --z-popover: 1060;
   --z-tooltip: 1070;
-  
+  --z-menu-bar: 2000;
+  --z-dock: 1990;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -226,9 +233,38 @@ html, body, #__next {
     max-width: none;
   }
 
+  /* Responsive container with max-width */
+  .container-responsive {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
+    max-width: 1400px;
+  }
+
+  /* Mobile-first container */
+  .container-mobile {
+    @apply w-full mx-auto px-4;
+    max-width: 100%;
+  }
+
   /* Main area should scroll internally when content overflows */
   .app-main-scrollable {
     @apply w-full h-full overflow-auto;
+  }
+
+  /* Safe area handling for mobile devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left, 0);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right, 0);
   }
 
   /* Enhanced card component with glassmorphism effect */
@@ -263,7 +299,7 @@ html, body, #__next {
 
   /* Enhanced button styles - refined interactions */
   .btn-primary {
-    @apply bg-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200;
+    @apply bg-primary text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 min-h-[var(--touch-target)] min-w-[var(--touch-target)] flex items-center justify-center;
   }
 
   .btn-primary:hover {
@@ -271,11 +307,11 @@ html, body, #__next {
   }
 
   .btn-primary:active {
-    @apply translate-y-0 scale-98;
+    @apply translate-y-0 scale-95;
   }
 
   .btn-secondary {
-    @apply bg-muted/70 hover:bg-muted text-foreground border border-border/50 transition-all duration-200;
+    @apply bg-muted/70 hover:bg-muted text-foreground border border-border/50 transition-all duration-200 min-h-[var(--touch-target)] min-w-[var(--touch-target)] flex items-center justify-center;
   }
 
   .btn-secondary:hover {
@@ -283,16 +319,56 @@ html, body, #__next {
   }
 
   .btn-secondary:active {
-    @apply translate-y-0 scale-98;
+    @apply translate-y-0 scale-95;
+  }
+
+  /* Responsive text sizes */
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl;
+  }
+
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
+  }
+
+  .text-responsive-base {
+    @apply text-base sm:text-lg md:text-xl lg:text-2xl;
+  }
+
+  .text-responsive-sm {
+    @apply text-sm sm:text-base md:text-lg lg:text-xl;
+  }
+
+  /* Responsive spacing */
+  .spacing-responsive-sm {
+    @apply p-2 sm:p-3 md:p-4 lg:p-6;
+  }
+
+  .spacing-responsive-md {
+    @apply p-3 sm:p-4 md:p-6 lg:p-8;
+  }
+
+  .spacing-responsive-lg {
+    @apply p-4 sm:p-6 md:p-8 lg:p-12;
   }
 
   /* Enhanced input styles */
   .input-enhanced {
-    @apply border-border/60 bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 outline-none;
+    @apply border-border/60 bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 outline-none min-h-[2.75rem];
   }
 
   .input-enhanced:focus {
     @apply border-primary/80;
+  }
+
+  /* Responsive grid */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4;
+  }
+
+  /* Responsive flex */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row md:flex-row;
   }
 
   /* Enhanced table styles */
