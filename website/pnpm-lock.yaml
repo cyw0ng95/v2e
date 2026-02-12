@@ -92,6 +92,9 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      nucleo-glass-icons:
+        specifier: ^0.1.11
+        version: 0.1.11(react@19.2.3)
       ogl:
         specifier: ^1.0.11
         version: 1.0.11
@@ -2904,6 +2907,17 @@ packages:
 
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
+
+  nucleo-glass-icons@0.1.11:
+    resolution: {integrity: sha512-BXyU++2arpt1KSL6/k+tcXejzW/rBfhyB3P05i9qD4O7hktcLfHyC2pwGio4n/I2ynhSOyi8IjgEZv5pb4Qmpw==}
+    peerDependencies:
+      react: '>=16.8.0'
+      vue: '>=3.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -6310,6 +6324,10 @@ snapshots:
       - babel-plugin-macros
 
   node-releases@2.0.27: {}
+
+  nucleo-glass-icons@0.1.11(react@19.2.3):
+    optionalDependencies:
+      react: 19.2.3
 
   object-assign@4.1.1: {}
 
