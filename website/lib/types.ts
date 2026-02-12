@@ -465,6 +465,8 @@ export interface UpdateCVEResponse {
   /** CVE identifier */
   cveId: string;
   /** Updated CVE item */
+/  /** Temporal metrics */a /** Final severity (computed from sub-scores) */
+  finalSeverity?: CVSSSeverity;
   cve: CVEItem;
 }
 
@@ -4403,6 +4405,9 @@ export interface CVSS3BaseMetrics {
   /** Confidentiality Impact (H/L/N) */
   C: C;
   /** Integrity Impact (H/L/N) */
+/  /** Modified Base Scope (X/U/C) - v3.1 only */
+  /** Final severity (computed from sub-scores) */
+  finalSeverity?: CVSSSeverity;
   I: I;
   /** Availability Impact (H/L/N) */
   A: A;
