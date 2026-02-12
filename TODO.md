@@ -158,7 +158,6 @@
 | TODO-253 | common | Optimization | Optimize ErrorRegistry pattern matching with case-insensitive map for O(1) lookup | 80 | Medium | |
 | TODO-254 | notes | Optimization | Optimize Manager.GetContext to avoid copying viewedItems slice on every call | 50 | Medium | |
 | TODO-256 | rpc | Optimization | Optimize InvokeRPC defer execution logic to avoid unnecessary cleanup calls | 80 | Medium | |
-| TODO-262 | ratelimit | Feature | Implement proper Cleanup method using maxAge parameter instead of ignoring it | 60 | Medium | |
 | TODO-264 | uptime | Feature | Add uptime monitoring service with configurable polling intervals | 200 | Medium | |
 ## TODO Management Guidelines
 

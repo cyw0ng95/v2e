@@ -109,6 +109,7 @@ func (tb *TokenBucket) AllowWithRetryAfter() (allowed bool, retryAfter time.Dura
 type ClientLimiter struct {
 	mu         sync.RWMutex
 	limiters   map[string]*TokenBucket
+	lastAccess map[string]time.Time
 	maxTokens  int
 	refillRate time.Duration
 }
@@ -121,12 +122,14 @@ func NewClientLimiter(maxTokens int, refillInterval time.Duration) *ClientLimite
 	if maxTokens <= 0 || refillInterval <= 0 {
 		return &ClientLimiter{
 			limiters:   make(map[string]*TokenBucket),
+			lastAccess: make(map[string]time.Time),
 			maxTokens:  1,
 			refillRate: time.Second,
 		}
 	}
 	return &ClientLimiter{
 		limiters:   make(map[string]*TokenBucket),
+		lastAccess: make(map[string]time.Time),
 		maxTokens:  maxTokens,
 		refillRate: refillInterval,
 	}
@@ -150,6 +153,11 @@ func (cl *ClientLimiter) Allow(clientKey string) bool {
 			limiter = NewTokenBucket(cl.maxTokens, cl.refillRate)
 			cl.limiters[clientKey] = limiter
 		}
+		cl.lastAccess[clientKey] = time.Now()
+		cl.mu.Unlock()
+	} else {
+		cl.mu.Lock()
+		cl.lastAccess[clientKey] = time.Now()
 		cl.mu.Unlock()
 	}
 
@@ -173,6 +181,11 @@ func (cl *ClientLimiter) AllowWithRetryAfter(clientKey string) (bool, time.Durat
 			limiter = NewTokenBucket(cl.maxTokens, cl.refillRate)
 			cl.limiters[clientKey] = limiter
 		}
+		cl.lastAccess[clientKey] = time.Now()
+		cl.mu.Unlock()
+	} else {
+		cl.mu.Lock()
+		cl.lastAccess[clientKey] = time.Now()
 		cl.mu.Unlock()
 	}
 
@@ -186,13 +199,11 @@ func (cl *ClientLimiter) Cleanup(maxAge time.Duration) {
 	cl.mu.Lock()
 	defer cl.mu.Unlock()
 
-	// Note: This is a simple cleanup that removes all limiters.
-	// A more sophisticated implementation would track last access time
-	// per limiter and only remove those older than maxAge.
-	// For now, we keep it simple since limiters are small.
-	if len(cl.limiters) > 10000 {
-		// If we have too many limiters, clear them all
-		// This prevents unbounded growth in case of DDoS
-		cl.limiters = make(map[string]*TokenBucket)
+	now := time.Now()
+	for key, lastAccess := range cl.lastAccess {
+		if now.Sub(lastAccess) > maxAge {
+			delete(cl.limiters, key)
+			delete(cl.lastAccess, key)
+		}
 	}
 }
