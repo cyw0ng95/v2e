@@ -21,13 +21,13 @@ import { AppComponent } from './AppComponents';
  * Window controls component
  * Close, minimize, maximize buttons
  */
-function WindowControls({ window }: { window: WindowConfig }) {
+const WindowControls = memo(function WindowControls({ window }: { window: WindowConfig }) {
   const { closeWindow, minimizeWindow, maximizeWindow, focusWindow } = useDesktopStore();
-
-  const handleClose = () => closeWindow(window.id);
-  const handleMinimize = () => minimizeWindow(window.id);
-  const handleMaximize = () => maximizeWindow(window.id);
-
+ 
+  const handleClose = useCallback(() => closeWindow(window.id), [closeWindow, window.id]);
+  const handleMinimize = useCallback(() => minimizeWindow(window.id), [minimizeWindow, window.id]);
+  const handleMaximize = useCallback(() => maximizeWindow(window.id), [maximizeWindow, window.id]);
+ 
   return (
     <div className="flex items-center gap-1">
       {/* Close button */}
@@ -39,7 +39,7 @@ function WindowControls({ window }: { window: WindowConfig }) {
       >
         <X className="w-3.5 h-3.5 text-gray-600" />
       </button>
-
+ 
       {/* Minimize button */}
       <button
         onClick={handleMinimize}
@@ -49,7 +49,7 @@ function WindowControls({ window }: { window: WindowConfig }) {
       >
         <Minus className="w-3.5 h-3.5 text-gray-600" />
       </button>
-
+ 
       {/* Maximize/Restore button */}
       <button
         onClick={handleMaximize}
@@ -65,7 +65,7 @@ function WindowControls({ window }: { window: WindowConfig }) {
       </button>
     </div>
   );
-}
+});
 
 /**
  * Window titlebar component
