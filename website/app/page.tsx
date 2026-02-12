@@ -31,7 +31,7 @@ export default function HomePage() {
   useNetworkStatus();
 
   // Determine background class based on theme
-  const bgClass = theme === 'light' ? 'bg-black' : 'bg-white';
+  const bgClass = theme === 'light' ? 'bg-background' : 'bg-background';
 
   return (
     <DndContext>

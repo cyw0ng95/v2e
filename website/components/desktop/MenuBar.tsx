@@ -27,7 +27,7 @@ export function MenuBar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 h-7 bg-white/10 backdrop-blur-md border-b border-white/10"
+      className="fixed top-0 left-0 right-0 h-7 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-border/60 shadow-sm"
       style={{ zIndex: Z_INDEX.MENU_BAR }}
       role="banner"
     >
@@ -35,16 +35,16 @@ export function MenuBar() {
         {/* Left side: Apple logo placeholder */}
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-700 to-gray-900" />
-          <span className="text-sm font-medium text-gray-700">v2e</span>
+          <span className="text-sm font-medium text-foreground">v2e</span>
         </div>
 
         {/* Right side: Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Theme toggle */}
           {mounted && (
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-lg hover:bg-white/20 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
@@ -73,7 +73,9 @@ export function MenuBar() {
           {/* Dock auto-hide toggle */}
           <button
             onClick={() => setDockAutoHide(!dock.autoHide)}
-            className={`p-2 rounded-lg transition-colors ${dock.autoHide ? 'bg-blue-500/20 hover:bg-blue-500/30' : 'hover:bg-white/20'}`}
+            className={`p-1.5 rounded-lg transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none ${
+              dock.autoHide ? 'bg-primary/10 hover:bg-primary/20 text-primary' : 'hover:bg-accent hover:text-accent-foreground'
+            }`}
             aria-label={dock.autoHide ? 'Disable dock auto-hide' : 'Enable dock auto-hide'}
             title={dock.autoHide ? 'Dock auto-hide enabled' : 'Dock auto-hide disabled'}
           >
@@ -95,7 +97,7 @@ export function MenuBar() {
 
           {/* Settings placeholder */}
           <button
-            className="p-2 rounded-lg hover:bg-white/20 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
             aria-label="Settings"
             title="Settings"
           >
@@ -104,7 +106,7 @@ export function MenuBar() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 15a3 3 0 11-6 0 3 3 0 0 16 0zm5.25-5.25a5.25 5.25 0 01-7.07 0 5.25 5.25 0 007.07 7.07zm-9.9 1.95a9.9 9.9 0 0111.3 0 9.9 9.9 0 01-11.3 0"
+                d="M12 15a3 3 0 11-6 0 3 3 0 016 0zm5.25-5.25a5.25 5.25 0 01-7.07 0 5.25 5.25 0 007.07 7.07zm-9.9 1.95a9.9 9.9 0 0111.3 0 9.9 9.9 0 01-11.3 0"
               />
             </svg>
           </button>

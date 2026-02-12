@@ -280,7 +280,7 @@ export function Dock() {
         onMouseEnter={handleMouseEnter}
         className={`
           fixed bottom-4 left-1/2 transform -translate-x-1/2
-          bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl
+          backdrop-blur-lg bg-white/80 dark:bg-slate-900/80 border border-border/60 rounded-2xl shadow-lg
           flex items-end justify-center gap-2 p-2
           transition-transform duration-300
           ${dock.autoHide ? 'hover:scale-105' : ''}

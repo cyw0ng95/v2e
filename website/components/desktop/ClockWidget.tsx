@@ -39,7 +39,7 @@ export function ClockWidget({ widget }: { widget: WidgetConfig }) {
 
   return (
     <div
-      className="absolute bg-white/10 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/20 pointer-events-auto"
+      className="absolute backdrop-blur-md bg-white/80 dark:bg-slate-900/80 rounded-lg p-4 shadow-lg border border-border/60 pointer-events-auto"
       style={{
         left: `${widget.position.x}px`,
         top: `${widget.position.y}px`,
@@ -48,10 +48,10 @@ export function ClockWidget({ widget }: { widget: WidgetConfig }) {
       aria-label="Clock widget"
     >
       <div className="text-center">
-        <div className="text-4xl font-light text-gray-800">
+        <div className="text-4xl font-light text-foreground">
           {time ? formatTime(time) : '--:--'}
         </div>
-        <div className="text-sm text-gray-500 mt-1">
+        <div className="text-sm text-muted-foreground mt-1">
           {time ? time.toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
