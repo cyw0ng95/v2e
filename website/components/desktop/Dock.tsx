@@ -21,6 +21,54 @@ import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
+import {
+  Star,
+  Bug,
+  Crosshairs,
+  Gauge,
+  Sitemap,
+  BookOpen,
+  Bolt,
+  Pin,
+  Files,
+  Sparkle,
+  Dial,
+  Grid,
+  TabOpen,
+  Heart,
+} from 'nucleo-glass-icons/react';
+
+/**
+ * Adjust color brightness for gradient effect
+ * Negative percent darkens, positive lightens
+ */
+function adjustColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+  const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+  const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
+}
+
+/**
+ * Map app icon names from app-registry to glass icon components
+ */
+function getAppGlassIcon(appId: string): React.ComponentType<{ size?: number; className?: string; stopColor1?: string; stopColor2?: string }> {
+  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string; stopColor1?: string; stopColor2?: string }>> = {
+    cve: Star,           // Shield alternative
+    cwe: Bug,            // Direct match
+    capec: Crosshairs,    // Target alternative
+    attack: Crosshairs,   // Crosshair alternative
+    cvss: Dial,           // Calculator alternative
+    glc: Sitemap,        // Git-graph alternative
+    mcards: BookOpen,     // Library alternative
+    etl: Bolt,           // Activity alternative
+    bookmarks: TabOpen,   // Bookmark alternative
+  };
+
+  return iconMap[appId] || Star; // Default to Star if no match
+}
 
 /**
  * Dock item component with React Bits magnification animation
@@ -51,6 +99,9 @@ function DockItem({
   const existingWindow = Object.values(windows).find(w => w.appId === app.id);
   const ref = useRef<HTMLDivElement>(null);
   const isHovered = useMotionValue(0);
+
+  // Get glass icon component for this app
+  const GlassIcon = getAppGlassIcon(app.id);
 
   const handleClick = useCallback(() => {
     if (existingWindow) {
@@ -126,15 +177,13 @@ function DockItem({
       aria-label={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
       title={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
     >
-      {/* App icon with app color */}
-      <div
-        className="rounded-full flex items-center justify-center"
-        style={{ backgroundColor: app.iconColor || '#3b82f6' }}
-      >
-        <span className="text-white text-lg font-bold">
-          {app.name[0]}
-        </span>
-      </div>
+      {/* Glass icon with app-specific gradient colors */}
+      <GlassIcon
+        size={40}
+        stopColor1={app.iconColor || '#3b82f6'}
+        stopColor2={adjustColor(app.iconColor || '#3b82f6', -30)}
+        className="opacity-90 hover:opacity-100 transition-opacity"
+      />
 
       {/* Active indicator */}
       <AnimatePresence>

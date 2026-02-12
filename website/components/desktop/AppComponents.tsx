@@ -12,10 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load application components for better performance
-const CVSSCalculator = lazy(() => import('@/components/cvss/calculator').then(m => ({ default: m.CVSSCalculator })));
+const CVSSCalculator = lazy(() => import('@/components/cvss/calculator').then(m => ({ default: m.default })));
 const ETLEnginePage = lazy(() => import('@/app/etl/page').then(m => ({ default: m.default })));
 const GLCLandingPage = lazy(() => import('@/app/glc/page').then(m => ({ default: m.default })));
-const McardsStudy = lazy(() => import('@/components/mcards/mcards-study').then(m => ({ default: m.McardsStudy })));
+const McardsStudy = lazy(() => import('@/components/mcards/mcards-study').then(m => ({ default: m.default })));
 const BookmarkTable = lazy(() => import('@/components/bookmark-table').then(m => ({ default: m.BookmarkTable })));
 
 /**
