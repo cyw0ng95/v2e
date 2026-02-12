@@ -5,6 +5,7 @@ import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { ViewLearnProvider } from "@/contexts/ViewLearnContext";
 import GlobalErrorBoundary from "@/components/global-error-boundary";
+import { DevLogTransportInit } from "@/components/dev-log-transport-init";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <GlobalErrorBoundary>
+          <DevLogTransportInit />
           <Providers>
             <ViewLearnProvider>
               <div className="min-h-screen min-w-screen flex flex-col">
