@@ -10,12 +10,19 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var capecIDRegexPool = sync.Pool{
+	New: func() interface{} {
+		return regexp.MustCompile(`\d+`)
+	},
+}
 
 // LocalCAPECStore manages a local database of CAPEC items (stubbed without libxml2).
 type LocalCAPECStore struct {
@@ -315,8 +322,8 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 
 // GetByID returns a CAPEC item by its textual ID (e.g. "CAPEC-123" or "123").
 func (s *LocalCAPECStore) GetByID(ctx context.Context, id string) (*CAPECItemModel, error) {
-	// Try to extract digits from the id
-	re := regexp.MustCompile(`\d+`)
+	re := capecIDRegexPool.Get().(*regexp.Regexp)
+	defer capecIDRegexPool.Put(re)
 	m := re.FindString(id)
 	if m == "" {
 		return nil, gorm.ErrRecordNotFound

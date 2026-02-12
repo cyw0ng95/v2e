@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -27,8 +28,11 @@ const (
 	MaxXMLFileSize = 100 << 20
 )
 
-// Precompiled regex for extracting CAPEC numeric ID from strings like "CAPEC-123" or "123"
-var capecIDRegex = regexp.MustCompile(`\d+`)
+var capecIDRegexPool = sync.Pool{
+	New: func() interface{} {
+		return regexp.MustCompile(`\d+`)
+	},
+}
 
 // capecImportCallback is called after successful CAPEC import.
 // Implementations can use this to invalidate caches or perform other cleanup.
@@ -277,7 +281,9 @@ func (s *LocalCAPECStore) ImportFromXML(xmlPath string, force bool) error {
 
 // GetByID returns a CAPEC item by its textual ID (e.g. "CAPEC-123" or "123").
 func (s *LocalCAPECStore) GetByID(ctx context.Context, id string) (*CAPECItemModel, error) {
-	m := capecIDRegex.FindString(id)
+	re := capecIDRegexPool.Get().(*regexp.Regexp)
+	defer capecIDRegexPool.Put(re)
+	m := re.FindString(id)
 	if m == "" {
 		return nil, gorm.ErrRecordNotFound
 	}
