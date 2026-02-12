@@ -49,7 +49,7 @@ export function ClockWidget({ widget }: { widget: WidgetConfig }) {
     >
       <div className="text-center">
         <div className="text-4xl font-light text-gray-800">
-          {formatTime(time)}
+          {time ? formatTime(time) : '--:--'}
         </div>
         <div className="text-sm text-gray-500 mt-1">
           {time ? time.toLocaleDateString('en-US', {
