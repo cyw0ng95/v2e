@@ -615,8 +615,9 @@ html {
   border-width: 0;
 }
 
-/* Show on focus (for skip links) */
-.sr-only-focusable:focus-visible {
+/* Show on focus (for skip links) - using :focus-visible */
+.sr-only-focusable:focus-visible,
+.sr-only-focusable:focus {
   position: fixed;
   top: 0;
   left: 0;
