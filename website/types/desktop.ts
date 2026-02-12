@@ -83,6 +83,8 @@ export interface WindowConfig {
 export interface DockConfig {
   items: DockItem[];
   isVisible: boolean;
+  autoHide: boolean; // Auto-hide dock when mouse leaves
+  autoHideDelay: number; // Delay in ms before hiding (default: 200)
   size: 'small' | 'medium' | 'large';
   position: 'bottom' | 'left' | 'right';
 }

@@ -16,7 +16,7 @@ import { useDesktopStore } from '@/lib/desktop/store';
  * Fixed at top, always on top (z-index: 2000)
  */
 export function MenuBar() {
-  const { theme, setThemeMode, dock } = useDesktopStore();
+  const { theme, setThemeMode, dock, setDockAutoHide } = useDesktopStore();
 
   return (
     <header
@@ -81,6 +81,29 @@ export function MenuBar() {
                 />
               </svg>
             )}
+          </button>
+
+          {/* Dock auto-hide toggle */}
+          <button
+            onClick={() => setDockAutoHide(!dock.autoHide)}
+            className={`p-2 rounded-lg transition-colors ${dock.autoHide ? 'bg-blue-500/20 hover:bg-blue-500/30' : 'hover:bg-white/20'}`}
+            aria-label={dock.autoHide ? 'Disable dock auto-hide' : 'Enable dock auto-hide'}
+            title={dock.autoHide ? 'Dock auto-hide enabled' : 'Dock auto-hide disabled'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 12v8a2 2 0 002-2V8a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2v8a2 2 0 01-2-2h16a2 2 0 002-2v-8a2 2 0 00-2-2H6a2 2 0 00-2 2z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={dock.autoHide ? "M9 9l6 6m6-6v12m-6-6l6 6" : "M9 15l6-6m-6 6v12m6-6l6-6"}
+              />
+            </svg>
           </button>
 
           {/* Settings placeholder */}

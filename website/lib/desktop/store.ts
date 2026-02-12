@@ -34,6 +34,8 @@ const initialState: DesktopState = {
   dock: {
     items: [],
     isVisible: true,
+    autoHide: false,
+    autoHideDelay: 200,
     size: 'medium',
     position: 'bottom',
   },
@@ -359,6 +361,11 @@ const useDesktopStore = create<DesktopStore>()(
       setDockSize: (size) =>
         set(state => ({
           dock: { ...state.dock, size },
+        })),
+
+      setDockAutoHide: (autoHide) =>
+        set(state => ({
+          dock: { ...state.dock, autoHide },
         })),
 
       // Theme Actions

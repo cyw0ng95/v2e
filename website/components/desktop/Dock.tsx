@@ -7,7 +7,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Z_INDEX } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
@@ -101,11 +101,15 @@ function DockItem({ app, isRunning, isIndicator }: {
 
 /**
  * Dock component
- * Fixed at bottom with glass morphism
+ * Fixed at bottom with glass morphism and auto-hide
  */
 export function Dock() {
-  const { dock, windows } = useDesktopStore();
+  const { dock, windows, setDockVisibility } = useDesktopStore();
   const contextMenu = useContextMenu();
+  const [isHovering, setIsHovering] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+
   const sizeClasses = {
     small: 'h-12',
     medium: 'h-20',
@@ -125,18 +129,68 @@ export function Dock() {
     };
   });
 
-  if (!dock.isVisible) {
-    return null; // Auto-hide - will be implemented in Phase 3
+  // Auto-hide logic
+  const handleMouseEnter = useCallback(() => {
+    setIsHovering(true);
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setDockVisibility(true);
+  }, [setDockVisibility]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovering(false);
+    if (dock.autoHide) {
+      hideTimeoutRef.current = setTimeout(() => {
+        setDockVisibility(false);
+      }, dock.autoHideDelay);
+    }
+  }, [dock.autoHide, dock.autoHideDelay, setDockVisibility]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Show dock when mouse moves to bottom edge
+  useEffect(() => {
+    if (!dock.autoHide) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const threshold = 50; // Distance from bottom edge to trigger reveal
+      if (window.innerHeight - e.clientY < threshold) {
+        setDockVisibility(true);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, [dock.autoHide, setDockVisibility]);
+
+  // Should show dock (either visible or hovering during auto-hide)
+  const shouldShow = dock.isVisible || (dock.autoHide && isHovering);
+
+  if (!shouldShow) {
+    return null;
   }
 
   return (
     <>
       <nav
+        ref={dockRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         className={`
           fixed bottom-4 left-1/2 right-1/2 -translate-x-1/2
           bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl
           flex items-end justify-center gap-1 p-2
           transition-transform duration-300
+          ${dock.autoHide ? 'hover:scale-105' : ''}
         `}
         style={{
           zIndex: Z_INDEX.DOCK,
