@@ -52,6 +52,7 @@ const initialState: DesktopState = {
       isVisible: true,
     },
   ],
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
 };
 
 // ============================================================================
@@ -114,6 +115,8 @@ interface DesktopActions {
   updateDockItems: (items: Array<{ app: AppRegistryEntry; isRunning: boolean; isIndicator: boolean }>) => void;
   setDockVisibility: (isVisible: boolean) => void;
   setDockSize: (size: 'small' | 'medium' | 'large') => void;
+  setDockAutoHide: (autoHide: boolean) => void;
+  setDockAutoHideDelay: (delay: number) => void;
 
   // Theme
   setThemeMode: (mode: 'light' | 'dark') => void;
@@ -124,6 +127,9 @@ interface DesktopActions {
   removeWidget: (id: string) => void;
   updateWidgetPosition: (id: string, position: { x: number; y: number }) => void;
   setWidgetVisibility: (id: string, isVisible: boolean) => void;
+
+  // Network
+  setOnlineStatus: (isOnline: boolean) => void;
 
   // Global
   resetDesktop: () => void;
@@ -375,6 +381,9 @@ const useDesktopStore = create<DesktopStore>()(
           ),
         })),
 
+      // Network Actions
+      setOnlineStatus: (isOnline) => set({ isOnline }),
+
       // Global Actions
       resetDesktop: () => set(initialState),
     }),
@@ -388,6 +397,7 @@ const useDesktopStore = create<DesktopStore>()(
         dock: state.dock,
         theme: state.theme,
         widgets: state.widgets,
+        isOnline: state.isOnline,
       }),
     }
   )

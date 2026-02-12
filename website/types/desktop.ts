@@ -126,6 +126,9 @@ export interface DesktopState {
 
   // Widgets
   widgets: WidgetConfig[];
+
+  // Network status
+  isOnline: boolean;
 }
 
 /**
@@ -152,10 +155,12 @@ export interface WidgetConfig {
 export const Z_INDEX = {
   MENU_BAR: 2000,
   QUICK_LAUNCH_MODAL: 1500,
+  SETTINGS_MODAL: 1400, // Settings modal
   CONTEXT_MENU: 1000,
   FOCUSED_WINDOW_BASE: 600, // Base for focused windows
   WINDOW_MIN: 100, // Minimum for inactive windows
   WINDOW_MAX: 999, // Maximum before context menu layer
+  DOCK_THUMBNAIL: 75, // Thumbnails above dock
   DOCK: 50,
   DESKTOP_ICONS: 10,
   DESKTOP_WALLPAPER: 0,

@@ -37,6 +37,9 @@ export interface AppRegistryEntry {
   maximizable?: boolean;
   minimizable?: boolean;
 
+  // Network requirement
+  requiresOnline?: boolean; // App requires network to function
+
   // Integration
   contentMode: 'iframe' | 'component';
   status: 'active' | 'planned' | 'deprecated';
@@ -56,6 +59,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'active',
   },
@@ -66,9 +70,10 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     icon: 'bug',
     category: 'Database',
     defaultWidth: 1200,
-    defaultHeight:  800,
+    defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'active',
   },
@@ -82,6 +87,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'active',
   },
@@ -95,6 +101,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 900,
     minWidth: 900,
     minHeight: 600,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'active',
   },
@@ -108,6 +115,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 600,
     minHeight: 500,
+    requiresOnline: false,
     contentMode: 'component',
     status: 'active',
   },
@@ -121,6 +129,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 900,
     minWidth: 900,
     minHeight: 600,
+    requiresOnline: false,
     contentMode: 'component',
     status: 'active',
   },
@@ -134,6 +143,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
+    requiresOnline: false,
     contentMode: 'component',
     status: 'active',
   },
@@ -147,6 +157,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 700,
     minHeight: 500,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'active',
   },
@@ -160,6 +171,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 600,
     minHeight: 500,
+    requiresOnline: false,
     contentMode: 'component',
     status: 'active',
   },
@@ -179,6 +191,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 700,
     minHeight: 500,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'planned',
   },
@@ -192,6 +205,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'planned',
   },
@@ -205,6 +219,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'planned',
   },
@@ -218,6 +233,7 @@ export const PLANNED_APPS: AppRegistryEntry[] = [
     defaultHeight: 800,
     minWidth: 800,
     minHeight: 600,
+    requiresOnline: true,
     contentMode: 'component',
     status: 'planned',
   },

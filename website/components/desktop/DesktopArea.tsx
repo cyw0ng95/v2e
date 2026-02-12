@@ -21,9 +21,13 @@ import type { WidgetConfig } from '@/types/desktop';
  * Desktop icon component
  */
 function DesktopIcon({ icon }: { icon: DesktopIconType }) {
-  const { selectDesktopIcon, openWindow } = useDesktopStore();
+  const { selectDesktopIcon, openWindow, isOnline } = useDesktopStore();
   const { updateDesktopIconPosition } = useDesktopStore();
   const contextMenu = useContextMenu();
+
+  // Check if this app requires online access
+  const app = getAppById(icon.appId);
+  const requiresNetwork = app?.requiresOnline && !isOnline;
 
   const handleClick = () => {
     selectDesktopIcon(icon.id);
@@ -31,8 +35,13 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
 
   const handleDoubleClick = () => {
     // Open app window using registry metadata
-    const app = getAppById(icon.appId);
     if (app) {
+      // Check if app requires network and system is offline
+      if (app.requiresOnline && !isOnline) {
+        alert(`Cannot open ${app.name}: This app requires an internet connection.`);
+        return;
+      }
+
       openWindow({
         appId: app.id,
         title: app.name,
@@ -82,6 +91,7 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
           : 'hover:bg-white/10'}
         ${icon.isSelected ? 'scale-105' : ''}
         hover:scale-105
+        ${requiresNetwork ? 'opacity-50 cursor-not-allowed' : ''}
       `}
       style={{
         left: `${icon.position.x}px`,
@@ -89,15 +99,30 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
         zIndex: Z_INDEX.DESKTOP_ICONS,
       }}
       role="button"
-      tabIndex={0}
-      aria-label={`Desktop icon for ${icon.appId}`}
+      tabIndex={requiresNetwork ? -1 : 0}
+      aria-label={`Desktop icon for ${icon.appId}${requiresNetwork ? ' (requires internet)' : ''}`}
       aria-selected={icon.isSelected}
     >
-      {/* Icon placeholder - will be replaced with Lucide icons */}
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-        <span className="text-white text-lg font-bold">
-          {icon.appId[0]}
-        </span>
+      {/* Icon container with relative positioning for badge */}
+      <div className="relative w-12 h-12">
+        {/* Icon placeholder - will be replaced with Lucide icons */}
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+          <span className="text-white text-lg font-bold">
+            {icon.appId[0]}
+          </span>
+        </div>
+
+        {/* Offline badge overlay */}
+        {requiresNetwork && (
+          <div
+            className="absolute -top-1 -right-1 bg-black/60 rounded-full p-0.5"
+            title="Requires internet connection"
+          >
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 6.364l-3.536-3.536M15 3.536v15m0 0l-7.07 7.071 7.071-7.071V15a2 2 0 002-2V7a2 2 0 012 2v10a2 2 0 01-2 2l-7.07 7.071a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -108,7 +133,7 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
  * Renders wallpaper and desktop icons
  */
 export function DesktopArea() {
-  const { desktopIcons, widgets, theme } = useDesktopStore();
+  const { desktopIcons, widgets, theme, isOnline } = useDesktopStore();
   const contextMenu = useContextMenu();
 
   const handleContextMenu = (e: React.MouseEvent) => {

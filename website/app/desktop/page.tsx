@@ -14,6 +14,7 @@ import { QuickLaunchModal, useQuickLaunchShortcut } from '@/components/desktop/Q
 import { WallpaperSelector } from '@/components/desktop/WallpaperSelector';
 import { WindowManager } from '@/components/desktop/WindowManager';
 import { useDesktopStore } from '@/lib/desktop/store';
+import { useNetworkStatus } from '@/lib/hooks/useNetworkStatus';
 import { DndContext } from '@dnd-kit/core';
 
 /**
@@ -23,6 +24,9 @@ import { DndContext } from '@dnd-kit/core';
 export default function DesktopPage() {
   const { desktopIcons } = useDesktopStore();
   const quickLaunch = useQuickLaunchShortcut();
+
+  // Initialize network status detection
+  useNetworkStatus();
 
   return (
     <DndContext>
