@@ -35,8 +35,9 @@ export default function RootLayout({
         <GlobalErrorBoundary>
           <Providers>
             <ViewLearnProvider>
-              <div className="min-h-screen min-w-screen flex flex-col bg-background">
+              <div className="min-h-screen min-w-screen flex flex-col">
                 {/* SPA: No separate navbar - desktop has its own MenuBar */}
+                {/* Background color is handled in page.tsx for theme-aware Threads animation */}
                 <main className="flex-1 overflow-hidden">{children}</main>
                 <Toaster />
               </div>
