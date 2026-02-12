@@ -353,30 +353,30 @@ export default function CVSSCalculator() {
                 <>
                   <div className="text-center mb-6">
                     <div className="text-sm text-slate-600 mb-2">Base Score</div>
-                    <div className="text-5xl font-bold">{state.scores.baseScore.toFixed(1)}</div>
+                    <div className="text-5xl font-bold">{state.scores.baseScore?.toFixed(1) ?? '—'}</div>
                   </div>
                   {(state.version === '3.0' || state.version === '3.1') && (state.scores as CVSS3ScoreBreakdown).temporalScore !== undefined && (
                     <div className="text-center py-4 border-t border-slate-200">
                       <div className="text-sm text-slate-600">Temporal Score</div>
-                      <div className="text-2xl font-semibold">{(state.scores as CVSS3ScoreBreakdown).temporalScore?.toFixed(1)}</div>
+                      <div className="text-2xl font-semibold">{(state.scores as CVSS3ScoreBreakdown).temporalScore?.toFixed(1) ?? '—'}</div>
                     </div>
                   )}
                   {state.scores.environmentalScore !== undefined && (
                     <div className="text-center py-4 border-t border-slate-200">
                       <div className="text-sm text-slate-600">Environmental Score</div>
-                      <div className="text-2xl font-semibold">{state.scores.environmentalScore.toFixed(1)}</div>
+                      <div className="text-2xl font-semibold">{state.scores.environmentalScore?.toFixed(1) ?? '—'}</div>
                     </div>
                   )}
                   {state.version === '4.0' && (state.scores as CVSS4ScoreBreakdown).threatScore !== undefined && (
                     <div className="text-center py-4 border-t border-slate-200">
                       <div className="text-sm text-slate-600">Threat Score</div>
-                      <div className="text-2xl font-semibold">{(state.scores as CVSS4ScoreBreakdown).threatScore?.toFixed(1)}</div>
+                      <div className="text-2xl font-semibold">{(state.scores as CVSS4ScoreBreakdown).threatScore?.toFixed(1) ?? '—'}</div>
                     </div>
                   )}
                   <div className="text-center pt-4 border-t-2 border-slate-300">
                     <div className="text-sm text-slate-600 mb-2">Final Score</div>
-                    <div className="text-5xl font-bold">{state.scores.baseScore.toFixed(1)}</div>
-                    <div className="text-sm font-semibold mt-2">{severityLabels[state.scores.finalSeverity || state.scores.baseSeverity]}</div>
+                    <div className="text-5xl font-bold">{state.scores.baseScore?.toFixed(1) ?? '—'}</div>
+                    <div className="text-sm font-semibold mt-2">{severityLabels[state.scores.finalSeverity || state.scores.baseSeverity] ?? ''}</div>
                   </div>
                 </>
               ) : (
