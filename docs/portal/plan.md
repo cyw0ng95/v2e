@@ -1,364 +1,535 @@
 # v2e Portal Implementation Plan
 
 **Version:** 2.0.0
-**Status:** Ready for Implementation
+**Status:** Implementation Planning
 **Last Updated:** 2026-02-12
 **Platform:** Desktop Only (1024px+)
 
 ---
 
-## Overview
+## Table of Contents
 
-This implementation plan outlines the phased development of the v2e Portal - a macOS Desktop-Inspired Application Portal. Each phase includes detailed cost estimation (Lines of Code), acceptance criteria, change risk assessment, dependencies, and integration points.
-
-**Total Estimated LoC:** ~9,500 (including tests)
-**Total Estimated Duration:** 5 weeks
-**Overall Risk Level:** Medium
-
----
-
-## Phase 1: Core Desktop Infrastructure (Week 1)
-
-**Risk Level:** MEDIUM
-**Estimated LoC:** 1,800 (1,200 implementation + 600 tests)
-**Estimated Time:** 5 business days
-
-**Dependencies:** None (foundational phase)
-
-### Tasks
-
-| Task | Est. LoC | Acceptance Criteria | Risk |
-|------|-----------|---------------------|------|
-| 1.1 Create desktop directory structure | 50 | All directories per design.md exist | Low |
-| 1.2 Set up desktop state management (Zustand) | 300 | Store created with persist middleware | Low |
-| 1.3 Build basic desktop layout | 400 | Desktop renders at `/desktop` route | Medium |
-| 1.4 Implement desktop icon component | 250 | Icons visible and selectable | Low |
-| 1.5 Add drag-and-drop for icons | 200 | Icons draggable, snap to grid | Medium |
-
-### Deliverables
-
-- [ ] Desktop renders at `/desktop` (new root page)
-- [ ] Desktop icons visible and selectable
-- [ ] Dock renders with basic items
-- [ ] Menu bar with search button
-- [ ] Icon positions persist via Zustand persist
-- [ ] Unit tests pass (`./build.sh -t`)
-- [ ] TypeScript types defined in `types/desktop.ts`
-
-### Integration Points
-
-- **Integrates with:** Next.js App Router, Zustand state management
-- **Consumes from:** `lib/portal/app-registry.ts` for app definitions
-- **Provides to:** All subsequent phases (foundation layer)
-
-### Change Risk Analysis
-
-**Why Medium Risk:**
-- Introduces new root route (`/desktop`) that changes application landing page
-- Requires Zustand middleware configuration that must be tested thoroughly
-- Grid snapping logic has edge cases (screen boundaries, overlapping icons)
-
-**Mitigation Strategies:**
-1. Feature flag the new `/desktop` route initially
-2. Use parameterized tests for grid boundary conditions
-3. Implement graceful degradation if localStorage is unavailable
+1. [Overview](#1-overview)
+2. [Phase 1: Core Desktop Infrastructure](#phase-1-core-desktop-infrastructure)
+3. [Phase 2: Window System](#phase-2-window-system)
+4. [Phase 3: Dock & Quick Launch](#phase-3-dock--quick-launch)
+5. [Phase 4: Content Integration](#phase-4-content-integration)
+6. [Phase 5: Polish & Launch](#phase-5-polish--launch)
+7. [Team Composition](#team-composition)
+8. [Cost Estimates](#cost-estimates)
+9. [Acceptance Criteria](#acceptance-criteria)
+10. [Risk Management](#risk-management)
 
 ---
 
-## Phase 2: Window System (Week 2)
+## 1. Overview
 
-**Risk Level:** HIGH
-**Estimated LoC:** 2,500 (1,700 implementation + 800 tests)
-**Estimated Time:** 5 business days
-
-**Dependencies:** Phase 1 complete
-
-### Tasks
-
-| Task | Est. LoC | Acceptance Criteria | Risk |
-|------|-----------|---------------------|------|
-| 2.1 Build window component with titlebar | 400 | Window renders with title and controls | Medium |
-| 2.2 Implement window controls (close/min/max) | 350 | All buttons functional | Medium |
-| 2.3 Add window dragging | 400 | Window moves smoothly on titlebar drag | High |
-| 2.4 Add window resizing (8 directions) | 350 | Resize handles on all edges/corners | High |
-| 2.5 Implement window layering (z-index) | 200 | Focus brings window to front | Low |
-| 2.6 Add window animations (open/close/minimize) | 300 | Smooth animations for all operations | Medium |
-
-### Deliverables
-
-- [ ] Windows open when double-clicking desktop icons
-- [ ] Windows are movable via titlebar drag
-- [ ] Windows are resizable via edge/corner handles
-- [ ] Window controls (close/min/max) work correctly
-- [ ] Smooth animations (200ms open, 150ms close, 300ms minimize)
-- [ ] Z-index management handles 10+ concurrent windows
-- [ ] Minimizing windows creates dock thumbnail placeholder
-- [ ] Unit and integration tests pass
-
-### Integration Points
-
-- **Integrates with:** Desktop state from Phase 1
-- **Consumes from:** `lib/desktop/desktop-state.ts`, `APP_REGISTRY`
-- **Provides to:** Phase 3 (dock integration), Phase 4 (app content)
-
-### Change Risk Analysis
-
-**Why High Risk:**
-- Complex z-index management with edge cases (rapid clicking, minimize during drag)
-- Resize logic has many edge cases (minimum size enforcement, bounds checking)
-- Animation timing conflicts (close during open, minimize during drag)
-- Browser-specific drag behaviors (especially Firefox)
-
-**Mitigation Strategies:**
-1. Use requestAnimationFrame for all drag/resize operations
-2. Implement mutex locks to prevent conflicting state changes
-3. Cross-browser testing in Chrome, Firefox, Safari, Edge
-4. Resize observers for viewport boundary detection
-
----
-
-## Phase 3: Dock & Quick Launch (Week 3)
-
-**Risk Level:** MEDIUM
-**Estimated LoC:** 2,200 (1,500 implementation + 700 tests)
-**Estimated Time:** 5 business days
-
-**Dependencies:** Phase 1, Phase 2 complete
-
-### Tasks
-
-| Task | Est. LoC | Acceptance Criteria | Risk |
-|------|-----------|---------------------|------|
-| 3.1 Build dock component with magnification | 400 | Dock renders with hover effects | Low |
-| 3.2 Implement dock item interactions | 300 | Click/right-click work | Medium |
-| 3.3 Add quick launch modal (Cmd+K) | 350 | Modal opens with keyboard shortcut | Medium |
-| 3.4 Implement search functionality | 250 | Search filters apps correctly | Low |
-| 3.5 Add context menus for all elements | 400 | Context menus work on desktop/windows/dock | High |
-| 3.6 Dock-thumbnail integration | 200 | Minimized windows show in dock | Medium |
-| 3.7 Dock item reordering (drag) | 300 | Items draggable to reorder | Medium |
-
-### Deliverables
-
-- [ ] Dock is fully functional with magnification effect
-- [ ] Quick launch opens with Cmd+K keyboard shortcut
-- [ ] Search filters apps by name and tags
-- [ ] Context menus work for desktop icons, windows, and dock items
-- [ ] Right-click menus include: Open, Show Info, Remove, Add to Dock
-- [ ] Dock indicators show running apps and window counts
-- [ ] Minimized windows display as thumbnails in dock
-- [ ] Dock items are draggable to reorder
-- [ ] All interactions tested in unit and integration tests
-
-### Integration Points
-
-- **Integrates with:** Window system from Phase 2, Desktop state from Phase 1
-- **Consumes from:** `lib/desktop/desktop-state.ts`, `lib/desktop/window-manager.ts`
-- **Provides to:** Phase 4 (complete desktop environment)
-
-### Change Risk Analysis
-
-**Why Medium Risk:**
-- Global keyboard shortcuts (Cmd+K) may conflict with browser/native OS
-- Context menu positioning has edge cases (viewport boundaries)
-- Dock magnification math can be jittery at edges
-- Thumbnail rendering for minimized windows is complex
-
-**Mitigation Strategies:**
-1. Test keyboard shortcuts across all OS/browser combinations
-2. Use viewport boundary detection for context menu positioning
-3. CSS transforms for smooth magnification (GPU-accelerated)
-4. HTML canvas for dock thumbnails (better performance than iframe screenshots)
-
----
-
-## Phase 4: Content Integration (Week 4)
-
-**Risk Level:** MEDIUM
-**Estimated LoC:** 1,800 (1,200 implementation + 600 tests)
-**Estimated Time:** 5 business days
-
-**Dependencies:** Phase 1, Phase 2, Phase 3 complete
-
-### Tasks
-
-| Task | Est. LoC | Acceptance Criteria | Risk |
-|------|-----------|---------------------|------|
-| 4.1 Integrate existing apps as window content | 400 | All apps load in windows | Medium |
-| 4.2 Implement iframe-based app loading | 300 | Iframes load correctly with isolation | Medium |
-| 4.3 Add window state persistence | 300 | Window positions save/restore | Low |
-| 4.4 Handle app-to-app communication | 250 | PostMessage bridge working | High |
-| 4.5 Add desktop widgets (clock, system info) | 200 | Widgets display and update | Low |
-| 4.6 Menu bar active app integration | 350 | Menu bar updates with focused window | Low |
-
-### Deliverables
-
-- [ ] All existing apps (CVE, CWE, CAPEC, ATT&CK, CVSS, GLC, Mcards, ETL, Bookmarks) open in windows
-- [ ] Window positions persist across browser sessions
-- [ ] Desktop layout (icon positions) saves between sessions
-- [ ] App-to-app communication works via PostMessage bridge
-- [ ] Menu bar shows active app name
-- [ ] Desktop widgets (clock, date) display correctly
-- [ ] Iframe isolation prevents CSS/JS conflicts
-- [ ] Integration tests verify all apps load successfully
-
-### Integration Points
-
-- **Integrates with:** All existing v2e applications
-- **Consumes from:** `APP_REGISTRY`, all existing app routes
-- **Provides to:** Phase 5 (production optimization)
-
-### Change Risk Analysis
-
-**Why Medium Risk:**
-- Iframe loading introduces CORS issues
-- PostMessage communication has security implications
-- Some existing apps may not work well in iframes (viewport expectations)
-- State persistence must handle edge cases (corrupted storage, quota exceeded)
-
-**Mitigation Strategies:**
-1. Implement PostMessage whitelist for security
-2. Add CSP headers for iframe isolation
-3. Graceful fallback for apps that can't run in iframes
-4. Storage quota monitoring and cleanup strategies
-5. Migration path for state schema changes
-
----
-
-## Phase 5: Polish & Production Launch (Week 5)
-
-**Risk Level:** LOW
-**Estimated LoC:** 1,200 (800 implementation + 400 tests)
-**Estimated Time:** 5 business days
-
-**Dependencies:** All previous phases complete
-
-### Tasks
-
-| Task | Est. LoC | Acceptance Criteria | Risk |
-|------|-----------|---------------------|------|
-| 5.1 Add wallpaper selector | 150 | Users can choose wallpapers | Low |
-| 5.2 Implement theme variations (5 themes) | 200 | Light/dark/custom themes work | Low |
-| 5.3 Performance optimization | 200 | Lighthouse score > 90 | Medium |
-| 5.4 Cross-browser testing suite | 100 | All browsers pass tests | Low |
-| 5.5 Accessibility audit and fixes | 150 | WCAG 2.1 AA compliant | Medium |
-| 5.6 Documentation and user guide | 150 | README and user docs complete | Low |
-| 5.7 Production deployment | 100 | Deployed to production | Low |
-| 5.8 Bug fixes from testing | 150 | All critical bugs resolved | Low |
-
-### Deliverables
-
-- [ ] Wallpaper selector with 5 preset options
-- [ ] 5 theme variations (light, dark, high contrast)
-- [ ] Lighthouse performance score > 90
-- [ ] Lighthouse accessibility score > 90
-- [ ] Lighthouse best practices score > 90
-- [ ] WCAG 2.1 AA compliance verified
-- [ ] Smooth 60fps animations (verified via Chrome DevTools)
-- [ ] Cross-browser compatibility: Chrome 120+, Firefox 121+, Safari 17+, Edge 120+
-- [ ] User documentation in README
-- [ ] Production deployment completed
-- [ ] All integration tests passing
-- [ ] No console errors on production build
-
-### Integration Points
-
-- **Integrates with:** All previous phases
-- **Consumes from:** All components and state
-- **Provides to:** Production users, maintenance team
-
-### Change Risk Analysis
-
-**Why Low Risk:**
-- Mostly additive features (themes, wallpapers)
-- No breaking changes to existing functionality
-- Bug fixes only address reported issues
-- Deployment uses existing CI/CD pipeline
-
-**Mitigation Strategies:**
-1. A/B test theme changes with small user group
-2. Performance budgets in CI pipeline (fail build if budgets exceeded)
-3. Automated accessibility testing in CI (axe-core)
-4. Canary deployment before full rollout
-
----
-
-## Summary
-
-### Total Project Metrics
-
-| Metric | Value |
-|---------|--------|
-| **Total Estimated LoC** | 9,500 (6,400 impl + 3,100 tests) |
-| **Total Duration** | 5 weeks (25 business days) |
-| **High Risk Phases** | 1 (Phase 2: Window System) |
-| **Medium Risk Phases** | 3 (Phases 1, 3, 4) |
-| **Low Risk Phases** | 1 (Phase 5) |
-| **Critical Path** | Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 |
-| **Parallelizable Tasks** | Dock widgets, theme variations, documentation |
-
-### Risk Heatmap
-
-| Phase | Risk | Impact | Likelihood | Severity |
-|--------|-------|---------|------------|----------|
-| Phase 1 | Medium | Low | Medium | 6/10 |
-| Phase 2 | High | High | Medium | 8/10 |
-| Phase 3 | Medium | Medium | Low | 5/10 |
-| Phase 4 | Medium | High | Low | 6/10 |
-| Phase 5 | Low | Low | Low | 2/10 |
-
-### Dependencies Graph
-
-```
-Phase 1 (Foundation)
-    │
-    ├── Phase 2 (Window System)
-    │       │
-    │       └── Phase 3 (Dock & Quick Launch)
-    │               │
-    │               └── Phase 4 (Content Integration)
-    │                       │
-    │                       └── Phase 5 (Polish & Launch)
-    │
-    └── Cannot proceed to any phase without Phase 1
-```
-
-### Acceptance Gates
-
-Each phase must meet the following gates before proceeding:
-
-1. **Code Review**: All changes reviewed by at least one team member
-2. **Test Coverage**: Unit tests > 80%, integration tests covering critical paths
-3. **Build Success**: `./build.sh -t` passes without errors
-4. **Manual Testing**: Smoke test on Chrome, Firefox, Safari
-5. **Documentation**: RPC APIs documented in `service.md` (if applicable)
-6. **Performance**: No performance regressions from previous phase
-
-### Rollback Strategy
-
-If a phase introduces critical issues:
-
-1. **Phase 1**: Feature flag `/desktop` route, revert to old landing page
-2. **Phase 2**: Revert window state changes, keep Phase 1
-3. **Phase 3**: Disable dock via config, use desktop-only navigation
-4. **Phase 4**: Fallback to direct app links (bypass windows)
-5. **Phase 5**: Revert to previous theme/wallpaper defaults
+This document outlines the implementation plan for the v2e Portal - a macOS Desktop-inspired web application portal. The implementation is divided into 5 phases, each with specific deliverables, cost estimates, and acceptance criteria.
 
 ### Success Criteria
 
-The entire implementation is successful when:
-
-- [ ] All 5 phases completed
-- [ ] All acceptance criteria met
-- [ ] Lighthouse scores > 90 (Performance, Accessibility, Best Practices)
-- [ ] WCAG 2.1 AA compliance verified
-- [ ] Cross-browser compatibility achieved
-- [ ] Production deployment stable for 7 days
-- [ ] User feedback positive (> 4.0/5.0 rating)
-- [ ] No critical bugs in issue tracker
+- Lighthouse score > 90
+- WCAG 2.1 AA compliance
+- Smooth 60fps animations
+- Production-ready deployment
 
 ---
 
-**Plan Status:** Ready for Execution
-**Next Steps:** Begin Phase 1 development
-**Owner:** v2e Development Team
-**Review Date:** Weekly during implementation
+## Phase 1: Core Desktop Infrastructure
+
+### Duration
+**5-7 days**
+
+### Objectives
+Establish the foundational desktop environment with basic layout and state management.
+
+### Tasks
+
+#### 1.1 Project Structure Setup
+- [ ] Create `website/app/desktop/` directory
+- [ ] Create `website/components/desktop/` directory
+- [ ] Create `website/lib/desktop/` directory
+- [ ] Create `website/types/desktop.ts` type definitions
+
+#### 1.2 State Management Implementation
+- [ ] Install and configure Zustand
+- [ ] Implement `useDesktopStore` with persist middleware
+- [ ] Define all state interfaces (DesktopIcon, WindowState, DockConfig)
+- [ ] Implement core actions (openWindow, closeWindow, focusWindow)
+- [ ] Set up localStorage persistence for desktop config
+
+#### 1.3 Desktop Layout Components
+- [ ] Build `MenuBar` component (28px height, glass morphism)
+- [ ] Build `DesktopArea` component (full viewport minus menu/dock)
+- [ ] Implement wallpaper gradient background
+- [ ] Set up proper z-index hierarchy
+
+#### 1.4 Desktop Icon Component
+- [ ] Build `DesktopIcon` component with Lucide React icons
+- [ ] Implement icon selection state
+- [ ] Add click/double-click handlers
+- [ ] Create icon label with text shadow
+
+#### 1.5 Basic Dock Component
+- [ ] Build `Dock` component (80px height, bottom position)
+- [ ] Implement glass morphism styling
+- [ ] Add default dock items from registry
+- [ ] Create dock item hover effect (scale 1.2x)
+
+### Deliverables
+- Desktop renders at `/desktop` route
+- Desktop icons visible and selectable
+- Basic dock renders with default items
+- Menu bar with placeholder controls
+- State persists to localStorage
+
+### Cost Estimate
+| Task | Hours | Rate | Cost |
+|------|-------|------|------|
+| Project Structure | 2 | $50/hr | $100 |
+| State Management | 6 | $60/hr | $360 |
+| Desktop Layout | 8 | $50/hr | $400 |
+| Desktop Icon | 6 | $50/hr | $300 |
+| Basic Dock | 6 | $50/hr | $300 |
+| **Total** | **28** | | **$1,460** |
+
+### Acceptance Criteria
+- [ ] Desktop loads without errors
+- [ ] Icons can be selected with click
+- [ ] State persists across page reloads
+- [ ] Layout is responsive (1024px minimum)
+- [ ] All components use TypeScript with proper types
+
+---
+
+## Phase 2: Window System
+
+### Duration
+**7-10 days**
+
+### Objectives
+Implement complete window management with drag, resize, and animations.
+
+### Tasks
+
+#### 2.1 Window Component Structure
+- [ ] Build `AppWindow` container component
+- [ ] Create `WindowTitlebar` with app icon and title
+- [ ] Implement `WindowControls` (close/min/max buttons)
+- [ ] Create `WindowResize` handles (8 directions)
+- [ ] Build `WindowContent` iframe container
+
+#### 2.2 Window Management Logic
+- [ ] Implement window dragging with titlebar
+- [ ] Add window resizing with edge handles
+- [ ] Implement window focus management
+- [ ] Create window layering system (z-index)
+- [ ] Add minimize/maximize state handling
+
+#### 2.3 Window Animations
+- [ ] Implement window open animation (scale/fade 200ms)
+- [ ] Implement window close animation (scale/fade 150ms)
+- [ ] Create minimize genie effect (300ms)
+- [ ] Add maximize/restore transition
+- [ ] Implement focus transition (glow effect)
+
+#### 2.4 Window State Persistence
+- [ ] Save window positions to localStorage
+- [ ] Restore window state on load
+- [ ] Handle window bounds (keep in viewport)
+- [ ] Implement cascade positioning for new windows
+
+#### 2.5 Window-Desktop Integration
+- [ ] Connect window launch to desktop icon double-click
+- [ ] Implement window focus on click
+- [ ] Add window close handling
+- [ ] Update dock active indicators
+
+### Deliverables
+- Windows open when double-clicking icons
+- Windows are movable and resizable
+- Window controls work correctly
+- Smooth animations for all operations
+- Window state persists
+
+### Cost Estimate
+| Task | Hours | Rate | Cost |
+|------|-------|------|------|
+| Window Components | 12 | $50/hr | $600 |
+| Window Logic | 16 | $60/hr | $960 |
+| Window Animations | 8 | $55/hr | $440 |
+| State Persistence | 6 | $50/hr | $300 |
+| Desktop Integration | 6 | $50/hr | $300 |
+| **Total** | **48** | | **$2,600** |
+
+### Acceptance Criteria
+- [ ] Windows open with animation
+- [ ] Windows can be dragged by titlebar
+- [ ] Windows can be resized from edges/corners
+- [ ] Close/min/max buttons work correctly
+- [ ] Window positions persist across sessions
+- [ ] Animations run at 60fps
+- [ ] Window z-index updates correctly on focus
+
+---
+
+## Phase 3: Dock & Quick Launch
+
+### Duration
+**5-7 days**
+
+### Objectives
+Complete dock functionality with quick launch modal and search.
+
+### Tasks
+
+#### 3.1 Dock Interactions
+- [ ] Implement dock item click (launch/focus/minimize)
+- [ ] Add dock item drag-to-reorder
+- [ ] Create dock item context menu
+- [ ] Implement active app indicators (dots)
+- [ ] Add minimized window thumbnails
+
+#### 3.2 Quick Launch Modal
+- [ ] Build `QuickLaunch` modal component
+- [ ] Implement search input with icon
+- [ ] Create filtered app list
+- [ ] Add keyboard navigation (arrows, enter, esc)
+- [ ] Implement Cmd+K keyboard shortcut
+
+#### 3.3 Context Menus
+- [ ] Create `ContextMenu` component
+- [ ] Implement desktop icon context menu
+- [ ] Implement dock item context menu
+- [ ] Implement window context menu
+- [ ] Add context menu positioning logic
+
+#### 3.4 Dock State Management
+- [ ] Add dock item management actions
+- [ ] Implement dock item persistence
+- [ ] Create dock auto-hide logic
+- [ ] Add dock size options (small/medium/large)
+
+### Deliverables
+- Dock is fully functional with all interactions
+- Quick launch opens with Cmd+K
+- Search filters apps correctly
+- Context menus work everywhere
+- Dock state persists
+
+### Cost Estimate
+| Task | Hours | Rate | Cost |
+|------|-------|------|------|
+| Dock Interactions | 10 | $50/hr | $500 |
+| Quick Launch | 12 | $55/hr | $660 |
+| Context Menus | 10 | $50/hr | $500 |
+| Dock State | 6 | $50/hr | $300 |
+| **Total** | **38** | | **$1,960** |
+
+### Acceptance Criteria
+- [ ] Dock items launch apps on click
+- [ ] Dock items can be reordered by drag
+- [ ] Cmd+K opens quick launch modal
+- [ ] Search filters apps in real-time
+- [ ] Context menus appear on right-click
+- [ ] Dock state persists
+
+---
+
+## Phase 4: Content Integration
+
+### Duration
+**7-10 days**
+
+### Objectives
+Integrate existing apps as window content and complete desktop functionality.
+
+### Tasks
+
+#### 4.1 App Registry Implementation
+- [ ] Create `APP_REGISTRY` with all app entries
+- [ ] Implement app metadata (icons, colors, categories)
+- [ ] Add app window defaults (size, min/max)
+- [ ] Create app category system
+
+#### 4.2 Window Content Loading
+- [ ] Implement iframe-based app loading
+- [ ] Add window content mounting/unmounting
+- [ ] Handle app-to-app communication
+- [ ] Implement window content focus handling
+
+#### 4.3 Desktop Widgets
+- [ ] Create clock widget component
+- [ ] Add calendar widget (optional)
+- [ ] Implement widget positioning
+- [ ] Add widget to desktop state
+
+#### 4.4 Wallpaper System
+- [ ] Create wallpaper selector
+- [ ] Implement wallpaper options (gradients)
+- [ ] Add wallpaper preview
+- [ ] Save wallpaper preference
+
+#### 4.5 Theme Integration
+- [ ] Connect dark/light mode toggle
+- [ ] Implement theme-aware colors
+- [ ] Add theme transitions
+- [ ] Save theme preference
+
+### Deliverables
+- All existing apps open in windows
+- Window positions persist
+- Desktop layout saves between sessions
+- Widgets display correctly
+- Theme switching works
+
+### Cost Estimate
+| Task | Hours | Rate | Cost |
+|------|-------|------|------|
+| App Registry | 6 | $50/hr | $300 |
+| Content Loading | 12 | $60/hr | $720 |
+| Desktop Widgets | 8 | $50/hr | $400 |
+| Wallpaper System | 6 | $50/hr | $300 |
+| Theme Integration | 6 | $50/hr | $300 |
+| **Total** | **38** | | **$2,020** |
+
+### Acceptance Criteria
+- [ ] All 9 active apps open in windows
+- [ ] Window content loads correctly
+- [ ] Desktop widgets display properly
+- [ ] Wallpaper can be changed
+- [ ] Dark/light theme works
+- [ ] All preferences persist
+
+---
+
+## Phase 5: Polish & Launch
+
+### Duration
+**5-7 days**
+
+### Objectives
+Final polish, optimization, testing, and deployment.
+
+### Tasks
+
+#### 5.1 Performance Optimization
+- [ ] Optimize bundle size (code splitting)
+- [ ] Implement lazy loading for apps
+- [ ] Optimize animations (GPU acceleration)
+- [ ] Add loading states
+- [ ] Profile and fix bottlenecks
+
+#### 5.2 Browser Testing
+- [ ] Test on Chrome 120+
+- [ ] Test on Firefox 121+
+- [ ] Test on Safari 17+
+- [ ] Test on Edge 120+
+- [ ] Fix cross-browser issues
+
+#### 5.3 Accessibility Audit
+- [ ] Run Lighthouse accessibility audit
+- [ ] Add ARIA labels to all components
+- [ ] Implement keyboard navigation
+- [ ] Add screen reader announcements
+- [ ] Test with screen reader
+
+#### 5.4 Documentation
+- [ ] Write user guide
+- [ ] Create component documentation
+- [ ] Document keyboard shortcuts
+- [ ] Add deployment guide
+
+#### 5.5 Deployment
+- [ ] Configure production build
+- [ ] Set up CI/CD pipeline
+- [ ] Deploy to staging
+- [ ] Perform smoke tests
+- [ ] Deploy to production
+
+### Deliverables
+- Lighthouse score > 90
+- WCAG 2.1 AA compliance
+- Smooth 60fps animations
+- Production-ready deployment
+- Complete documentation
+
+### Cost Estimate
+| Task | Hours | Rate | Cost |
+|------|-------|------|------|
+| Performance | 10 | $65/hr | $650 |
+| Browser Testing | 8 | $50/hr | $400 |
+| Accessibility | 10 | $60/hr | $600 |
+| Documentation | 8 | $50/hr | $400 |
+| Deployment | 6 | $60/hr | $360 |
+| **Total** | **42** | | **$2,410** |
+
+### Acceptance Criteria
+- [ ] Lighthouse Performance score > 90
+- [ ] Lighthouse Accessibility score > 90
+- [ ] Lighthouse Best Practices score > 90
+- [ ] WCAG 2.1 AA compliant
+- [ ] Works on all supported browsers
+- [ ] Animations run at 60fps
+- [ ] Documentation complete
+- [ ] Deployed to production
+
+---
+
+## Team Composition
+
+### Recommended Team
+
+#### Lead Developer (Frontend)
+- **Role**: Architecture, core components, state management
+- **Hours**: ~120 hours
+- **Rate**: $60-65/hr
+- **Responsibilities**:
+  - Desktop architecture decisions
+  - Window management system
+  - State management implementation
+  - Performance optimization
+
+#### Frontend Developer
+- **Role**: Component implementation, UI development
+- **Hours**: ~100 hours
+- **Rate**: $50-55/hr
+- **Responsibilities**:
+  - Desktop components (menu bar, dock, icons)
+  - Window components
+  - Quick launch modal
+  - Context menus
+
+#### UX/UI Developer
+- **Role**: Animations, styling, polish
+- **Hours**: ~50 hours
+- **Rate**: $55/hr
+- **Responsibilities**:
+  - Animation implementation
+  - Visual styling
+  - Responsive design
+  - Dark/light themes
+
+#### QA Engineer
+- **Role**: Testing, accessibility, browser compatibility
+- **Hours**: ~40 hours
+- **Rate**: $50/hr
+- **Responsibilities**:
+  - Cross-browser testing
+  - Accessibility audit
+  - Performance testing
+  - Bug verification
+
+---
+
+## Cost Estimates
+
+### Total Project Cost
+
+| Phase | Hours | Avg Rate | Cost |
+|-------|-------|----------|------|
+| Phase 1: Core Infrastructure | 28 | $52/hr | $1,460 |
+| Phase 2: Window System | 48 | $54/hr | $2,600 |
+| Phase 3: Dock & Quick Launch | 38 | $52/hr | $1,960 |
+| Phase 4: Content Integration | 38 | $53/hr | $2,020 |
+| Phase 5: Polish & Launch | 42 | $57/hr | $2,410 |
+| **Total** | **194** | | **$10,450** |
+
+### Cost Breakdown by Role
+
+| Role | Hours | Rate | Cost |
+|------|-------|------|------|
+| Lead Developer | 120 | $60/hr | $7,200 |
+| Frontend Developer | 100 | $50/hr | $5,000 |
+| UX/UI Developer | 50 | $55/hr | $2,750 |
+| QA Engineer | 40 | $50/hr | $2,000 |
+| **Total** | **310** | | **$16,950** |
+
+### Estimated Timeline
+
+| Phase | Duration | Start | End |
+|-------|----------|-------|-----|
+| Phase 1 | 5-7 days | Week 1 | Week 1-2 |
+| Phase 2 | 7-10 days | Week 2 | Week 3-4 |
+| Phase 3 | 5-7 days | Week 4 | Week 5 |
+| Phase 4 | 7-10 days | Week 5 | Week 7 |
+| Phase 5 | 5-7 days | Week 7 | Week 8-9 |
+| **Total** | **29-41 days** | | |
+
+---
+
+## Acceptance Criteria
+
+### Phase 1 Acceptance
+- [x] Desktop loads at `/desktop` route
+- [x] Icons visible and selectable
+- [x] State persists to localStorage
+- [x] Dock renders with default items
+- [x] Menu bar with placeholder controls
+
+### Phase 2 Acceptance
+- [ ] Windows open with animation
+- [ ] Windows draggable by titlebar
+- [ ] Windows resizable from edges
+- [ ] Close/min/max buttons work
+- [ ] Window positions persist
+- [ ] Animations at 60fps
+
+### Phase 3 Acceptance
+- [ ] Dock launches apps on click
+- [ ] Dock items reorderable
+- [ ] Cmd+K opens quick launch
+- [ ] Search filters apps
+- [ ] Context menus work
+
+### Phase 4 Acceptance
+- [ ] All apps open in windows
+- [ ] Window content loads
+- [ ] Desktop widgets display
+- [ ] Wallpaper changes work
+- [ ] Theme switching works
+
+### Phase 5 Acceptance
+- [ ] Lighthouse scores > 90
+- [ ] WCAG 2.1 AA compliant
+- [ ] All browsers supported
+- [ ] Documentation complete
+- [ ] Deployed to production
+
+---
+
+## Risk Management
+
+### Technical Risks
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| iframe content loading issues | High | Medium | Provide fallback to client-side routing |
+| Performance on lower-end devices | Medium | Low | Implement lazy loading and code splitting |
+| Browser compatibility issues | Medium | Medium | Use progressive enhancement, test early |
+| State persistence complexity | Low | Medium | Use Zustand persist middleware, test thoroughly |
+
+### Schedule Risks
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Scope creep | High | Medium | Define clear requirements, resist feature additions |
+| Underestimated complexity | Medium | Medium | Add 20% buffer to estimates |
+| Resource availability | Medium | Low | Have backup developers available |
+| Integration delays | Medium | Low | Start integration early, test frequently |
+
+---
+
+## Next Steps
+
+1. **Review and approve this plan** with stakeholders
+2. **Set up development environment** for desktop development
+3. **Begin Phase 1** with project structure setup
+4. **Establish weekly review cadence** to track progress
+5. **Create task tracking** in project management system
+
+---
+
+**Document Status:** Ready for Execution
+**Last Updated:** 2026-02-12
+**Next Review:** Upon phase completion
