@@ -2,18 +2,14 @@
 
 | ID | Package | Type | Description | Estimate LoC | Priority | Mark WONTFIX? |
 |----|---------|------|-------------|--------------|----------|---------------|
-| TODO-001 | analysis | Refactor | Add comprehensive error handling and recovery mechanisms for FSM state transitions | 150 | High | |
-| TODO-002 | analysis | Feature | Implement graph persistence with incremental checkpointing | 200 | High | |
 | TODO-003 | analysis | Test | Add integration tests for graph analysis workflows | 300 | Medium | |
 | TODO-004 | asvs | Optimization | Optimize CSV import with streaming and parallel processing | 100 | Medium | |
 | TODO-005 | asvs | Feature | Add incremental update support for CSV imports | 80 | Medium | |
 | TODO-006 | attack | Refactor | Simplify Excel parsing logic by extracting helper functions | 120 | Medium | |
-| TODO-008 | capec | Feature | Add streaming XML parser for large CAPEC files | 250 | High | |
 | TODO-009 | capec | Refactor | Deduplicate duplicate code in ImportFromXML transaction handling | 60 | Medium | |
 | TODO-010 | cce | Feature | Implement CCE update API with field-level diffing | 120 | Low | |
 | TODO-011 | cce | Test | Add table-driven tests for all CRUD operations | 200 | Medium | |
 | TODO-012 | common | Refactor | Consolidate duplicate logging patterns - cmd/v2broker, cmd/v2meta, cmd/v2access each have custom log wrappers instead of using pkg/common logger consistently | 100 | Low | |
-| TODO-043 | vconfig | Feature | Enhance Config.Validate() in tool/vconfig/config.go:103 to add detailed error messages - currently only checks for missing description/type, should validate value ranges, required vs optional, and specific constraint violations | 120 | High | |
 | TODO-054 | all | Refactor | Expand pkg/common/error_registry.go usage - error codes exist in pkg/common (ErrorCode, StandardizedError) but cmd/v2local, cmd/v2remote, cmd/v2meta still use ad-hoc errors instead of standardized ErrorCode system | 400 | Medium | |
 | TODO-084 | cmd/v2meta | Refactor | Extract provider FSM state transition logic - pkg/meta/fsm/provider.go has BaseProviderFSM but CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider still have duplicate field-level diff logic in their execute() methods | 250 | Medium | |
 | TODO-098 | all | Refactor | Remove duplicate error handling - create centralized error wrapper in pkg/common/error.go that wraps errors with ErrorCode from error_registry.go instead of each service creating custom error types | 150 | Medium | |
