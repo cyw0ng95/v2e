@@ -30,14 +30,21 @@ type BaseGraphFSM struct {
 	lastOperation   OperationType
 	retryCount      int
 	lastFailedState GraphState
+
+	// Enhanced error handling fields
+	transitionHistory *TransitionHistory
+	rollbackManager  *RollbackManager
+	lastSnapshot    StateSnapshot
 }
 
 // NewGraphFSM creates a new GraphFSM instance
 func NewGraphFSM(logger *common.Logger) GraphFSM {
 	return &BaseGraphFSM{
-		state:       GraphIdle,
-		logger:      logger,
-		retryConfig: DefaultRetryConfig(),
+		state:            GraphIdle,
+		logger:           logger,
+		retryConfig:      DefaultRetryConfig(),
+		transitionHistory: NewTransitionHistory(100),
+		rollbackManager:  NewRollbackManager(5),
 	}
 }
 
@@ -62,17 +69,33 @@ func (g *BaseGraphFSM) GetState() GraphState {
 	return g.state
 }
 
-// Transition attempts to transition to a new state
+// Transition attempts to transition to a new state with rollback support
 func (g *BaseGraphFSM) Transition(newState GraphState) error {
+	startTime := time.Now()
 	g.mu.Lock()
-	defer g.mu.Unlock()
 
 	currentState := g.state
 
+	// Save snapshot for potential rollback
+	g.lastSnapshot = g.rollbackManager.SaveSnapshot(string(currentState), currentState)
+
 	// Validate the transition
 	if err := ValidateGraphTransition(currentState, newState); err != nil {
-		// Enhance error with state context
-		return fmt.Errorf("transition validation failed from %s: %w", currentState, err)
+		g.mu.Unlock()
+
+		// Create a detailed transition error
+		transErr := NewTransitionError(ErrInvalidTransition, string(currentState), string(newState), err)
+		transErr.CanRecover = false // Invalid transitions are not recoverable
+
+		// Record the failed transition
+		g.transitionHistory.Record(string(currentState), string(newState), false, transErr, time.Since(startTime))
+
+		// Log the error
+		if g.logger != nil {
+			g.logger.Error("GraphFSM transition validation failed: %s -> %s: %v", currentState, newState, err)
+		}
+
+		return transErr
 	}
 
 	// Check if we're transitioning from ERROR state - reset retry count
@@ -87,6 +110,129 @@ func (g *BaseGraphFSM) Transition(newState GraphState) error {
 
 	if g.logger != nil {
 		g.logger.Info("GraphFSM state transition: %s -> %s", oldState, newState)
+	}
+
+	g.mu.Unlock()
+
+	// Record successful transition
+	g.transitionHistory.Record(string(oldState), string(newState), true, nil, time.Since(startTime))
+
+	return nil
+}
+
+// TransitionWithHandler attempts a transition with a handler function that can be rolled back
+func (g *BaseGraphFSM) TransitionWithHandler(newState GraphState, handler func() error) error {
+	startTime := time.Now()
+	g.mu.Lock()
+
+	currentState := g.state
+
+	// Save snapshot for potential rollback
+	g.lastSnapshot = g.rollbackManager.SaveSnapshot(string(currentState), currentState)
+
+	// Validate the transition first
+	if err := ValidateGraphTransition(currentState, newState); err != nil {
+		g.mu.Unlock()
+
+		transErr := NewTransitionError(ErrInvalidTransition, string(currentState), string(newState), err)
+		transErr.CanRecover = false
+
+		g.transitionHistory.Record(string(currentState), string(newState), false, transErr, time.Since(startTime))
+
+		if g.logger != nil {
+			g.logger.Error("GraphFSM transition validation failed: %s -> %s: %v", currentState, newState, err)
+		}
+
+		return transErr
+	}
+
+	oldState := g.state
+
+	// Attempt state change
+	g.state = newState
+
+	// Unlock before calling handler to avoid deadlock
+	g.mu.Unlock()
+
+	// Execute the handler
+	var handlerErr error
+	if handler != nil {
+		handlerErr = handler()
+	}
+
+	// If handler failed, attempt rollback
+	if handlerErr != nil {
+		g.mu.Lock()
+		// Rollback to previous state
+		g.state = oldState
+		g.mu.Unlock()
+
+		// Create transition error
+		transErr := NewTransitionError(ErrTransitionFailed, string(oldState), string(newState), handlerErr)
+		transErr.RolledBack = true
+		transErr.CanRecover = true
+
+		g.transitionHistory.Record(string(oldState), string(newState), false, transErr, time.Since(startTime))
+
+		if g.logger != nil {
+			g.logger.Error("GraphFSM transition handler failed, rolled back: %s -> %s: %v", oldState, newState, handlerErr)
+		}
+
+		return transErr
+	}
+
+	// Check if we're transitioning from ERROR state - reset retry count
+	if oldState == GraphError {
+		g.mu.Lock()
+		g.retryCount = 0
+		g.lastOperation = ""
+		g.lastFailedState = ""
+		g.mu.Unlock()
+	}
+
+	if g.logger != nil {
+		g.logger.Info("GraphFSM state transition: %s -> %s", oldState, newState)
+	}
+
+	// Record successful transition
+	g.transitionHistory.Record(string(oldState), string(newState), true, nil, time.Since(startTime))
+
+	return nil
+}
+
+// RollbackToState rolls back to a previous state
+func (g *BaseGraphFSM) RollbackToState(targetState GraphState) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	currentState := g.state
+
+	// Check if rollback is valid
+	if err := ValidateGraphTransition(currentState, targetState); err != nil {
+		// For rollback, we may need to force the transition
+		// Log a warning but proceed
+		if g.logger != nil {
+			g.logger.Warn("Forcing rollback transition: %s -> %s (validation would fail: %v)", currentState, targetState, err)
+		}
+	}
+
+	// Check if we have a snapshot for the target state
+	if snapshot, exists := g.rollbackManager.GetLatestSnapshot(string(targetState)); exists {
+		g.state = targetState
+		g.lastSnapshot = snapshot
+
+		if g.logger != nil {
+			g.logger.Info("GraphFSM rolled back to state: %s (snapshot from %s)", targetState, snapshot.Timestamp.Format(time.RFC3339))
+		}
+
+		return nil
+	}
+
+	// No snapshot found, just change state
+	g.state = targetState
+
+	if g.logger != nil {
+		g.logger.Info("GraphFSM rolled back to state: %s (no snapshot available)", targetState)
 	}
 
 	return nil
@@ -493,4 +639,62 @@ func (g *BaseGraphFSM) CanRecover() bool {
 
 	// Can reset from IDLE or READY
 	return state == GraphIdle || state == GraphReady
+}
+
+// GetTransitionHistory returns the N most recent state transitions
+func (g *BaseGraphFSM) GetTransitionHistory(n int) []HistoryEntry {
+	return g.transitionHistory.GetRecent(n)
+}
+
+// GetFailedTransitions returns all failed transitions
+func (g *BaseGraphFSM) GetFailedTransitions() []HistoryEntry {
+	return g.transitionHistory.GetFailedTransitions()
+}
+
+// GetDiagnostics returns diagnostic information about the FSM
+func (g *BaseGraphFSM) GetDiagnostics() map[string]interface{} {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	diag := map[string]interface{}{
+		"current_state":         g.state,
+		"last_error":           g.lastError,
+		"retry_count":          g.retryCount,
+		"last_operation":       g.lastOperation,
+		"last_failed_state":     g.lastFailedState,
+		"can_recover":          g.canRetryNoLock(),
+		"history_entries":       g.transitionHistory.Len(),
+		"failed_transitions":    len(g.transitionHistory.GetFailedTransitions()),
+	}
+
+	// Add retry config
+	diag["max_retries"] = g.retryConfig.MaxRetries
+	diag["base_delay_ms"] = g.retryConfig.BaseDelay.Milliseconds()
+	diag["max_delay_ms"] = g.retryConfig.MaxDelay.Milliseconds()
+
+	return diag
+}
+
+// canRetryNoLock checks if retry is allowed (must be called with lock held)
+func (g *BaseGraphFSM) canRetryNoLock() bool {
+	// Check if we have an FSMError that is transient
+	if g.lastError != nil {
+		var fsmErr *FSMError
+		if IsFSMError(g.lastError) && errors.As(g.lastError, &fsmErr) {
+			if fsmErr.IsTransient() && g.retryCount < g.retryConfig.MaxRetries {
+				return true
+			}
+		}
+	}
+	return g.retryCount < g.retryConfig.MaxRetries
+}
+
+// ClearHistory clears the transition history
+func (g *BaseGraphFSM) ClearHistory() {
+	g.transitionHistory.Clear()
+}
+
+// ClearRollbackSnapshots clears all rollback snapshots
+func (g *BaseGraphFSM) ClearRollbackSnapshots() {
+	g.rollbackManager.ClearAll()
 }
