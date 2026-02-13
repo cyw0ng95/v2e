@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import { CVSSProvider } from '@/lib/cvss-context';
 import { useEtlTree } from '@/lib/hooks';
 import { rpcClient } from '@/lib/rpc-client';
+import { toast } from 'sonner';
 
 // Lazy load application components for better performance
 const CVSSCalculator = lazy(() => import('@/components/cvss/calculator').then(m => ({ default: m.default })));
@@ -141,31 +142,49 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
       
       const handleProviderAction = async (providerId: string, action: 'start' | 'pause' | 'stop') => {
         try {
+          let result;
           if (action === 'start') {
-            await rpcClient.startProvider(providerId);
+            result = await rpcClient.startProvider(providerId);
           } else if (action === 'pause') {
-            await rpcClient.pauseProvider(providerId);
+            result = await rpcClient.pauseProvider(providerId);
           } else {
-            await rpcClient.stopProvider(providerId);
+            result = await rpcClient.stopProvider(providerId);
           }
-        } catch (err) {
+          
+          if (result.retcode === 0 && result.payload?.success) {
+            toast.success(`Provider ${providerId} ${action}ed successfully`);
+          } else {
+            toast.error(`Failed to ${action} provider ${providerId}`);
+          }
+        } catch (err: any) {
           console.error(`Failed to ${action} provider:`, err);
+          toast.error(`Failed to ${action} provider: ${err.message || 'Unknown error'}`);
         }
       };
 
       const handleMacroAction = async (action: 'start' | 'stop' | 'pause' | 'resume') => {
         try {
+          let result;
           if (action === 'start') {
-            await rpcClient.startAllProviders();
+            result = await rpcClient.startAllProviders();
           } else if (action === 'pause') {
-            await rpcClient.pauseAllProviders();
+            result = await rpcClient.pauseAllProviders();
           } else if (action === 'resume') {
-            await rpcClient.resumeAllProviders();
+            result = await rpcClient.resumeAllProviders();
           } else {
-            await rpcClient.stopAllProviders();
+            result = await rpcClient.stopAllProviders();
           }
-        } catch (err) {
+          
+          if (result.retcode === 0 && result.payload?.success) {
+            toast.success(`Successfully ${action}ed all providers`);
+          } else if (result.payload?.failed?.length > 0) {
+            toast.error(`Failed to ${action} some providers: ${result.payload.failed.join(', ')}`);
+          } else {
+            toast.info(`Providers ${action} command completed`);
+          }
+        } catch (err: any) {
           console.error(`Failed to ${action} all providers:`, err);
+          toast.error(`Failed to ${action} providers: ${err.message || 'Unknown error'}`);
         }
       };
 
