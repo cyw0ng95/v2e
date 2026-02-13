@@ -7,6 +7,7 @@
 
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { MenuBar } from '@/components/desktop/MenuBar';
 import { DesktopArea } from '@/components/desktop/DesktopArea';
 import ChromaGridDock from '@/components/desktop/ChromaGridDock';
@@ -26,6 +27,13 @@ export default function HomePage() {
   const { desktopIcons } = useDesktopStore();
   const quickLaunch = useQuickLaunchShortcut();
   const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const resolvedTheme = mounted ? theme : 'dark';
 
   // Initialize network status detection
   useNetworkStatus();
@@ -56,14 +64,14 @@ export default function HomePage() {
         {/* Initial state notice - shown when no icons exist */}
         {desktopIcons.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className={`backdrop-blur-sm rounded-lg p-8 text-center max-w-md ${theme === 'light' ? 'bg-white/10 text-white/80' : 'bg-black/10 text-gray-900'}`}>
+            <div className={`backdrop-blur-sm rounded-lg p-8 text-center max-w-md ${resolvedTheme === 'light' ? 'bg-white/10 text-white/80' : 'bg-black/10 text-gray-900'}`}>
               <h2 className="text-xl font-bold mb-4">
                 Welcome to v2e Portal
               </h2>
-              <p className={`mb-4 ${theme === 'light' ? 'text-white/80' : 'text-gray-600'}`}>
+              <p className={`mb-4 ${resolvedTheme === 'light' ? 'text-white/80' : 'text-gray-600'}`}>
                 Desktop is ready. Add apps from dock or right-click to customize.
               </p>
-              <p className={`text-sm ${theme === 'light' ? 'text-white/70' : 'text-gray-500'}`}>
+              <p className={`text-sm ${resolvedTheme === 'light' ? 'text-white/70' : 'text-gray-500'}`}>
                 All features work offline.
               </p>
             </div>
