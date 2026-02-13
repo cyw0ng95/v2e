@@ -338,8 +338,24 @@ func (p *BaseProviderFSM) Start() error {
 		return err
 	}
 
+	// Auto-grant permit and transition to RUNNING for standalone operation
+	atomic.StoreInt32(&p.permitsHeld, 1)
+	if err := p.Transition(ProviderRunning); err != nil {
+		return err
+	}
+
 	// Emit event
 	p.emitEvent(EventProviderStarted)
+
+	// Start execution
+	go func() {
+		select {
+		case <-p.ctx.Done():
+			return
+		default:
+			p.executeAsync()
+		}
+	}()
 
 	return nil
 }
@@ -375,8 +391,24 @@ func (p *BaseProviderFSM) Resume() error {
 		return err
 	}
 
+	// Auto-grant permit and transition to RUNNING
+	atomic.StoreInt32(&p.permitsHeld, 1)
+	if err := p.Transition(ProviderRunning); err != nil {
+		return err
+	}
+
 	// Emit event
 	p.emitEvent(EventProviderResumed)
+
+	// Start execution
+	go func() {
+		select {
+		case <-p.ctx.Done():
+			return
+		default:
+			p.executeAsync()
+		}
+	}()
 
 	return nil
 }
@@ -450,7 +482,57 @@ func (p *BaseProviderFSM) OnQuotaGranted(grantedCount int) error {
 		if err := p.Transition(ProviderAcquiring); err != nil {
 			return err
 		}
+		// Auto-transition to RUNNING for waiting quota retry
+		if err := p.Transition(ProviderRunning); err != nil {
+			return err
+		}
+		go func() {
+			select {
+			case <-p.ctx.Done():
+				return
+			default:
+				p.executeAsync()
+			}
+		}()
 	}
+
+	return nil
+}
+
+// AutoStart permits without waiting for broker - for standalone operation
+func (p *BaseProviderFSM) AutoStart() error {
+	currentState := p.GetState()
+
+	if currentState != ProviderIdle && currentState != ProviderAcquiring {
+		return fmt.Errorf("cannot auto-start from state %s", currentState)
+	}
+
+	// Transition to ACQUIRING then RUNNING directly
+	if currentState == ProviderIdle {
+		if err := p.Transition(ProviderAcquiring); err != nil {
+			return err
+		}
+	}
+
+	// Auto-grant permits and transition to RUNNING
+	atomic.StoreInt32(&p.permitsHeld, 1)
+	if err := p.Transition(ProviderRunning); err != nil {
+		return err
+	}
+
+	// Emit event
+	p.emitEvent(EventQuotaGranted)
+	p.emitEvent(EventProviderStarted)
+
+	// Start execution
+	go func() {
+		select {
+		case <-p.ctx.Done():
+			return
+		default:
+			p.executeAsync()
+		}
+	}()
 
 	return nil
 }
