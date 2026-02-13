@@ -175,15 +175,19 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
             result = await rpcClient.stopAllProviders();
           }
           
-          if (result.retcode === 0 && result.payload?.success) {
-            toast.success(`Successfully ${action}ed all providers (${result.payload.started?.length || 0}/${result.payload.total})`);
-          } else if (result.payload?.failed?.length > 0) {
-            const reasons = result.payload.failed_reasons;
+          const p = result.payload as any;
+          
+          if (result.retcode === 0 && p?.success) {
+            const started = p.started || [];
+            const total = p.total || 0;
+            toast.success(`Successfully ${action}ed all providers (${started.length}/${total})`);
+          } else if (p?.failed?.length > 0) {
+            const reasons = p.failed_reasons;
             if (reasons) {
               const reasonText = Object.entries(reasons).map(([id, err]) => `${id}: ${err}`).join('\n');
               toast.error(`Failed to ${action} some providers:\n${reasonText}`);
             } else {
-              toast.error(`Failed to ${action} providers: ${result.payload.failed.join(', ')}`);
+              toast.error(`Failed to ${action} providers: ${p.failed.join(', ')}`);
             }
           } else {
             toast.info(`Providers ${action} command completed`);
