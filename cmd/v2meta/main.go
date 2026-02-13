@@ -79,6 +79,10 @@ func main() {
 		logger.Warn(LogMsgRunDBFileDoesNotExist, runDBPath, err)
 	}
 
+	// Use separate database file for FSM storage to avoid lock contention
+	// with the main session database (runDBPath)
+	fsmDBPath := runDBPath + "-fsm"
+
 	// Create run store
 	logger.Info(LogMsgRunStoreOpening, runDBPath)
 	logger.Info(LogMsgCreatingRunStore)
@@ -120,7 +124,7 @@ func main() {
 
 	// Initialize UEE FSM infrastructure
 	logger.Info("Initializing UEE FSM infrastructure...")
-	fsmInitErr := initFSMInfrastructure(logger, runDBPath, sp)
+	fsmInitErr := initFSMInfrastructure(logger, fsmDBPath, sp)
 	if fsmInitErr != nil {
 		logger.Error("Failed to initialize UEE FSM infrastructure: %v", fsmInitErr)
 		// Continue but still register basic FSM handlers
