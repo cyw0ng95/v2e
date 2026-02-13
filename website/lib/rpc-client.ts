@@ -329,6 +329,7 @@ const methodToPathMap: Record<string, { path: string; target: string }> = {
   RPCFSMStopAllProviders: { path: '/etl/provider/stop-all', target: 'meta' },
   RPCFSMPauseAllProviders: { path: '/etl/provider/pause-all', target: 'meta' },
   RPCFSMResumeAllProviders: { path: '/etl/provider/resume-all', target: 'meta' },
+  RPCFSMGetEtlTree: { path: '/etl/tree', target: 'meta' },
   RPCUpdatePerformancePolicy: { path: '/etl/performance-policy', target: 'meta' },
   RPCGetKernelMetrics: { path: '/etl/kernel-metrics', target: 'meta' },
 
@@ -2135,7 +2136,7 @@ export class RPCClient {
         },
       };
     }
-    return this.call<{}, { tree: any }>('RPCGetEtlTree', {}, 'meta');
+    return this.call<{}, { tree: any }>('RPCFSMGetEtlTree', {}, 'meta');
   }
 
   /**

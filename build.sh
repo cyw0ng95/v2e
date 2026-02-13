@@ -1090,6 +1090,7 @@ main() {
         run_benchmarks
         exit_code=$?
     elif [ "$BUILD_PACKAGE" = true ]; then
+        export V2E_SKIP_WEBSITE_BUILD=1
         build_and_package
         exit_code=$?
     elif [ "$RUN_NODE_AND_BROKER" = true ]; then
