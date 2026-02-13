@@ -100,10 +100,8 @@
 | TODO-271 | rpc | Optimization | Use strings.Builder for correlationID generation in pkg/rpc/client.go:132 to reduce allocation overhead from fmt.Sprintf | 40 | Low | |
 | TODO-275 | notes | Refactor | BFSStrategy and DFSStrategy should embed *BaseStrategy - pkg/notes/strategy/base_strategy.go has reusable code but bfs.go and dfs.go don't use it, causing duplicate GetViewedCount (bfs:104, dfs:178), Reset, viewed map management | 80 | Medium | |
 | TODO-276 | rpc | Refactor | Consolidate RPC client implementations - pkg/rpc/client.go (RequestEntry line~23, InvokeRPC line~118) and pkg/notes/rpc_client.go (requestEntry line~23, InvokeRPC line~79) are nearly identical, should share a common implementation | 100 | High | |
-| TODO-277 | common | Optimization | Pre-allocate map capacity in hot paths - pkg/graph/graph.go nodes/edges/reverseEdges (line~51), pkg/notes/strategy viewed maps (bfs:19, dfs:58), pkg/notes/fsm/learning_fsm links (line~78) | 60 | Medium | |
 | TODO-278 | meta | Refactor | Create shared Event type - pkg/meta/fsm/types.go (Event line~81) and pkg/analysis/fsm/types.go (Event line~78) both define identical structs with Type, Timestamp, Data fields | 40 | Medium | |
 | TODO-279 | meta | Refactor | Extract common field diff logic from provider packages - cmd/v2meta/providers/cve_provider.go:250, cwe_provider.go:251, capec_provider.go:251, attack_provider.go:250 all use identical `changed := make(map[string]interface{})` pattern | 60 | Medium | |
-| TODO-280 | graph | Optimization | Pre-allocate capacity in pkg/graph/graph.go - neighborsMap in GetNeighbors (line~143), edges slice in AddEdge (line~100) should use make with capacity hint | 40 | Medium | |
 ## TODO Management Guidelines
 
 For detailed guidelines on managing TODO items, see the **TODO Management** section in `CLAUDE.md`.
