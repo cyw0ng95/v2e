@@ -92,7 +92,6 @@
 | TODO-247 | ssg | Refactor | Implement savepoints for large transactions to improve rollback granularity | 80 | Medium | |
 | TODO-248 | ssg | Optimization | Add query result caching for frequently accessed tree structures | 60 | Medium | |
 | TODO-250 | cce | Feature | Add max pagination limit validation (cap at 1000) to prevent excessive queries | 30 | Low | |
-| TODO-251 | cce | Refactor | Create generic toModel function to eliminate manual CCE->CCEModel mapping code duplication | 80 | High | |
 | TODO-253 | common | Optimization | Optimize ErrorRegistry pattern matching with case-insensitive map for O(1) lookup | 80 | Medium | |
 | TODO-254 | notes | Optimization | Optimize Manager.GetContext to avoid copying viewedItems slice on every call | 50 | Medium | |
 | TODO-256 | rpc | Optimization | Optimize InvokeRPC defer execution logic to avoid unnecessary cleanup calls | 80 | Medium | |
