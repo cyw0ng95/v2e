@@ -157,17 +157,19 @@ export class ProviderFSMClient {
   }
 
   async getProviderList(): Promise<{providers: Array<{id: string; type: string; state: string}>; count: number}> {
-    const response = await rpcClient.call<{}, {providers: Array<{id: string; type: string; state: string}>; count: number}>(
-      'RPCGetEtlTree',
-      {},
-      'meta'
-    );
+    const response = await rpcClient.call<{}, {
+      tree?: {
+        providers?: Array<{id: string; type: string; state: string}>;
+      };
+      providers?: Array<{id: string; type: string; state: string}>;
+    }>('RPCGetEtlTree', {}, 'meta');
 
     if (response.retcode !== 0) {
       return { providers: [], count: 0 };
     }
 
-    const providers = response.payload?.providers || [];
+    // Handle wrapped format (v2access) vs direct format
+    const providers = response.payload?.providers || response.payload?.tree?.providers || [];
     return {
       providers: providers.map(p => ({
         id: p.id,
@@ -188,9 +190,21 @@ export class ProviderFSMClient {
       error_message?: string;
     }>;
   }> {
+    // The API returns { tree: { macro, providers, ... } }
+    // Need to handle both response formats
     const response = await rpcClient.call<{}, {
-      macro_fsm: { state: string; total_providers: number; active_providers: number };
-      providers: Array<{
+      tree?: {
+        macro?: { state: string; total_providers?: number; active_providers?: number };
+        providers?: Array<{
+          id: string;
+          type: string;
+          state: string;
+          processed_count?: number;
+          error_message?: string;
+        }>;
+      };
+      macro_fsm?: { state: string; total_providers?: number; active_providers?: number };
+      providers?: Array<{
         id: string;
         type: string;
         state: string;
@@ -200,12 +214,32 @@ export class ProviderFSMClient {
     }>('RPCGetEtlTree', {}, 'meta');
 
     if (response.retcode !== 0) {
-      throw new Error(response.message);
+      throw new Error('Failed to get ETL tree');
     }
 
-    return response.payload || {
-      macro_fsm: { state: 'UNKNOWN', total_providers: 0, active_providers: 0 },
-      providers: [],
+    // Handle wrapped format (v2access) vs direct format (direct RPC)
+    const payload = response.payload;
+    let macro_fsm = payload?.macro_fsm || payload?.tree?.macro;
+    let providers = payload?.providers || payload?.tree?.providers || [];
+
+    // Convert snake_case to camelCase
+    if (macro_fsm) {
+      macro_fsm = {
+        state: macro_fsm.state || 'UNKNOWN',
+        total_providers: macro_fsm.total_providers || 0,
+        active_providers: macro_fsm.active_providers || 0,
+      };
+    }
+
+    return {
+      macro_fsm: macro_fsm || { state: 'UNKNOWN', total_providers: 0, active_providers: 0 },
+      providers: providers.map(p => ({
+        id: p.id,
+        type: p.type,
+        state: p.state,
+        processed_count: p.processed_count,
+        error_message: p.error_message,
+      })),
     };
   }
 }

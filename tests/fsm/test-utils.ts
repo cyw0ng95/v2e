@@ -3,12 +3,26 @@ import { rpcClient } from '../src/rpc-client.js';
 export const TEST_PROVIDER_IDS = ['cve', 'cwe', 'capec', 'attack', 'cce'];
 
 export interface EtlTreeResponse {
-  macro_fsm: {
+  tree?: {
+    macro_fsm?: {
+      state: string;
+      total_providers: number;
+      active_providers: number;
+    };
+    providers?: Array<{
+      id: string;
+      type: string;
+      state: string;
+      processed_count?: number;
+      last_checkpoint?: string;
+    }>;
+  };
+  macro_fsm?: {
     state: string;
     total_providers: number;
     active_providers: number;
   };
-  providers: Array<{
+  providers?: Array<{
     id: string;
     type: string;
     state: string;
@@ -20,6 +34,11 @@ export interface EtlTreeResponse {
 export async function resetAllProviders(): Promise<void> {
   await rpcClient.call('RPCFSMStopAllProviders', {}, 'meta');
   await waitForAllProvidersState('TERMINATED', 15000);
+}
+
+function extractProviders(response: EtlTreeResponse): Array<{id: string; state: string}> {
+  const providers = response.providers || response.tree?.providers || [];
+  return providers.map(p => ({ id: p.id, state: p.state }));
 }
 
 export async function waitForAllProvidersState(
@@ -40,7 +59,7 @@ export async function waitForAllProvidersState(
       continue;
     }
 
-    const providers = response.payload?.providers || [];
+    const providers = extractProviders(response);
     const allInState = providers.every(p => p.state === targetState);
     
     if (allInState) {
@@ -71,7 +90,7 @@ export async function waitForAnyProviderState(
       continue;
     }
 
-    const providers = response.payload?.providers || [];
+    const providers = extractProviders(response);
     const anyInState = providers.some(p => p.state === targetState);
     
     if (anyInState) {
