@@ -440,7 +440,8 @@ async function cachedCall(
     try {
       logger.debug('Making RPC request', { method, target, params });
 
-      const response = await fetch(`${baseUrl}/restful/rpc`, {
+      const rpcPath = baseUrl.endsWith('/restful') ? '/rpc' : '/restful/rpc';
+      const response = await fetch(`${baseUrl}${rpcPath}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -454,9 +455,10 @@ async function cachedCall(
       const raw = await response.text();
 
       if (!response.ok) {
+        const rpcPath = baseUrl.endsWith('/restful') ? '/rpc' : '/restful/rpc';
         // HTTP-level error with full details for debugging
         logger.error(`HTTP error: ${response.status} ${response.statusText}`, new Error(`HTTP ${response.status}`), {
-          url: `${baseUrl}/restful/rpc`,
+          url: `${baseUrl}${rpcPath}`,
           method,
           target,
           status: response.status,
