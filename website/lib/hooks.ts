@@ -480,31 +480,10 @@ export function useStartTypedSession() {
 export function useStartCWEImport() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const { isMounted, setStateIfMounted } = useMountedState();
 
-  const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
-    try {
-      setIsPending(true);
-      setError(null);
-
-      const response = await rpcClient.startCWEImport(params);
-
-      if (response.retcode !== 0) {
-        throw new Error(response.message || 'Failed to start CWE import');
-      }
-
-      if (options?.onSuccess) {
-        options.onSuccess(response.payload);
-      }
-    } catch (err: any) {
-      setError(err);
-      logger.error('Error starting CWE import', err);
-      if (options?.onError) {
-        options.onError(err);
-      }
-    } finally {
-      setIsPending(false);
-    }
+  const mutate = async () => {
+    setIsPending(true);
+    setError(new Error('CWE import not implemented'));
   };
 
   return { mutate, isPending, error };
@@ -513,31 +492,10 @@ export function useStartCWEImport() {
 export function useStartCAPECImport() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const { isMounted, setStateIfMounted } = useMountedState();
 
-  const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
-    try {
-      setIsPending(true);
-      setError(null);
-
-      const response = await rpcClient.startCAPECImport(params);
-
-      if (response.retcode !== 0) {
-        throw new Error(response.message || 'Failed to start CAPEC import');
-      }
-
-      if (options?.onSuccess) {
-        options.onSuccess(response.payload);
-      }
-    } catch (err: any) {
-      setError(err);
-      logger.error('Error starting CAPEC import', err, params);
-      if (options?.onError) {
-        options.onError(err);
-      }
-    } finally {
-      setIsPending(false);
-    }
+  const mutate = async () => {
+    setIsPending(true);
+    setError(new Error('CAPEC import not implemented'));
   };
 
   return { mutate, isPending, error };
@@ -1153,6 +1111,7 @@ export function useASVSList(params: { offset?: number; limit?: number; chapter?:
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   const { offset = 0, limit = 100, chapter = '', level = 0 } = params;
 
