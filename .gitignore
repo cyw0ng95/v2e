@@ -6,6 +6,7 @@
 /v2remote
 /v2analysis
 /v2sysmon
+/v2access
 /*.db
 /*.db-shm
 /*.db-wal
