@@ -1,0 +1,7 @@
+{
+  "default": {
+    "format": ["@cucumber/pretty-formatter", "html:cucumber-report.html"],
+    "paths": ["features/**/*.feature"],
+    "require": ["steps/**/*.ts", "fsm/**/*.ts"]
+  }
+}

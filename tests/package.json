@@ -8,9 +8,13 @@
     "test:basic": "vitest run --dir basic",
     "test:etl": "vitest run --dir etl",
     "test:watch": "vitest",
-    "test:file": "vitest run"
+    "test:file": "vitest run",
+    "test:cucumber": "cucumber-js",
+    "test:all": "npm run test && npm run test:cucumber"
   },
   "devDependencies": {
+    "@cucumber/cucumber": "^10.3.1",
+    "@cucumber/pretty-formatter": "^1.0.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3",
