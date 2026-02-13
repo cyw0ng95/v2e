@@ -187,7 +187,7 @@ var rpcRoutes = map[string]RPCRouteMapping{
 	"system/metrics": {Method: "RPCGetSysMetrics", Target: "sysmon"},
 
 	// ETL endpoints (target: meta)
-	"etl/tree":               {Method: "RPCGetEtlTree", Target: "meta"},
+	"etl/tree":               {Method: "RPCFSMGetEtlTree", Target: "meta"},
 	"etl/provider/start":     {Method: "RPCStartProvider", Target: "meta"},
 	"etl/provider/pause":     {Method: "RPCPauseProvider", Target: "meta"},
 	"etl/provider/stop":      {Method: "RPCStopProvider", Target: "meta"},

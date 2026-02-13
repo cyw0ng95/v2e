@@ -258,7 +258,7 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 		rpcGroup.POST("/system/metrics", createPathRPCHandler(rpcClient, "RPCGetSysMetrics", "sysmon"))
 
 		// ETL endpoints
-		rpcGroup.POST("/etl/tree", createPathRPCHandler(rpcClient, "RPCGetEtlTree", "meta"))
+		rpcGroup.POST("/etl/tree", createPathRPCHandler(rpcClient, "RPCFSMGetEtlTree", "meta"))
 		rpcGroup.POST("/etl/provider/start", createPathRPCHandler(rpcClient, "RPCStartProvider", "meta"))
 		rpcGroup.POST("/etl/provider/pause", createPathRPCHandler(rpcClient, "RPCPauseProvider", "meta"))
 		rpcGroup.POST("/etl/provider/stop", createPathRPCHandler(rpcClient, "RPCStopProvider", "meta"))
