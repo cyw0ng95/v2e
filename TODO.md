@@ -79,19 +79,16 @@
 | TODO-229 | sysmon | Feature | Add configurable sampling intervals - setSamplingInterval() and getSamplingInterval() functions exist but are not exposed via RPC, users cannot configure sampling rates at runtime | 100 | Medium | |
 | TODO-230 | sysmon | Feature | Add active/passive health monitoring - service only responds to RPCGetSysMetrics requests, there's no push-based or scheduled monitoring that could alert on threshold crossings or process death | 200 | High | |
 | TODO-231 | sysmon | Feature | Add process-level metrics collection - missing per-process resource usage monitoring (goroutine count, memory per subprocess), sysmon could query broker's process stats and expose new RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
-| TODO-232 | sysmon | Refactor | Improve metric error handling - when optional metrics fail they're silently skipped with continue statement, should at least log metric-specific failures for debugging | 100 | Medium | |
 | TODO-233 | sysmon | Feature | Add historical data storage - metrics are collected with sampling intervals but no persistent storage for trend analysis or historical querying | 150 | Medium | |
 | TODO-234 | sysmon | Feature | Add shutdown timeout - Stop() method waits indefinitely via wg.Wait(), in production a timeout would prevent hanging if a handler is stuck | 120 | Medium | |
 | TODO-235 | sysmon | Feature | Add graceful shutdown hook for handlers - handlers cannot register cleanup functions to run when shutdown is signaled, no way to do cleanup on shutdown | 150 | High | |
 | TODO-238 | sysmon | Feature | Move goroutine and connection metrics to sysmon - broker's scaling module tracks goroutine count and connections but doesn't actually collect these values, it receives them via AddMetric() calls, sysmon could add RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
 | TODO-240 | cwe | Documentation | Document delete order in SaveView for foreign key safety and why cascading deletes work correctly | 40 | Medium | |
-| TODO-243 | attack | Refactor | Use UUID for relationship ID generation instead of sheetIndex-based format to avoid duplicates in concurrent imports | 40 | Medium | |
 | TODO-244 | attack | Feature | Track and log skipped Excel rows for observability and debugging | 50 | Medium | |
 | TODO-245 | asvs | Feature | Make HTTP timeout configurable instead of hardcoded 30 seconds | 25 | Low | |
 | TODO-246 | asvs | Security | Add URL validation before HTTP requests to prevent SSRF attacks | 30 | Low | |
 | TODO-247 | ssg | Refactor | Implement savepoints for large transactions to improve rollback granularity | 80 | Medium | |
 | TODO-248 | ssg | Optimization | Add query result caching for frequently accessed tree structures | 60 | Medium | |
-| TODO-250 | cce | Feature | Add max pagination limit validation (cap at 1000) to prevent excessive queries | 30 | Low | |
 | TODO-253 | common | Optimization | Optimize ErrorRegistry pattern matching with case-insensitive map for O(1) lookup | 80 | Medium | |
 | TODO-254 | notes | Optimization | Optimize Manager.GetContext to avoid copying viewedItems slice on every call | 50 | Medium | |
 | TODO-256 | rpc | Optimization | Optimize InvokeRPC defer execution logic to avoid unnecessary cleanup calls | 80 | Medium | |
