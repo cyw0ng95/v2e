@@ -233,6 +233,10 @@ func CreateFSMRPCHandlers(logger *common.Logger) map[string]subprocess.Handler {
 // FSM RPC handlers
 func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -258,6 +262,10 @@ func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMStopProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -287,6 +295,10 @@ func createFSMStopProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMPauseProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -316,6 +328,10 @@ func createFSMPauseProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMResumeProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -345,6 +361,10 @@ func createFSMResumeProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMGetProviderListHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		providers := make([]map[string]interface{}, 0, len(fsmProviders))
 
 		for id, provider := range fsmProviders {
@@ -364,6 +384,10 @@ func createFSMGetProviderListHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMGetProviderCheckpointsHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil || storageDB == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -418,6 +442,10 @@ func createFSMGetProviderCheckpointsHandler(logger *common.Logger) subprocess.Ha
 
 func createFSMGetEtlTreeHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		macroStats := macroFSM.GetStats()
 
 		providerStats := make([]map[string]interface{}, 0, len(fsmProviders))
@@ -435,6 +463,10 @@ func createFSMGetEtlTreeHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMStartAllProvidersHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		started := []string{}
 		failed := []string{}
 
@@ -462,6 +494,10 @@ func createFSMStartAllProvidersHandler(logger *common.Logger) subprocess.Handler
 
 func createFSMStopAllProvidersHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		stopped := []string{}
 		failed := []string{}
 
@@ -489,6 +525,10 @@ func createFSMStopAllProvidersHandler(logger *common.Logger) subprocess.Handler 
 
 func createFSMPauseAllProvidersHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		paused := []string{}
 		failed := []string{}
 
@@ -516,6 +556,10 @@ func createFSMPauseAllProvidersHandler(logger *common.Logger) subprocess.Handler
 
 func createFSMResumeAllProvidersHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		resumed := []string{}
 		failed := []string{}
 

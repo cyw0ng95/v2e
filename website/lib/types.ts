@@ -4439,6 +4439,8 @@ export interface CVSS3EnvironmentalMetrics {
   MI: 'H' | 'L' | 'N';
   /** Modified Availability (H/L/N) */
   MA: 'H' | 'L' | 'N';
+  /** Modified Privilege Required (H/L/N/X) */
+  MPR?: 'H' | 'L' | 'N' | 'X';
 }
 
 /**

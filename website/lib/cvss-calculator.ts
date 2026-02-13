@@ -588,11 +588,12 @@ export function calculateCVSS3(
   version: '3.0' | '3.1'
 ): { vectorString: string; breakdown: CVSS3ScoreBreakdown } {
   const baseScore = calculateV3BaseScore(metrics);
+  const scopeChanged = metrics.S === 'C';
 
   let breakdown: CVSS3ScoreBreakdown = {
     baseScore: baseScore,
     exploitabilityScore: ROUND(calculateV3Exploitability(metrics)),
-    impactScore: ROUND(calculateV3Impact(metrics)),
+    impactScore: ROUND(calculateV3Impact(metrics, scopeChanged)),
     baseSeverity: getSeverity(baseScore)
   };
 

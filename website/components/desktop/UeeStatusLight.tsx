@@ -4,6 +4,7 @@ import React, { useCallback } from 'react';
 import { Activity, AlertTriangle, XCircle, HelpCircle } from 'lucide-react';
 import { useUeeStatus } from '@/lib/hooks';
 import { useDesktopStore } from '@/lib/desktop/store';
+import { getAppById } from '@/lib/desktop/app-registry';
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { WindowState } from '@/types/desktop';
 
 type UeeStatusValue = 'healthy' | 'degraded' | 'error' | 'unknown';
 
@@ -61,6 +63,14 @@ export function UeeStatusLight({ className }: UeeStatusLightProps) {
         title: app.name,
         position: { x: 100, y: 50 },
         size: { width: app.defaultWidth, height: app.defaultHeight },
+        minWidth: app.minWidth,
+        minHeight: app.minHeight,
+        maxWidth: app.maxWidth,
+        maxHeight: app.maxHeight,
+        isFocused: true,
+        isMinimized: false,
+        isMaximized: false,
+        state: WindowState.Open,
       });
     }
   }, [openWindow]);
@@ -90,13 +100,6 @@ export function UeeStatusLight({ className }: UeeStatusLightProps) {
       </Tooltip>
     </TooltipProvider>
   );
-}
-
-function getAppById(id: string): { id: string; name: string; defaultWidth: number; defaultHeight: number } | undefined {
-  const apps: Record<string, { id: string; name: string; defaultWidth: number; defaultHeight: number }> = {
-    etl: { id: 'etl', name: 'ETL Monitor', defaultWidth: 1000, defaultHeight: 700 },
-  };
-  return apps[id];
 }
 
 export default UeeStatusLight;
