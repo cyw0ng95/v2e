@@ -12,24 +12,19 @@ describe('Access Service', () => {
     expect(data).toHaveProperty('status');
   });
 
-  it('should reject missing method field', async () => {
-    const response = await fetch(`${TEST_CONFIG.API_BASE_URL}/restful/rpc`, {
+  it('should reject empty body on path-based endpoint', async () => {
+    const response = await fetch(`${TEST_CONFIG.API_BASE_URL}/restful/rpc/cve/list`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ params: {} })
+      body: JSON.stringify({})
     });
 
-    // Access service validates input - should return 400
-    expect([400, 200]).toContain(response.status);
-
-    if (response.status === 200) {
-      const data = await response.json();
-      expect(data.retcode).not.toBe(0);
-    }
+    expect(response.ok).toBe(true);
+    const data = await response.json();
+    expect(data.retcode).not.toBe(0);
   });
 
   it('should forward RPC calls to local service', async () => {
-    // Use existing RPC method from local service
     const response = await rpcClient.call('RPCCountCVEs', {}, 'local');
 
     expect(response.retcode).toBe(0);
