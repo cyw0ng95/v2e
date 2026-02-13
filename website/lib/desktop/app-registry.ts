@@ -150,7 +150,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 700,
     minHeight: 500,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
   {
@@ -163,7 +163,7 @@ export const ACTIVE_APPS: AppRegistryEntry[] = [
     defaultHeight: 700,
     minWidth: 600,
     minHeight: 500,
-    contentMode: 'iframe',
+    contentMode: 'component',
     status: 'active',
   },
 ];

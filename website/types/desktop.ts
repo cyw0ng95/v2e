@@ -147,6 +147,9 @@ export interface DesktopState {
 
   // Network status
   isOnline: boolean;
+
+  // UEE status: healthy (all RUNNING/IDLE), degraded (some PAUSED/WAITING), error (any TERMINATED), unknown (no data/offline)
+  ueeStatus: 'healthy' | 'degraded' | 'error' | 'unknown';
 }
 
 /**

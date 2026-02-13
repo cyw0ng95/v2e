@@ -304,9 +304,91 @@ export function useCAPEC(capecId?: string) {
     return () => {
       abortController.abort();
     };
-  }, [capecId, isMounted, setStateIfMounted]);
+  }, [pollingInterval]);
 
   return { data, isLoading, error };
+}
+
+export type UeeStatus = 'healthy' | 'degraded' | 'error' | 'unknown';
+
+function computeUeeStatus(etlTree: any, isOnline: boolean): UeeStatus {
+  if (!isOnline) {
+    return 'unknown';
+  }
+
+  if (!etlTree || !etlTree.providers || etlTree.providers.length === 0) {
+    return 'unknown';
+  }
+
+  const providers = etlTree.providers;
+  
+  const hasError = providers.some((p: any) => p.state === 'TERMINATED' && (p.error_count > 0 || p.metadata?.error));
+  if (hasError) {
+    return 'error';
+  }
+
+  const degradedStates = ['PAUSED', 'WAITING_QUOTA', 'WAITING_BACKOFF'];
+  const hasDegraded = providers.some((p: any) => degradedStates.includes(p.state));
+  if (hasDegraded) {
+    return 'degraded';
+  }
+
+  return 'healthy';
+}
+
+export function useUeeStatus(pollingInterval = 5000) {
+  const [status, setStatus] = useState<UeeStatus>('unknown');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [etlData, setEtlData] = useState<any>(null);
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const fetchStatus = async () => {
+      try {
+        const response = await rpcClient.getEtlTree();
+        
+        if (response.retcode !== 0 || !isMountedRef.current) {
+          return;
+        }
+        
+        setEtlData(response.payload);
+        
+        const newStatus = computeUeeStatus(response.payload, true);
+        setStatus(newStatus);
+      } catch {
+        if (isMountedRef.current) {
+          setStatus('unknown');
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchStatus();
+
+    if (pollingInterval > 0) {
+      interval = setInterval(fetchStatus, pollingInterval);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [pollingInterval]);
+
+  return { status, isLoading, data: etlData };
 }
 
 export function useCAPECList(offset: number = 0, limit: number = 100) {

@@ -55,6 +55,7 @@ const initialState: DesktopState = {
     },
   ],
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  ueeStatus: 'unknown' as 'healthy' | 'degraded' | 'error' | 'unknown',
 };
 
 // ============================================================================
@@ -132,6 +133,9 @@ interface DesktopActions {
 
   // Network
   setOnlineStatus: (isOnline: boolean) => void;
+
+  // UEE Status
+  setUeeStatus: (status: 'healthy' | 'degraded' | 'error' | 'unknown') => void;
 
   // Global
   resetDesktop: () => void;
@@ -299,15 +303,13 @@ const useDesktopStore = create<DesktopStore>()(
           if (!window) return {};
 
           const isCurrentlyMaximized = window.state === WindowState.Maximized;
-          const newState: WindowState = isCurrentlyMaximized ? WindowState.Restoring : WindowState.Maximizing;
-          const finalState: WindowState = isCurrentlyMaximized ? WindowState.Focused : WindowState.Maximized;
 
           return {
             windows: {
               ...state.windows,
               [id]: {
                 ...window,
-                state: newState,
+                state: isCurrentlyMaximized ? WindowState.Focused : WindowState.Maximized,
                 isMaximized: !isCurrentlyMaximized,
               },
             },
@@ -435,6 +437,9 @@ const useDesktopStore = create<DesktopStore>()(
       // Network Actions
       setOnlineStatus: (isOnline) => set({ isOnline }),
 
+      // UEE Status Actions
+      setUeeStatus: (ueeStatus) => set({ ueeStatus }),
+
       // Global Actions
       resetDesktop: () => set(initialState),
     }),
@@ -449,6 +454,7 @@ const useDesktopStore = create<DesktopStore>()(
         theme: state.theme,
         widgets: state.widgets,
         isOnline: state.isOnline,
+        ueeStatus: state.ueeStatus,
       }),
     }
   )
