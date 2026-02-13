@@ -120,17 +120,18 @@ func main() {
 
 	// Initialize UEE FSM infrastructure
 	logger.Info("Initializing UEE FSM infrastructure...")
-	if err := initFSMInfrastructure(logger, runDBPath, sp); err != nil {
-		logger.Error("Failed to initialize UEE FSM infrastructure: %v", err)
-		// Continue without FSM infrastructure for now
-	} else {
-		// Register FSM control RPC handlers
-		fsmHandlers := CreateFSMRPCHandlers(logger)
-		for name, handler := range fsmHandlers {
-			sp.RegisterHandler(name, handler)
-			logger.Info(LogMsgRPCHandlerRegistered, name)
-			logger.Debug(LogMsgRPCClientHandlerRegistered, name)
-		}
+	fsmInitErr := initFSMInfrastructure(logger, runDBPath, sp)
+	if fsmInitErr != nil {
+		logger.Error("Failed to initialize UEE FSM infrastructure: %v", fsmInitErr)
+		// Continue but still register basic FSM handlers
+	}
+
+	// Register FSM control RPC handlers (always register, even if init failed)
+	fsmHandlers := CreateFSMRPCHandlers(logger)
+	for name, handler := range fsmHandlers {
+		sp.RegisterHandler(name, handler)
+		logger.Info(LogMsgRPCHandlerRegistered, name)
+		logger.Debug(LogMsgRPCClientHandlerRegistered, name)
 	}
 
 	// Register RPC handlers for CRUD operations
