@@ -215,9 +215,7 @@ func (p *CAPECProvider) Store(ctx context.Context) error {
 
 // GetStats returns provider statistics
 func (p *CAPECProvider) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return map[string]interface{}{
-		"batch_size": p.batchSize,
-	}
+	stats := p.BaseProviderFSM.GetStats()
+	stats["batch_size"] = p.batchSize
+	return stats
 }

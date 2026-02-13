@@ -259,7 +259,7 @@ export function ETLTopologyViewer({
                   <div className="flex items-center gap-2">
                     {getStateIcon(provider.state)}
                     <CardTitle className="text-lg">
-                      {provider.providerType.toUpperCase()}
+                      {(provider.providerType || provider.id || 'UNKNOWN').toUpperCase()}
                     </CardTitle>
                   </div>
                   <Badge variant={getStateBadgeVariant(provider.state)}>
@@ -317,7 +317,7 @@ export function ETLTopologyViewer({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {getStateIcon(selectedProvider.state)}
-                Provider: {selectedProvider.providerType.toUpperCase()}
+                Provider: {(selectedProvider.providerType || selectedProvider.id || 'UNKNOWN').toUpperCase()}
               </DialogTitle>
               <DialogDescription className="font-mono text-xs">
                 {selectedProvider.id}

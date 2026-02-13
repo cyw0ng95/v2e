@@ -110,12 +110,10 @@ func (p *SSGProvider) Store(ctx context.Context) error {
 
 // GetStats returns provider statistics
 func (p *SSGProvider) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return map[string]interface{}{
-		"batch_size": p.batchSize,
-		"repo_url":   p.repoURL,
-	}
+	stats := p.BaseProviderFSM.GetStats()
+	stats["batch_size"] = p.batchSize
+	stats["repo_url"] = p.repoURL
+	return stats
 }
 
 // SetBatchSize sets the batch size

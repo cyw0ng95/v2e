@@ -110,12 +110,10 @@ func (p *ASVSProvider) Store(ctx context.Context) error {
 
 // GetStats returns provider statistics
 func (p *ASVSProvider) GetStats() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return map[string]interface{}{
-		"batch_size": p.batchSize,
-		"csv_url":    p.csvURL,
-	}
+	stats := p.BaseProviderFSM.GetStats()
+	stats["batch_size"] = p.batchSize
+	stats["csv_url"] = p.csvURL
+	return stats
 }
 
 // SetBatchSize sets the batch size
