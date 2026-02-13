@@ -3,11 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
 	"github.com/cyw0ng95/v2e/pkg/rpc"
 )
+
+const (
+	subprocessCollectInterval = 30 * time.Second
+)
+
+var subprocessIDs = []string{"access", "local", "meta", "remote", "sysmon"}
 
 func main() {
 	// Use common startup utility to standardize initialization
@@ -25,6 +32,9 @@ func main() {
 	sp.RegisterHandler("RPCGetSysMetrics", createGetSysMetricsHandler(logger, rpcClient))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetSysMetrics")
 	logger.Info(LogMsgRegisteredSysMetrics)
+
+	// Start subprocess metrics collection in background
+	go startSubprocessMetricsCollection(logger, rpcClient)
 
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)
@@ -89,4 +99,48 @@ func createGetSysMetricsHandler(logger *common.Logger, rpcClient *rpc.Client) su
 
 func collectMetrics() (map[string]interface{}, error) {
 	return collectAllMetrics()
+}
+
+func startSubprocessMetricsCollection(logger *common.Logger, rpcClient *rpc.Client) {
+	ticker := time.NewTicker(subprocessCollectInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			collectAndSubmitSubprocessMetrics(logger, rpcClient)
+		}
+	}
+}
+
+func collectAndSubmitSubprocessMetrics(logger *common.Logger, rpcClient *rpc.Client) {
+	var metrics []ProcessMetrics
+
+	for _, id := range subprocessIDs {
+		pm, err := ReadProcessMetricsByID(id)
+		if err != nil {
+			logger.Debug("Failed to read metrics for %s: %v", id, err)
+			continue
+		}
+		metrics = append(metrics, *pm)
+	}
+
+	if len(metrics) == 0 {
+		logger.Debug("No subprocess metrics collected")
+		return
+	}
+
+	// Submit to broker
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := rpcClient.InvokeRPC(ctx, "broker", "RPCSubmitProcessMetrics", metrics)
+	if err != nil {
+		logger.Debug("Failed to submit process metrics: %v", err)
+		return
+	}
+
+	if resp != nil && resp.Type == "response" {
+		logger.Debug("Submitted %d subprocess metrics to broker", len(metrics))
+	}
 }
