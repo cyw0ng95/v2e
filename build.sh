@@ -259,15 +259,11 @@ kill_v2e_processes() {
 run_node_and_broker_once() {
     # Set flag to skip website build
     export V2E_SKIP_WEBSITE_BUILD=1
-    # Remove the most recent log file in .build/log if it exists
-    LOG_DIR="$BUILD_DIR/log"
-    if [ -d "$LOG_DIR" ]; then
-        LAST_LOG=$(ls -1t "$LOG_DIR" 2>/dev/null | head -n1)
-        if [ -n "$LAST_LOG" ]; then
-            log_info "Removing last log: $LOG_DIR/$LAST_LOG"
-            rm -f "$LOG_DIR/$LAST_LOG"
-        fi
-    fi
+    
+    mkdir -p "$PACKAGE_DIR/logs"
+    
+    rm -f "$PACKAGE_DIR/logs"/*.log 2>/dev/null || true
+    
     set +e
     log_info "Checking for running Node.js process in website directory..."
     NODE_PID=$(pgrep -f "node.*website" || true)
@@ -308,8 +304,21 @@ run_node_and_broker_once() {
 
     wait $NODE_DEV_PID
     wait $BROKER_PID
-
+    
+    check_broker_logs_for_errors
+    
     set -e
+}
+
+check_broker_logs_for_errors() {
+    local log_dir="$PACKAGE_DIR/logs"
+    if [ -d "$log_dir" ]; then
+        local error_count=$(grep -l "ERROR\|FATAL\|PANIC" "$log_dir"/*.log 2>/dev/null | wc -l)
+        if [ "$error_count" -gt 0 ]; then
+            log_warn "Found errors in broker logs:"
+            grep -h "ERROR\|FATAL\|PANIC" "$log_dir"/*.log 2>/dev/null | head -20
+        fi
+    fi
 }
 
 # Copy assets efficiently
@@ -329,8 +338,8 @@ copy_assets() {
     [ -f "assets/capec_contents_latest.xml" ] && cp assets/capec_contents_latest.xml "$dest_dir/assets/"
     [ -f "assets/capec_schema_latest.xsd" ] && cp assets/capec_schema_latest.xsd "$dest_dir/assets/"
     
-    # Copy XLSX files from assets directory and subdirectories
-    find assets -name "*.xlsx" -exec cp {} "$dest_dir/assets/" \; 2>/dev/null || true
+    # Copy XLSX files from assets directory
+    find assets -name "*.xlsx" -exec cp -t "$dest_dir/assets/" {} + 2>/dev/null || true
     
     if [ "$VERBOSE" = true ]; then
         log_debug "Assets copied to: $dest_dir"
@@ -501,54 +510,85 @@ build_and_package() {
     
     # Check if go.mod exists
     if [ -f "go.mod" ]; then
-        if [ "$VERBOSE" = true ]; then
-            log_debug "Building all binaries in parallel..."
+        # Check if rebuild is needed (incremental build)
+        local needs_rebuild=false
+        local pkg_dir=".build/package"
+        
+        if [ ! -d "$pkg_dir" ]; then
+            needs_rebuild=true
+            log_info "No previous build found, building..."
+        else
+            # Check if any Go source file is newer than the binaries
+            local newest_source=$(find cmd pkg -name "*.go" -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1)
+            local oldest_binary=$(find "$pkg_dir" -name "v2*" -type f -printf '%T@\n' 2>/dev/null | sort -n | head -1)
+            
+            if [ -z "$newest_source" ] || [ -z "$oldest_binary" ]; then
+                needs_rebuild=true
+            elif [ "$(echo "$newest_source > $oldest_binary" | bc 2>/dev/null || echo 1)" -eq 1 ]; then
+                needs_rebuild=true
+                log_info "Source files changed, rebuilding..."
+            fi
+            
+            # Also check if config changed
+            if [ -f ".build/.config" ]; then
+                local config_mtime=$(stat -c %Y ".build/.config" 2>/dev/null || stat -f %m ".build/.config" 2>/dev/null || echo 0)
+                local binary_mtime=$(find "$pkg_dir" -name "v2*" -type f -printf '%T@\n' 2>/dev/null | sort -n | head -1 | cut -d. -f1)
+                if [ -n "$binary_mtime" ] && [ "$config_mtime" -gt "$binary_mtime" 2>/dev/null ]; then
+                    needs_rebuild=true
+                    log_info "Config changed, rebuilding..."
+                fi
+            fi
         fi
         
-        # Get ldflags from config
-        local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
-        
-        # Build each command in parallel
-        declare -a build_pids
-        for cmd_dir in cmd/*; do
-            if [ -d "$cmd_dir" ]; then
-                cmd_name=$(basename "$cmd_dir")
-                if [ "$VERBOSE" = true ]; then
-                    log_debug "Building $cmd_name..."
-                fi
-                if [ "$VERBOSE" = true ]; then
-                    if [ -n "$ldflags" ]; then
-                        go build -v -tags "$build_tags" -ldflags "$ldflags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
-                    else
-                        go build -v -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+        if [ "$needs_rebuild" = false ]; then
+            log_info "Binaries up-to-date, skipping Go build. Use -p to force rebuild."
+        else
+            # Get ldflags from config
+            local ldflags=$(.build/vconfig -get-ldflags -config .build/.config 2>/dev/null || echo "")
+            
+            # Build each command in parallel
+            declare -a build_pids
+            for cmd_dir in cmd/*; do
+                if [ -d "$cmd_dir" ]; then
+                    cmd_name=$(basename "$cmd_dir")
+                    if [ "$VERBOSE" = true ]; then
+                        log_debug "Building $cmd_name..."
                     fi
-                else
-                    if [ -n "$ldflags" ]; then
-                        go build -tags "$build_tags" -ldflags "$ldflags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                    if [ "$VERBOSE" = true ]; then
+                        if [ -n "$ldflags" ]; then
+                            go build -v -tags "$build_tags" -ldflags "$ldflags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                        else
+                            go build -v -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                        fi
                     else
-                        go build -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                        if [ -n "$ldflags" ]; then
+                            go build -tags "$build_tags" -ldflags "$ldflags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                        else
+                            go build -tags "$build_tags" -o "$PACKAGE_DIR/$cmd_name" "./$cmd_dir" &
+                        fi
                     fi
+                    build_pids+=($!)
                 fi
-                build_pids+=($!)
-            fi
-        done
-        
-        # Wait for all builds to complete
-        for pid in "${build_pids[@]}"; do
-            wait "$pid" || return 1
-        done
-        
-        # Make all binaries executable
-        chmod +x "$PACKAGE_DIR/"*
-        
-        # Copy assets efficiently
-        copy_assets "$PACKAGE_DIR"
-        
-        log_info "Go binaries packaged successfully"
+            done
+            
+            # Wait for all builds to complete
+            for pid in "${build_pids[@]}"; do
+                wait "$pid" || return 1
+            done
+            
+            # Make all binaries executable
+            chmod +x "$PACKAGE_DIR/"*
+            
+            log_info "Go binaries packaged successfully"
+            
+            # Copy assets efficiently
+            copy_assets "$PACKAGE_DIR"
+        fi
     else
         log_info "No go.mod found. Skipping Go build."
     fi
     
+    # Build and package frontend
     # Build and package frontend if website directory exists and not skipped
     if [ -z "$V2E_SKIP_WEBSITE_BUILD" ]; then
         if [ -d "website" ]; then
