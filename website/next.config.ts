@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
 
   trailingSlash: !isDev,
 
+  allowedDevOrigins: ['e1410ca11ca5.monkeycode-ai.online', 'localhost'],
+
   async rewrites() {
     if (!isDev) return [];
     
