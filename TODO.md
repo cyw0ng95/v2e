@@ -12,66 +12,11 @@
 | TODO-009 | capec | Refactor | Deduplicate duplicate code in ImportFromXML transaction handling | 60 | Medium | |
 | TODO-010 | cce | Feature | Implement CCE update API with field-level diffing | 120 | Low | |
 | TODO-011 | cce | Test | Add table-driven tests for all CRUD operations | 200 | Medium | |
-| TODO-012 | common | Refactor | Consolidate duplicate logging patterns across services | 100 | Low | |
-| TODO-013 | common | Feature | Add structured logging with context propagation | 150 | Medium | |
-| TODO-014 | cve | Optimization | Add caching layer for frequently accessed CVE items | 180 | Medium | |
-| TODO-015 | cve | Feature | Implement incremental sync from NVD API | 300 | High | |
-| TODO-018 | glc | Feature | Implement automatic schema migration with version tracking | 150 | Medium | |
-| TODO-019 | graph | Feature | Add graph metrics (centrality, clustering coefficient) | 250 | Low | |
-| TODO-020 | graph | Optimization | Implement graph compression for large-scale deployments | 300 | Low | |
-| TODO-021 | graph | Test | Add property-based tests using testing/quick | 150 | Medium | |
-| TODO-026 | meta | Test | Add chaos testing for provider coordination | 250 | Medium | |
-| TODO-027 | notes | Feature | Add memory card export/import functionality | 200 | Low | |
-| TODO-029 | notes | Refactor | Simplify bookmark service with repository pattern | 120 | Medium | |
-| TODO-030 | notes | Test | Add performance benchmarks for FSM operations | 100 | Medium | |
-| TODO-032 | proc | Optimization | Add message prioritization and backpressure handling | 150 | Medium | |
-| TODO-033 | proc | Test | Add fuzz testing for message serialization/deserialization | 150 | Medium | |
-| TODO-035 | rpc | Feature | Add request retry with exponential backoff | 120 | Medium | |
-| TODO-036 | rpc | Refactor | Implement connection pooling for RPC clients | 100 | Medium | |
-| TODO-037 | ssg | Feature | Add incremental SSG data update support with field-level diffing to avoid re-importing entire datasets when only subset changes | 250 | High | |
-| TODO-038 | ssg | Optimization | Implement parallel parsing with worker pools for large SSG XML files to reduce import time by 40% | 180 | Medium | |
-| TODO-039 | testutils | Feature | Add mock HTTP server for testing remote providers with configurable responses and delay simulation | 150 | Medium | |
-| TODO-040 | testutils | Refactor | Extract common test patterns into helpers (database fixtures, assertion helpers, context factories) | 100 | Low | |
-| TODO-042 | urn | Test | Add property-based tests using testing/quick for URN parsing edge cases | 120 | Medium | |
-| TODO-043 | vconfig | Feature | Add configuration validation with detailed error messages indicating which option failed and why | 120 | High | |
-| TODO-045 | vconfig | Feature | Add search/filter functionality in TUI to quickly locate configuration options by name or description | 150 | Medium | |
-| TODO-046 | vconfig | Refactor | Extract TUI event handling logic into separate package to improve testability and reduce coupling | 180 | Medium | |
-| TODO-047 | vconfig | Feature | Implement configuration profiles to allow switching between different build configurations (dev, test, prod) | 200 | Medium | |
-| TODO-048 | vconfig | Test | Add integration tests for TUI interactions using simulated terminal input | 200 | Medium | |
-| TODO-049 | vconfig | Documentation | Add detailed inline comments explaining config spec loading and conversion logic | 80 | Low | |
-| TODO-050 | analysis | Documentation | Add examples for graph analysis API usage showing path finding, neighbor queries, and metrics | 80 | Low | |
-| TODO-051 | meta | Documentation | Document provider FSM lifecycle and transitions with state diagrams and example flows | 100 | Low | |
-| TODO-052 | notes | Documentation | Add learning strategy comparison guide explaining when to use BFS vs DFS navigation | 60 | Low | |
-| TODO-053 | proc | Documentation | Document message flow and serialization format with examples of each message type | 100 | Low | |
-| TODO-054 | all | Refactor | Standardize error codes across all packages with custom error types and error code constants | 400 | Medium | |
-| TODO-055 | all | Feature | Add distributed tracing support with OpenTelemetry for request tracking across services | 500 | Low | WONTFIX |
-| TODO-056 | all | Test | Add integration test suite for broker-subprocess communication covering all RPC methods | 300 | High | |
-| TODO-057 | all | Optimization | Profile and optimize hot paths across all packages using pprof and benchmarking | 200 | Medium | |
-| TODO-058 | build.sh | Refactor | Extract common logging functions into a separate script library (runenv.sh and build.sh both use identical logging) | 80 | Medium | |
-| TODO-060 | build.sh | Feature | Add caching layer for Go module downloads to speed up CI builds by using GOMODCACHE mount in containerized environments | 150 | Medium | |
-| TODO-061 | build.sh | Feature | Implement parallel frontend build with npm build flags to reduce build time on multi-core systems | 120 | Medium | |
-| TODO-062 | build.sh | Optimization | Optimize go build arguments by reusing build tags and ldflags from get_config_* functions to avoid duplicate config parsing | 50 | Medium | |
-| TODO-063 | build.sh | Refactor | Simplify build_and_package() parallel build logic to extract into reusable function with better error handling | 100 | Medium | |
-| TODO-064 | build.sh | Feature | Add build artifact signing or checksum generation for reproducible builds | 100 | Low | |
-| TODO-065 | build.sh | Test | Add unit tests for build script helper functions (version_ge, check_go_version, check_node_version) using shunit2 or bats | 200 | Low | |
-| TODO-068 | runenv.sh | Feature | Add Docker container support as alternative to Podman for environments without Podman | 150 | Medium | |
-| TODO-070 | runenv.sh | Feature | Add container health check with retry logic to ensure container is fully initialized before executing commands | 120 | Medium | |
-| TODO-071 | runenv.sh | Refactor | Simplify environment variable passing by using environment file instead of long -e flag chain in run_container_env() | 80 | Medium | |
-| TODO-072 | runenv.sh | Documentation | Add inline comments explaining container volume mount paths and Go module cache optimization in run_container_env() | 60 | Low | |
-| TODO-073 | cmd/v2access | Refactor | Extract RPC handler registration logic into a shared package to reduce code duplication across cmd/* services | 150 | Medium | |
-| TODO-074 | cmd/v2access | Feature | Add request timeout configuration per RPC method to override DefaultRPCTimeout for long-running operations | 120 | Medium | |
-| TODO-076 | cmd/v2access | Optimization | Add connection pooling for HTTP clients to reduce connection overhead for repeated requests | 100 | Medium | |
-| TODO-077 | cmd/v2broker | Refactor | Extract subprocess lifecycle management into core package to improve testability and separation of concerns | 200 | Medium | |
-| TODO-080 | cmd/v2broker | Optimization | Implement request batching for frequently called RPC methods to reduce context switching overhead | 150 | Medium | |
-| TODO-081 | cmd/v2local | Refactor | Simplify database connection pooling by using generic pool wrapper instead of repeated SetMaxIdleConns/SetMaxOpenConns calls | 80 | Medium | |
-| TODO-082 | cmd/v2local | Feature | Add database query logging with execution time tracking to identify slow queries | 100 | Low | |
-| TODO-084 | cmd/v2meta | Refactor | Extract provider FSM state transition logic into shared package to reduce code duplication across CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider | 250 | Medium | |
-| TODO-087 | cmd/v2meta | Optimization | Add provider health checks with automatic restart for providers in TERMINATED state that should be running | 120 | Medium | |
-| TODO-088 | cmd/v2remote | Refactor | Simplify HTTP client configuration by extracting into shared package with retry logic and timeout handling | 100 | Medium | |
-| TODO-091 | cmd/v2remote | Optimization | Implement response caching for frequently accessed API endpoints (e.g., CVE by ID lookup) to reduce API calls | 120 | Medium | |
-| TODO-093 | cmd/v2sysmon | Feature | Add alert threshold configuration with webhook or email notifications when metrics exceed defined limits | 150 | Medium | |
-| TODO-097 | notes | Test | Add concurrent stress test for LearningFSM state transitions with multiple goroutines | 100 | Medium | |
-| TODO-098 | all | Refactor | Remove duplicate error handling patterns across cmd/* services with centralized error wrapper | 150 | Medium | |
+| TODO-012 | common | Refactor | Consolidate duplicate logging patterns - cmd/v2broker, cmd/v2meta, cmd/v2access each have custom log wrappers instead of using pkg/common logger consistently | 100 | Low | |
+| TODO-043 | vconfig | Feature | Enhance Config.Validate() in tool/vconfig/config.go:103 to add detailed error messages - currently only checks for missing description/type, should validate value ranges, required vs optional, and specific constraint violations | 120 | High | |
+| TODO-054 | all | Refactor | Expand pkg/common/error_registry.go usage - error codes exist in pkg/common (ErrorCode, StandardizedError) but cmd/v2local, cmd/v2remote, cmd/v2meta still use ad-hoc errors instead of standardized ErrorCode system | 400 | Medium | |
+| TODO-084 | cmd/v2meta | Refactor | Extract provider FSM state transition logic - pkg/meta/fsm/provider.go has BaseProviderFSM but CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider still have duplicate field-level diff logic in their execute() methods | 250 | Medium | |
+| TODO-098 | all | Refactor | Remove duplicate error handling - create centralized error wrapper in pkg/common/error.go that wraps errors with ErrorCode from error_registry.go instead of each service creating custom error types | 150 | Medium | |
 | TODO-099 | all | Test | Add race condition tests using -race flag for all critical path functions | 200 | High | |
 | TODO-100 | all | Refactor | Consolidate similar test setup/teardown code into test helpers package | 100 | Low | |
 | TODO-101 | website | Refactor | Review and optimize website/app/layout.tsx for code quality and performance | 80 | Medium | |
@@ -83,21 +28,19 @@
 | TODO-108 | website | Refactor | Review and optimize website/app/page.tsx for bundle size and performance | 80 | Medium | |
 | TODO-109 | website | Test | Add unit tests for website/lib/utils.ts utility functions | 100 | Medium | |
 | TODO-110 | website | Refactor | Review and optimize website/components/cve-detail-modal.tsx for UX and performance | 80 | Medium | |
-| TODO-111 | test | Review | Review and add missing test cases for pkg/common package (66.5% coverage) | 150 | Medium | |
-| TODO-112 | test | Review | Review and add missing test cases for pkg/analysis package (85.1% coverage) | 100 | Low | |
-| TODO-114 | test | Review | Review and add missing test cases for pkg/attack provider package (0% coverage) | 200 | High | |
-| TODO-115 | test | Review | Review and add missing test cases for pkg/asvs package (5.7% coverage) | 200 | High | |
-| TODO-116 | test | Review | Review and add missing test cases for pkg/meta package (0% coverage) | 200 | High | |
-| TODO-117 | test | Review | Review and add missing test cases for pkg/cwe package (0% coverage) | 200 | High | |
-| TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) | 150 | High | |
-| TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) | 200 | High | |
-| TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) | 150 | High | |
+| TODO-111 | test | Review | Review and add missing test cases for pkg/common package (66.5% coverage) - focus on error_registry.go, workerpool/, procfs/ | 150 | Medium | |
+| TODO-114 | test | Review | Review and add missing test cases for pkg/attack/provider package (0% coverage) - add tests for provider state transitions, data fetching | 200 | High | |
+| TODO-115 | test | Review | Review and add missing test cases for pkg/asvs package (5.7% coverage) - focus on local.go CRUD operations | 200 | High | |
+| TODO-116 | test | Review | Review and add missing test cases for pkg/meta package (0% coverage) - add tests for fsm/, storage/ | 200 | High | |
+| TODO-117 | test | Review | Review and add missing test cases for pkg/cwe package (0% coverage) - focus on local.go GetByID, ListCWEsPaginated | 200 | High | |
+| TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) - focus on rpc.go, routing.go, broker.go | 150 | High | |
+| TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) - add tests for handlers and middleware | 200 | High | |
+| TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) - focus on *_handlers.go files | 150 | High | |
 | TODO-126 | cve | Test | Add tests for CVEProvider.execute() checkpoint saving logic when RPC calls fail | 80 | Medium | |
 | TODO-127 | cve | Documentation | Document exported types in pkg/cve/types.go - CVSSDataV40, CVSSMetricV40 lack comments explaining v4.0 differences | 60 | Low | |
-| TODO-129 | cwe | Refactor | Reduce massive code duplication in local.go - GetByID and ListCWEsPaginated share 90% identical nested field loading logic | 150 | Medium | |
-| TODO-130 | cwe | Optimization | Use Preload or eager loading for nested relations instead of N+1 queries in GetByID/ListCWEsPaginated | 100 | Medium | |
-| TODO-133 | cwe | Documentation | Document LocalCWEStore.SaveView nested array deletion order and why it's safe | 40 | Low | |
-| TODO-136 | capec | Refactor | Eliminate code duplication between LocalCAPECStore and CachedLocalCAPECStore - share ImportFromXML logic via base struct | 180 | Medium | |
+| TODO-129 | cwe | Refactor | Reduce code duplication in pkg/cwe/local.go - GetByID (line ~600) and ListCWEsPaginated (line ~450) share ~90% identical nested field loading logic for RelatedAttackPatterns, ExternalReferences, Notes, WeaknessRhetoric | 150 | Medium | |
+| TODO-130 | cwe | Optimization | Use GORM Preload for nested relations in pkg/cve/local.go and pkg/cwe/local.go - GetByID/ListCWEsPaginated currently use N+1 queries instead of eager loading | 100 | Medium | |
+| TODO-136 | capec | Refactor | Eliminate code duplication between LocalCAPECStore and CachedLocalCAPECStore in pkg/capec/ - both implement ImportFromXML separately, should share via base struct or interface | 180 | Medium | |
 | TODO-144 | cmd/v2broker | Documentation | Document SendQuotaUpdateEvent method in cmd/v2broker/service.md | 20 | Low | |
 | TODO-145 | cmd/v2broker | Test | Add integration tests for main.go covering signal handling and graceful shutdown flow | 150 | Medium | |
 | TODO-151 | cmd/v2access | Test | Add tests for graceful shutdown logic in run.go | 100 | Medium | |
@@ -123,10 +66,10 @@
 | TODO-187 | website | Documentation | Document component prop interfaces in components/ with JSDoc comments describing required and optional props | 200 | Low | |
 | TODO-188 | website | Feature | Connect navbar search to actual search functionality querying across CVEs, CWEs, CAPECs, and ATT&CK data | 150 | Medium | |
 | TODO-189 | website | Feature | Add settings functionality for settings button - create dialog/page for user preferences (theme, API endpoints, data refresh) | 180 | Low | |
-| TODO-191 | analysis | Optimization | Add sync.Pool buffer pool for JSON serialization in graph_store.go to reduce GC pressure | 80 | Medium | |
+| TODO-191 | analysis | Optimization | Add sync.Pool buffer pool for JSON serialization in pkg/analysis/storage/graph_store.go to reduce GC pressure during graph persistence | 80 | Medium | |
 | TODO-193 | analysis | Feature | Implement incremental graph save to avoid clearing entire bucket on each SaveGraph call | 200 | Medium | |
 | TODO-194 | analysis | Feature | Add batch operations API for saving multiple nodes/edges in single transaction | 150 | Medium | |
-| TODO-195 | rpc-client | Refactor | Consolidate duplicate mock response logic between getMockResponseForCache and getMockResponse (~600 lines of duplication) | 100 | Medium | |
+| TODO-195 | website | Refactor | Consolidate duplicate mock response logic in website/lib/rpc-client.ts - getMockResponseForCache (line 544) and getMockResponse (line 712) have ~600 lines of duplication handling the same mock data | 100 | Medium | |
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
 | TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
 | TODO-208 | ume | Refactor | Add backpressure mechanism to message routing - when route channels are full, messages are dropped with "channel full" error instead of blocking send, implement proper queue or buffer | 200 | High | |
@@ -159,15 +102,17 @@
 | TODO-254 | notes | Optimization | Optimize Manager.GetContext to avoid copying viewedItems slice on every call | 50 | Medium | |
 | TODO-256 | rpc | Optimization | Optimize InvokeRPC defer execution logic to avoid unnecessary cleanup calls | 80 | Medium | |
 | TODO-264 | uptime | Feature | Add uptime monitoring service with configurable polling intervals | 200 | Medium | |
-| TODO-265 | asvs | Optimization | Create global HTTP client with connection pooling instead of creating new client on each ImportFromCSV call | 40 | High | |
-| TODO-266 | asvs | Optimization | Enable GORM PrepareStmt:true in db config to enable prepared statements for better query performance | 20 | High | |
-| TODO-267 | cwe | Optimization | Enable GORM PrepareStmt:true in db config to enable prepared statements for better query performance | 20 | High | |
-| TODO-268 | graph | Optimization | Implement sharded RWMutex locks to reduce lock contention - separate nodeMu and edgeMu instead of single global lock | 80 | Medium | |
-| TODO-269 | graph | Optimization | Pre-allocate slice capacity for edges map to reduce append reallocations | 40 | Medium | |
-| TODO-270 | graph | Optimization | Replace slice-based BFS queue with container/list for O(1) operations | 60 | Medium | |
-| TODO-271 | rpc | Optimization | Use strings.Builder for correlationID generation to reduce allocation overhead | 40 | Low | |
-| TODO-272 | meta | Optimization | Pre-allocate eventBatch slice capacity to reduce memory allocations during event collection | 40 | Medium | |
-| TODO-273 | all | Optimization | Profile and optimize hot paths identified via analysis - HTTP client reuse, GORM prepared statements, lock contention | 100 | High | |
+| TODO-265 | asvs | Optimization | Create global HTTP client with connection pooling in pkg/asvs/local.go - line~67 creates new http.Client on each ImportFromCSV call, should use shared client | 40 | High | |
+| TODO-266 | asvs | Optimization | Enable GORM PrepareStmt:true in pkg/asvs/local.go:35 and pkg/cwe/local.go:372 - currently PrepareStmt:false, enables prepared statements for better query performance | 20 | High | |
+| TODO-267 | cwe | Optimization | Enable GORM PrepareStmt:true in pkg/cwe/local.go:372 - currently PrepareStmt:false, enables prepared statements for better query performance | 20 | High | |
+| TODO-271 | rpc | Optimization | Use strings.Builder for correlationID generation in pkg/rpc/client.go:132 to reduce allocation overhead from fmt.Sprintf | 40 | Low | |
+| TODO-254 | notes | Optimization | Optimize Manager.GetContext in pkg/notes/strategy/manager.go to avoid copying viewedItems slice - current implementation returns copy on every call | 50 | Medium | |
+| TODO-275 | notes | Refactor | BFSStrategy and DFSStrategy should embed *BaseStrategy - pkg/notes/strategy/base_strategy.go has reusable code but bfs.go and dfs.go don't use it, causing duplicate GetViewedCount (bfs:104, dfs:178), Reset, viewed map management | 80 | Medium | |
+| TODO-276 | rpc | Refactor | Consolidate RPC client implementations - pkg/rpc/client.go (RequestEntry line~23, InvokeRPC line~118) and pkg/notes/rpc_client.go (requestEntry line~23, InvokeRPC line~79) are nearly identical, should share a common implementation | 100 | High | |
+| TODO-277 | common | Optimization | Pre-allocate map capacity in hot paths - pkg/graph/graph.go nodes/edges/reverseEdges (line~51), pkg/notes/strategy viewed maps (bfs:19, dfs:58), pkg/notes/fsm/learning_fsm links (line~78) | 60 | Medium | |
+| TODO-278 | meta | Refactor | Create shared Event type - pkg/meta/fsm/types.go (Event line~81) and pkg/analysis/fsm/types.go (Event line~78) both define identical structs with Type, Timestamp, Data fields | 40 | Medium | |
+| TODO-279 | meta | Refactor | Extract common field diff logic from provider packages - cmd/v2meta/providers/cve_provider.go:250, cwe_provider.go:251, capec_provider.go:251, attack_provider.go:250 all use identical `changed := make(map[string]interface{})` pattern | 60 | Medium | |
+| TODO-280 | graph | Optimization | Pre-allocate capacity in pkg/graph/graph.go - neighborsMap in GetNeighbors (line~143), edges slice in AddEdge (line~100) should use make with capacity hint | 40 | Medium | |
 ## TODO Management Guidelines
 
 For detailed guidelines on managing TODO items, see the **TODO Management** section in `CLAUDE.md`.
@@ -175,6 +120,13 @@ For detailed guidelines on managing TODO items, see the **TODO Management** sect
 ### Quick Reference
 
 **Adding Tasks**: Use next available ID (continue from last TODO-NNN), include test code in LoC estimates, write detailed actionable descriptions. **NEVER reuse existing task IDs** - always find the highest current ID and increment by 1.
+
+**Description Requirements**: When adding new tasks, be specific and actionable:
+- Include exact file paths and function names (e.g., "Refactor GetByID in pkg/capec/local.go to reduce duplication")
+- Specify the current problem or code smell to fix
+- If refactoring, mention which files have the duplicate code
+- If optimizing, indicate the hot path or benchmark data if available
+- Avoid vague descriptions like "Improve performance" or "Fix duplication"
 
 **Completing Tasks**:
 1. Verify all acceptance criteria are met
