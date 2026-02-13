@@ -2616,11 +2616,15 @@ export function useEtlTree(pollingInterval = 5000) {
         }
         
         const tree = response.payload?.tree || response.payload;
+        const providers = tree?.providers || [];
         setData({
-          macro: tree?.macro || { state: 'UNKNOWN' },
-          providers: tree?.providers || [],
-          totalProviders: tree?.providers?.length || 0,
-          activeProviders: tree?.providers?.filter((p: any) => p.state === 'RUNNING').length || 0,
+          macro: {
+            state: tree?.macro?.state || 'UNKNOWN',
+            providers: providers,
+          },
+          providers: providers,
+          totalProviders: providers.length,
+          activeProviders: providers.filter((p: any) => p.state === 'RUNNING').length,
         });
         setError(null);
       } catch (err: any) {
