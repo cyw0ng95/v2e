@@ -193,11 +193,6 @@ func main() {
 	// Register Memory Card proxy handlers
 	registerMemoryCardProxyHandlers(sp, rpcClient, logger)
 
-	// Register ETL tree handler
-	sp.RegisterHandler("RPCGetEtlTree", createGetEtlTreeHandler(jobExecutor, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetEtlTree")
-	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCGetEtlTree")
-
 	// Register kernel metrics handler
 	sp.RegisterHandler("RPCGetKernelMetrics", createGetKernelMetricsHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetKernelMetrics")
@@ -211,9 +206,11 @@ func main() {
 	sp.RegisterHandler("RPCStopProvider", createStopProviderHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopProvider")
 
-	// Register performance policy handler
 	sp.RegisterHandler("RPCUpdatePerformancePolicy", createUpdatePerformancePolicyHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCUpdatePerformancePolicy")
+
+	sp.RegisterHandler("RPCGetEtlTree", createGetEtlTreeHandler(jobExecutor, logger))
+	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetEtlTree")
 
 	logger.Info(LogMsgServiceStarted)
 	logger.Info(LogMsgServiceReady)

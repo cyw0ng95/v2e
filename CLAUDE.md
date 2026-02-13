@@ -64,6 +64,20 @@ npm run lint      # ESLint
 
 **Parallel Agent Execution**: With flock-based locking in place, multiple agents can now safely run in parallel to accelerate development work. The locking mechanism ensures that only one build operation occurs at a time, preventing race conditions and resource conflicts. Agents can independently invoke build.sh, and the locking will serialize the actual builds while allowing agents to continue other work.
 
+**Anti-Pattern: Multiple Running Binaries**: Never run multiple v2* binaries (v2broker, v2meta, v2local, v2remote, v2access, v2sysmon, v2analysis) or Next.js dev servers in parallel. This causes:
+- Port conflicts (3000, 8081, etc.)
+- Database lock contention
+- Race conditions in shared resources
+- Unpredictable behavior
+
+If you need to test changes, stop any existing services first:
+```bash
+# Kill all v2* processes and Next.js servers
+pkill -f "v2broker|v2meta|v2local|v2remote|v2access|v2sysmon|v2analysis" || true
+pkill -f "npm.*dev" || true
+pkill -f "next" || true
+```
+
 ## Architecture: Broker-First Pattern
 
 The broker is the central orchestrator. All subprocess services (`cmd/v2access`, `cmd/v2local`, `cmd/v2remote`, `cmd/v2meta`, `cmd/v2sysmon`) communicate exclusively via stdin/stdout RPC messages routed through the broker.
