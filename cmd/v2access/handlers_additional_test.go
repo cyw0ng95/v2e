@@ -225,3 +225,61 @@ func TestRPCHandler_DefaultTargetBroker(t *testing.T) {
 	})
 
 }
+
+// Test path-based RPC endpoint: /restful/rpc/cve/list
+func TestPathRPC_CVEList(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestPathRPC_CVEList", nil, func(t *testing.T, tx *gorm.DB) {
+		gin.SetMode(gin.TestMode)
+		r := gin.Default()
+		rg := r.Group("/restful")
+		rpcClient, _ := newRPCClientWithResponse(subprocess.MessageTypeResponse, map[string]interface{}{"cves": []string{"CVE-2021-44228"}, "total": 1}, "")
+		registerHandlers(rg, rpcClient)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/restful/rpc/cve/list", strings.NewReader(`{"offset":0,"limit":10}`))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp map[string]interface{}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("invalid json response: %v", err)
+		}
+		if int(resp["retcode"].(float64)) != 0 {
+			t.Fatalf("expected retcode 0, got %v", resp["retcode"])
+		}
+	})
+
+}
+
+// Test path-based RPC endpoint: /restful/rpc/session/status
+func TestPathRPC_SessionStatus(t *testing.T) {
+	testutils.Run(t, testutils.Level2, "TestPathRPC_SessionStatus", nil, func(t *testing.T, tx *gorm.DB) {
+		gin.SetMode(gin.TestMode)
+		r := gin.Default()
+		rg := r.Group("/restful")
+		rpcClient, _ := newRPCClientWithResponse(subprocess.MessageTypeResponse, map[string]bool{"hasSession": false}, "")
+		registerHandlers(rg, rpcClient)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/restful/rpc/session/status", strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp map[string]interface{}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("invalid json response: %v", err)
+		}
+		if int(resp["retcode"].(float64)) != 0 {
+			t.Fatalf("expected retcode 0, got %v", resp["retcode"])
+		}
+	})
+
+}
