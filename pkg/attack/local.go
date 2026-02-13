@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -107,7 +108,7 @@ func (s *LocalAttackStore) ImportFromXLSX(xlsxPath string, force bool) error {
 	totalRecords := 0
 
 	// Process each sheet in the XLSX file
-	for sheetIndex, sheetName := range sheetNames {
+	for _, sheetName := range sheetNames {
 		rows, err := file.GetRows(sheetName)
 		if err != nil {
 			tx.Rollback()
@@ -233,7 +234,7 @@ func (s *LocalAttackStore) ImportFromXLSX(xlsxPath string, force bool) error {
 			case "relationships", "attack_relationships", "relations":
 				if len(row) >= 7 { // Ensure row has enough columns
 					relationship := &AttackRelationship{
-						ID:               fmt.Sprintf("%d_%s_%s", sheetIndex, getStringValue(row, 0, headers, "SourceRef"), getStringValue(row, 1, headers, "TargetRef")),
+						ID:               uuid.New().String(),
 						SourceRef:        getStringValue(row, 0, headers, "SourceRef"),
 						TargetRef:        getStringValue(row, 1, headers, "TargetRef"),
 						RelationshipType: getStringValue(row, 2, headers, "RelationshipType"),

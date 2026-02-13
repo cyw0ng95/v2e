@@ -115,6 +115,14 @@ func (s *LocalCCEStore) GetCCEByID(ctx context.Context, id string) (*CCE, error)
 
 // ListCCEs lists CCE entries with pagination
 func (s *LocalCCEStore) ListCCEs(ctx context.Context, offset, limit int) ([]CCE, int64, error) {
+	const maxLimit = 1000
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	if limit <= 0 {
+		limit = 50 // default
+	}
+
 	var models []CCEModel
 	var total int64
 
@@ -136,6 +144,14 @@ func (s *LocalCCEStore) ListCCEs(ctx context.Context, offset, limit int) ([]CCE,
 
 // SearchCCEs searches CCE entries by query
 func (s *LocalCCEStore) SearchCCEs(ctx context.Context, query string, offset, limit int) ([]CCE, int64, error) {
+	const maxLimit = 1000
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+
 	var models []CCEModel
 	var total int64
 
