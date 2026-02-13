@@ -3,9 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
-import { Navbar } from "@/components/navbar";
 import { ViewLearnProvider } from "@/contexts/ViewLearnContext";
 import GlobalErrorBoundary from "@/components/global-error-boundary";
+import { DevLogTransportInit } from "@/components/dev-log-transport-init";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,17 +34,18 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <GlobalErrorBoundary>
+          <DevLogTransportInit />
           <Providers>
             <ViewLearnProvider>
-              <div className="min-h-screen min-w-screen flex flex-col bg-background">
-                <Navbar />
-                <main className="flex-1 overflow-auto">{children}</main>
+              <div className="min-h-screen min-w-screen flex flex-col">
+                {/* SPA: No separate navbar - desktop has its own MenuBar */}
+                {/* Background color is handled in page.tsx for theme-aware Threads animation */}
+                <main className="flex-1 overflow-hidden">{children}</main>
                 <Toaster />
               </div>
             </ViewLearnProvider>
           </Providers>
         </GlobalErrorBoundary>
-
       </body>
     </html>
   );

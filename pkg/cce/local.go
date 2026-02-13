@@ -21,8 +21,8 @@ type LocalCCEStore struct {
 // CCEModel is the GORM model for CCE entries
 type CCEModel struct {
 	ID          string    `gorm:"primaryKey" json:"id"`
-	Title       string    `gorm:"not null" json:"title"`
-	Description string    `gorm:"type:text" json:"description"`
+	Title       string    `gorm:"not null;index" json:"title"`
+	Description string    `gorm:"type:text;index" json:"description"`
 	Owner       string    `json:"owner"`
 	Status      string    `gorm:"index" json:"status"`
 	Type        string    `json:"type"`

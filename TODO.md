@@ -146,31 +146,18 @@
 | TODO-234 | sysmon | Feature | Add shutdown timeout - Stop() method waits indefinitely via wg.Wait(), in production a timeout would prevent hanging if a handler is stuck | 120 | Medium | |
 | TODO-235 | sysmon | Feature | Add graceful shutdown hook for handlers - handlers cannot register cleanup functions to run when shutdown is signaled, no way to do cleanup on shutdown | 150 | High | |
 | TODO-238 | sysmon | Feature | Move goroutine and connection metrics to sysmon - broker's scaling module tracks goroutine count and connections but doesn't actually collect these values, it receives them via AddMetric() calls, sysmon could add RPCGetProcessMetrics that returns per-subprocess resource usage | 180 | High | |
-| TODO-239 | cwe | Bug Fix | Add nil check before iterating DemonstrativeExamples entries to prevent potential panic | 20 | High | |
 | TODO-240 | cwe | Documentation | Document delete order in SaveView for foreign key safety and why cascading deletes work correctly | 40 | Medium | |
-| TODO-241 | capec | Optimization | Add regex sync.Pool for capecIDRegex to optimize performance under high load | 30 | Medium | |
-| TODO-242 | capec | Bug Fix | Fix off-by-one error in truncateString when n == len(s) edge case | 15 | Medium | |
 | TODO-243 | attack | Refactor | Use UUID for relationship ID generation instead of sheetIndex-based format to avoid duplicates in concurrent imports | 40 | Medium | |
 | TODO-244 | attack | Feature | Track and log skipped Excel rows for observability and debugging | 50 | Medium | |
 | TODO-245 | asvs | Feature | Make HTTP timeout configurable instead of hardcoded 30 seconds | 25 | Low | |
 | TODO-246 | asvs | Security | Add URL validation before HTTP requests to prevent SSRF attacks | 30 | Low | |
 | TODO-247 | ssg | Refactor | Implement savepoints for large transactions to improve rollback granularity | 80 | Medium | |
 | TODO-248 | ssg | Optimization | Add query result caching for frequently accessed tree structures | 60 | Medium | |
-| TODO-249 | cce | Optimization | Add database indexes on title and description search fields for performance | 50 | High | |
 | TODO-250 | cce | Feature | Add max pagination limit validation (cap at 1000) to prevent excessive queries | 30 | Low | |
 | TODO-251 | cce | Refactor | Create generic toModel function to eliminate manual CCE->CCEModel mapping code duplication | 80 | High | |
-| TODO-252 | common | Bug Fix | Fix entity vs f.Prefix bug in CustomFormatter.WriteLevel - line 88 checks entity variable that doesn't exist | 10 | High | |
 | TODO-253 | common | Optimization | Optimize ErrorRegistry pattern matching with case-insensitive map for O(1) lookup | 80 | Medium | |
 | TODO-254 | notes | Optimization | Optimize Manager.GetContext to avoid copying viewedItems slice on every call | 50 | Medium | |
-| TODO-255 | proc | Bug Fix | Add maximum pool size limit to ResponseBufferPool to prevent unbounded memory growth | 60 | High | |
 | TODO-256 | rpc | Optimization | Optimize InvokeRPC defer execution logic to avoid unnecessary cleanup calls | 80 | Medium | |
-| TODO-257 | meta | Bug Fix | Add context.Done() checks in executeAsync and OnRateLimited goroutines to prevent leaks | 40 | High | |
-| TODO-258 | graph | Documentation | Remove or use DefaultBFSDepth constant instead of leaving it unused | 10 | Low | |
-| TODO-259 | jsonutil | Bug Fix | Add sync.RWMutex protection to SchemaLoader.schemas map for concurrent access | 30 | Medium | |
-| TODO-260 | meta | Bug Fix | Fix incomplete rollback in state persistence - updatedAt and lastCheckpoint fields not rolled back on save failure | 40 | Medium | |
-| TODO-261 | ratelimit | Bug Fix | Add input validation to constructors - validate maxTokens > 0 and refillRate > 0 to prevent division by zero | 15 | High | |
-| TODO-262 | ratelimit | Feature | Implement proper Cleanup method using maxAge parameter instead of ignoring it | 60 | Medium | |
-| TODO-263 | ratelimit | Feature | Add retry-after information - return time until next token available when request is denied | 50 | High | |
 | TODO-264 | uptime | Feature | Add uptime monitoring service with configurable polling intervals | 200 | Medium | |
 ## TODO Management Guidelines
 

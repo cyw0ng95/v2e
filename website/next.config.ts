@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* Static Site Generation (SSG) configuration */
+  /* SPA Configuration with Static Export */
   output: 'export',
 
   /* Disable image optimization for static export to reduce build size */
   images: {
-    unoptimized: false,
+    unoptimized: true,
   },
 
   /* Use relative paths for assets */
@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // unsafe-inline needed for styled-components/inline styles
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' http://localhost:* https:",
+              "connect-src 'self' http://localhost:* https: http://localhost:* https://*.monkeycode-ai.online",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

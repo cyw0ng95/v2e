@@ -1,548 +1,75 @@
+/**
+ * v2e Portal - Single Page Application Entry
+ *
+ * Main SPA entry point that renders the desktop UI
+ * Components can only be accessed from within desktop environment
+ */
+
 'use client';
 
-import { useCVEList } from "@/lib/hooks";
-import { useCVECount } from "@/lib/hooks";
-import { useSessionStatus } from "@/lib/hooks";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { DatabaseIcon as Database, ActivityIcon as Activity, AlertCircleIcon as AlertCircle } from '@/components/icons';
-import { useState, Suspense, useMemo, memo, Fragment } from "react";
-import dynamic from 'next/dynamic';
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import NotesFramework from '@/components/notes-framework';
-import BookmarkTable from '@/components/bookmark-table';
-import NotesDashboard from '@/components/notes-dashboard';
-import MemoryCardStudy from '@/components/memory-card-study';
-import { ViewLearnToggle } from '@/components/view-learn-toggle';
-import { useViewLearnMode } from '@/contexts/ViewLearnContext';
-import LearningNavigation from '@/components/learning-navigation';
+import { MenuBar } from '@/components/desktop/MenuBar';
+import { DesktopArea } from '@/components/desktop/DesktopArea';
+import ChromaGridDock from '@/components/desktop/ChromaGridDock';
+import { QuickLaunchModal, useQuickLaunchShortcut } from '@/components/desktop/QuickLaunchModal';
+import { WindowManager } from '@/components/desktop/WindowManager';
+import { useDesktopStore } from '@/lib/desktop/store';
+import { useNetworkStatus } from '@/lib/hooks/useNetworkStatus';
+import { DndContext } from '@dnd-kit/core';
+import Threads from '@/components/backgrounds/Threads';
+import { useTheme } from 'next-themes';
 
-// Lazy-load heavier client components to reduce initial bundle size
-const CVETable = dynamic(() => import('@/components/cve-table').then(mod => mod.CVETable), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
+/**
+ * SPA Root Page - Desktop Application
+ * Orchestrates all desktop components
+ */
+export default function HomePage() {
+  const { desktopIcons } = useDesktopStore();
+  const quickLaunch = useQuickLaunchShortcut();
+  const { theme } = useTheme();
 
-const SessionControl = dynamic(() => import('@/components/session-control').then(mod => mod.SessionControl), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-20 w-full" />
-    </div>
-  ),
-});
-
-const CWETable = dynamic(() => import('@/components/cwe-table').then(mod => mod.CWETable), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const CAPECTable = dynamic(() => import('@/components/capec-table').then(mod => mod.CAPECTable), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const CCETable = dynamic(() => import('@/components/cce-table').then(mod => mod.CCETable), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const CWEViews = dynamic(() => import('@/components/cwe-views').then(mod => mod.CWEViews), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const SysMonitor = dynamic(() => import('@/components/sysmon-table').then(mod => mod.SysMonitor), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const AttackTable = dynamic(() => import('@/components/attack-table').then(mod => mod.AttackTable), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const AttackViews = dynamic(() => import('@/components/attack-views').then(mod => mod.AttackViews), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const SSGViews = dynamic(() => import('@/components/ssg-views').then(mod => mod.SSGViews), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const ASVSTable = dynamic(() => import('@/components/asvs-table').then(mod => mod.ASVSTable), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-const GraphAnalysisPage = dynamic(() => import('@/components/graph-analysis-page'), {
-  ssr: false,
-  loading: () => (
-    <div className="p-4">
-      <Skeleton className="h-32 w-full" />
-    </div>
-  ),
-});
-
-// Memoized Right Column Component for tab content
-const RightColumn = memo(function RightColumn({ 
-  viewMode, 
-  tab, 
-  setTab, 
-  page, 
-  pageSize, 
-  searchQuery, 
-  setPage, 
-  setPageSize, 
-  setSearchQuery, 
-  cveList, 
-  isLoadingList 
-}: { 
-  viewMode: 'view' | 'learn'; 
-  tab: string;
-  setTab: (tab: string) => void;
-  page: number;
-  pageSize: number;
-  searchQuery: string;
-  setPage: (page: number) => void;
-  setPageSize: (size: number) => void;
-  setSearchQuery: (query: string) => void;
-  cveList?: any;
-  isLoadingList: boolean;
-}) {
-  // Dynamic class for tab positioning - more left in Learn mode
-  const tabListClass = useMemo(() =>
-    viewMode === 'learn'
-      ? "mb-5 justify-start"
-      : "mb-5"
-  , [viewMode]);
+  // Initialize network status detection
+  useNetworkStatus();
 
   return (
-    <main className="w-full md:flex-1 h-screen flex flex-col px-8 py-6">
-      <div className="flex-1 flex flex-col h-full">
-        <div className="space-y-6 flex-1 flex flex-col h-full page-transition">
-          <Tabs value={tab} onValueChange={setTab} className="w-full h-full flex flex-col">
-            <TabsList className={tabListClass}>
-              {viewMode === 'view' ? (
-                // Operational View Tabs
-                <Fragment key="view-tabs">
-                  <TabsTrigger value="graph">Graph Analysis</TabsTrigger>
-                  <TabsTrigger value="cwe">CWE Database</TabsTrigger>
-                  <TabsTrigger value="capec">CAPEC</TabsTrigger>
-                  <TabsTrigger value="cce">CCE</TabsTrigger>
-                  <TabsTrigger value="attack">ATT&CK</TabsTrigger>
-                  <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
-                  <TabsTrigger value="ssg">SSG Guides</TabsTrigger>
-                  <TabsTrigger value="asvs">ASVS</TabsTrigger>
-                  <TabsTrigger value="cve">CVE Database</TabsTrigger>
-                  <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
-                  <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
-                </Fragment>
-              ) : (
-                // Learning View Tabs - positioned more to the left
-                <Fragment key="learn-tabs">
-                  <TabsTrigger value="learning-cve">Learn CVE</TabsTrigger>
-                  <TabsTrigger value="learning-cwe">Learn CWE</TabsTrigger>
-                  <TabsTrigger value="learning-capec">Learn CAPEC</TabsTrigger>
-                  <TabsTrigger value="learning-attack">Learn ATT&CK</TabsTrigger>
-                  <TabsTrigger value="notes-dashboard">Notes Dashboard</TabsTrigger>
-                  <TabsTrigger value="study-cards">Study Cards</TabsTrigger>
-                  {/* Also include all operational view tabs in learn mode */}
-                  <TabsTrigger value="graph">Graph Analysis</TabsTrigger>
-                  <TabsTrigger value="cwe">CWE Database</TabsTrigger>
-                  <TabsTrigger value="capec">CAPEC</TabsTrigger>
-                  <TabsTrigger value="cce">CCE</TabsTrigger>
-                  <TabsTrigger value="attack">ATT&CK</TabsTrigger>
-                  <TabsTrigger value="cweviews">CWE Views</TabsTrigger>
-                  <TabsTrigger value="ssg">SSG Guides</TabsTrigger>
-                  <TabsTrigger value="asvs">ASVS</TabsTrigger>
-                  <TabsTrigger value="cve">CVE Database</TabsTrigger>
-                  <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
-                  <TabsTrigger value="sysmon">SysMonitor</TabsTrigger>
-                </Fragment>
-              )}
-            </TabsList>
+    <DndContext>
+      <div className="h-screen w-screen overflow-hidden relative transition-colors duration-300 bg-background">
+        {/* Threads Background - animated threads */}
+        <Threads />
+        {/* Menu Bar - Always on top */}
+        <MenuBar />
 
-            <TabsContent value="graph" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <GraphAnalysisPage />
-                </Suspense>
-              </div>
-            </TabsContent>
+        {/* Desktop Area - Main workspace */}
+        <DesktopArea />
 
-            <TabsContent value="cwe" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <CWETable viewMode={viewMode} />
-                </Suspense>
-              </div>
-            </TabsContent>
+        {/* Window Manager - Handles all windows */}
+        <WindowManager />
 
-            <TabsContent value="capec" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <CAPECTable />
-                </Suspense>
-              </div>
-            </TabsContent>
+        {/* Dock - Bottom navigation with ChromaGrid effect */}
+        <ChromaGridDock />
 
-            <TabsContent value="cce" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <CCETable />
-                </Suspense>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="attack" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <AttackViews />
-                </Suspense>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="cweviews" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <CWEViews />
-                </Suspense>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="ssg" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <SSGViews />
-                </Suspense>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="asvs" className="h-full">
-              <div className="h-full flex flex-col">
-                <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                  <ASVSTable />
-                </Suspense>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="cve" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>CVE Database</CardTitle>
-                  <CardDescription>Browse and manage CVE records in the local database</CardDescription>
-                  <div className="mt-3">
-                    <Input
-                      placeholder="Search CVE ID or description (local filter)"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Note: server-side search not implemented yet; this filters currently loaded results.</p>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <CVETable
-                      cves={cveList?.cves || []}
-                      total={cveList?.total || 0}
-                      page={page}
-                      pageSize={pageSize}
-                      isLoading={isLoadingList}
-                      onPageChange={setPage}
-                      onPageSizeChange={setPageSize}
-                      searchQuery={searchQuery}
-                    />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="bookmarks" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Bookmarks & Notes</CardTitle>
-                  <CardDescription>Manage your bookmarks and personal notes</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <BookmarkTable />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="notes-dashboard" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Notes Dashboard</CardTitle>
-                  <CardDescription>Your learning progress and activity</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <NotesDashboard />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="study-cards" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Study Memory Cards</CardTitle>
-                  <CardDescription>Review and rate your memory cards</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <MemoryCardStudy filterState="to_review" />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="learning-cve" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Learn CVE</CardTitle>
-                  <CardDescription>Learn and master CVE vulnerabilities through passive learning</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <LearningNavigation initialItemType="CVE" viewMode="learn" />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="learning-cwe" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Learn CWE</CardTitle>
-                  <CardDescription>Learn and master CWE weaknesses through passive learning</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <LearningNavigation initialItemType="CWE" viewMode="learn" />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="learning-capec" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Learn CAPEC</CardTitle>
-                  <CardDescription>Learn and master CAPEC attack patterns through passive learning</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <LearningNavigation initialItemType="CAPEC" viewMode="learn" />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="learning-attack" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>Learn ATT&CK</CardTitle>
-                  <CardDescription>Learn and master ATT&CK techniques through passive learning</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 overflow-auto">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <LearningNavigation initialItemType="ATTACK" viewMode="learn" />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="sysmon" className="h-full">
-              <Card className="h-full flex flex-col">
-                <CardHeader>
-                  <CardTitle>System Monitor</CardTitle>
-                  <CardDescription>View system performance metrics</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0">
-                  <Suspense fallback={<div className="p-4"><Skeleton className="h-32 w-full" /></div>}>
-                    <SysMonitor />
-                  </Suspense>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </main>
-  );
-});
-
-// Memoized Left Sidebar Component to prevent re-renders on view mode changes
-const LeftSidebar = memo(function LeftSidebar({
-  setTab,
-  cveCount,
-  sessionStatus
-}: {
-  setTab: (tab: any) => void;
-  cveCount?: number;
-  sessionStatus?: any;
-}) {
-  const { mode: viewMode, setMode: setViewMode } = useViewLearnMode();
-
-  return (
-    <aside className="w-full md:w-80 shrink-0 h-full flex flex-col">
-      <div className="sticky top-0 left-0 bottom-0 p-6 space-y-6 overflow-auto w-full">
-        {/* View/Learn Toggle */}
-        <ViewLearnToggle
-          value={viewMode}
-          onValueChange={(newMode) => {
-            setViewMode(newMode);
-            // Reset to appropriate default tab when switching modes
-            if (newMode === 'view') {
-              setTab('cwe');
-            } else {
-              setTab('notes-dashboard');
-            }
-          }}
+        {/* Quick Launch Modal - Cmd+K triggered */}
+        <QuickLaunchModal
+          isVisible={quickLaunch.isVisible}
+          onClose={quickLaunch.hide}
         />
 
-        {/* Stats stacked - enhanced styling */}
-        <div className="space-y-4">
-          <Card className="w-full hover:shadow-md transition-all duration-150">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium">Total CVEs</CardTitle>
-              <Database className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tracking-tight">{cveCount?.toLocaleString() || '0'}</div>
-              <p className="text-xs text-muted-foreground mt-1">Local Database</p>
-            </CardContent>
-          </Card>
-
-          <Card className="w-full hover:shadow-md transition-all duration-150">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium">Session</CardTitle>
-              <Activity className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-semibold">
-                {sessionStatus?.hasSession ? (
-                  <Badge variant={sessionStatus.state === 'running' ? 'default' : 'secondary'} className="badge-info">
-                    {sessionStatus.state}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">Idle</Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">{sessionStatus?.hasSession ? sessionStatus.sessionId : 'No active session'}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="w-full hover:shadow-md transition-all duration-150">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium">Progress</CardTitle>
-              <AlertCircle className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tracking-tight">{sessionStatus?.hasSession ? sessionStatus.fetchedCount || 0 : 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">{sessionStatus?.hasSession ? `${sessionStatus.storedCount || 0} stored, ${sessionStatus.errorCount || 0} errors` : 'No activity'}</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="w-full">
-          <Suspense fallback={<div className="p-4"><Skeleton className="h-20 w-full" /></div>}>
-            <SessionControl />
-          </Suspense>
-        </div>
+        {/* Initial state notice - shown when no icons exist */}
+        {desktopIcons.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className={`backdrop-blur-sm rounded-lg p-8 text-center max-w-md ${theme === 'light' ? 'bg-white/10 text-white/80' : 'bg-black/10 text-gray-900'}`}>
+              <h2 className="text-xl font-bold mb-4">
+                Welcome to v2e Portal
+              </h2>
+              <p className={`mb-4 ${theme === 'light' ? 'text-white/80' : 'text-gray-600'}`}>
+                Desktop is ready. Add apps from dock or right-click to customize.
+              </p>
+              <p className={`text-sm ${theme === 'light' ? 'text-white/70' : 'text-gray-500'}`}>
+                All features work offline.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
-    </aside>
-  );
-});
-
-export default function Home() {
-  const { mode: viewMode } = useViewLearnMode();
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [tab, setTab] = useState<string>('cwe'); // Default to CWE
-  
-  // memoize offset to avoid unnecessary recalculation on unrelated state updates
-  const offset = useMemo(() => page * pageSize, [page, pageSize]);
-
-  const { data: cveList, isLoading: isLoadingList } = useCVEList(offset, pageSize);
-  const { data: cveCount } = useCVECount();
-  const { data: sessionStatus } = useSessionStatus();
-
-  return (
-    <div className="h-[calc(100vh-var(--app-header-height))] w-screen bg-background overflow-hidden">
-      <div className="h-full flex flex-col md:flex-row page-transition">
-        {/* Left Sidebar - Memoized to prevent re-renders */}
-        <LeftSidebar
-          setTab={setTab}
-          cveCount={cveCount ?? undefined}
-          sessionStatus={sessionStatus ?? undefined}
-        />
-
-        {/* Right Main Area - Memoized to optimize performance */}
-        <div className="hidden md:block w-px h-full bg-border/50" />
-        <RightColumn
-          viewMode={viewMode}
-          tab={tab}
-          setTab={setTab}
-          page={page}
-          pageSize={pageSize}
-          searchQuery={searchQuery}
-          setPage={setPage}
-          setPageSize={setPageSize}
-          setSearchQuery={setSearchQuery}
-          cveList={cveList}
-          isLoadingList={isLoadingList}
-        />
-      </div>
-    </div>
+    </DndContext>
   );
 }

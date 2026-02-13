@@ -295,7 +295,7 @@ func (b *Broker) Shutdown() error {
 	// kept alive for process restart
 	if b.transportManager != nil {
 		if err := b.transportManager.CloseAll(); err != nil {
-			b.logger.Error("Failed to close transports", "error", err)
+			b.logger.Error("Failed to close transports: %v", err)
 		}
 	}
 

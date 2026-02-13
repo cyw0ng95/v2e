@@ -5,12 +5,12 @@ import { McardsNavigation } from './mcards-navigation';
 import { McardsSidebar } from './mcards-sidebar';
 import { McardsTable } from './mcards-table';
 import { McardsDashboard } from './mcards-dashboard';
-import { McardsStudy } from './mcards-study';
+import McardsStudy from './mcards-study';
 import { CardCreateModal } from './card-create-modal';
 
 type View = 'cards' | 'dashboard' | 'study';
 
-export function McardsPage() {
+export default function McardsPage() {
   const [currentView, setCurrentView] = useState<View>('cards');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [filters, setFilters] = useState({

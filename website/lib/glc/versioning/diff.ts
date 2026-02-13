@@ -158,7 +158,10 @@ function hasEdgeDataChanged(
   const newData = newEdge.data ?? {};
 
   const keys: (keyof CADEdgeData)[] = ['relationshipId', 'label', 'notes'];
-  const changes: { oldData: Partial<CADEdgeData>; newData: Partial<CADEdgeData> } = {
+  const oldDataTyped = oldData as Record<string, unknown>;
+  const newDataTyped = newData as Record<string, unknown>;
+
+  const changes: { oldData: Record<string, unknown>; newData: Record<string, unknown> } = {
     oldData: {},
     newData: {},
   };
@@ -166,9 +169,9 @@ function hasEdgeDataChanged(
   let hasChanges = false;
 
   for (const key of keys) {
-    if (JSON.stringify(oldData[key]) !== JSON.stringify(newData[key])) {
-      changes.oldData[key] = oldData[key];
-      changes.newData[key] = newData[key];
+    if (JSON.stringify(oldDataTyped[key]) !== JSON.stringify(newDataTyped[key])) {
+      changes.oldData[key] = oldDataTyped[key];
+      changes.newData[key] = newDataTyped[key];
       hasChanges = true;
     }
   }

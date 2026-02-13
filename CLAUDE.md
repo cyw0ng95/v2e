@@ -209,6 +209,25 @@ Mock mode: NEXT_PUBLIC_USE_MOCK_DATA=true
 - Dynamic routes require `generateStaticParams()` or use client-side navigation only
 - TypeScript types in `lib/types.ts` mirror Go structs (camelCase naming)
 
+### Browser-to-Server Log Transfer (Development Only)
+
+When running `npm run dev`, browser `console.error` calls are automatically transferred to the server terminal for easier debugging.
+
+**Feature Details:**
+- Only active in development mode (`NODE_ENV === 'development'`)
+- Only intercepts `console.error` - does NOT transfer `console.log` or `console.warn`
+- Batched sending (5 logs or 2-second interval)
+- Uses `sendBeacon` for reliable delivery on page unload
+- Server output format: `[BROWSER ERROR] timestamp path`
+
+**Implementation Files:**
+- `website/lib/dev-log-transport.ts` - Browser-side log interceptor
+- `website/app/api/dev-logs/route.ts` - Server-side log receiver
+- `website/components/dev-log-transport-init.tsx` - Client initialization
+
+**Usage:**
+When developing frontend features, watch the server terminal for browser errors prefixed with `[BROWSER ERROR]`. This helps catch client-side bugs without opening browser DevTools.
+
 ### Browser Testing with Playwright MCP
 
 When testing the website frontend, use the Playwright MCP tools available in Claude Code to navigate through pages and capture bugs through console logs.
@@ -318,6 +337,18 @@ Per `.github/agents/v2e-go.agent.md`:
 5. **Include tests** - table-driven unit tests and `testing.B` benchmarks for performance-critical paths
 6. **NO flaky remote API tests** - never add tests that access NVD, GitHub, or other external services
 7. **NO new documentation files** - only update existing `README.md` or `cmd/*/service.md`. Never create new markdown files (DESIGN.md, TODO.md, etc.)
+
+### Git Push Workflow
+
+**NEVER use force push** (`git push -f`, `git push --force`).
+
+When pushing commits:
+1. Commit your changes locally
+2. Fetch remote changes: `git fetch`
+3. Merge or rebase locally: `git merge origin/main` or `git rebase origin/main`
+4. Push normally: `git push`
+
+This preserves git history and prevents data loss for collaborators.
 
 ## ETL Provider Management (UEE Architecture)
 

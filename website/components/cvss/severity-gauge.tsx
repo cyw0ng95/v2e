@@ -472,8 +472,8 @@ export function SemiCircularGauge({
           style={{
             transformOrigin: 'center',
             transform: `translate(${config.width / 2}px, ${config.height}px) rotate(${180 - animatedScore * 18}deg)`,
+            transition: 'transform 0.3s ease-out',
           }}
-          transition="transform 0.3s ease-out"
         >
           <polygon
             points={`0,${-radius + 5} -4,0 4,0`}

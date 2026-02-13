@@ -118,6 +118,7 @@ export interface ScoreBadgeProps {
   score: number;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
+  className?: string;
 }
 
 const badgeSizeVariants = cva(
@@ -144,7 +145,7 @@ const badgeSizeVariants = cva(
   }
 );
 
-export function ScoreBadge({ severity, score, size = 'md', showLabel = true }: ScoreBadgeProps) {
+export function ScoreBadge({ severity, score, size = 'md', showLabel = true, className }: ScoreBadgeProps) {
   const severityLabels: Record<CVSSSeverity, string> = {
     NONE: 'None',
     LOW: 'Low',
@@ -155,7 +156,7 @@ export function ScoreBadge({ severity, score, size = 'md', showLabel = true }: S
 
   return (
     <span
-      className={badgeSizeVariants({ size, severity })}
+      className={cn(badgeSizeVariants({ size, severity }), className)}
       role="status"
       aria-label={`Severity: ${severityLabels[severity]} (Score: ${score.toFixed(1)})`}
     >

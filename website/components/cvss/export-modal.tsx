@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -28,7 +29,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import type { CVSSVersion, CVSSExportFormat, CVSSScoreBreakdown } from '@/lib/types';
+import type { CVSSVersion, CVSSExportFormat, CVSS3ScoreBreakdown, CVSS4ScoreBreakdown } from '@/lib/types';
 
 // ============================================================================
 // Types
@@ -40,7 +41,7 @@ export interface CVSSExportData {
   baseScore: number;
   severity: string;
   metrics: Record<string, string>;
-  scoreBreakdown: CVSSScoreBreakdown;
+  scoreBreakdown: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
   exportedAt: string;
 }
 

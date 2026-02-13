@@ -272,7 +272,7 @@ export function useCAPEC(capecId?: string) {
     const { signal } = abortController;
 
     const fetchData = async () => {
-      if (signal.aborted) return;
+      if (signal.aborted || !capecId) return;
 
       try {
         setIsLoading(true);
@@ -1195,9 +1195,6 @@ export function useASVSList(params: { offset?: number; limit?: number; chapter?:
     };
   }, [offset, limit, chapter, level, isMounted, setStateIfMounted]);
 
-    // Cleanup function
-    return () => {};
-  }, [offset, limit, chapter, level]);
 
   return { data, isLoading, error };
 }

@@ -4,7 +4,6 @@ const (
 	// Graph Constants
 	DefaultNodeCapacity = 100
 	DefaultEdgeCapacity = 200
-	DefaultBFSDepth     = 10
 
 	// Graph Type
 	GraphTypeDirected   = "directed"

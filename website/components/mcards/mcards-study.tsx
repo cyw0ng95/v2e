@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMemoryCards } from '@/lib/mcards/hooks';
 import { Flashcard } from './flashcard';
 import { RatingButtons, type Rating } from './rating-buttons';
 import { ChevronLeft, ChevronRight, Play, Pause, ArrowLeft } from 'lucide-react';
+import type { MemoryCard } from '@/lib/types';
 
 interface KeyboardHandlers {
   onSpace?: () => void;
@@ -99,26 +100,32 @@ function calculateIntervals(card: any): Record<Rating, string> {
   return { again, hard, good, easy };
 }
 
-export function McardsStudy() {
+export default function McardsStudy() {
   // Fetch cards with learning_state filter
   const { data: cardsData, isLoading } = useMemoryCards({});
-
+ 
   const cards = useMemo(() => {
     if (!cardsData) return [];
     // Handle RPCResponse structure
     const response = cardsData as unknown as { payload?: { memory_cards?: any[] } };
     return response.payload?.memory_cards || [];
   }, [cardsData]);
-
+ 
+  // Use ref to store latest cards to avoid closure issues
+  const cardsRef = useRef<MemoryCard[]>(cards);
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+ 
   // Study session state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [startTime] = useState(() => Date.now());
+  const [startTime, setStartTime] = useState(() => Date.now());
   const [reviewed, setReviewed] = useState<number[]>([]);
-
+  
   // Timer effect
   useEffect(() => {
     if (!isPaused && !isComplete) {
@@ -127,7 +134,7 @@ export function McardsStudy() {
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [isPaused, isComplete, startTime]);
+  }, [isPaused, isComplete]);
 
   // Reset when cards change
   useEffect(() => {
@@ -136,13 +143,16 @@ export function McardsStudy() {
     setIsComplete(false);
     setReviewed([]);
     setElapsed(0);
+    setStartTime(Date.now());
   }, [cards]);
 
   // Rate card mutation
   const rateCard = useCallback(async (rating: Rating) => {
-    if (currentIndex >= cards.length) return;
-
-    const card = cards[currentIndex];
+    // Use ref to access latest cards to avoid closure issues
+    const currentCards = cardsRef.current;
+    if (currentIndex >= currentCards.length) return;
+    
+    const card = currentCards[currentIndex];
     await fetch('/restful/rpc', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -155,14 +165,14 @@ export function McardsStudy() {
 
     setReviewed([...reviewed, card.id]);
 
-    // Move to next card
-    if (currentIndex + 1 >= cards.length) {
+    // Move to next card - use ref to access latest cards
+    if (currentIndex + 1 >= currentCards.length) {
       setIsComplete(true);
     } else {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     }
-  }, [currentIndex, cards, reviewed]);
+  }, [currentIndex, reviewed]);
 
   const currentCard = useMemo(() => {
     if (currentIndex >= cards.length || currentIndex < 0) return null;

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import type { CVSSVersion, CVSS3Metrics, CVSS4Metrics, CVSSScoreBreakdown } from '@/lib/types';
+import type { CVSSVersion, CVSS3Metrics, CVSS4Metrics, CVSS3ScoreBreakdown, CVSS4ScoreBreakdown } from '@/lib/types';
 import { MetricCard, MetricGroup } from './metric-card';
 import { ScoreBreakdown } from './score-display';
 import { SeverityGauge, SemiCircularGauge } from './severity-gauge';
@@ -25,7 +25,8 @@ import { ExportModal } from './export-modal';
 export interface DesktopViewProps {
   version: CVSSVersion;
   metrics: CVSS3Metrics | CVSS4Metrics;
-  scores: CVSSScoreBreakdown | null;
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown | null;
+  vectorString?: string;
   onMetricChange: (metric: string, value: string) => void;
   onVersionChange: (version: CVSSVersion) => void;
   onReset: () => void;
@@ -138,7 +139,7 @@ function DesktopHeader({
 // ============================================================================
 
 interface DesktopSidebarProps {
-  scores: CVSSScoreBreakdown;
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
   version: CVSSVersion;
   vectorString: string;
   showEnvironmental?: boolean;
@@ -164,8 +165,8 @@ function DesktopSidebar({
         <CardContent className="space-y-4">
           {/* Semi-Circular Gauge */}
           <SemiCircularGauge
-            score={scores.finalScore}
-            severity={scores.finalSeverity}
+            score={scores.baseScore}
+            severity={scores.finalSeverity || scores.baseSeverity}
             size="md"
             showScore={false}
           />
@@ -173,17 +174,17 @@ function DesktopSidebar({
           {/* Numeric Score Display */}
           <div className="text-center">
             <div className="text-4xl font-bold text-slate-900">
-              {scores.finalScore.toFixed(1)}
+              {scores.baseScore.toFixed(1)}
             </div>
             <div className={cn(
               'inline-block px-3 py-1 rounded-full text-sm font-medium mt-2',
-              scores.finalSeverity === 'CRITICAL' && 'bg-purple-100 text-purple-700',
-              scores.finalSeverity === 'HIGH' && 'bg-red-100 text-red-700',
-              scores.finalSeverity === 'MEDIUM' && 'bg-orange-100 text-orange-700',
-              scores.finalSeverity === 'LOW' && 'bg-yellow-100 text-yellow-700',
-              scores.finalSeverity === 'NONE' && 'bg-gray-100 text-gray-700'
+              (scores.finalSeverity || scores.baseSeverity) === 'CRITICAL' && 'bg-purple-100 text-purple-700',
+              (scores.finalSeverity || scores.baseSeverity) === 'HIGH' && 'bg-red-100 text-red-700',
+              (scores.finalSeverity || scores.baseSeverity) === 'MEDIUM' && 'bg-orange-100 text-orange-700',
+              (scores.finalSeverity || scores.baseSeverity) === 'LOW' && 'bg-yellow-100 text-yellow-700',
+              (scores.finalSeverity || scores.baseSeverity) === 'NONE' && 'bg-gray-100 text-gray-700'
             )}>
-              {scores.finalSeverity}
+              {scores.finalSeverity || scores.baseSeverity}
             </div>
           </div>
 
@@ -300,7 +301,7 @@ function DesktopSidebar({
               version,
               vectorString,
               baseScore: scores.baseScore,
-              severity: scores.finalSeverity,
+              severity: scores.finalSeverity || scores.baseSeverity,
               metrics: scores as any,
               scoreBreakdown: scores,
               exportedAt: new Date().toISOString(),
@@ -634,7 +635,7 @@ export function DesktopView(props: DesktopViewProps) {
           <DesktopSidebar
             scores={props.scores}
             version={props.version}
-            vectorString={props.scores.vectorString || ''}
+            vectorString={props.vectorString || ''}
             showEnvironmental={props.showEnvironmental}
             toggleEnvironmental={props.toggleEnvironmental}
             onImport={props.onImport}

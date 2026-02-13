@@ -25,6 +25,14 @@ type TokenBucket struct {
 // Example: NewTokenBucket(100, time.Second) allows 100 requests per second,
 // with burst capacity of up to 100 requests.
 func NewTokenBucket(maxTokens int, refillInterval time.Duration) *TokenBucket {
+	if maxTokens <= 0 || refillInterval <= 0 {
+		return &TokenBucket{
+			tokens:     1,
+			maxTokens:  1,
+			refillRate: time.Second,
+			lastRefill: time.Now(),
+		}
+	}
 	now := time.Now()
 	return &TokenBucket{
 		tokens:     maxTokens,
@@ -62,10 +70,46 @@ func (tb *TokenBucket) Allow() bool {
 	return false
 }
 
+// AllowWithRetryAfter checks if a request should be allowed and returns retry-after duration.
+// If allowed, retryAfter is 0. If denied, retryAfter indicates time until next token is available.
+func (tb *TokenBucket) AllowWithRetryAfter() (allowed bool, retryAfter time.Duration) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
+	now := time.Now()
+	elapsed := now.Sub(tb.lastRefill)
+
+	// Calculate how many tokens to add based on elapsed time
+	if elapsed >= tb.refillRate {
+		tokensToAdd := int(elapsed / tb.refillRate)
+		tb.tokens += tokensToAdd
+		if tb.tokens > tb.maxTokens {
+			tb.tokens = tb.maxTokens
+		}
+		tb.lastRefill = now
+	}
+
+	// Check if we have tokens available
+	if tb.tokens > 0 {
+		tb.tokens--
+		return true, 0
+	}
+
+	// Calculate time until next token is available
+	timeSinceLastRefill := now.Sub(tb.lastRefill)
+	retryAfter = tb.refillRate - timeSinceLastRefill
+	if retryAfter < 0 {
+		retryAfter = 0
+	}
+
+	return false, retryAfter
+}
+
 // ClientLimiter tracks rate limits per client IP address.
 type ClientLimiter struct {
 	mu         sync.RWMutex
 	limiters   map[string]*TokenBucket
+	lastAccess map[string]time.Time
 	maxTokens  int
 	refillRate time.Duration
 }
@@ -75,8 +119,17 @@ type ClientLimiter struct {
 // maxTokens is the maximum tokens per bucket.
 // refillInterval is how often to add one token.
 func NewClientLimiter(maxTokens int, refillInterval time.Duration) *ClientLimiter {
+	if maxTokens <= 0 || refillInterval <= 0 {
+		return &ClientLimiter{
+			limiters:   make(map[string]*TokenBucket),
+			lastAccess: make(map[string]time.Time),
+			maxTokens:  1,
+			refillRate: time.Second,
+		}
+	}
 	return &ClientLimiter{
 		limiters:   make(map[string]*TokenBucket),
+		lastAccess: make(map[string]time.Time),
 		maxTokens:  maxTokens,
 		refillRate: refillInterval,
 	}
@@ -100,10 +153,43 @@ func (cl *ClientLimiter) Allow(clientKey string) bool {
 			limiter = NewTokenBucket(cl.maxTokens, cl.refillRate)
 			cl.limiters[clientKey] = limiter
 		}
+		cl.lastAccess[clientKey] = time.Now()
+		cl.mu.Unlock()
+	} else {
+		cl.mu.Lock()
+		cl.lastAccess[clientKey] = time.Now()
 		cl.mu.Unlock()
 	}
 
 	return limiter.Allow()
+}
+
+// AllowWithRetryAfter checks if a request from the given client should be allowed.
+// Returns whether allowed and time until next token is available if denied.
+func (cl *ClientLimiter) AllowWithRetryAfter(clientKey string) (bool, time.Duration) {
+	// Fast path: read lock to check for existing limiter
+	cl.mu.RLock()
+	limiter, exists := cl.limiters[clientKey]
+	cl.mu.RUnlock()
+
+	if !exists {
+		// Slow path: write lock to create new limiter
+		cl.mu.Lock()
+		// Double-check after acquiring write lock
+		limiter, exists = cl.limiters[clientKey]
+		if !exists {
+			limiter = NewTokenBucket(cl.maxTokens, cl.refillRate)
+			cl.limiters[clientKey] = limiter
+		}
+		cl.lastAccess[clientKey] = time.Now()
+		cl.mu.Unlock()
+	} else {
+		cl.mu.Lock()
+		cl.lastAccess[clientKey] = time.Now()
+		cl.mu.Unlock()
+	}
+
+	return limiter.AllowWithRetryAfter()
 }
 
 // Cleanup removes stale limiters that haven't been used recently.
@@ -113,13 +199,11 @@ func (cl *ClientLimiter) Cleanup(maxAge time.Duration) {
 	cl.mu.Lock()
 	defer cl.mu.Unlock()
 
-	// Note: This is a simple cleanup that removes all limiters.
-	// A more sophisticated implementation would track last access time
-	// per limiter and only remove those older than maxAge.
-	// For now, we keep it simple since limiters are small.
-	if len(cl.limiters) > 10000 {
-		// If we have too many limiters, clear them all
-		// This prevents unbounded growth in case of DDoS
-		cl.limiters = make(map[string]*TokenBucket)
+	now := time.Now()
+	for key, lastAccess := range cl.lastAccess {
+		if now.Sub(lastAccess) > maxAge {
+			delete(cl.limiters, key)
+			delete(cl.lastAccess, key)
+		}
 	}
 }

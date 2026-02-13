@@ -24,7 +24,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
-import type { CVSSVersion, CVSS3Metrics, CVSS4Metrics, CVSSScoreBreakdown } from '@/lib/types';
+import type { CVSSVersion, CVSS3Metrics, CVSS4Metrics, CVSS3ScoreBreakdown, CVSS4ScoreBreakdown } from '@/lib/types';
 import { MetricCard, CompactMetricCard } from './metric-card';
 import { ScoreBadge, ScoreDisplay } from './score-display';
 import { SeverityGauge } from './severity-gauge';
@@ -37,7 +37,7 @@ import { VectorString } from './vector-string';
 export interface MobileViewProps {
   version: CVSSVersion;
   metrics: CVSS3Metrics | CVSS4Metrics;
-  scores: CVSSScoreBreakdown | null;
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown | null;
   onMetricChange: (metric: string, value: string) => void;
   onVersionChange: (version: CVSSVersion) => void;
   onReset: () => void;
@@ -53,7 +53,7 @@ export interface MobileViewProps {
 
 interface MobileHeaderProps {
   version: CVSSVersion;
-  scores: CVSSScoreBreakdown | null;
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown | null;
   onVersionChange: (version: CVSSVersion) => void;
   onReset: () => void;
 }
@@ -70,8 +70,8 @@ function MobileHeader({ version, scores, onVersionChange, onReset }: MobileHeade
         <div className="flex items-center gap-2">
           {scores && (
             <ScoreBadge
-              severity={scores.finalSeverity}
-              score={scores.finalScore}
+              severity={scores.finalSeverity || scores.baseSeverity}
+              score={scores.baseScore}
               size="sm"
             />
           )}
@@ -128,7 +128,7 @@ function MobileHeader({ version, scores, onVersionChange, onReset }: MobileHeade
 // ============================================================================
 
 interface MobileScorePanelProps {
-  scores: CVSSScoreBreakdown;
+  scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
   isExpanded?: boolean;
 }
 
@@ -154,8 +154,8 @@ function MobileScorePanel({ scores, isExpanded = false }: MobileScorePanelProps)
           <div className="mt-4 space-y-3">
             {/* Severity Gauge */}
             <SeverityGauge
-              score={scores.finalScore}
-              severity={scores.finalSeverity}
+              score={scores.baseScore}
+              severity={scores.finalSeverity || scores.baseSeverity}
               size="sm"
               showLabels={true}
               showScore={true}
@@ -193,7 +193,7 @@ function MobileScorePanel({ scores, isExpanded = false }: MobileScorePanelProps)
               )}
               <div className="col-span-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-2 text-center">
                 <div className="text-slate-500 text-xs">Final Score</div>
-                <div className="font-bold text-lg text-blue-700">{scores.finalScore.toFixed(1)}</div>
+                <div className="font-bold text-lg text-blue-700">{scores.baseScore.toFixed(1)}</div>
               </div>
             </div>
           </div>

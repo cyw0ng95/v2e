@@ -42,6 +42,7 @@ export interface InferenceResult {
     techniqueIds?: string[];
     cweIds?: string[];
     relatedAttacks?: string[];
+    coverageScore?: number;
   };
 }
 
@@ -414,8 +415,9 @@ export class D3FENDInferenceEngine {
    * Find attack indicators in a node
    */
   private findAttackIndicator(node: Node): { indicator: string; recommended: string[]; severity: Severity } | null {
-    const label = node.data?.label?.toLowerCase() || '';
-    const properties = node.data?.properties || [];
+    const data = node.data as Record<string, unknown> | undefined;
+    const label = (data?.label as string)?.toLowerCase() || '';
+    const properties = (data?.properties as Array<{ value: unknown }>) || [];
 
     // Check label for indicator keywords
     for (const [key, value] of Object.entries(ATTACK_INDICATORS)) {

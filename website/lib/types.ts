@@ -465,6 +465,8 @@ export interface UpdateCVEResponse {
   /** CVE identifier */
   cveId: string;
   /** Updated CVE item */
+/  /** Temporal metrics */a /** Final severity (computed from sub-scores) */
+  finalSeverity?: CVSSSeverity;
   cve: CVEItem;
 }
 
@@ -4406,22 +4408,6 @@ export interface CVSS3BaseMetrics {
   I: I;
   /** Availability Impact (H/L/N) */
   A: A;
-  /** Provider (E for Exploitability, M for Impact) */
-  E: 'X' | 'U' | 'R';
-  /** Confidentiality Requirement (H/M/L/N) - v3.1 only */
-  CR?: 'H' | 'M' | 'L' | 'N';
-  /** Integrity Requirement (H/M/L/N) - v3.1 only */
-  IR?: 'H' | 'M' | 'L' | 'N';
-  /** Availability Requirement (H/M/L/N) - v3.1 only */
-  AR?: 'H' | 'M' | 'L' | 'N';
-  /** Modified Base Scope (X/U/C) - v3.1 only */
-  MS?: 'X' | 'U' | 'C';
-  /** Modified Confidentiality (H/L/N) - v3.1 only */
-  MC?: 'H' | 'L' | 'N';
-  /** Modified Integrity (H/L/N) - v3.1 only */
-  MI?: 'H' | 'L' | 'N';
-  /** Modified Availability (H/L/N) - v3.1 only */
-  MA?: 'H' | 'L' | 'N';
 }
 
 /**
@@ -4486,6 +4472,10 @@ export interface CVSS3ScoreBreakdown {
   temporalSeverity?: CVSSSeverity;
   /** Environmental severity */
   environmentalSeverity?: CVSSSeverity;
+  /** Overall score */
+  score?: number;
+  /** Final severity (computed from sub-scores) */
+  finalSeverity?: CVSSSeverity;
 }
 
 // ============================================================================
@@ -4673,6 +4663,8 @@ export interface CVSS4ScoreBreakdown {
   threatSeverity?: CVSSSeverity;
   /** Environmental severity */
   environmentalSeverity?: CVSSSeverity;
+  /** Final severity (computed from sub-scores) */
+  finalSeverity?: CVSSSeverity;
 }
 
 // ============================================================================
@@ -4691,6 +4683,14 @@ export interface CVSSCalculatorState {
   scores: CVSS3ScoreBreakdown | CVSS4ScoreBreakdown;
   /** Generated vector string */
   vectorString: string;
+  /** Show/hide state for metric sections */
+  showTemporal?: boolean;
+  showExploitability?: boolean;
+  showEnvironmental?: boolean;
+  /** Show descriptions */
+  showDescriptions?: boolean;
+  /** View mode */
+  viewMode?: 'compact' | 'full';
 }
 
 /**

@@ -5,20 +5,20 @@ import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/25 focus-visible:ring-offset-2 disabled:hover:scale-100 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  const buttonVariants = cva(
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:hover:scale-100 disabled:translate-y-0 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0 active:scale-98",
+        default: "bg-primary text-primary-foreground shadow-sm hover:shadow-md hover:bg-primary/90 hover:-translate-y-px active:translate-y-0 active:scale-95",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0 active:scale-98",
+          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0 active:scale-95",
         outline:
-          "border border-border/60 bg-background hover:bg-accent hover:text-accent-foreground dark:bg-input/20 dark:border-input dark:hover:bg-input/40 hover:border-border/80 active:translate-y-0 active:scale-98",
+          "border border-border/60 bg-background hover:bg-accent hover:text-accent-foreground hover:border-border/80 active:translate-y-0 active:scale-95",
         secondary:
-          "bg-muted/70 text-secondary-foreground hover:bg-muted border border-border/50 hover:border-border/80 shadow-sm hover:shadow hover:-translate-y-px active:translate-y-0 active:scale-98",
+          "bg-muted/70 text-secondary-foreground hover:bg-muted border border-border/50 hover:border-border/80 shadow-sm hover:shadow hover:-translate-y-px active:translate-y-0 active:scale-95",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 hover:-translate-y-px active:translate-y-0",
+          "hover:bg-accent hover:text-accent-foreground hover:-translate-y-px active:translate-y-0 active:scale-95",
         link: "text-primary underline-offset-4 hover:underline",
         // Additional variants
         success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-md hover:scale-105 active:scale-95",

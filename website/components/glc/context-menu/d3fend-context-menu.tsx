@@ -81,7 +81,7 @@ export const D3FENDContextMenu: React.FC<D3FENDContextMenuProps> = ({
   position,
   onClose,
 }) => {
-  const { setNodes, setEdges, getNodes, getEdges } = useReactFlow();
+  const { setNodes, setEdges, getNodes, getEdges, addNodes, addEdges, screenToFlowPosition } = useReactFlow();
 
   const inferences = useMemo(() => {
     return getNodeInferences(nodes, getEdges(), nodeId);
@@ -96,8 +96,6 @@ export const D3FENDContextMenu: React.FC<D3FENDContextMenuProps> = ({
     async (inference: InferenceResult) => {
       const sourceNode = getNodeById(nodeId);
       if (!sourceNode) return;
-
-      const { addNodes, addEdges, screenToFlowPosition } = useReactFlow.getState();
 
       try {
         // Calculate position for new node (offset from source)
