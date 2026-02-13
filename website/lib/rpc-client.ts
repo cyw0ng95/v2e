@@ -375,12 +375,16 @@ function getPathForMethod(method: string): { path: string; target: string } | nu
 // Default Configuration
 // ============================================================================
 
-// Detect if running in remote development environment
-const isRemoteDev = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+// Detect if running in development mode (both local and remote)
+const isDev = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1' ||
+  process.env.NODE_ENV === 'development'
+);
 
-const DEFAULT_API_BASE_URL = isRemoteDev
-  ? '/restful'  // Use relative path in remote dev (will be proxied)
-  : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';  // Local dev or fallback
+const DEFAULT_API_BASE_URL = isDev
+  ? '/restful'  // Use proxy rewrite in dev mode (Next.js rewrites /restful/* to backend)
+  : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 const DEFAULT_TIMEOUT = 120000; // 120 seconds (2 minutes) - increased for SSG operations
 const MOCK_DELAY_MS = 500; // 500ms delay for mock responses
 

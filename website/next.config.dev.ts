@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     const v2accessUrl = process.env.V2ACCESS_URL || 'http://localhost:8080';
     return [
       {
-        source: '/api/restful/:path*',
+        source: '/restful/:path*',
         destination: `${v2accessUrl}/restful/:path*`,
       },
     ];
