@@ -262,6 +262,10 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 		rpcGroup.POST("/etl/provider/start", createPathRPCHandler(rpcClient, "RPCStartProvider", "meta"))
 		rpcGroup.POST("/etl/provider/pause", createPathRPCHandler(rpcClient, "RPCPauseProvider", "meta"))
 		rpcGroup.POST("/etl/provider/stop", createPathRPCHandler(rpcClient, "RPCStopProvider", "meta"))
+		rpcGroup.POST("/etl/provider/start-all", createPathRPCHandler(rpcClient, "RPCFSMStartAllProviders", "meta"))
+		rpcGroup.POST("/etl/provider/stop-all", createPathRPCHandler(rpcClient, "RPCFSMStopAllProviders", "meta"))
+		rpcGroup.POST("/etl/provider/pause-all", createPathRPCHandler(rpcClient, "RPCFSMPauseAllProviders", "meta"))
+		rpcGroup.POST("/etl/provider/resume-all", createPathRPCHandler(rpcClient, "RPCFSMResumeAllProviders", "meta"))
 		rpcGroup.POST("/etl/performance-policy", createPathRPCHandler(rpcClient, "RPCUpdatePerformancePolicy", "meta"))
 		rpcGroup.POST("/etl/kernel-metrics", createPathRPCHandler(rpcClient, "RPCGetKernelMetrics", "meta"))
 
