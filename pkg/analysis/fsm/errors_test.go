@@ -314,12 +314,12 @@ func TestGraphFSM_GetFailedTransitions(t *testing.T) {
 
 		// Verify FSM is in ERROR state
 		baseFSM := fsm.(*BaseGraphFSM)
-		if baseFSM.State() != GraphError {
+		if baseFSM.GetState() != GraphError {
 			t.Error("Expected FSM to be in ERROR state after FailBuild")
 		}
 
 		// Verify last error is set
-		if baseFSM.LastError() == nil {
+		if baseFSM.GetLastError() == nil {
 			t.Error("Expected lastError to be set after FailBuild")
 		}
 

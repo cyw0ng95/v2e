@@ -27,8 +27,8 @@ func TestGraphStore_SaveFullCheckpoint(t *testing.T) {
 
 		// Create test graph
 		g := graph.New()
-		cveURN, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-1234")
-		g.AddNode(cveURN, map[string]interface{}{"id": "CVE-2024-1234"})
+		cveURN, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-9999")
+		g.AddNode(cveURN, map[string]interface{}{"id": "CVE-2024-9999"})
 
 		// Save full checkpoint
 		checkID, err := store.SaveFullCheckpoint(g)
@@ -66,8 +66,8 @@ func TestGraphStore_SaveIncrementalCheckpoint(t *testing.T) {
 
 		// Create test graph
 		g := graph.New()
-		cveURN, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-1234")
-		g.AddNode(cveURN, map[string]interface{}{"id": "CVE-2024-1234"})
+		cveURN1, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-0001")
+		g.AddNode(cveURN1, map[string]interface{}{"id": "CVE-2024-0001"})
 
 		// Save base checkpoint
 		baseID, err := store.SaveFullCheckpoint(g)
@@ -75,19 +75,22 @@ func TestGraphStore_SaveIncrementalCheckpoint(t *testing.T) {
 			t.Fatalf("Failed to save base checkpoint: %v", err)
 		}
 
-		// Add more nodes
-		for i := 0; i < 5; i++ {
-			urn, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, fmt.Sprintf("CVE-2024-%d", i))
-			g.AddNode(urn, map[string]interface{}{"id": fmt.Sprintf("CVE-2024-%d", i)})
+		// Add more nodes with proper CVE format
+		for i := 2; i <= 5; i++ {
+			cveID := fmt.Sprintf("CVE-2024-%04d", i)
+			urn, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, cveID)
+			g.AddNode(urn, map[string]interface{}{"id": cveID})
 		}
 
 		// Create incremental changes
 		changes := []IncrementalChange{}
-		for i := 0; i < 5; i++ {
+		for i := 2; i <= 5; i++ {
+			cveID := fmt.Sprintf("CVE-2024-%04d", i)
+			urnStr, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, cveID)
 			changes = append(changes, IncrementalChange{
 				Type:    "add_node",
-				NodeURN: fmt.Sprintf("urn:nvd:cve:CVE-2024-%d", i),
-				Data:    map[string]interface{}{"id": fmt.Sprintf("CVE-2024-%d", i)},
+				NodeURN: urnStr.String(),
+				Data:    map[string]interface{}{"id": cveID},
 			})
 		}
 
@@ -116,8 +119,8 @@ func TestGraphStore_LoadFromCheckpoint_Full(t *testing.T) {
 
 		// Create and save graph
 		g := graph.New()
-		cveURN, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-1234")
-		g.AddNode(cveURN, map[string]interface{}{"id": "CVE-2024-1234", "severity": "HIGH"})
+		cveURN, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-9998")
+		g.AddNode(cveURN, map[string]interface{}{"id": "CVE-2024-9998", "severity": "HIGH"})
 
 		checkID, err := store.SaveFullCheckpoint(g)
 		if err != nil {
@@ -147,7 +150,7 @@ func TestGraphStore_LoadFromCheckpoint_Full(t *testing.T) {
 			t.Error("CVE node not found")
 		}
 
-		if node.Properties["id"] != "CVE-2024-1234" {
+		if node.Properties["id"] != "CVE-2024-9998" {
 			t.Errorf("Node data mismatch")
 		}
 	})
@@ -377,10 +380,13 @@ func TestApplyChanges_AddNode(t *testing.T) {
 		g := graph.New()
 		store := &GraphStore{logger: common.NewLogger(os.Stdout, "test", common.WarnLevel)}
 
+		// Create proper URN
+		cveURN, _ := urn.New(urn.ProviderNVD, urn.TypeCVE, "CVE-2024-1234")
+
 		changes := []IncrementalChange{
 			{
 				Type:    "add_node",
-				NodeURN: "urn:nvd:cve:CVE-2024-1234",
+				NodeURN: cveURN.String(),
 				Data:    map[string]interface{}{"id": "CVE-2024-1234"},
 			},
 		}
