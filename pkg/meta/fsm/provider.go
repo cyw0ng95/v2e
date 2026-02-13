@@ -299,13 +299,15 @@ func (p *BaseProviderFSM) GetDependencies() []string {
 	return deps
 }
 
-// CheckDependencies verifies that all dependency providers are in TERMINATED state
+// CheckDependencies verifies that dependency providers are in a valid state
+// Valid states: IDLE (not started), RUNNING (in progress), TERMINATED (completed)
+// Invalid: ACQUIRING (still requesting permits), WAITING_QUOTA, WAITING_BACKOFF
 func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderState) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
 	if len(p.dependencies) == 0 {
-		return nil // No dependencies, always ready
+		return nil
 	}
 
 	for _, depID := range p.dependencies {
@@ -313,8 +315,9 @@ func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderSt
 		if !exists {
 			return fmt.Errorf("dependency provider %s not found", depID)
 		}
-		if state != ProviderTerminated {
-			return fmt.Errorf("dependency provider %s must be TERMINATED before starting, currently: %s", depID, state)
+		if state == ProviderAcquiring || state == ProviderWaitingQuota ||
+			state == ProviderWaitingBackoff || state == ProviderPaused {
+			return fmt.Errorf("dependency provider %s is in invalid state %s (must be IDLE, RUNNING, or TERMINATED)", depID, state)
 		}
 	}
 
@@ -635,12 +638,17 @@ func (p *BaseProviderFSM) loadStateIfExists() error {
 	// Check if state exists first
 	state, err := p.storage.GetProviderState(p.id)
 	if err != nil {
-		// State doesn't exist, that's fine for a new provider
 		return nil
 	}
 
 	p.mu.Lock()
 	p.state = ProviderState(state.State)
+	// If loaded state is a transient state (ACQUIRING, waiting states), reset to IDLE
+	// since the operation didn't complete (system likely crashed mid-operation)
+	if p.state == ProviderAcquiring || p.state == ProviderWaitingQuota ||
+		p.state == ProviderWaitingBackoff {
+		p.state = ProviderIdle
+	}
 	p.lastCheckpoint = state.LastCheckpoint
 	p.processedCount = state.ProcessedCount
 	p.errorCount = state.ErrorCount
