@@ -159,6 +159,15 @@
 | TODO-254 | notes | Optimization | Optimize Manager.GetContext to avoid copying viewedItems slice on every call | 50 | Medium | |
 | TODO-256 | rpc | Optimization | Optimize InvokeRPC defer execution logic to avoid unnecessary cleanup calls | 80 | Medium | |
 | TODO-264 | uptime | Feature | Add uptime monitoring service with configurable polling intervals | 200 | Medium | |
+| TODO-265 | asvs | Optimization | Create global HTTP client with connection pooling instead of creating new client on each ImportFromCSV call | 40 | High | |
+| TODO-266 | asvs | Optimization | Enable GORM PrepareStmt:true in db config to enable prepared statements for better query performance | 20 | High | |
+| TODO-267 | cwe | Optimization | Enable GORM PrepareStmt:true in db config to enable prepared statements for better query performance | 20 | High | |
+| TODO-268 | graph | Optimization | Implement sharded RWMutex locks to reduce lock contention - separate nodeMu and edgeMu instead of single global lock | 80 | Medium | |
+| TODO-269 | graph | Optimization | Pre-allocate slice capacity for edges map to reduce append reallocations | 40 | Medium | |
+| TODO-270 | graph | Optimization | Replace slice-based BFS queue with container/list for O(1) operations | 60 | Medium | |
+| TODO-271 | rpc | Optimization | Use strings.Builder for correlationID generation to reduce allocation overhead | 40 | Low | |
+| TODO-272 | meta | Optimization | Pre-allocate eventBatch slice capacity to reduce memory allocations during event collection | 40 | Medium | |
+| TODO-273 | all | Optimization | Profile and optimize hot paths identified via analysis - HTTP client reuse, GORM prepared statements, lock contention | 100 | High | |
 ## TODO Management Guidelines
 
 For detailed guidelines on managing TODO items, see the **TODO Management** section in `CLAUDE.md`.
