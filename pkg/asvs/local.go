@@ -194,9 +194,9 @@ func (s *LocalASVSStore) ImportFromCSV(ctx context.Context, url string) error {
 		return fmt.Errorf("no valid records found in CSV")
 	}
 
-	// Batch insert using GORM
+	// Batch insert using GORM - skip default transaction for SQLite
 	common.Info("Importing %d ASVS requirements", len(records))
-	if err := s.db.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(records, 100).Error; err != nil {
+	if err := s.db.Session(&gorm.Session{SkipHooks: true, SkipDefaultTransaction: true}).Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(records, 100).Error; err != nil {
 		return fmt.Errorf("failed to insert records: %w", err)
 	}
 
