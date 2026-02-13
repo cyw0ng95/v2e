@@ -304,7 +304,7 @@ export function useCAPEC(capecId?: string) {
     return () => {
       abortController.abort();
     };
-  }, [pollingInterval]);
+  }, [capecId]);
 
   return { data, isLoading, error };
 }
@@ -2615,7 +2615,13 @@ export function useEtlTree(pollingInterval = 5000) {
           throw new Error(response.message || 'Failed to fetch ETL tree');
         }
         
-        setData(response.payload);
+        const tree = response.payload?.tree || response.payload;
+        setData({
+          macro: tree?.macro || { state: 'UNKNOWN' },
+          providers: tree?.providers || [],
+          totalProviders: tree?.providers?.length || 0,
+          activeProviders: tree?.providers?.filter((p: any) => p.state === 'RUNNING').length || 0,
+        });
         setError(null);
       } catch (err: any) {
         setError(err);
