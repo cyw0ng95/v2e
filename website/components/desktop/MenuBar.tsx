@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { Z_INDEX } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { useTheme } from 'next-themes';
+import { UeeStatusLight } from './UeeStatusLight';
 
 /**
  * Menu bar component
@@ -36,6 +37,7 @@ export function MenuBar() {
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-700 to-gray-900" />
           <span className="text-sm font-medium text-foreground">v2e</span>
+          <UeeStatusLight />
         </div>
 
         {/* Right side: Controls */}
