@@ -183,10 +183,10 @@ func New(provider Provider, resourceType ResourceType, atomicID string) (*URN, e
 // String returns the URN in its canonical string format
 func (u *URN) String() string {
 	// Always add v2e:: prefix for consistency with URN spec
-	provider := u.Provider
+	provider := string(u.Provider)
 	// Handle case where provider already has v2e:: prefix (e.g., from parsed legacy URN)
 	if strings.HasPrefix(provider, "v2e::") {
-		provider = provider[6:] // Skip "v2e::" prefix
+		provider = provider[5:] // Skip "v2e::" prefix
 	}
 	return fmt.Sprintf("v2e::%s::%s::%s", provider, u.Type, u.AtomicID)
 }

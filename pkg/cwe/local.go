@@ -369,7 +369,7 @@ type ContentHistoryModel struct {
 // NewLocalCWEStore creates or opens a local CWE database at dbPath.
 func NewLocalCWEStore(dbPath string) (*LocalCWEStore, error) {
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		PrepareStmt: false,
+		PrepareStmt: true,
 	})
 	if err != nil {
 		return nil, err

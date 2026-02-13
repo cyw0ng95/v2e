@@ -22,6 +22,16 @@ var (
 	buildASVSDBPath = ""
 	// buildASVSCSVURL can be overridden at build time via ldflags
 	buildASVSCSVURL = "https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.csv"
+
+	// globalHTTPClient is a shared HTTP client with connection pooling
+	globalHTTPClient = &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+		Timeout: 30 * time.Second,
+	}
 )
 
 // LocalASVSStore manages a local database of ASVS requirements
@@ -32,7 +42,7 @@ type LocalASVSStore struct {
 // NewLocalASVSStore creates or opens a local ASVS database at dbPath
 func NewLocalASVSStore(dbPath string) (*LocalASVSStore, error) {
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		PrepareStmt: false,
+		PrepareStmt: true,
 	})
 	if err != nil {
 		return nil, err
@@ -64,9 +74,7 @@ func (s *LocalASVSStore) ImportFromCSV(ctx context.Context, url string) error {
 	common.Info("Importing ASVS data from URL: %s", url)
 
 	// Download the CSV file
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	client := globalHTTPClient
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
