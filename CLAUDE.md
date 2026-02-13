@@ -19,6 +19,16 @@ v2e is built on four unified frameworks that provide separation of concerns whil
 
 **IMPORTANT: All build and test operations MUST use `build.sh` wrapper script.** Do not use direct `go build` or `go test` commands - the wrapper handles build tags, environment setup, and proper test configuration.
 
+**Environment Initialization** (run before first build):
+```bash
+# Install Go build dependencies
+sudo apt-get install libxml2-dev  # Debian/Ubuntu
+sudo yum install libxml2-devel    # CentOS/RHEL
+
+# Install frontend dependencies
+cd website && npm install
+```
+
 ```bash
 # Primary build script (REQUIRED for all builds/tests)
 ./build.sh -t     # Unit tests (excludes fuzz tests, uses -run='^Test')
@@ -49,16 +59,6 @@ npm run lint      # ESLint
 **Build Tags**: Default `GO_TAGS=CONFIG_USE_LIBXML2`. Override via environment variable.
 
 **Version Requirements**: Go 1.25.6, Node.js 20+, npm 10+. macOS requires Podman for containerized builds.
-
-**Prerequisites**:
-```bash
-# For Go build with libxml2 support (required for CAPEC parsing)
-sudo apt-get install libxml2-dev  # Debian/Ubuntu
-sudo yum install libxml2-devel  # CentOS/RHEL
-
-# For frontend build
-cd website && npm install
-```
 
 **Build Locking**: Both `build.sh` and `runenv.sh` use `flock`-based locking to prevent parallel execution. This protects shared resources (build artifacts, Go module cache) from concurrent modification. If another build is running, subsequent invocations will wait up to 30 minutes for the lock, then exit with an error. The lock file is located at `${TMPDIR:-/tmp}/v2e-build.lock`.
 
