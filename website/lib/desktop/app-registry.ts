@@ -28,7 +28,7 @@ export interface AppRegistryEntry {
   maxHeight?: number;
 
   // Desktop icon
-  iconColor: string; // Accent color for icon background
+  iconColor?: string; // Accent color for icon background
   defaultPosition?: { x: number; y: number };
 
   // Behavior flags
@@ -40,6 +40,9 @@ export interface AppRegistryEntry {
   // Integration
   contentMode: 'iframe' | 'component';
   status: 'active' | 'planned' | 'deprecated';
+
+  // Network requirements
+  requiresOnline?: boolean;
 }
 
 /**

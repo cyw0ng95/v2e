@@ -3,7 +3,6 @@
  * Implements the Service-Consumer pattern to bridge UI and backend
  */
 
-import React from 'react';
 import type {
   RPCRequest,
   RPCResponse,
@@ -398,7 +397,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Create a cache for RPC calls to deduplicate requests
-const cachedCall = React.cache(async function (
+async function cachedCall(
   baseUrl: string,
   method: string,
   params: any,
@@ -540,7 +539,7 @@ const cachedCall = React.cache(async function (
   // Store the promise
   pendingRequests.set(requestKey, requestPromise);
   return requestPromise;
-});
+}
 
 function getMockResponseForCache<TResponse>(
   method: string,

@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { D3FEND_CLASSES } from '../d3fend/ontology';
 import {
   type STIXBundle,
   type STIXObject,
@@ -30,7 +31,7 @@ const STIXCommonPropertiesSchema = z.object({
   object_marking_refs: z.array(z.string()).optional(),
   granular_markings: z.array(z.object({})).optional(),
   defanged: z.boolean().optional(),
-  extensions: z.record(z.unknown()).optional(),
+  extensions: z.record(z.string(), z.unknown()).optional(),
 });
 
 const STIXRelationshipSchema = STIXCommonPropertiesSchema.extend({
@@ -226,9 +227,10 @@ export class STIXImportEngine {
     if (obj.type === 'relationship') {
       const result = STIXRelationshipSchema.safeParse(obj);
       if (!result.success) {
+        const firstError = result.error.issues[0];
         return {
           type: 'invalid-format',
-          message: result.error.errors[0].message,
+          message: firstError?.message || 'Unknown validation error',
           objectId: obj.id,
         };
       }
@@ -321,7 +323,7 @@ export class STIXImportEngine {
       references: this.extractReferences(obj),
     };
 
-    let typeId = obj.type;
+    let typeId: string = obj.type;
     let nodeType = 'glc';
     let d3fendClass: string | undefined;
 
@@ -377,7 +379,7 @@ export class STIXImportEngine {
     for (const field of fields) {
       const value = typedObj[field] as string | undefined | null | boolean | number | string[];
       if (value !== undefined && value !== null) {
-        let displayValue: string;
+        let displayValue: string = '';
         let type: string = 'string';
 
         if (Array.isArray(value)) {
@@ -390,6 +392,8 @@ export class STIXImportEngine {
           type = 'number';
         } else if (typeof value === 'string') {
           displayValue = value;
+        } else if (value !== null && value !== undefined) {
+          displayValue = JSON.stringify(value);
         }
 
         properties.push({
@@ -406,8 +410,8 @@ export class STIXImportEngine {
   /**
    * Extract references from STIX object
    */
-  private extractReferences(obj: STIXObject): Array<{ type: string; id: string; label?: string }> {
-    const references: Array<{ type: string; id: string; label?: string }> = [];
+  private extractReferences(obj: STIXObject): Array<{ type: string; id: string; label?: string; url?: string }> {
+    const references: Array<{ type: string; id: string; label?: string; url?: string }> = [];
     const typedObj = obj as Record<string, unknown>;
 
     if ('external_references' in typedObj && Array.isArray(typedObj.external_references)) {

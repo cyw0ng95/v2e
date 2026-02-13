@@ -5,6 +5,7 @@ import { useMemoryCards } from '@/lib/mcards/hooks';
 import { Flashcard } from './flashcard';
 import { RatingButtons, type Rating } from './rating-buttons';
 import { ChevronLeft, ChevronRight, Play, Pause, ArrowLeft } from 'lucide-react';
+import type { MemoryCard } from '@/lib/types';
 
 interface KeyboardHandlers {
   onSpace?: () => void;
@@ -111,7 +112,7 @@ export default function McardsStudy() {
   }, [cardsData]);
  
   // Use ref to store latest cards to avoid closure issues
-  const cardsRef = useRef<CardType[]>(cards);
+  const cardsRef = useRef<MemoryCard[]>(cards);
   useEffect(() => {
     cardsRef.current = cards;
   }, [cards]);

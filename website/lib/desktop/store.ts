@@ -14,10 +14,11 @@ import type {
   WindowConfig,
   DesktopIcon,
   DockConfig,
+  DockItem,
   ThemeConfig,
   WidgetConfig,
-  WindowState,
 } from '@/types/desktop';
+import { WindowState } from '@/types/desktop';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 import { getAppById } from '@/lib/desktop/app-registry';
 
@@ -113,7 +114,7 @@ interface DesktopActions {
   addDockItem: (item: Omit<DockItem, 'isRunning'>) => void;
   removeDockItem: (appId: string) => void;
   updateDockItemRunning: (appId: string, isRunning: boolean) => void;
-  updateDockItems: (items: Array<{ app: AppRegistryEntry; isRunning: boolean; isIndicator: boolean }>) => void;
+  updateDockItems: (items: DockItem[]) => void;
   setDockVisibility: (isVisible: boolean) => void;
   setDockSize: (size: 'small' | 'medium' | 'large') => void;
   setDockAutoHide: (autoHide: boolean) => void;
@@ -136,9 +137,7 @@ interface DesktopActions {
   resetDesktop: () => void;
 }
 
-type DesktopStore = DesktopState & DesktopActions & {
-  transitionWindow: (id: string, fromState: WindowState, toState: WindowState) => void;
-}
+type DesktopStore = DesktopState & DesktopActions;
 
 // ============================================================================
 // STORE CREATION
@@ -199,7 +198,7 @@ const useDesktopStore = create<DesktopStore>()(
                   ...state.windows,
                   [existingWindow.id]: {
                     ...existingWindow,
-                    state: 'focused' as WindowState,
+                    state: WindowState.Focused,
                     zIndex: getNextFocusZIndex(state.windows),
                   },
                 },
@@ -224,7 +223,7 @@ const useDesktopStore = create<DesktopStore>()(
               [id]: {
                 ...config,
                 id,
-                state: 'open' as WindowState,
+                state: WindowState.Open,
                 zIndex: getNextFocusZIndex(state.windows),
               },
             },
@@ -269,6 +268,18 @@ const useDesktopStore = create<DesktopStore>()(
           };
         }),
 
+      transitionWindow: (id, fromState, toState) =>
+        set(state => {
+          const window = state.windows[id];
+          if (!window) return {};
+          return {
+            windows: {
+              ...state.windows,
+              [id]: { ...window, state: toState },
+            },
+          };
+        }),
+
       minimizeWindow: (id) =>
         set(state => {
           const window = state.windows[id];
@@ -287,9 +298,9 @@ const useDesktopStore = create<DesktopStore>()(
           const window = state.windows[id];
           if (!window) return {};
 
-          const isCurrentlyMaximized = window.state === 'maximized';
-          const newState: WindowState = isCurrentlyMaximized ? 'restoring' : 'maximizing';
-          const finalState: WindowState = isCurrentlyMaximized ? 'focused' : 'maximized';
+          const isCurrentlyMaximized = window.state === WindowState.Maximized;
+          const newState: WindowState = isCurrentlyMaximized ? WindowState.Restoring : WindowState.Maximizing;
+          const finalState: WindowState = isCurrentlyMaximized ? WindowState.Focused : WindowState.Maximized;
 
           return {
             windows: {
@@ -321,7 +332,7 @@ const useDesktopStore = create<DesktopStore>()(
         set(state => ({
           windows: {
             ...state.windows,
-            [id]: state.windows[id] ? { ...state.windows[id], position } : state.windows[id],
+            [id]: state.windows[id] ? { ...state.windows[id], position } : state.windows[id] ?? {},
           },
         })),
 
@@ -329,7 +340,7 @@ const useDesktopStore = create<DesktopStore>()(
         set(state => ({
           windows: {
             ...state.windows,
-            [id]: state.windows[id] ? { ...state.windows[id], size } : state.windows[id],
+            [id]: state.windows[id] ? { ...state.windows[id], size } : state.windows[id] ?? {},
           },
         })),
 
@@ -373,6 +384,11 @@ const useDesktopStore = create<DesktopStore>()(
       setDockAutoHide: (autoHide) =>
         set(state => ({
           dock: { ...state.dock, autoHide },
+        })),
+
+      setDockAutoHideDelay: (delay) =>
+        set(state => ({
+          dock: { ...state.dock, autoHideDelay: delay },
         })),
 
       updateDockItems: (items) =>

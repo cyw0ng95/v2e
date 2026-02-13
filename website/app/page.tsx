@@ -30,12 +30,9 @@ export default function HomePage() {
   // Initialize network status detection
   useNetworkStatus();
 
-  // Determine background class based on theme
-  const bgClass = theme === 'light' ? 'bg-background' : 'bg-background';
-
   return (
     <DndContext>
-      <div className={`h-screen w-screen overflow-hidden relative transition-colors duration-300 ${bgClass}`}>
+      <div className="h-screen w-screen overflow-hidden relative transition-colors duration-300 bg-background">
         {/* Threads Background - animated threads */}
         <Threads />
         {/* Menu Bar - Always on top */}
@@ -57,22 +54,18 @@ export default function HomePage() {
         />
 
         {/* Initial state notice - shown when no icons exist */}
-         {desktopIcons.length === 0 && (
-           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-             <div className={`backdrop-blur-sm rounded-lg p-8 text-center max-w-md ${theme === 'light' ? 'bg-white/10 text-white/80' : 'bg-black/10 text-gray-900'}`}>
-               <h2>
-                 Welcome to v2e Portal
-               </h2>
-               <p className={`mb-4 ${theme === 'light' ? 'text-white/80' : 'text-gray-600 mb-4'}`}>
-                 Desktop is ready. Add apps from dock or right-click to customize.
-               </p>
-               <p className={`text-sm ${theme === 'light' ? 'text-white/70' : 'text-gray-500'}`}>
-                 All features work offline.
+        {desktopIcons.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className={`backdrop-blur-sm rounded-lg p-8 text-center max-w-md ${theme === 'light' ? 'bg-white/10 text-white/80' : 'bg-black/10 text-gray-900'}`}>
+              <h2 className="text-xl font-bold mb-4">
+                Welcome to v2e Portal
+              </h2>
+              <p className={`mb-4 ${theme === 'light' ? 'text-white/80' : 'text-gray-600'}`}>
+                Desktop is ready. Add apps from dock or right-click to customize.
               </p>
-               </div>
-           </div>
-         )}
-       </div>
+              <p className={`text-sm ${theme === 'light' ? 'text-white/70' : 'text-gray-500'}`}>
+                All features work offline.
+              </p>
             </div>
           </div>
         )}

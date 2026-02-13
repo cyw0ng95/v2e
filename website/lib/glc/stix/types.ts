@@ -362,6 +362,7 @@ export interface GLCImportNode {
     references?: Reference[];
     stixId?: string;
     stixType?: string;
+    d3fendClass?: string;
   };
 }
 
@@ -394,7 +395,7 @@ export interface STIXValidationError {
  * Reference
  */
 export interface Reference {
-  type: 'cve' | 'cwe' | 'capec' | 'attack' | 'd3fend' | 'url' | 'stix';
+  type: string;
   id: string;
   label?: string;
   url?: string;
@@ -403,7 +404,7 @@ export interface Reference {
 export interface Property {
   key: string;
   value: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'url';
+  type: string;
 }
 
 export interface STIXImportStats {
@@ -414,15 +415,3 @@ export interface STIXImportStats {
   relationshipCount: number;
   byType: Record<string, number>;
 }
-
-export type GLCImportEdge = {
-  id: string;
-  source: string;
-  target: string;
-  type?: string;
-  label?: string;
-  data?: {
-    relationshipType?: string;
-    stixId?: string;
-  };
-};

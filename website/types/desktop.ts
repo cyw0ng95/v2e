@@ -20,7 +20,8 @@ export type AppCategory =
   | 'Learning'
   | 'System'
   | 'Utility'
-  | 'Reference';
+  | 'Reference'
+  | 'Tool';
 
 /**
  * Desktop icon representation
@@ -106,7 +107,13 @@ export interface DockConfig {
 export interface DockItem {
   appId: string;
   isRunning: boolean;
-  isIndicator: boolean; // Shows dot below running apps
+  isIndicator: boolean;
+  app?: {
+    id: string;
+    name: string;
+    icon: string;
+    iconColor?: string;
+  };
 }
 
 /**

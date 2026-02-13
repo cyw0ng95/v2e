@@ -149,6 +149,7 @@ export function DockDraggable() {
     const items = registryApps.map(app => {
       const isRunning = Object.values(windows).some(w => w.appId === app.id);
       return {
+        appId: app.id,
         app,
         isRunning,
         isIndicator: isRunning,

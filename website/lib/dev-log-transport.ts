@@ -17,7 +17,7 @@ interface LogEntry {
 class DevLogTransport {
   private logQueue: LogEntry[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
-  private originalError: typeof console.error;
+  private originalError: typeof console.error = console.error;
   private isEnabled: boolean;
 
   constructor() {

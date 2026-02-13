@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createLogger } from '../logger';
 
 const logger = createLogger('hooks');
@@ -26,7 +26,10 @@ export function useFetch<TParams, TData>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const execute = async () => {
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+
+  const execute = useCallback(async () => {
     if (!enabled) {
       setIsLoading(false);
       return;
@@ -34,7 +37,7 @@ export function useFetch<TParams, TData>(
 
     try {
       setIsLoading(true);
-      const response = await fetchFn(params!);
+      const response = await fetchFn(paramsRef.current!);
 
       if (response.retcode !== 0) {
         throw new Error(response.message || 'Request failed');
@@ -50,15 +53,15 @@ export function useFetch<TParams, TData>(
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [enabled, fetchFn, onSuccess, onError]);
 
   useEffect(() => {
     execute();
-  }, [enabled]);
+  }, [execute]);
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     await execute();
-  };
+  }, [execute]);
 
   return { data, isLoading, error, refetch };
 }

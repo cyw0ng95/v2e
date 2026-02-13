@@ -272,7 +272,7 @@ export function useCAPEC(capecId?: string) {
     const { signal } = abortController;
 
     const fetchData = async () => {
-      if (signal.aborted) return;
+      if (signal.aborted || !capecId) return;
 
       try {
         setIsLoading(true);
