@@ -300,8 +300,8 @@ func (p *BaseProviderFSM) GetDependencies() []string {
 }
 
 // CheckDependencies verifies that dependency providers are in a valid state
-// Valid states: IDLE (not started), RUNNING (in progress), TERMINATED (completed)
-// Invalid: ACQUIRING (still requesting permits), WAITING_QUOTA, WAITING_BACKOFF
+// Valid states: IDLE (not started), ACQUIRING (starting), RUNNING (in progress), TERMINATED (completed)
+// Invalid: WAITING_QUOTA, WAITING_BACKOFF, PAUSED
 func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderState) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -315,9 +315,10 @@ func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderSt
 		if !exists {
 			return fmt.Errorf("dependency provider %s not found", depID)
 		}
-		if state == ProviderAcquiring || state == ProviderWaitingQuota ||
-			state == ProviderWaitingBackoff || state == ProviderPaused {
-			return fmt.Errorf("dependency provider %s is in invalid state %s (must be IDLE, RUNNING, or TERMINATED)", depID, state)
+		// Allow IDLE, ACQUIRING, RUNNING, TERMINATED - these are all valid states
+		// Block on transient failure states: WAITING_QUOTA, WAITING_BACKOFF, PAUSED
+		if state == ProviderWaitingQuota || state == ProviderWaitingBackoff || state == ProviderPaused {
+			return fmt.Errorf("dependency provider %s is in invalid state %s (must be IDLE, ACQUIRING, RUNNING, or TERMINATED)", depID, state)
 		}
 	}
 

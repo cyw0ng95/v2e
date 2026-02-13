@@ -462,8 +462,10 @@ func createFSMGetEtlTreeHandler(logger *common.Logger) subprocess.Handler {
 		}
 
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-			"macro_fsm": macroStats,
-			"providers": providerStats,
+			"tree": map[string]interface{}{
+				"macro":     macroStats,
+				"providers": providerStats,
+			},
 		})
 	}
 }
