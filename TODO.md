@@ -13,7 +13,7 @@
 | TODO-054 | all | Refactor | Expand pkg/common/error_registry.go usage - error codes exist in pkg/common (ErrorCode, StandardizedError) but cmd/v2local, cmd/v2remote, cmd/v2meta still use ad-hoc errors instead of standardized ErrorCode system | 400 | Medium | |
 | TODO-084 | cmd/v2meta | Refactor | Extract provider FSM state transition logic - pkg/meta/fsm/provider.go has BaseProviderFSM but CVEProvider, CWEProvider, CAPECProvider, ATTACKProvider still have duplicate field-level diff logic in their execute() methods | 250 | Medium | |
 | TODO-098 | all | Refactor | Remove duplicate error handling - create centralized error wrapper in pkg/common/error.go that wraps errors with ErrorCode from error_registry.go instead of each service creating custom error types | 150 | Medium | |
-| TODO-099 | all | Test | Add race condition tests using -race flag for all critical path functions | 200 | High | |
+| TODO-099 | all | Test | Add race condition tests using -race flag for all critical path functions | 200 | Medium | |
 | TODO-100 | all | Refactor | Consolidate similar test setup/teardown code into test helpers package | 100 | Low | |
 | TODO-101 | website | Refactor | Review and optimize website/app/layout.tsx for code quality and performance | 80 | Medium | |
 | TODO-102 | website | Refactor | Review and optimize website/components/navbar.tsx for accessibility and responsiveness | 80 | Medium | |
@@ -25,13 +25,13 @@
 | TODO-109 | website | Test | Add unit tests for website/lib/utils.ts utility functions | 100 | Medium | |
 | TODO-110 | website | Refactor | Review and optimize website/components/cve-detail-modal.tsx for UX and performance | 80 | Medium | |
 | TODO-111 | test | Review | Review and add missing test cases for pkg/common package (66.5% coverage) - focus on error_registry.go, workerpool/, procfs/ | 150 | Medium | |
-| TODO-114 | test | Review | Review and add missing test cases for pkg/attack/provider package (0% coverage) - add tests for provider state transitions, data fetching | 200 | High | |
-| TODO-115 | test | Review | Review and add missing test cases for pkg/asvs package (5.7% coverage) - focus on local.go CRUD operations | 200 | High | |
-| TODO-116 | test | Review | Review and add missing test cases for pkg/meta package (0% coverage) - add tests for fsm/, storage/ | 200 | High | |
-| TODO-117 | test | Review | Review and add missing test cases for pkg/cwe package (0% coverage) - focus on local.go GetByID, ListCWEsPaginated | 200 | High | |
-| TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) - focus on rpc.go, routing.go, broker.go | 150 | High | |
-| TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) - add tests for handlers and middleware | 200 | High | |
-| TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) - focus on *_handlers.go files | 150 | High | |
+| TODO-114 | test | Review | Review and add missing test cases for pkg/attack/provider package (0% coverage) - add tests for provider state transitions, data fetching | 200 | Medium | |
+| TODO-115 | test | Review | Review and add missing test cases for pkg/asvs package (5.7% coverage) - focus on local.go CRUD operations | 200 | Medium | |
+| TODO-116 | test | Review | Review and add missing test cases for pkg/meta package (0% coverage) - add tests for fsm/, storage/ | 200 | Medium | |
+| TODO-117 | test | Review | Review and add missing test cases for pkg/cwe package (0% coverage) - focus on local.go GetByID, ListCWEsPaginated | 200 | Medium | |
+| TODO-118 | test | Review | Review and add missing test cases for cmd/v2broker/core package (11.3% coverage) - focus on rpc.go, routing.go, broker.go | 150 | Medium | |
+| TODO-119 | test | Review | Review and add missing test cases for cmd/v2access package (0% coverage) - add tests for handlers and middleware | 200 | Medium | |
+| TODO-120 | test | Review | Review and add missing test cases for cmd/v2local package (3.4% coverage) - focus on *_handlers.go files | 150 | Medium | |
 | TODO-126 | cve | Test | Add tests for CVEProvider.execute() checkpoint saving logic when RPC calls fail | 80 | Medium | |
 | TODO-127 | cve | Documentation | Document exported types in pkg/cve/types.go - CVSSDataV40, CVSSMetricV40 lack comments explaining v4.0 differences | 60 | Low | |
 | TODO-129 | cwe | Refactor | Reduce code duplication in pkg/cwe/local.go - GetByID (line ~600) and ListCWEsPaginated (line ~450) share ~90% identical nested field loading logic for RelatedAttackPatterns, ExternalReferences, Notes, WeaknessRhetoric | 150 | Medium | |
@@ -50,8 +50,8 @@
 | TODO-172 | website | Optimization | Implement virtualization for horizontal tab lists when there are 10+ tabs | 100 | Low | |
 | TODO-173 | website | Optimization | Add route-based code splitting for major pages using Next.js dynamic imports | 60 | Medium | |
 | TODO-176 | website | Refactor | Replace any types with proper TypeScript interfaces in lib/hooks.ts, components/notes-framework.tsx, app/page.tsx | 100 | Medium | |
-| TODO-177 | website | Test | Add unit tests for RPC client (lib/rpc-client.ts) covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
-| TODO-178 | website | Test | Add unit tests for custom hooks (lib/hooks.ts) using React Testing Library for critical hooks: useCVEList, useSessionStatus, useStartSession, useMemoryCards | 300 | High | |
+| TODO-177 | website/rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior - covers both Go pkg/rpc/client.go and website lib/rpc-client.ts | 250 | Medium | |
+| TODO-178 | website | Test | Add unit tests for custom hooks (lib/hooks.ts) using React Testing Library for critical hooks: useCVEList, useSessionStatus, useStartSession, useMemoryCards | 300 | Medium | |
 | TODO-179 | website | Test | Add integration tests for main page tabs verifying navigation, view/learn mode switching, and data display | 200 | Medium | |
 | TODO-180 | website | Test | Add accessibility tests for UI components using jest-axe for Button, Table, Dialog, Form components | 150 | Medium | |
 | TODO-182 | website | Security | Sanitize user-generated content in notes-framework.tsx using DOMPurify to prevent XSS attacks | 60 | Medium | |
@@ -67,7 +67,6 @@
 | TODO-194 | analysis | Feature | Add batch operations API for saving multiple nodes/edges in single transaction | 150 | Medium | |
 | TODO-195 | website | Refactor | Consolidate duplicate mock response logic in website/lib/rpc-client.ts - getMockResponseForCache (line 544) and getMockResponse (line 712) have ~600 lines of duplication handling the same mock data | 100 | Medium | |
 | TODO-198 | rpc-client | Optimization | Implement response caching with TTL for frequently accessed read-only endpoints | 150 | Medium | |
-| TODO-199 | rpc-client | Test | Add unit tests for RPC client covering case conversion, mock responses, error handling, timeout behavior | 250 | High | |
 | TODO-208 | ume | Refactor | Add backpressure mechanism to message routing - when route channels are full, messages are dropped with "channel full" error instead of blocking send, implement proper queue or buffer | 200 | High | |
 | TODO-209 | ume | Feature | Add message batching support to router - group multiple messages and route them in batches to improve throughput for high-volume scenarios | 250 | Medium | |
 | TODO-210 | ume | Feature | Add message delivery tracking - track whether messages were successfully delivered or dropped for observability and debugging | 150 | Medium | |
@@ -102,7 +101,6 @@
 | TODO-266 | asvs | Optimization | Enable GORM PrepareStmt:true in pkg/asvs/local.go:35 and pkg/cwe/local.go:372 - currently PrepareStmt:false, enables prepared statements for better query performance | 20 | High | |
 | TODO-267 | cwe | Optimization | Enable GORM PrepareStmt:true in pkg/cwe/local.go:372 - currently PrepareStmt:false, enables prepared statements for better query performance | 20 | High | |
 | TODO-271 | rpc | Optimization | Use strings.Builder for correlationID generation in pkg/rpc/client.go:132 to reduce allocation overhead from fmt.Sprintf | 40 | Low | |
-| TODO-254 | notes | Optimization | Optimize Manager.GetContext in pkg/notes/strategy/manager.go to avoid copying viewedItems slice - current implementation returns copy on every call | 50 | Medium | |
 | TODO-275 | notes | Refactor | BFSStrategy and DFSStrategy should embed *BaseStrategy - pkg/notes/strategy/base_strategy.go has reusable code but bfs.go and dfs.go don't use it, causing duplicate GetViewedCount (bfs:104, dfs:178), Reset, viewed map management | 80 | Medium | |
 | TODO-276 | rpc | Refactor | Consolidate RPC client implementations - pkg/rpc/client.go (RequestEntry line~23, InvokeRPC line~118) and pkg/notes/rpc_client.go (requestEntry line~23, InvokeRPC line~79) are nearly identical, should share a common implementation | 100 | High | |
 | TODO-277 | common | Optimization | Pre-allocate map capacity in hot paths - pkg/graph/graph.go nodes/edges/reverseEdges (line~51), pkg/notes/strategy viewed maps (bfs:19, dfs:58), pkg/notes/fsm/learning_fsm links (line~78) | 60 | Medium | |
