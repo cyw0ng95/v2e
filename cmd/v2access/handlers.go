@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc/subprocess"
+	"github.com/gin-gonic/gin"
 )
 
 // contextPool pools unused context objects for reuse in RPC handlers.
@@ -149,7 +149,6 @@ func registerHandlers(restful *gin.RouterGroup, rpcClient *RPCClient) {
 			common.Warn("HTTP request context canceled after RPC call: %v", err)
 		default:
 			// Context is still active
-		}
 		}
 
 		if err != nil {
