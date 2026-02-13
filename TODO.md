@@ -97,9 +97,6 @@
 | TODO-254 | notes | Optimization | Optimize Manager.GetContext to avoid copying viewedItems slice on every call | 50 | Medium | |
 | TODO-256 | rpc | Optimization | Optimize InvokeRPC defer execution logic to avoid unnecessary cleanup calls | 80 | Medium | |
 | TODO-264 | uptime | Feature | Add uptime monitoring service with configurable polling intervals | 200 | Medium | |
-| TODO-265 | asvs | Optimization | Create global HTTP client with connection pooling in pkg/asvs/local.go - line~67 creates new http.Client on each ImportFromCSV call, should use shared client | 40 | High | |
-| TODO-266 | asvs | Optimization | Enable GORM PrepareStmt:true in pkg/asvs/local.go:35 and pkg/cwe/local.go:372 - currently PrepareStmt:false, enables prepared statements for better query performance | 20 | High | |
-| TODO-267 | cwe | Optimization | Enable GORM PrepareStmt:true in pkg/cwe/local.go:372 - currently PrepareStmt:false, enables prepared statements for better query performance | 20 | High | |
 | TODO-271 | rpc | Optimization | Use strings.Builder for correlationID generation in pkg/rpc/client.go:132 to reduce allocation overhead from fmt.Sprintf | 40 | Low | |
 | TODO-275 | notes | Refactor | BFSStrategy and DFSStrategy should embed *BaseStrategy - pkg/notes/strategy/base_strategy.go has reusable code but bfs.go and dfs.go don't use it, causing duplicate GetViewedCount (bfs:104, dfs:178), Reset, viewed map management | 80 | Medium | |
 | TODO-276 | rpc | Refactor | Consolidate RPC client implementations - pkg/rpc/client.go (RequestEntry line~23, InvokeRPC line~118) and pkg/notes/rpc_client.go (requestEntry line~23, InvokeRPC line~79) are nearly identical, should share a common implementation | 100 | High | |
