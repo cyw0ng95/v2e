@@ -469,6 +469,7 @@ func createFSMStartAllProvidersHandler(logger *common.Logger) subprocess.Handler
 
 		started := []string{}
 		failed := []string{}
+		failedReasons := map[string]string{}
 
 		for id, provider := range fsmProviders {
 			state := string(provider.GetState())
@@ -476,6 +477,7 @@ func createFSMStartAllProvidersHandler(logger *common.Logger) subprocess.Handler
 				if err := macroFSM.StartProviderWithDependencyCheck(id); err != nil {
 					logger.Error("Failed to start provider %s: %v", id, err)
 					failed = append(failed, id)
+					failedReasons[id] = err.Error()
 				} else {
 					started = append(started, id)
 				}
@@ -483,12 +485,16 @@ func createFSMStartAllProvidersHandler(logger *common.Logger) subprocess.Handler
 		}
 
 		logger.Info("Started all providers: %d/%d", len(started), len(fsmProviders))
-		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+		response := map[string]interface{}{
 			"success": len(failed) == 0,
 			"started": started,
 			"failed":  failed,
 			"total":   len(fsmProviders),
-		})
+		}
+		if len(failedReasons) > 0 {
+			response["failed_reasons"] = failedReasons
+		}
+		return subprocess.NewSuccessResponse(msg, response)
 	}
 }
 
