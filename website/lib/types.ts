@@ -465,7 +465,6 @@ export interface UpdateCVEResponse {
   /** CVE identifier */
   cveId: string;
   /** Updated CVE item */
-/  /** Temporal metrics */a /** Final severity (computed from sub-scores) */
   finalSeverity?: CVSSSeverity;
   cve: CVEItem;
 }

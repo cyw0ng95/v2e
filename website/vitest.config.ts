@@ -18,12 +18,8 @@ export default defineConfig({
     // Globals - make vi, describe, it, expect globally available
     globals: true,
 
-    // Environment - use jsdom for component tests, node for utility tests
+    // Environment - use jsdom for component tests
     environment: 'jsdom',
-    environmentMatch: {
-      // Use node environment for non-component tests
-      '__tests__/glc/(store|stix-import|d3fend-loader|inference-engine).test.ts': 'node',
-    },
 
     // reporters
     reporters: ['verbose'],
