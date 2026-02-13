@@ -181,6 +181,13 @@ func recoverRunningFSMProviders(logger *common.Logger) error {
 			// Skip recovery
 			logger.Info("Provider %s in %s state, skipping recovery", state.ID, state.State)
 
+		case fsm.ProviderAcquiring:
+			// Transient state from crash - reset to IDLE
+			logger.Info("Provider %s in ACQUIRING state (incomplete), resetting to IDLE", state.ID)
+			if err := provider.Transition(fsm.ProviderIdle); err != nil {
+				logger.Error("Failed to reset provider %s to IDLE: %v", state.ID, err)
+			}
+
 		default:
 			logger.Warn("Provider %s in unknown state %s", state.ID, state.State)
 		}

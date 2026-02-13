@@ -638,10 +638,13 @@ func (p *BaseProviderFSM) loadStateIfExists() error {
 	// Check if state exists first
 	state, err := p.storage.GetProviderState(p.id)
 	if err != nil {
+		// State doesn't exist - this is fine for new providers
 		return nil
 	}
 
 	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.state = ProviderState(state.State)
 	// If loaded state is a transient state (ACQUIRING, waiting states), reset to IDLE
 	// since the operation didn't complete (system likely crashed mid-operation)
@@ -654,7 +657,6 @@ func (p *BaseProviderFSM) loadStateIfExists() error {
 	p.errorCount = state.ErrorCount
 	p.createdAt = state.CreatedAt
 	p.updatedAt = state.UpdatedAt
-	p.mu.Unlock()
 
 	return nil
 }
