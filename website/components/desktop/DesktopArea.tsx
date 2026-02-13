@@ -11,7 +11,6 @@ import React from 'react';
 import { useDesktopStore } from '@/lib/desktop/store';
 import { Z_INDEX, WindowState } from '@/types/desktop';
 import type { DesktopIcon as DesktopIconType } from '@/types/desktop';
-import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getAppById } from '@/lib/desktop/app-registry';
 import { ClockWidget } from './ClockWidget';
 import type { WidgetConfig } from '@/types/desktop';
@@ -20,9 +19,7 @@ import type { WidgetConfig } from '@/types/desktop';
  * Desktop icon component
  */
 function DesktopIcon({ icon }: { icon: DesktopIconType }) {
-  const { selectDesktopIcon, openWindow, isOnline } = useDesktopStore();
-  const { updateDesktopIconPosition } = useDesktopStore();
-  const contextMenu = useContextMenu();
+  const { selectDesktopIcon, openWindow, isOnline, updateDesktopIconPosition } = useDesktopStore();
 
   // Check if this app requires online access
   const app = getAppById(icon.appId);
@@ -69,17 +66,10 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
     e.dataTransfer.setData('text/plain', icon.id);
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    contextMenu.show(e.clientX, e.clientY, ContextMenuPresets.desktopIcon(icon.id, icon.appId));
-  };
-
   return (
     <div
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      onContextMenu={handleContextMenu}
       draggable
       onDragStart={handleDragStart}
       className={`
@@ -133,13 +123,6 @@ function DesktopIcon({ icon }: { icon: DesktopIconType }) {
  */
 export function DesktopArea() {
   const { desktopIcons, widgets, theme, isOnline } = useDesktopStore();
-  const contextMenu = useContextMenu();
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    contextMenu.show(e.clientX, e.clientY, ContextMenuPresets.desktop());
-  };
 
   return (
     <>
@@ -148,7 +131,6 @@ export function DesktopArea() {
         style={{
           zIndex: Z_INDEX.DESKTOP_WALLPAPER,
         }}
-        onContextMenu={handleContextMenu}
         role="main"
         aria-label="Desktop area"
       >
@@ -166,14 +148,6 @@ export function DesktopArea() {
           ) : null
         ))}
       </main>
-
-      {/* Global context menu */}
-      <ContextMenu
-        isVisible={contextMenu.isVisible}
-        position={contextMenu.position}
-        items={contextMenu.items}
-        onClose={contextMenu.hide}
-      />
     </>
   );
 }

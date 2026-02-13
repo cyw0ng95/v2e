@@ -153,12 +153,29 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
         }
       };
 
+      const handleMacroAction = async (action: 'start' | 'stop' | 'pause' | 'resume') => {
+        try {
+          if (action === 'start') {
+            await rpcClient.startAllProviders();
+          } else if (action === 'pause') {
+            await rpcClient.pauseAllProviders();
+          } else if (action === 'resume') {
+            await rpcClient.resumeAllProviders();
+          } else {
+            await rpcClient.stopAllProviders();
+          }
+        } catch (err) {
+          console.error(`Failed to ${action} all providers:`, err);
+        }
+      };
+
       return (
         <div className="h-full overflow-auto bg-background p-4">
           <ETLTopologyViewer 
             data={data} 
             isLoading={isLoading}
             onProviderAction={handleProviderAction}
+            onMacroAction={handleMacroAction}
           />
         </div>
       );

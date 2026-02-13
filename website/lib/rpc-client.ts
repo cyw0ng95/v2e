@@ -2053,6 +2053,22 @@ export class RPCClient {
     return this.call<{ providerId: string }, { success: boolean }>('RPCStopProvider', { providerId }, 'meta');
   }
 
+  async startAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMStartAllProviders', {}, 'meta');
+  }
+
+  async stopAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMStopAllProviders', {}, 'meta');
+  }
+
+  async pauseAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMPauseAllProviders', {}, 'meta');
+  }
+
+  async resumeAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMResumeAllProviders', {}, 'meta');
+  }
+
   async updatePerformancePolicy(providerId: string, policy: any): Promise<RPCResponse<{ success: boolean }>> {
     return this.call<{ providerId: string; policy: any }, { success: boolean }>('RPCUpdatePerformancePolicy', { providerId, policy }, 'meta');
   }

@@ -223,6 +223,10 @@ func CreateFSMRPCHandlers(logger *common.Logger) map[string]subprocess.Handler {
 		"RPCFSMGetProviderList":        createFSMGetProviderListHandler(logger),
 		"RPCFSMGetProviderCheckpoints": createFSMGetProviderCheckpointsHandler(logger),
 		"RPCFSMGetEtlTree":             createFSMGetEtlTreeHandler(logger),
+		"RPCFSMStartAllProviders":      createFSMStartAllProvidersHandler(logger),
+		"RPCFSMStopAllProviders":       createFSMStopAllProvidersHandler(logger),
+		"RPCFSMPauseAllProviders":      createFSMPauseAllProvidersHandler(logger),
+		"RPCFSMResumeAllProviders":     createFSMResumeAllProvidersHandler(logger),
 	}
 }
 
@@ -425,6 +429,114 @@ func createFSMGetEtlTreeHandler(logger *common.Logger) subprocess.Handler {
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
 			"macro_fsm": macroStats,
 			"providers": providerStats,
+		})
+	}
+}
+
+func createFSMStartAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		started := []string{}
+		failed := []string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state != "RUNNING" {
+				if err := macroFSM.StartProviderWithDependencyCheck(id); err != nil {
+					logger.Error("Failed to start provider %s: %v", id, err)
+					failed = append(failed, id)
+				} else {
+					started = append(started, id)
+				}
+			}
+		}
+
+		logger.Info("Started all providers: %d/%d", len(started), len(fsmProviders))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": len(failed) == 0,
+			"started": started,
+			"failed":  failed,
+			"total":   len(fsmProviders),
+		})
+	}
+}
+
+func createFSMStopAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		stopped := []string{}
+		failed := []string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state == "RUNNING" || state == "PAUSED" {
+				if err := provider.Stop(); err != nil {
+					logger.Error("Failed to stop provider %s: %v", id, err)
+					failed = append(failed, id)
+				} else {
+					stopped = append(stopped, id)
+				}
+			}
+		}
+
+		logger.Info("Stopped all providers: %d/%d", len(stopped), len(fsmProviders))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": len(failed) == 0,
+			"stopped": stopped,
+			"failed":  failed,
+			"total":   len(fsmProviders),
+		})
+	}
+}
+
+func createFSMPauseAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		paused := []string{}
+		failed := []string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state == "RUNNING" {
+				if err := provider.Pause(); err != nil {
+					logger.Error("Failed to pause provider %s: %v", id, err)
+					failed = append(failed, id)
+				} else {
+					paused = append(paused, id)
+				}
+			}
+		}
+
+		logger.Info("Paused all providers: %d/%d", len(paused), len(fsmProviders))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": len(failed) == 0,
+			"paused":  paused,
+			"failed":  failed,
+			"total":   len(fsmProviders),
+		})
+	}
+}
+
+func createFSMResumeAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		resumed := []string{}
+		failed := []string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state == "PAUSED" {
+				if err := provider.Resume(); err != nil {
+					logger.Error("Failed to resume provider %s: %v", id, err)
+					failed = append(failed, id)
+				} else {
+					resumed = append(resumed, id)
+				}
+			}
+		}
+
+		logger.Info("Resumed all providers: %d/%d", len(resumed), len(fsmProviders))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": len(failed) == 0,
+			"resumed": resumed,
+			"failed":  failed,
+			"total":   len(fsmProviders),
 		})
 	}
 }
