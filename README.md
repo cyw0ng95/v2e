@@ -243,6 +243,50 @@ TipTap is a headless editor framework that uses JSON to represent rich text cont
 
 ---
 
+## UDE - Unified Desktop Experience
+
+**Purpose**: A modern, responsive web interface for interacting with the v2e security data platform.
+
+**Why UDE?**
+- Single unified interface for all security data (CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE)
+- Real-time data visualization with interactive tables and modals
+- Integrated learning portal (ULP) for spaced repetition
+- Knowledge graph visualization (GLC) for relationship exploration
+
+**Tech Stack**:
+- Next.js 15+ with App Router and Static Site Generation
+- Tailwind CSS v4 + shadcn/ui (Radix UI components)
+- TanStack Query v5 for data fetching
+- Lucide React icons
+
+**Key Features**:
+
+**Data Browsing**:
+- CVE, CWE, CAPEC, ATT&CK, ASVS, SSG, CCE data tables
+- Paginated lists with filtering and sorting
+- Detail modals with comprehensive entity information
+
+**Learning Portal (ULP Integration)**:
+- Bookmark security entities for learning
+- Memory cards with rich text (TipTap)
+- Spaced repetition scheduling
+- BFS/DFS navigation strategies
+
+**Graph Visualization (GLC Integration)**:
+- Interactive canvas for knowledge graphs
+- Node/edge visualization
+- Pan and zoom controls
+- Version history
+
+**RPC Client Pattern**:
+```typescript
+POST /restful/rpc with {method, target, params}
+Automatic case conversion: camelCase ↔ snake_case
+Mock mode: NEXT_PUBLIC_USE_MOCK_DATA=true
+```
+
+---
+
 ## Advanced Features
 
 ### Auto-Scaling (`cmd/v2broker/scaling/`)
@@ -301,15 +345,16 @@ High-performance message bus for internal communication:
 
 ## Service-Framework Matrix
 
-| Service | UEE | UDA | UME | ULP | Key Responsibilities |
-|---------|:---:|:---:|:---:|:-----:|----------------------|
-| **v2broker** | - | - | X | - | Central orchestrator, process management, message routing, permit management, auto-scaling, eBPF monitoring |
-| **v2access** | - | - | X | - | REST gateway, frontend communication, HTTP to RPC translation |
-| **v2local** | X | X | - | X | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), CRUD operations, caching, bookmarks, learning sessions, memory cards, GLC graphs |
-| **v2remote** | X | - | - | - | External API integration (NVD, MITRE), rate limiting, retry mechanisms |
-| **v2meta** | X | - | X | - | ETL orchestration, provider management, URN checkpointing, state machines |
-| **v2sysmon** | - | - | X | - | System metrics collection, health monitoring, performance reporting |
-| **v2analysis** | - | X | X | - | Graph database management, relationship analysis, attack path discovery |
+| Service | UEE | UDA | UME | ULP | UDE | Key Responsibilities |
+|---------|:---:|:---:|:---:|:-----:|:---:|----------------------|
+| **v2broker** | - | - | X | - | - | Central orchestrator, process management, message routing, permit management, auto-scaling, eBPF monitoring |
+| **v2access** | - | - | X | - | - | REST gateway, frontend communication, HTTP to RPC translation |
+| **v2local** | X | X | - | X | - | Data persistence (CVE/CWE/CAPEC/ATT&CK/ASVS/SSG/CCE), CRUD operations, caching, bookmarks, learning sessions, memory cards, GLC graphs |
+| **v2remote** | X | - | - | - | - | External API integration (NVD, MITRE), rate limiting, retry mechanisms |
+| **v2meta** | X | - | X | - | - | ETL orchestration, provider management, URN checkpointing, state machines |
+| **v2sysmon** | - | - | X | - | - | System metrics collection, health monitoring, performance reporting |
+| **v2analysis** | - | X | X | - | - | Graph database management, relationship analysis, attack path discovery |
+| **website (UDE)** | - | - | - | X | X | Unified Desktop Experience - frontend interface for all services |
 
 ### Framework Distribution
 
@@ -319,6 +364,7 @@ High-performance message bus for internal communication:
 | **UDA** (Unified Data Analysis) | v2analysis | v2local (data source) | URN (node IDs), RPC (queries) |
 | **UME** (Unified Message Exchanging) | v2broker | All services | RPC (message protocol), Binary Protocol |
 | **ULP** (Unified Learning Portal) | v2local (bookmarks, memory cards, learning sessions, GLC graphs) | v2access (gateway) | FSM (state management), Strategy (navigation patterns), Storage (SQLite) |
+| **UDE** (Unified Desktop Experience) | website | v2access (gateway) | Next.js, TanStack Query, React |
 
 ---
 
@@ -326,23 +372,24 @@ High-performance message bus for internal communication:
 
 ```
 +----------------+      +-------------+      +---------+
-| Next.js Frontend|----->| Access Svc  |----->| Broker  |
-+----------------+      +-------------+      +---------+
-                                                         |
-                 +----------------------------------------+
-                 |                                        |
-                 v                                        v
-      +----------+----------+          +----------+------------------+
-      |   v2local          |          |   v2meta                   |
-      |   (Data Storage)   |          |   (UEE Framework)          |
-      +--------------------+          +----------------------------+
-                 +----------+------------------+
-                 |          |                |
-                 v          v                v
-      +----------+   +-----+-----+   +-------+------+
-      | v2remote |   |v2sysmon |   |v2analysis    |
-      | (APIs)   |   | (Monitor)|   | (UDA Graph)  |
-      +----------+   +---------+   +--------------+
+| UDE Frontend  |----->| Access Svc  |----->| Broker  |
+| (Next.js)     |      +-------------+      +---------+
++----------------+                              |
+                                                |
+                  +----------------------------------------+
+                  |                                        |
+                  v                                        v
+       +----------+----------+          +----------+------------------+
+       |   v2local          |          |   v2meta                   |
+       |   (Data Storage)   |          |   (UEE Framework)          |
+       +--------------------+          +----------------------------+
+                  +----------+------------------+
+                  |          |                |
+                  v          v                v
+       +----------+   +-----+-----+   +-------+------+
+       | v2remote |   |v2sysmon |   |v2analysis    |
+       | (APIs)   |   | (Monitor)|   | (UDA Graph)  |
+       +----------+   +---------+   +--------------+
 ```
 
 ---
@@ -453,7 +500,7 @@ v2e::ssg::ssg::rhel9-guide-ospp
     v2remote/           # External API integration
     v2meta/             # ETL orchestration (UEE framework)
     v2sysmon/           # System monitoring
-    v2analysis/          # Graph analysis (UDA framework)
+    v2analysis/         # Graph analysis (UDA framework)
   pkg/
     proc/               # Subprocess framework
     message/            # Message handling with pooling
@@ -468,7 +515,7 @@ v2e::ssg::ssg::rhel9-guide-ospp
     asvs/               # ASVS (Application Security Verification Standard) models
     glc/                # GLC (Graphized Learning Canvas) models and storage
     jsonutil/           # JSON utilities with Sonic optimization
-  website/              # Next.js frontend
+  website/              # UDE (Unified Desktop Experience) - Next.js frontend
   assets/               # Data assets (CWE, CAPEC, ATT&CK)
 ```
 
@@ -484,6 +531,7 @@ v2e::ssg::ssg::rhel9-guide-ospp
 - [cmd/v2meta/providers](cmd/v2meta/providers) - ETL provider implementations
 - [pkg/notes](pkg/notes) - ULP (Unified Learning Portal) framework documentation
 - [pkg/glc](pkg/glc) - GLC (Graphized Learning Canvas) models and storage
+- [website](website) - UDE (Unified Desktop Experience) frontend documentation
 
 ---
 

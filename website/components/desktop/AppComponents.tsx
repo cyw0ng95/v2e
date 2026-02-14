@@ -11,12 +11,19 @@ import { lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { CVSSProvider } from '@/lib/cvss-context';
+import { useEtlTree } from '@/lib/hooks';
+import { rpcClient } from '@/lib/rpc-client';
+import { toast } from 'sonner';
 
 // Lazy load application components for better performance
 const CVSSCalculator = lazy(() => import('@/components/cvss/calculator').then(m => ({ default: m.default })));
-// Note: ETL and GLC apps use placeholder until desktop components are implemented
 const McardsStudy = lazy(() => import('@/components/mcards/mcards-study').then(m => ({ default: m.default })));
 const BookmarkTable = lazy(() => import('@/components/bookmark-table').then(m => ({ default: m.default })));
+const CAPECTable = lazy(() => import('@/components/capec-table').then(m => ({ default: m.CAPECTable })));
+const CWE_TABLE = lazy(() => import('@/components/cwe-table').then(m => ({ default: m.CWETable })));
+const ATTACKTable = lazy(() => import('@/components/attack-table').then(m => ({ default: m.AttackTable })));
+const GraphAnalysisPage = lazy(() => import('@/components/graph-analysis-page').then(m => ({ default: m.default })));
+const ETLTopologyViewer = lazy(() => import('@/components/etl-topology-viewer').then(m => ({ default: m.ETLTopologyViewer })));
 
 /**
  * Loading component for lazy-loaded apps
@@ -102,19 +109,112 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
         </div>
       );
 
-    // Database apps (CVE, CWE, CAPEC, ATT&CK) - still using route-based pages
-    // These can be progressively migrated to components
-    // ETL and GLC also use placeholder until desktop components are implemented
-    case 'cve':
-    case 'cwe':
     case 'capec':
+      return (
+        <div className="h-full overflow-auto bg-background">
+          <CAPECTable />
+        </div>
+      );
+
+    case 'cwe':
+      return (
+        <div className="h-full overflow-auto bg-background">
+          <CWE_TABLE />
+        </div>
+      );
+
     case 'attack':
+      return (
+        <div className="h-full overflow-auto bg-background">
+          <ATTACKTable />
+        </div>
+      );
+
+    case 'glc':
+      return (
+        <div className="h-full overflow-hidden bg-background">
+          <GraphAnalysisPage />
+        </div>
+      );
+
+    case 'etl': {
+      const { data, isLoading, error } = useEtlTree(5000);
+      
+      const handleProviderAction = async (providerId: string, action: 'start' | 'pause' | 'stop') => {
+        try {
+          let result;
+          if (action === 'start') {
+            result = await rpcClient.startProvider(providerId);
+          } else if (action === 'pause') {
+            result = await rpcClient.pauseProvider(providerId);
+          } else {
+            result = await rpcClient.stopProvider(providerId);
+          }
+          
+          if (result.retcode === 0 && result.payload?.success) {
+            toast.success(`Provider ${providerId} ${action}ed successfully`);
+          } else {
+            toast.error(`Failed to ${action} provider ${providerId}`);
+          }
+        } catch (err: any) {
+          console.error(`Failed to ${action} provider:`, err);
+          toast.error(`Failed to ${action} provider: ${err.message || 'Unknown error'}`);
+        }
+      };
+
+      const handleMacroAction = async (action: 'start' | 'stop' | 'pause' | 'resume') => {
+        try {
+          let result;
+          if (action === 'start') {
+            result = await rpcClient.startAllProviders();
+          } else if (action === 'pause') {
+            result = await rpcClient.pauseAllProviders();
+          } else if (action === 'resume') {
+            result = await rpcClient.resumeAllProviders();
+          } else {
+            result = await rpcClient.stopAllProviders();
+          }
+          
+          const p = result.payload as any;
+          
+          if (result.retcode === 0 && p?.success) {
+            const started = p.started || [];
+            const total = p.total || 0;
+            toast.success(`Successfully ${action}ed all providers (${started.length}/${total})`);
+          } else if (p?.failed?.length > 0) {
+            const reasons = p.failed_reasons;
+            if (reasons) {
+              const reasonText = Object.entries(reasons).map(([id, err]) => `${id}: ${err}`).join('\n');
+              toast.error(`Failed to ${action} some providers:\n${reasonText}`);
+            } else {
+              toast.error(`Failed to ${action} providers: ${p.failed.join(', ')}`);
+            }
+          } else {
+            toast.info(`Providers ${action} command completed`);
+          }
+        } catch (err: any) {
+          console.error(`Failed to ${action} all providers:`, err);
+          toast.error(`Failed to ${action} providers: ${err.message || 'Unknown error'}`);
+        }
+      };
+
+      return (
+        <div className="h-full overflow-auto bg-background p-4">
+          <ETLTopologyViewer 
+            data={data} 
+            isLoading={isLoading}
+            onProviderAction={handleProviderAction}
+            onMacroAction={handleMacroAction}
+          />
+        </div>
+      );
+    }
+
+    // Other apps - placeholder
     case 'sysmon':
     case 'cce':
     case 'ssg':
     case 'asvs':
-    case 'etl':
-    case 'glc':
     default:
       return <AppPlaceholder appId={appId} title={title} />;
   }
@@ -124,6 +224,6 @@ function renderAppComponent(appId: string, title: string, windowId?: string) {
  * Check if an app has a component implementation
  */
 export function hasAppComponent(appId: string): boolean {
-  const componentApps = ['cvss', 'mcards', 'bookmarks'];
+  const componentApps = ['cvss', 'mcards', 'bookmarks', 'capec', 'cwe', 'attack', 'glc', 'etl'];
   return componentApps.includes(appId);
 }

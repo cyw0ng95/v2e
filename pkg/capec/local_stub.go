@@ -5,6 +5,7 @@ package capec
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -16,6 +17,11 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+)
+
+const (
+	// MaxXMLFileSize is the maximum allowed XML file size (100MB)
+	MaxXMLFileSize = 100 << 20
 )
 
 var capecIDRegexPool = sync.Pool{
@@ -395,6 +401,91 @@ func (s *LocalCAPECStore) GetCatalogMeta(ctx context.Context) (*CAPECCatalogMeta
 		return nil, err
 	}
 	return &meta, nil
+}
+
+// ImportWithStreamingParser imports CAPEC items using streaming parser with batch processing.
+// This is the recommended method for large CAPEC XML files.
+// Returns (imported bool, error) where imported is true if data was actually imported.
+func ImportWithStreamingParser(store *LocalCAPECStore, xmlPath string, force bool) (bool, error) {
+	return ImportWithStreamingParserAndConfig(store, xmlPath, force, DefaultStreamingBatchConfig())
+}
+
+// ImportWithStreamingParserAndConfig imports CAPEC items using streaming parser with custom batch configuration.
+// Returns (imported bool, error) where imported is true if data was actually imported.
+func ImportWithStreamingParserAndConfig(store *LocalCAPECStore, xmlPath string, force bool, config StreamingBatchConfig) (bool, error) {
+	// Check file size before parsing
+	info, err := os.Stat(xmlPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to stat xml file: %w", err)
+	}
+	if info.Size() > MaxXMLFileSize {
+		return false, fmt.Errorf("xml file too large: %d bytes (max %d bytes)", info.Size(), MaxXMLFileSize)
+	}
+
+	// Open file and extract catalog version
+	f, err := os.Open(xmlPath)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	// First pass: extract catalog version
+	catalogVersion := ""
+	dec := xml.NewDecoder(f)
+	firstToken := true
+	for {
+		t, err := dec.Token()
+		if err != nil {
+			break
+		}
+		se, ok := t.(xml.StartElement)
+		if !ok {
+			continue
+		}
+		if firstToken {
+			firstToken = false
+			for _, attr := range se.Attr {
+				if attr.Name.Local == "Version" {
+					catalogVersion = attr.Value
+					break
+				}
+			}
+			// Check if we should skip import
+			if !force && catalogVersion != "" {
+				var meta CAPECCatalogMeta
+				if err := store.db.First(&meta).Error; err == nil {
+					if meta.Version == catalogVersion {
+						return false, nil
+					}
+				}
+			}
+		}
+		// After extracting version, break to restart for actual parsing
+		break
+	}
+
+	// Reopen file for streaming parser
+	f.Close()
+	f, err = os.Open(xmlPath)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	// Create streaming parser
+	parser := NewStreamingCAPECParser(store.db, config)
+	if err := parser.Parse(f); err != nil {
+		return false, err
+	}
+
+	// Persist catalog metadata
+	if catalogVersion != "" {
+		if err := parser.SetCatalogMeta(catalogVersion, xmlPath, time.Now().Unix()); err != nil {
+			return false, fmt.Errorf("failed to set catalog meta: %w", err)
+		}
+	}
+
+	return true, nil
 }
 
 func firstNonEmpty(a, b string) string {

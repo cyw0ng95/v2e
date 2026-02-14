@@ -53,6 +53,45 @@ The v2access service is a lightweight gateway that:
   - **List CVEs**: `{"method": "RPCListCVEs", "target": "local", "params": {"offset": 0, "limit": 10}}`
   - **Create Bookmark**: `{"method": "RPCCreateBookmark", "target": "local", "params": {"global_item_id": "...", "title": "..."}}`
 
+### 3. POST /restful/rpc/{resource}/{action}
+- **Description**: Path-based RPC endpoints for cleaner URLs (recommended)
+- **Request Parameters**:
+  - Body: Parameters directly in JSON format (no `method` or `target` needed)
+- **Response**:
+  - Same as POST /restful/rpc: `retcode`, `message`, `payload`
+- **Path Format**: `/restful/rpc/{resource}/{action}`
+- **Examples**:
+  - **Get CVE**: POST /restful/rpc/cve/get with body `{"cveId": "CVE-2021-44228"}`
+  - **List CVEs**: POST /restful/rpc/cve/list with body `{"offset": 0, "limit": 10}`
+  - **Create Bookmark**: POST /restful/rpc/bookmark/create with body `{"globalItemId": "...", "title": "..."}`
+  - **Session Status**: POST /restful/rpc/session/status with body `{}`
+
+### Available Path-Based Endpoints
+
+| Endpoint | RPC Method | Target | Description |
+|----------|------------|--------|-------------|
+| POST /restful/rpc/cve/get | RPCGetCVE | local | Get CVE by ID |
+| POST /restful/rpc/cve/list | RPCListCVEs | local | List CVEs |
+| POST /restful/rpc/cve/count | RPCCountCVEs | local | Count CVEs |
+| POST /restful/rpc/cwe/list | RPCListCWEs | local | List CWEs |
+| POST /restful/rpc/cwe-view/list | RPCListCWEViews | local | List CWE Views |
+| POST /restful/rpc/capec/list | RPCListCAPECs | local | List CAPECs |
+| POST /restful/rpc/attack/techniques | RPCListAttackTechniques | local | List ATT&CK techniques |
+| POST /restful/rpc/asvs/list | RPCListASVS | local | List ASVS requirements |
+| POST /restful/rpc/cce/list | RPCListCCEs | local | List CCEs |
+| POST /restful/rpc/session/start | RPCStartSession | meta | Start session |
+| POST /restful/rpc/session/status | RPCGetSessionStatus | meta | Get session status |
+| POST /restful/rpc/bookmark/list | RPCListBookmarks | local | List bookmarks |
+| POST /restful/rpc/note/by-bookmark | RPCGetNotesByBookmark | local | Get notes by bookmark |
+| POST /restful/rpc/memory-card/list | RPCListMemoryCards | local | List memory cards |
+| POST /restful/rpc/glc/graph/list | RPCGLCGraphList | local | List GLC graphs |
+| POST /restful/rpc/analysis/stats | RPCGetGraphStats | analysis | Get graph statistics |
+| POST /restful/rpc/system/metrics | RPCGetSysMetrics | sysmon | Get system metrics |
+| POST /restful/rpc/etl/tree | RPCGetEtlTree | meta | Get ETL tree |
+| POST /restful/rpc/ssg/guides | RPCSSGListGuides | local | List SSG guides |
+
+Full endpoint list available in `cmd/v2access/rpc_routes.go`
+
 ## Backend RPC Methods Reference
 
 All available RPC methods are documented in the respective service documentation:

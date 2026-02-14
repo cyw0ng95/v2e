@@ -299,13 +299,15 @@ func (p *BaseProviderFSM) GetDependencies() []string {
 	return deps
 }
 
-// CheckDependencies verifies that all dependency providers are in TERMINATED state
+// CheckDependencies verifies that dependency providers are in a valid state
+// Valid states: IDLE (not started), ACQUIRING (starting), RUNNING (in progress), TERMINATED (completed)
+// Invalid: WAITING_QUOTA, WAITING_BACKOFF, PAUSED
 func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderState) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
 	if len(p.dependencies) == 0 {
-		return nil // No dependencies, always ready
+		return nil
 	}
 
 	for _, depID := range p.dependencies {
@@ -313,8 +315,10 @@ func (p *BaseProviderFSM) CheckDependencies(providerStates map[string]ProviderSt
 		if !exists {
 			return fmt.Errorf("dependency provider %s not found", depID)
 		}
-		if state != ProviderTerminated {
-			return fmt.Errorf("dependency provider %s must be TERMINATED before starting, currently: %s", depID, state)
+		// Allow IDLE, ACQUIRING, RUNNING, TERMINATED - these are all valid states
+		// Block on transient failure states: WAITING_QUOTA, WAITING_BACKOFF, PAUSED
+		if state == ProviderWaitingQuota || state == ProviderWaitingBackoff || state == ProviderPaused {
+			return fmt.Errorf("dependency provider %s is in invalid state %s (must be IDLE, ACQUIRING, RUNNING, or TERMINATED)", depID, state)
 		}
 	}
 
@@ -334,8 +338,24 @@ func (p *BaseProviderFSM) Start() error {
 		return err
 	}
 
+	// Auto-grant permit and transition to RUNNING for standalone operation
+	atomic.StoreInt32(&p.permitsHeld, 1)
+	if err := p.Transition(ProviderRunning); err != nil {
+		return err
+	}
+
 	// Emit event
 	p.emitEvent(EventProviderStarted)
+
+	// Start execution
+	go func() {
+		select {
+		case <-p.ctx.Done():
+			return
+		default:
+			p.executeAsync()
+		}
+	}()
 
 	return nil
 }
@@ -371,8 +391,24 @@ func (p *BaseProviderFSM) Resume() error {
 		return err
 	}
 
+	// Auto-grant permit and transition to RUNNING
+	atomic.StoreInt32(&p.permitsHeld, 1)
+	if err := p.Transition(ProviderRunning); err != nil {
+		return err
+	}
+
 	// Emit event
 	p.emitEvent(EventProviderResumed)
+
+	// Start execution
+	go func() {
+		select {
+		case <-p.ctx.Done():
+			return
+		default:
+			p.executeAsync()
+		}
+	}()
 
 	return nil
 }
@@ -446,7 +482,57 @@ func (p *BaseProviderFSM) OnQuotaGranted(grantedCount int) error {
 		if err := p.Transition(ProviderAcquiring); err != nil {
 			return err
 		}
+		// Auto-transition to RUNNING for waiting quota retry
+		if err := p.Transition(ProviderRunning); err != nil {
+			return err
+		}
+		go func() {
+			select {
+			case <-p.ctx.Done():
+				return
+			default:
+				p.executeAsync()
+			}
+		}()
 	}
+
+	return nil
+}
+
+// AutoStart permits without waiting for broker - for standalone operation
+func (p *BaseProviderFSM) AutoStart() error {
+	currentState := p.GetState()
+
+	if currentState != ProviderIdle && currentState != ProviderAcquiring {
+		return fmt.Errorf("cannot auto-start from state %s", currentState)
+	}
+
+	// Transition to ACQUIRING then RUNNING directly
+	if currentState == ProviderIdle {
+		if err := p.Transition(ProviderAcquiring); err != nil {
+			return err
+		}
+	}
+
+	// Auto-grant permits and transition to RUNNING
+	atomic.StoreInt32(&p.permitsHeld, 1)
+	if err := p.Transition(ProviderRunning); err != nil {
+		return err
+	}
+
+	// Emit event
+	p.emitEvent(EventQuotaGranted)
+	p.emitEvent(EventProviderStarted)
+
+	// Start execution
+	go func() {
+		select {
+		case <-p.ctx.Done():
+			return
+		default:
+			p.executeAsync()
+		}
+	}()
 
 	return nil
 }
@@ -635,18 +721,25 @@ func (p *BaseProviderFSM) loadStateIfExists() error {
 	// Check if state exists first
 	state, err := p.storage.GetProviderState(p.id)
 	if err != nil {
-		// State doesn't exist, that's fine for a new provider
+		// State doesn't exist - this is fine for new providers
 		return nil
 	}
 
 	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.state = ProviderState(state.State)
+	// If loaded state is a transient state (ACQUIRING, waiting states), reset to IDLE
+	// since the operation didn't complete (system likely crashed mid-operation)
+	if p.state == ProviderAcquiring || p.state == ProviderWaitingQuota ||
+		p.state == ProviderWaitingBackoff {
+		p.state = ProviderIdle
+	}
 	p.lastCheckpoint = state.LastCheckpoint
 	p.processedCount = state.ProcessedCount
 	p.errorCount = state.ErrorCount
 	p.createdAt = state.CreatedAt
 	p.updatedAt = state.UpdatedAt
-	p.mu.Unlock()
 
 	return nil
 }

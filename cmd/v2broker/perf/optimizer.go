@@ -9,10 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/cyw0ng95/v2e/cmd/v2broker/routing"
-	"github.com/cyw0ng95/v2e/cmd/v2broker/sched"
 	"github.com/cyw0ng95/v2e/pkg/common"
 	"github.com/cyw0ng95/v2e/pkg/proc"
 )
@@ -144,218 +141,25 @@ type Optimizer struct {
 	// logger for structured logging
 	logger *common.Logger
 
-	// Adaptive optimization components
-	monitor        *sched.SystemMonitor
-	adaptiveOpt    *sched.AdaptiveOptimizer
-	adaptationMu   sync.Mutex
-	adaptationFreq time.Duration
-	lastAdaptation time.Time
-
 	// Permit integration (Phase 2 UEE)
 	permitIntegration *PermitIntegration
-
-	// Analysis optimizer for service-level optimization
-	analysisOptimizer *AnalysisOptimizer
-
-	// Batch size predictor for dynamic batch sizing (Task 014)
-	batchPredictor *BatchSizePredictor
-
-	// Dynamic batch size adjustment enabled flag (Task 015)
-	dynamicBatchSizeEnabled bool
-}
-
-func (o *Optimizer) EnableAdaptiveOptimization() {
-	// Set up callback to receive metrics from the monitor
-	o.monitor.SetCallback(func(metrics sched.LoadMetrics) {
-		// Update adaptive optimizer with new metrics
-		err := o.adaptiveOpt.Observe(metrics)
-		if err != nil && o.logger != nil {
-			o.logger.Warn("Error observing metrics: %v", err)
-		}
-
-		// Check if it's time to adapt parameters
-		o.adaptationMu.Lock()
-		if time.Since(o.lastAdaptation) >= o.adaptationFreq {
-			err := o.adaptiveOpt.AdjustConfiguration()
-			if err != nil && o.logger != nil {
-				o.logger.Warn("Error adjusting configuration: %v", err)
-			}
-			o.lastAdaptation = time.Now()
-
-			// Apply the adjusted parameters to the optimizer
-			o.applyAdaptedParameters()
-		}
-		o.adaptationMu.Unlock()
-	})
-
-	// Start the monitor
-	o.monitor.Start()
-}
-
-func (o *Optimizer) applyAdaptedParameters() {
-	// Hold adaptationMu to prevent concurrent parameter changes
-	o.adaptationMu.Lock()
-	defer o.adaptationMu.Unlock()
-
-	metrics := o.adaptiveOpt.GetMetrics()
-
-	if bufferCap, ok := metrics["buffer_capacity"].(int); ok {
-		if bufferCap != o.bufferCap {
-			// Note: We can't easily change channel capacity at runtime
-			// This would require recreating the channel, which is complex
-			if o.logger != nil {
-				o.logger.Info("Buffer capacity change suggested: %d -> %d", o.bufferCap, bufferCap)
-			}
-		}
-	}
-
-	if workerCount, ok := metrics["worker_count"].(int); ok {
-		if workerCount != o.numWorkers {
-			if o.logger != nil {
-				o.logger.Info("Adjusting worker count: %d -> %d", o.numWorkers, workerCount)
-			}
-
-			// Adjust worker count by adding or removing workers
-			o.adjustWorkerCountLocked(workerCount)
-		}
-	}
-
-	if batchSize, ok := metrics["batch_size"].(int); ok {
-		o.batchSize.Store(int32(batchSize))
-		if o.logger != nil {
-			o.logger.Info("Adjusted batch size to: %d", batchSize)
-		}
-	}
-
-	if flushInterval, ok := metrics["flush_interval"].(time.Duration); ok {
-		o.flushInterval = flushInterval
-		if o.logger != nil {
-			o.logger.Info("Adjusted flush interval to: %v", flushInterval)
-		}
-	}
-
-	// Task 015: Apply dynamic batch size adjustment if enabled
-	if o.dynamicBatchSizeEnabled && o.batchPredictor != nil {
-		predictedBatchSize := o.batchPredictor.PredictBatchSize()
-		currentBatchSize := o.batchSize.Load()
-		if predictedBatchSize != int(currentBatchSize) {
-			if o.logger != nil {
-				o.logger.Info("Dynamic batch size adjustment: %d -> %d", currentBatchSize, predictedBatchSize)
-			}
-			o.batchSize.Store(int32(predictedBatchSize))
-		}
-	}
-}
-
-// adjustWorkerCountLocked adjusts worker count - caller must hold adaptationMu
-func (o *Optimizer) adjustWorkerCountLocked(newCount int) {
-	currentCount := o.numWorkers
-
-	if newCount > currentCount {
-		// Add more workers
-		for i := currentCount; i < newCount; i++ {
-			o.workerWG.Add(1)
-			go o.worker(i)
-		}
-		o.numWorkers = newCount
-	} else if newCount < currentCount {
-		// Reducing workers is complex and potentially unsafe
-		// For now, we'll just log that we'd like to reduce
-		if o.logger != nil {
-			o.logger.Info("Would like to reduce worker count: %d -> %d, but reducing workers is not implemented", currentCount, newCount)
-		}
-		// In a production system, you'd need a more sophisticated approach
-		// to safely shut down worker goroutines
-	}
-}
-
-// setProcessPriority sets the broker process to high priority (-10)
-// to ensure message routing is not starved by other processes.
-func setProcessPriority() {
-	// Set process priority to -10 (high priority)
-	// PRIO_PROCESS with pid 0 means current process
-	err := unix.Setpriority(unix.PRIO_PROCESS, 0, -10)
-	if err != nil {
-		// Log but don't fail - this requires CAP_SYS_NICE capability
-		// In production, the broker should run with appropriate permissions
-	}
-}
-
-// setCPUAffinity binds a worker goroutine to a specific CPU core.
-// This reduces cache misses and context switch overhead.
-func setCPUAffinity(workerID int) {
-	numCPU := runtime.NumCPU()
-	if numCPU <= 1 {
-		return // No point in pinning on single-core systems
-	}
-
-	// Distribute workers across available CPUs
-	cpu := workerID % numCPU
-
-	var cpuSet unix.CPUSet
-	cpuSet.Zero()
-	cpuSet.Set(cpu)
-
-	// Get current thread ID (LWP)
-	// Note: unix.Gettid() returns the thread ID
-	tid := unix.Gettid()
-
-	// Set CPU affinity for this thread
-	err := unix.SchedSetaffinity(tid, &cpuSet)
-	if err != nil {
-		// Log but don't fail - this requires appropriate permissions
-		// In production, the broker should run with CAP_SYS_NICE
-	}
-}
-
-// setIOPriority sets the I/O priority for the current thread to real-time class.
-// This ensures disk I/O operations don't block the hot path of message routing.
-func setIOPriority() {
-	// I/O priority class and priority level
-	// IOPRIO_CLASS_RT = 1 (Real-Time)
-	// Priority 0 is highest within RT class
-	const (
-		IOPRIO_CLASS_SHIFT = 13
-		IOPRIO_CLASS_RT    = 1
-		IOPRIO_PRIO_VALUE  = 0
-	)
-
-	// Construct ioprio value: (class << IOPRIO_CLASS_SHIFT) | prio
-	ioprio := (IOPRIO_CLASS_RT << IOPRIO_CLASS_SHIFT) | IOPRIO_PRIO_VALUE
-
-	// Set I/O priority for current thread
-	// IOPRIO_WHO_PROCESS = 1, pid = 0 means current thread
-	const IOPRIO_WHO_PROCESS = 1
-	_, _, errno := unix.Syscall(unix.SYS_IOPRIO_SET, IOPRIO_WHO_PROCESS, 0, uintptr(ioprio))
-	if errno != 0 {
-		// Log but don't fail - this requires CAP_SYS_ADMIN capability
-	}
 }
 
 func New(router routing.Router) *Optimizer {
-	// Set process priority to high (-10) for better scheduling
-	setProcessPriority()
-
 	n := runtime.NumCPU()
 	if n < 4 {
 		n = 4
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	opt := &Optimizer{
-		router:                  router,
-		statsSyncInterval:       100 * time.Millisecond,
-		optimizedMessages:       make(chan *proc.Message, 1000),
-		bufferCap:               1000,
-		numWorkers:              n,
-		flushInterval:           10 * time.Millisecond, // Default flush interval
-		ctx:                     ctx,
-		cancel:                  cancel,
-		monitor:                 sched.NewSystemMonitor(5 * time.Second),
-		adaptiveOpt:             sched.NewAdaptiveOptimizer(),
-		adaptationFreq:          10 * time.Second,
-		lastAdaptation:          time.Now(),
-		batchPredictor:          NewBatchSizePredictor(1, 100, 1000), // Task 014
-		dynamicBatchSizeEnabled: false,                               // Task 015: Disabled by default
+		router:            router,
+		statsSyncInterval: 100 * time.Millisecond,
+		optimizedMessages: make(chan *proc.Message, 1000),
+		bufferCap:         1000,
+		numWorkers:        n,
+		flushInterval:     10 * time.Millisecond,
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 	// Initialize atomic batchSize with default value of 1
 	opt.batchSize.Store(1)
@@ -423,27 +227,18 @@ func NewWithConfig(router routing.Router, cfg Config) *Optimizer {
 		cfg.AdaptationFreq = defaults.AdaptationFreq
 	}
 
-	// Set process priority to high (-10) for better scheduling
-	setProcessPriority()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	opt := &Optimizer{
-		router:                  router,
-		statsSyncInterval:       cfg.StatsInterval,
-		optimizedMessages:       make(chan *proc.Message, cfg.BufferCap),
-		bufferCap:               cfg.BufferCap,
-		numWorkers:              cfg.NumWorkers,
-		offerPolicy:             cfg.OfferPolicy,
-		offerTimeout:            cfg.OfferTimeout,
-		flushInterval:           cfg.FlushInterval,
-		ctx:                     ctx,
-		cancel:                  cancel,
-		monitor:                 sched.NewSystemMonitor(5 * time.Second),
-		adaptiveOpt:             sched.NewAdaptiveOptimizer(),
-		adaptationFreq:          cfg.AdaptationFreq,
-		lastAdaptation:          time.Now(),
-		batchPredictor:          NewBatchSizePredictor(1, 100, 1000), // Task 014
-		dynamicBatchSizeEnabled: false,                               // Task 015: Disabled by default
+		router:            router,
+		statsSyncInterval: cfg.StatsInterval,
+		optimizedMessages: make(chan *proc.Message, cfg.BufferCap),
+		bufferCap:         cfg.BufferCap,
+		numWorkers:        cfg.NumWorkers,
+		offerPolicy:       cfg.OfferPolicy,
+		offerTimeout:      cfg.OfferTimeout,
+		flushInterval:     cfg.FlushInterval,
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 	// Initialize atomic batchSize after struct creation
 	opt.batchSize.Store(int32(cfg.BatchSize))
@@ -484,23 +279,12 @@ func (o *Optimizer) worker(id int) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	// 2. Set CPU affinity to bind this worker to a specific core
-	setCPUAffinity(id)
-
-	// 3. Set I/O priority to real-time class for workers doing persistent writes
-	setIOPriority()
-
 	for {
 		// collect at least one message (blocking)
 		var batch []*proc.Message
 		select {
 		case msg := <-o.optimizedMessages:
 			batch = append(batch, msg)
-
-			// Record message arrival in monitor
-			if o.monitor != nil {
-				o.monitor.RecordMessage()
-			}
 		case <-o.ctx.Done():
 			return
 		}
@@ -508,11 +292,7 @@ func (o *Optimizer) worker(id int) {
 		// collect up to batchSize-1 more messages, waiting up to flushInterval
 		batchSize := int(o.batchSize.Load())
 		if batchSize > 1 {
-			// Get flushInterval under lock for consistent read
-			var flushInterval time.Duration
-			o.adaptationMu.Lock()
-			flushInterval = o.flushInterval
-			o.adaptationMu.Unlock()
+			flushInterval := o.flushInterval
 
 			deadline := time.NewTimer(flushInterval)
 		collectLoop:
@@ -520,11 +300,6 @@ func (o *Optimizer) worker(id int) {
 				select {
 				case msg := <-o.optimizedMessages:
 					batch = append(batch, msg)
-
-					// Record message arrival in monitor
-					if o.monitor != nil {
-						o.monitor.RecordMessage()
-					}
 					if len(batch) >= batchSize {
 						break collectLoop
 					}
@@ -545,7 +320,6 @@ func (o *Optimizer) worker(id int) {
 		}
 
 		// process batch
-		startTime := time.Now()
 		for _, msg := range batch {
 			if msg.Target == "broker" {
 				_ = o.router.ProcessBrokerMessage(msg)
@@ -553,26 +327,6 @@ func (o *Optimizer) worker(id int) {
 				_ = o.router.Route(msg, msg.Source)
 			}
 			o.updateAtomic(msg, true)
-		}
-		processingDuration := time.Since(startTime)
-
-		// Record processing time in monitor if available
-		if o.monitor != nil {
-			// Calculate average latency per message
-			if len(batch) > 0 {
-				avgProcessingTime := processingDuration / time.Duration(len(batch))
-				o.monitor.AddLatencySample(avgProcessingTime)
-			}
-		}
-
-		// Task 015: Record batch metrics for prediction
-		if o.batchPredictor != nil && o.dynamicBatchSizeEnabled && len(batch) > 0 {
-			// Calculate throughput for this batch (messages processed per millisecond)
-			batchDurationMs := float64(processingDuration) / float64(time.Millisecond)
-			throughput := float64(len(batch)) / batchDurationMs
-			if batchDurationMs > 0 && throughput > 0 {
-				o.batchPredictor.RecordBatch(len(batch), throughput, processingDuration, 0)
-			}
 		}
 	}
 }
@@ -603,12 +357,6 @@ func (o *Optimizer) updateAtomic(msg *proc.Message, sent bool) {
 // Offer allows non-blocking enqueue to optimized queue.
 // Offer attempts a non-blocking enqueue and returns whether the message was accepted.
 func (o *Optimizer) Offer(msg *proc.Message) bool {
-	// Update queue depth in monitor
-	if o.monitor != nil {
-		queueDepth := int64(cap(o.optimizedMessages)) - int64(len(o.optimizedMessages))
-		o.monitor.UpdateMessageQueueDepth(queueDepth)
-	}
-
 	switch o.offerPolicy {
 	case "block":
 		// blocking send
@@ -694,11 +442,6 @@ func (o *Optimizer) Metrics() map[string]interface{} {
 }
 
 func (o *Optimizer) Stop() {
-	// Stop the monitor if it exists
-	if o.monitor != nil {
-		o.monitor.Stop()
-	}
-
 	// Cancel the context to stop the main processing loop
 	o.cancel()
 
@@ -708,111 +451,5 @@ func (o *Optimizer) Stop() {
 	// Stop the stats sync ticker
 	if o.statsSyncTicker != nil {
 		o.statsSyncTicker.Stop()
-	}
-}
-
-// SetAnalysisOptimizer attaches an AnalysisOptimizer to the broker
-func (o *Optimizer) SetAnalysisOptimizer(ao *AnalysisOptimizer) {
-	o.analysisOptimizer = ao
-	if o.logger != nil {
-		o.logger.Info("Analysis optimizer attached to broker")
-	}
-}
-
-// GetAnalysisOptimizer returns the analysis optimizer
-func (o *Optimizer) GetAnalysisOptimizer() *AnalysisOptimizer {
-	return o.analysisOptimizer
-}
-
-// StartConflictMonitor starts monitoring for service conflicts
-func (o *Optimizer) StartConflictMonitor() {
-	if o.analysisOptimizer == nil {
-		if o.logger != nil {
-			o.logger.Warn("Cannot start conflict monitor: AnalysisOptimizer not set")
-		}
-		return
-	}
-
-	if o.logger != nil {
-		o.logger.Info("Starting service conflict monitor")
-	}
-
-	go o.conflictMonitorLoop()
-}
-
-// conflictMonitorLoop monitors for service conflicts and resolves them
-func (o *Optimizer) conflictMonitorLoop() {
-	ticker := time.NewTicker(2 * time.Second) // Check every 2 seconds
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			if hasConflict, conflicts := o.analysisOptimizer.DetectConflict(); hasConflict {
-				o.analysisOptimizer.ResolveConflict(conflicts)
-			} else {
-				// Clear throttles if no conflicts detected
-				o.analysisOptimizer.ClearThrottles()
-			}
-		case <-o.ctx.Done():
-			if o.logger != nil {
-				o.logger.Info("Conflict monitor stopping")
-			}
-			return
-		}
-	}
-}
-
-// EnableDynamicBatchSize enables dynamic batch size adjustment (Task 015)
-func (o *Optimizer) EnableDynamicBatchSize(minBatch, maxBatch int) {
-	o.adaptationMu.Lock()
-	defer o.adaptationMu.Unlock()
-
-	if minBatch < 1 {
-		minBatch = 1
-	}
-	if maxBatch < minBatch {
-		maxBatch = minBatch * 10
-	}
-
-	o.batchPredictor = NewBatchSizePredictor(minBatch, maxBatch, 1000)
-	o.dynamicBatchSizeEnabled = true
-
-	if o.logger != nil {
-		o.logger.Info("Dynamic batch size adjustment enabled: [%d, %d]", minBatch, maxBatch)
-	}
-}
-
-// DisableDynamicBatchSize disables dynamic batch size adjustment (Task 015)
-func (o *Optimizer) DisableDynamicBatchSize() {
-	o.adaptationMu.Lock()
-	defer o.adaptationMu.Unlock()
-
-	o.dynamicBatchSizeEnabled = false
-
-	if o.logger != nil {
-		o.logger.Info("Dynamic batch size adjustment disabled")
-	}
-}
-
-// GetBatchPredictorMetrics returns metrics from the batch size predictor (Task 014/015)
-func (o *Optimizer) GetBatchPredictorMetrics() map[string]interface{} {
-	o.adaptationMu.Lock()
-	defer o.adaptationMu.Unlock()
-
-	if o.batchPredictor == nil {
-		return map[string]interface{}{
-			"enabled": false,
-		}
-	}
-
-	trend, confidence := o.batchPredictor.GetTrendInfo()
-
-	return map[string]interface{}{
-		"enabled":              o.dynamicBatchSizeEnabled,
-		"current_batch_size":   o.batchPredictor.GetCurrentBatchSize(),
-		"predicted_batch_size": o.batchPredictor.PredictBatchSize(),
-		"trend":                int(trend),
-		"trend_confidence":     confidence,
 	}
 }

@@ -46,14 +46,15 @@ type Broker struct {
 	wg        sync.WaitGroup
 	logger    *common.Logger
 
-	bus             *mq.Bus
-	metricsRegistry *metrics.Registry
-	rpcEndpoints    map[string][]string
-	endpointsMu     sync.RWMutex
-	pendingRequests *sync.Map
-	pendingMu       sync.RWMutex
-	correlationSeq  uint64
-	spawner         Spawner
+	bus                 *mq.Bus
+	metricsRegistry     *metrics.Registry
+	processMetricsStore *ProcessMetricsStore
+	rpcEndpoints        map[string][]string
+	endpointsMu         sync.RWMutex
+	pendingRequests     *sync.Map
+	pendingMu           sync.RWMutex
+	correlationSeq      uint64
+	spawner             Spawner
 	// optimizer optionally handles message routing asynchronously
 	optimizer OptimizerInterface
 	// transportManager manages communication transports for processes
@@ -73,17 +74,18 @@ func NewBroker() *Broker {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := mq.NewBus(ctx, 100)
 	b := &Broker{
-		processes:        &sync.Map{},
-		messages:         bus.Channel(),
-		ctx:              ctx,
-		cancel:           cancel,
-		logger:           common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
-		bus:              bus,
-		metricsRegistry:  metrics.NewRegistry(),
-		rpcEndpoints:     make(map[string][]string),
-		pendingRequests:  &sync.Map{},
-		correlationSeq:   0,
-		transportManager: transport.NewTransportManager(),
+		processes:           &sync.Map{},
+		messages:            bus.Channel(),
+		ctx:                 ctx,
+		cancel:              cancel,
+		logger:              common.NewLogger(io.Discard, "[BROKER] ", common.InfoLevel),
+		bus:                 bus,
+		metricsRegistry:     metrics.NewRegistry(),
+		processMetricsStore: NewProcessMetricsStore(),
+		rpcEndpoints:        make(map[string][]string),
+		pendingRequests:     &sync.Map{},
+		correlationSeq:      0,
+		transportManager:    transport.NewTransportManager(),
 	}
 
 	// Set transport error handler to log warnings

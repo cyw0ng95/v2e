@@ -1,11 +1,13 @@
 .build/
 .claude
+.sisyphus/
 /v2broker
 /v2meta
 /v2local
 /v2remote
 /v2analysis
 /v2sysmon
+/v2access
 /*.db
 /*.db-shm
 /*.db-wal

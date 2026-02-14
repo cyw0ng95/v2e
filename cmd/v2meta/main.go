@@ -79,6 +79,10 @@ func main() {
 		logger.Warn(LogMsgRunDBFileDoesNotExist, runDBPath, err)
 	}
 
+	// Use separate database file for FSM storage to avoid lock contention
+	// with the main session database (runDBPath)
+	fsmDBPath := runDBPath + "-fsm"
+
 	// Create run store
 	logger.Info(LogMsgRunStoreOpening, runDBPath)
 	logger.Info(LogMsgCreatingRunStore)
@@ -120,17 +124,18 @@ func main() {
 
 	// Initialize UEE FSM infrastructure
 	logger.Info("Initializing UEE FSM infrastructure...")
-	if err := initFSMInfrastructure(logger, runDBPath, sp); err != nil {
-		logger.Error("Failed to initialize UEE FSM infrastructure: %v", err)
-		// Continue without FSM infrastructure for now
-	} else {
-		// Register FSM control RPC handlers
-		fsmHandlers := CreateFSMRPCHandlers(logger)
-		for name, handler := range fsmHandlers {
-			sp.RegisterHandler(name, handler)
-			logger.Info(LogMsgRPCHandlerRegistered, name)
-			logger.Debug(LogMsgRPCClientHandlerRegistered, name)
-		}
+	fsmInitErr := initFSMInfrastructure(logger, fsmDBPath, sp)
+	if fsmInitErr != nil {
+		logger.Error("Failed to initialize UEE FSM infrastructure: %v", fsmInitErr)
+		// Continue but still register basic FSM handlers
+	}
+
+	// Register FSM control RPC handlers (always register, even if init failed)
+	fsmHandlers := CreateFSMRPCHandlers(logger)
+	for name, handler := range fsmHandlers {
+		sp.RegisterHandler(name, handler)
+		logger.Info(LogMsgRPCHandlerRegistered, name)
+		logger.Debug(LogMsgRPCClientHandlerRegistered, name)
 	}
 
 	// Register RPC handlers for CRUD operations
@@ -188,11 +193,6 @@ func main() {
 	// Register Memory Card proxy handlers
 	registerMemoryCardProxyHandlers(sp, rpcClient, logger)
 
-	// Register ETL tree handler
-	sp.RegisterHandler("RPCGetEtlTree", createGetEtlTreeHandler(jobExecutor, logger))
-	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetEtlTree")
-	logger.Debug(LogMsgRPCClientHandlerRegistered, "RPCGetEtlTree")
-
 	// Register kernel metrics handler
 	sp.RegisterHandler("RPCGetKernelMetrics", createGetKernelMetricsHandler(rpcClient, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCGetKernelMetrics")
@@ -206,7 +206,6 @@ func main() {
 	sp.RegisterHandler("RPCStopProvider", createStopProviderHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCStopProvider")
 
-	// Register performance policy handler
 	sp.RegisterHandler("RPCUpdatePerformancePolicy", createUpdatePerformancePolicyHandler(jobExecutor, logger))
 	logger.Info(LogMsgRPCHandlerRegistered, "RPCUpdatePerformancePolicy")
 
@@ -952,88 +951,6 @@ func registerMemoryCardProxyHandlers(sp *subprocess.Subprocess, rpcClient *rpc.C
 	sp.RegisterHandler("RPCDeleteMemoryCard", createProxyHandler(rpcClient, logger, "local", "RPCDeleteMemoryCard"))
 	sp.RegisterHandler("RPCListMemoryCards", createProxyHandler(rpcClient, logger, "local", "RPCListMemoryCards"))
 	logger.Info("Memory Card proxy handlers registered")
-}
-
-// createGetEtlTreeHandler creates a handler that returns the ETL tree with macro FSM and provider states
-func createGetEtlTreeHandler(jobExecutor *taskflow.JobExecutor, logger *common.Logger) subprocess.Handler {
-	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
-		logger.Debug("RPCGetEtlTree: Getting ETL tree")
-
-		// Get active run to determine macro state
-		activeRun, err := jobExecutor.GetActiveRun()
-		macroState := "IDLE"
-		providers := make([]map[string]interface{}, 0)
-		activeProviders := 0
-
-		if err == nil && activeRun != nil {
-			// Map run state to macro FSM state
-			switch activeRun.State {
-			case taskflow.StateQueued:
-				macroState = "BOOTSTRAPPING"
-			case taskflow.StateRunning:
-				macroState = "ORCHESTRATING"
-			case taskflow.StatePaused:
-				macroState = "STABILIZING"
-			case taskflow.StateCompleted, taskflow.StateStopped:
-				macroState = "DRAINING"
-			default:
-				macroState = "IDLE"
-			}
-
-			// Build provider node from active run
-			providerState := "IDLE"
-			switch activeRun.State {
-			case taskflow.StateQueued:
-				providerState = "ACQUIRING"
-			case taskflow.StateRunning:
-				providerState = "RUNNING"
-				activeProviders++
-			case taskflow.StatePaused:
-				providerState = "WAITING_QUOTA"
-			case taskflow.StateCompleted:
-				providerState = "TERMINATED"
-			case taskflow.StateStopped:
-				providerState = "PAUSED"
-			}
-
-			providerType := string(activeRun.DataType)
-			if providerType == "" {
-				providerType = "unknown"
-			}
-
-			providers = append(providers, map[string]interface{}{
-				"id":             activeRun.ID,
-				"providerType":   providerType,
-				"state":          providerState,
-				"processedCount": activeRun.FetchedCount,
-				"errorCount":     activeRun.ErrorCount,
-				"permitsHeld":    0, // No permit system after CCE removal
-				"createdAt":      activeRun.CreatedAt.Format(time.RFC3339),
-				"updatedAt":      activeRun.UpdatedAt.Format(time.RFC3339),
-			})
-		}
-
-		// Build macro node
-		now := time.Now()
-		macro := map[string]interface{}{
-			"id":        "main-orchestrator",
-			"state":     macroState,
-			"providers": providers,
-			"createdAt": now.Add(-24 * time.Hour).Format(time.RFC3339), // Default creation time
-			"updatedAt": now.Format(time.RFC3339),
-		}
-
-		result := map[string]interface{}{
-			"tree": map[string]interface{}{
-				"macro":           macro,
-				"totalProviders":  len(providers),
-				"activeProviders": activeProviders,
-			},
-		}
-
-		logger.Debug("RPCGetEtlTree: Successfully retrieved ETL tree")
-		return subprocess.NewSuccessResponse(msg, result)
-	}
 }
 
 // createGetKernelMetricsHandler creates a handler that returns kernel performance metrics

@@ -90,20 +90,69 @@ const V3_MAPS: V3LookupMaps = {
 
 /**
  * Calculates CVSS v3.0/v3.1 Exploitability score
+ * NOTE: PR value differs based on Scope (Changed vs Unchanged)
  */
 function calculateV3Exploitability(metrics: CVSS3BaseMetrics): number {
   const av = V3_MAPS.av[metrics.AV];
   const ac = V3_MAPS.ac[metrics.AC];
-  const pr = V3_MAPS.pr[metrics.PR];
   const ui = V3_MAPS.ui[metrics.UI];
+  
+  // PR mapping differs based on Scope per FIRST.org spec
+  // Scope Unchanged: N:0.85, L:0.62, H:0.50
+  // Scope Changed: N:0.85, L:0.68, H:0.50
+  let pr: number;
+  if (metrics.S === 'C') {
+    const prChanged: Record<PR, number> = { N: 0.85, L: 0.68, H: 0.50 };
+    pr = prChanged[metrics.PR];
+  } else {
+    pr = V3_MAPS.pr[metrics.PR];
+  }
 
-  return ROUND(8.22 * av * ac * pr * ui);
+  return 8.22 * av * ac * pr * ui;
 }
 
 /**
- * Calculates CVSS v3.0/v3.1 Impact score
+ * Helper to get PR value for exploitability calculation (handles Scope Changed)
  */
-function calculateV3Impact(metrics: CVSS3BaseMetrics): number {
+function getPRValue(pr: PR, scopeChanged: boolean): number {
+  if (scopeChanged) {
+    const prChanged: Record<PR, number> = { N: 0.85, L: 0.68, H: 0.50 };
+    return prChanged[pr];
+  }
+  return V3_MAPS.pr[pr];
+}
+
+/**
+ * Calculates CVSS v3.0/v3.1 base score
+ */
+function calculateV3BaseScore(metrics: CVSS3BaseMetrics): number {
+  const scopeChanged = metrics.S === 'C';
+  const impact = calculateV3Impact(metrics, scopeChanged);
+  const exploitability = calculateV3Exploitability(metrics);
+
+  let baseScore = impact + exploitability;
+
+  // Apply 1.08 multiplier for Scope Changed BEFORE capping
+  if (scopeChanged) {
+    baseScore = 1.08 * baseScore;
+  }
+
+  // Per FIRST spec: min(10, Impact + Exploitability)
+  baseScore = Math.min(10, baseScore);
+
+  // When Scope is Changed and result >= 9.0, round up to 10
+  if (scopeChanged && baseScore >= 9.0) {
+    baseScore = 10;
+  }
+
+  // Final rounding to 1 decimal place
+  return ROUND(baseScore);
+}
+
+/**
+ * Calculates CVSS v3.0/v3.1 Impact score (without rounding - precision needed for base score calc)
+ */
+function calculateV3Impact(metrics: CVSS3BaseMetrics, scopeChanged: boolean): number {
   const c = V3_MAPS.c[metrics.C];
   const i = V3_MAPS.i[metrics.I];
   const a = V3_MAPS.a[metrics.A];
@@ -111,39 +160,17 @@ function calculateV3Impact(metrics: CVSS3BaseMetrics): number {
   // ISS (Impact Sub-Score) = 1 - [(1 - Confidentiality) × (1 - Integrity) × (1 - Availability)]
   const iss = 1 - ((1 - c) * (1 - i) * (1 - a));
 
-  const scopeModified = V3_MAPS.s[metrics.S];
-
   // Impact formula per FIRST.org CVSS v3.1 specification:
   // If Scope is Unchanged: Impact = 6.42 × ISS
   // If Scope is Changed: Impact = 7.52 × (ISS - 0.029) - 3.25 × (ISS × 0.9731 - 0.02)^13
-  if (scopeModified === 1) {
+  // NOTE: Do NOT round until after base score calculation
+  if (scopeChanged) {
     // Scope Changed: Impact = 7.52 × (ISS - 0.029) - 3.25 × (ISS × 0.9731 - 0.02)^13
-    return ROUND(7.52 * (iss - 0.029) - 3.25 * Math.pow((iss * 0.9731 - 0.02), 13));
+    return 7.52 * (iss - 0.029) - 3.25 * Math.pow((iss * 0.9731 - 0.02), 13);
   } else {
     // Scope Unchanged: Impact = 6.42 × ISS
-    return ROUND(6.42 * iss);
+    return 6.42 * iss;
   }
-}
-
-/**
- * Calculates CVSS v3.0/v3.1 base score
- */
-function calculateV3BaseScore(metrics: CVSS3BaseMetrics): number {
-  const impact = calculateV3Impact(metrics);
-  const exploitability = calculateV3Exploitability(metrics);
-  const scopeModified = V3_MAPS.s[metrics.S];
-
-  let baseScore = impact + exploitability;
-
-  // Per FIRST spec: min(10, Impact + Exploitability)
-  // But when Scope is Changed and result >= 10, round up to 10
-  baseScore = Math.min(10, baseScore);
-
-  if (scopeModified === 1 && baseScore > 9) {
-    baseScore = 10;
-  }
-
-  return ROUND(baseScore);
 }
 
 /**
@@ -171,12 +198,12 @@ function applyV3TemporalAdjustments(
   const adjustedScore = baseScore * e * rl * rc;
 
   return {
-    score: ROUND(baseScore),
+    score: ROUND(adjustedScore),
     breakdown: {
       baseScore: ROUND(baseScore),
       temporalScore: ROUND(adjustedScore),
       exploitabilityScore: ROUND(calculateV3Exploitability(baseMetrics)),
-      impactScore: ROUND(calculateV3Impact(baseMetrics)),
+      impactScore: ROUND(calculateV3Impact(baseMetrics, baseMetrics.S === 'C')),
       baseSeverity: getSeverity(ROUND(baseScore)),
       temporalSeverity: getSeverity(ROUND(adjustedScore))
     }
@@ -197,6 +224,7 @@ function getEnvValue<T extends string>(
 
 /**
  * Applies CVSS v3 environmental adjustments
+ * Per FIRST.org CVSS v3.1 specification
  */
 function applyV3EnvironmentalAdjustments(
   baseScore: number,
@@ -212,7 +240,7 @@ function applyV3EnvironmentalAdjustments(
   const ir = irMap[environmental.IR] ?? 1;
   const ar = arMap[environmental.AR] ?? 1;
 
-  // Calculate modified impact
+  // Get modified impact metrics (use base values if not specified, but X defaults to base)
   const mc = getEnvValue(environmental.MC, baseMetrics.C, 'N');
   const mi = getEnvValue(environmental.MI, baseMetrics.I, 'N');
   const ma = getEnvValue(environmental.MA, baseMetrics.A, 'N');
@@ -225,41 +253,51 @@ function applyV3EnvironmentalAdjustments(
   const miValue = iMap[mi];
   const maValue = aMap[ma];
 
-  // Get MS value handling
-  let msModified = 0;
-  if (environmental.MS === 'X') {
-    msModified = 0;
-  } else if (environmental.MS !== undefined) {
-    msModified = 0;
+  // Determine if scope is changed (use modified scope if specified)
+  const ms = environmental.MS;
+  const scopeChanged = (ms === 'C') || (ms === undefined && baseMetrics.S === 'C');
+
+  // Calculate Modified Impact Sub-Score (MISS)
+  const miss = 1 - ((1 - mcValue) * (1 - miValue) * (1 - maValue));
+
+  // Calculate Modified Impact based on scope
+  let modifiedImpact: number;
+  if (scopeChanged) {
+    modifiedImpact = 7.52 * (miss - 0.029) - 3.25 * Math.pow((miss * 0.9731 - 0.02), 13);
   } else {
-    const sMap: Record<S, number> = { U: 0, C: 1 };
-    msModified = sMap[environmental.MS];
+    modifiedImpact = 6.42 * miss;
   }
 
-  const modifiedImpact =
-    (1 - mcValue) * (1 - miValue) * (1 - maValue);
+  // Calculate Modified Exploitability (using modified PR if MPR is specified)
+  const mpr = environmental.MPR;
+  const prValue = mpr && mpr !== 'X' ? getPRValue(mpr as PR, scopeChanged) : getPRValue(baseMetrics.PR, scopeChanged);
+  
+  const av = V3_MAPS.av[baseMetrics.AV];
+  const ac = V3_MAPS.ac[baseMetrics.AC];
+  const ui = V3_MAPS.ui[baseMetrics.UI];
+  
+  const baseExploitability = 8.22 * av * ac * prValue * ui;
+  const modifiedExploitability = baseExploitability * cr * ir * ar;
 
-  // Environmental metrics in CVSS v3 only adjust the impact and requirements
-  // They do not modify the exploitability vector (AV/AC/PR/UI)
-  // So we use the original exploitability score but adjust with requirements
-  const modifiedExploitability =
-    calculateV3Exploitability(baseMetrics) * cr * ir * ar;
+  // Calculate environmental score
+  let adjustedScore = modifiedImpact + modifiedExploitability;
+  
+  // Apply 1.08 multiplier for Scope Changed
+  if (scopeChanged) {
+    adjustedScore = 1.08 * adjustedScore;
+  }
 
-  const msValue = msModified;
-  const sMap: Record<S, number> = { U: 0, C: 1 };
-
-  const adjustedScore =
-    10.41 * (1 - modifiedImpact) * (1 - msValue) +
-    modifiedExploitability;
+  // Cap at 10
+  adjustedScore = Math.min(10, adjustedScore);
 
   return {
     score: ROUND(adjustedScore),
     breakdown: {
-      baseScore: baseScore,
+      baseScore: ROUND(baseScore),
       environmentalScore: ROUND(adjustedScore),
       exploitabilityScore: ROUND(modifiedExploitability),
-      impactScore: ROUND(modifiedImpact * 10.41),
-      baseSeverity: getSeverity(baseScore),
+      impactScore: ROUND(modifiedImpact),
+      baseSeverity: getSeverity(ROUND(baseScore)),
       environmentalSeverity: getSeverity(ROUND(adjustedScore))
     }
   };
@@ -550,11 +588,12 @@ export function calculateCVSS3(
   version: '3.0' | '3.1'
 ): { vectorString: string; breakdown: CVSS3ScoreBreakdown } {
   const baseScore = calculateV3BaseScore(metrics);
+  const scopeChanged = metrics.S === 'C';
 
   let breakdown: CVSS3ScoreBreakdown = {
     baseScore: baseScore,
     exploitabilityScore: ROUND(calculateV3Exploitability(metrics)),
-    impactScore: ROUND(calculateV3Impact(metrics)),
+    impactScore: ROUND(calculateV3Impact(metrics, scopeChanged)),
     baseSeverity: getSeverity(baseScore)
   };
 

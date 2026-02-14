@@ -81,21 +81,10 @@ func (s *LocalCCEStore) Close() error {
 
 // CreateCCE creates a new CCE entry
 func (s *LocalCCEStore) CreateCCE(ctx context.Context, entry CCE) error {
-	model := CCEModel{
-		ID:          entry.ID,
-		Title:       entry.Title,
-		Description: entry.Description,
-		Owner:       entry.Owner,
-		Status:      entry.Status,
-		Type:        entry.Type,
-		Reference:   entry.Reference,
-		Metadata:    entry.Metadata,
-	}
-
 	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"title", "description", "owner", "status", "type", "reference", "metadata", "updated_at"}),
-	}).Create(&model).Error
+	}).Create(entry.ToModelPointer()).Error
 }
 
 // CreateCCEs creates multiple CCE entries in batch
@@ -104,19 +93,7 @@ func (s *LocalCCEStore) CreateCCEs(ctx context.Context, entries []CCE) error {
 		return nil
 	}
 
-	models := make([]CCEModel, len(entries))
-	for i, entry := range entries {
-		models[i] = CCEModel{
-			ID:          entry.ID,
-			Title:       entry.Title,
-			Description: entry.Description,
-			Owner:       entry.Owner,
-			Status:      entry.Status,
-			Type:        entry.Type,
-			Reference:   entry.Reference,
-			Metadata:    entry.Metadata,
-		}
-	}
+	models := ToModelSlice(entries)
 
 	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
@@ -132,20 +109,20 @@ func (s *LocalCCEStore) GetCCEByID(ctx context.Context, id string) (*CCE, error)
 		return nil, err
 	}
 
-	return &CCE{
-		ID:          model.ID,
-		Title:       model.Title,
-		Description: model.Description,
-		Owner:       model.Owner,
-		Status:      model.Status,
-		Type:        model.Type,
-		Reference:   model.Reference,
-		Metadata:    model.Metadata,
-	}, nil
+	cce := model.ToCCE()
+	return &cce, nil
 }
 
 // ListCCEs lists CCE entries with pagination
 func (s *LocalCCEStore) ListCCEs(ctx context.Context, offset, limit int) ([]CCE, int64, error) {
+	const maxLimit = 1000
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	if limit <= 0 {
+		limit = 50 // default
+	}
+
 	var models []CCEModel
 	var total int64
 
@@ -162,25 +139,19 @@ func (s *LocalCCEStore) ListCCEs(ctx context.Context, offset, limit int) ([]CCE,
 		return nil, 0, err
 	}
 
-	entries := make([]CCE, len(models))
-	for i, model := range models {
-		entries[i] = CCE{
-			ID:          model.ID,
-			Title:       model.Title,
-			Description: model.Description,
-			Owner:       model.Owner,
-			Status:      model.Status,
-			Type:        model.Type,
-			Reference:   model.Reference,
-			Metadata:    model.Metadata,
-		}
-	}
-
-	return entries, total, nil
+	return ToCCESlice(models), total, nil
 }
 
 // SearchCCEs searches CCE entries by query
 func (s *LocalCCEStore) SearchCCEs(ctx context.Context, query string, offset, limit int) ([]CCE, int64, error) {
+	const maxLimit = 1000
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+
 	var models []CCEModel
 	var total int64
 
@@ -202,21 +173,7 @@ func (s *LocalCCEStore) SearchCCEs(ctx context.Context, query string, offset, li
 		return nil, 0, err
 	}
 
-	entries := make([]CCE, len(models))
-	for i, model := range models {
-		entries[i] = CCE{
-			ID:          model.ID,
-			Title:       model.Title,
-			Description: model.Description,
-			Owner:       model.Owner,
-			Status:      model.Status,
-			Type:        model.Type,
-			Reference:   model.Reference,
-			Metadata:    model.Metadata,
-		}
-	}
-
-	return entries, total, nil
+	return ToCCESlice(models), total, nil
 }
 
 // CountCCEs returns the total count of CCE entries

@@ -304,9 +304,91 @@ export function useCAPEC(capecId?: string) {
     return () => {
       abortController.abort();
     };
-  }, [capecId, isMounted, setStateIfMounted]);
+  }, [capecId]);
 
   return { data, isLoading, error };
+}
+
+export type UeeStatus = 'healthy' | 'degraded' | 'error' | 'unknown';
+
+function computeUeeStatus(etlTree: any, isOnline: boolean): UeeStatus {
+  if (!isOnline) {
+    return 'unknown';
+  }
+
+  if (!etlTree || !etlTree.providers || etlTree.providers.length === 0) {
+    return 'unknown';
+  }
+
+  const providers = etlTree.providers;
+  
+  const hasError = providers.some((p: any) => p.state === 'TERMINATED' && (p.error_count > 0 || p.metadata?.error));
+  if (hasError) {
+    return 'error';
+  }
+
+  const degradedStates = ['PAUSED', 'WAITING_QUOTA', 'WAITING_BACKOFF'];
+  const hasDegraded = providers.some((p: any) => degradedStates.includes(p.state));
+  if (hasDegraded) {
+    return 'degraded';
+  }
+
+  return 'healthy';
+}
+
+export function useUeeStatus(pollingInterval = 5000) {
+  const [status, setStatus] = useState<UeeStatus>('unknown');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [etlData, setEtlData] = useState<any>(null);
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const fetchStatus = async () => {
+      try {
+        const response = await rpcClient.getEtlTree();
+        
+        if (response.retcode !== 0 || !isMountedRef.current) {
+          return;
+        }
+        
+        setEtlData(response.payload);
+        
+        const newStatus = computeUeeStatus(response.payload, true);
+        setStatus(newStatus);
+      } catch {
+        if (isMountedRef.current) {
+          setStatus('unknown');
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchStatus();
+
+    if (pollingInterval > 0) {
+      interval = setInterval(fetchStatus, pollingInterval);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [pollingInterval]);
+
+  return { status, isLoading, data: etlData };
 }
 
 export function useCAPECList(offset: number = 0, limit: number = 100) {
@@ -480,31 +562,10 @@ export function useStartTypedSession() {
 export function useStartCWEImport() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const { isMounted, setStateIfMounted } = useMountedState();
 
-  const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
-    try {
-      setIsPending(true);
-      setError(null);
-
-      const response = await rpcClient.startCWEImport(params);
-
-      if (response.retcode !== 0) {
-        throw new Error(response.message || 'Failed to start CWE import');
-      }
-
-      if (options?.onSuccess) {
-        options.onSuccess(response.payload);
-      }
-    } catch (err: any) {
-      setError(err);
-      logger.error('Error starting CWE import', err);
-      if (options?.onError) {
-        options.onError(err);
-      }
-    } finally {
-      setIsPending(false);
-    }
+  const mutate = async () => {
+    setIsPending(true);
+    setError(new Error('CWE import not implemented'));
   };
 
   return { mutate, isPending, error };
@@ -513,31 +574,10 @@ export function useStartCWEImport() {
 export function useStartCAPECImport() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const { isMounted, setStateIfMounted } = useMountedState();
 
-  const mutate = async (params?: Record<string, unknown>, options?: { onSuccess?: (data: any) => void; onError?: (error: Error) => void }) => {
-    try {
-      setIsPending(true);
-      setError(null);
-
-      const response = await rpcClient.startCAPECImport(params);
-
-      if (response.retcode !== 0) {
-        throw new Error(response.message || 'Failed to start CAPEC import');
-      }
-
-      if (options?.onSuccess) {
-        options.onSuccess(response.payload);
-      }
-    } catch (err: any) {
-      setError(err);
-      logger.error('Error starting CAPEC import', err, params);
-      if (options?.onError) {
-        options.onError(err);
-      }
-    } finally {
-      setIsPending(false);
-    }
+  const mutate = async () => {
+    setIsPending(true);
+    setError(new Error('CAPEC import not implemented'));
   };
 
   return { mutate, isPending, error };
@@ -1153,6 +1193,7 @@ export function useASVSList(params: { offset?: number; limit?: number; chapter?:
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const { isMounted, setStateIfMounted } = useMountedState();
 
   const { offset = 0, limit = 100, chapter = '', level = 0 } = params;
 
@@ -2574,7 +2615,17 @@ export function useEtlTree(pollingInterval = 5000) {
           throw new Error(response.message || 'Failed to fetch ETL tree');
         }
         
-        setData(response.payload);
+        const tree = response.payload?.tree || response.payload;
+        const providers = tree?.providers || [];
+        setData({
+          macro: {
+            state: tree?.macro?.state || 'UNKNOWN',
+            providers: providers,
+          },
+          providers: providers,
+          totalProviders: providers.length,
+          activeProviders: providers.filter((p: any) => p.state === 'RUNNING').length,
+        });
         setError(null);
       } catch (err: any) {
         setError(err);

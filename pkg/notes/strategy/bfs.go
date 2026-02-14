@@ -16,7 +16,7 @@ type BFSStrategy struct {
 
 // NewBFSStrategy creates a new BFS strategy
 func NewBFSStrategy(items []SecurityItem) *BFSStrategy {
-	viewed := make(map[string]bool)
+	viewed := make(map[string]bool, len(items))
 	for _, item := range items {
 		viewed[item.URN] = false
 	}

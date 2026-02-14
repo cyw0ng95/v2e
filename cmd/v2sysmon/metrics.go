@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -14,8 +15,8 @@ type metricCollector func(m map[string]interface{}) error
 
 // metricSampler tracks the last collection time for each metric type.
 type metricSampler struct {
-	mu            sync.RWMutex
-	lastCollected map[string]time.Time
+	mu                sync.RWMutex
+	lastCollected     map[string]time.Time
 	samplingIntervals map[string]time.Duration
 }
 
@@ -24,18 +25,18 @@ var sampler = &metricSampler{
 	lastCollected: make(map[string]time.Time),
 	samplingIntervals: map[string]time.Duration{
 		// CPU and memory are collected every time (0 interval = always collect)
-		"cpu":      0,
-		"memory":   0,
+		"cpu":    0,
+		"memory": 0,
 		// Load average can be sampled every 5 seconds
 		"load_avg": 5 * time.Second,
 		// Uptime changes infrequently - sample every 30 seconds
-		"uptime":   30 * time.Second,
+		"uptime": 30 * time.Second,
 		// Disk usage changes slowly - sample every 60 seconds
-		"disk":     60 * time.Second,
+		"disk": 60 * time.Second,
 		// Swap usage changes slowly - sample every 30 seconds
-		"swap":     30 * time.Second,
+		"swap": 30 * time.Second,
 		// Network stats change rapidly - collect every time
-		"network":  0,
+		"network": 0,
 	},
 }
 
@@ -214,6 +215,7 @@ func collectAllMetrics() (map[string]interface{}, error) {
 		if err != nil {
 			// Log and continue for optional metrics
 			if !requiredMetricCollectors[mc.name] {
+				log.Printf("Optional metric %s failed: %v", mc.name, err)
 				continue
 			}
 			// Fail on first required metric error

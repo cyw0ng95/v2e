@@ -140,15 +140,18 @@ func (g *Graph) GetNeighbors(u *urn.URN) []*urn.URN {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	neighborsMap := make(map[string]*urn.URN)
+	// Pre-allocate with capacity hint
+	outEdges := g.edges[u.Key()]
+	inEdges := g.reverseEdges[u.Key()]
+	neighborsMap := make(map[string]*urn.URN, len(outEdges)+len(inEdges))
 
 	// Add outgoing neighbors
-	for _, edge := range g.edges[u.Key()] {
+	for _, edge := range outEdges {
 		neighborsMap[edge.To.Key()] = edge.To
 	}
 
 	// Add incoming neighbors
-	for _, edge := range g.reverseEdges[u.Key()] {
+	for _, edge := range inEdges {
 		neighborsMap[edge.From.Key()] = edge.From
 	}
 

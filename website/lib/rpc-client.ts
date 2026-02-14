@@ -186,15 +186,210 @@ import { logError, logWarn, logDebug, createLogger } from './logger';
 const logger = createLogger('rpc-client');
 
 // ============================================================================
+// Path-Based RPC Routing
+// ============================================================================
+
+const methodToPathMap: Record<string, { path: string; target: string }> = {
+  // CVE
+  RPCGetCVE: { path: '/cve/get', target: 'local' },
+  RPCCreateCVE: { path: '/cve/create', target: 'local' },
+  RPCUpdateCVE: { path: '/cve/update', target: 'local' },
+  RPCDeleteCVE: { path: '/cve/delete', target: 'local' },
+  RPCListCVEs: { path: '/cve/list', target: 'local' },
+  RPCCountCVEs: { path: '/cve/count', target: 'local' },
+
+  // CWE
+  RPCGetCWEByID: { path: '/cwe/get', target: 'local' },
+  RPCListCWEs: { path: '/cwe/list', target: 'local' },
+  RPCImportCWEs: { path: '/cwe/import', target: 'local' },
+
+  // CWE View
+  RPCSaveCWEView: { path: '/cwe-view/save', target: 'local' },
+  RPCGetCWEViewByID: { path: '/cwe-view/get', target: 'local' },
+  RPCListCWEViews: { path: '/cwe-view/list', target: 'local' },
+  RPCDeleteCWEView: { path: '/cwe-view/delete', target: 'local' },
+  RPCStartCWEViewJob: { path: '/cwe-view/start-job', target: 'meta' },
+  RPCStopCWEViewJob: { path: '/cwe-view/stop-job', target: 'meta' },
+
+  // CAPEC
+  RPCGetCAPECByID: { path: '/capec/get', target: 'local' },
+  RPCListCAPECs: { path: '/capec/list', target: 'local' },
+  RPCImportCAPECs: { path: '/capec/import', target: 'local' },
+  RPCForceImportCAPECs: { path: '/capec/force-import', target: 'local' },
+  RPCGetCAPECCatalogMeta: { path: '/capec/metadata', target: 'local' },
+
+  // ATT&CK
+  RPCGetAttackTechnique: { path: '/attack/technique', target: 'local' },
+  RPCGetAttackTactic: { path: '/attack/tactic', target: 'local' },
+  RPCGetAttackMitigation: { path: '/attack/mitigation', target: 'local' },
+  RPCGetAttackSoftware: { path: '/attack/software', target: 'local' },
+  RPCGetAttackGroup: { path: '/attack/group', target: 'local' },
+  RPCGetAttackTechniqueByID: { path: '/attack/technique-by-id', target: 'local' },
+  RPCGetAttackTacticByID: { path: '/attack/tactic-by-id', target: 'local' },
+  RPCGetAttackMitigationByID: { path: '/attack/mitigation-by-id', target: 'local' },
+  RPCGetAttackSoftwareByID: { path: '/attack/software-by-id', target: 'local' },
+  RPCGetAttackGroupByID: { path: '/attack/group-by-id', target: 'local' },
+  RPCListAttackTechniques: { path: '/attack/techniques', target: 'local' },
+  RPCListAttackTactics: { path: '/attack/tactics', target: 'local' },
+  RPCListAttackMitigations: { path: '/attack/mitigations', target: 'local' },
+  RPCListAttackSoftware: { path: '/attack/softwares', target: 'local' },
+  RPCListAttackGroups: { path: '/attack/groups', target: 'local' },
+  RPCImportATTACKs: { path: '/attack/import', target: 'local' },
+  RPCGetAttackImportMetadata: { path: '/attack/import-metadata', target: 'local' },
+
+  // ASVS
+  RPCListASVS: { path: '/asvs/list', target: 'local' },
+  RPCGetASVSByID: { path: '/asvs/get', target: 'local' },
+  RPCImportASVS: { path: '/asvs/import', target: 'local' },
+
+  // CCE
+  RPCGetCCEByID: { path: '/cce/get', target: 'local' },
+  RPCListCCEs: { path: '/cce/list', target: 'local' },
+  RPCImportCCEs: { path: '/cce/import', target: 'local' },
+  RPCImportCCE: { path: '/cce/import-one', target: 'local' },
+  RPCCountCCEs: { path: '/cce/count', target: 'local' },
+  RPCDeleteCCE: { path: '/cce/delete', target: 'local' },
+  RPCUpdateCCE: { path: '/cce/update', target: 'local' },
+
+  // Session/Job
+  RPCStartSession: { path: '/session/start', target: 'meta' },
+  RPCStartTypedSession: { path: '/session/start-typed', target: 'meta' },
+  RPCStopSession: { path: '/session/stop', target: 'meta' },
+  RPCGetSessionStatus: { path: '/session/status', target: 'meta' },
+  RPCPauseJob: { path: '/job/pause', target: 'meta' },
+  RPCResumeJob: { path: '/job/resume', target: 'meta' },
+
+  // Bookmark
+  RPCCreateBookmark: { path: '/bookmark/create', target: 'local' },
+  RPCGetBookmark: { path: '/bookmark/get', target: 'local' },
+  RPCUpdateBookmark: { path: '/bookmark/update', target: 'local' },
+  RPCDeleteBookmark: { path: '/bookmark/delete', target: 'local' },
+  RPCListBookmarks: { path: '/bookmark/list', target: 'local' },
+
+  // Note
+  RPCAddNote: { path: '/note/add', target: 'local' },
+  RPCGetNote: { path: '/note/get', target: 'local' },
+  RPCUpdateNote: { path: '/note/update', target: 'local' },
+  RPCDeleteNote: { path: '/note/delete', target: 'local' },
+  RPCGetNotesByBookmark: { path: '/note/by-bookmark', target: 'local' },
+
+  // Memory Card
+  RPCCreateMemoryCard: { path: '/memory-card/create', target: 'local' },
+  RPCGetMemoryCard: { path: '/memory-card/get', target: 'local' },
+  RPCUpdateMemoryCard: { path: '/memory-card/update', target: 'local' },
+  RPCDeleteMemoryCard: { path: '/memory-card/delete', target: 'local' },
+  RPCListMemoryCards: { path: '/memory-card/list', target: 'local' },
+  RPCRateMemoryCard: { path: '/memory-card/rate', target: 'local' },
+
+  // GLC
+  RPCGLCGraphCreate: { path: '/glc/graph/create', target: 'local' },
+  RPCGLCGraphGet: { path: '/glc/graph/get', target: 'local' },
+  RPCGLCGraphUpdate: { path: '/glc/graph/update', target: 'local' },
+  RPCGLCGraphDelete: { path: '/glc/graph/delete', target: 'local' },
+  RPCGLCGraphList: { path: '/glc/graph/list', target: 'local' },
+  RPCGLCGraphListRecent: { path: '/glc/graph/list-recent', target: 'local' },
+  RPCGLCVersionGet: { path: '/glc/version/get', target: 'local' },
+  RPCGLCVersionList: { path: '/glc/version/list', target: 'local' },
+  RPCGLCVersionRestore: { path: '/glc/version/restore', target: 'local' },
+  RPCGLCPresetCreate: { path: '/glc/preset/create', target: 'local' },
+  RPCGLCPresetGet: { path: '/glc/preset/get', target: 'local' },
+  RPCGLCPresetUpdate: { path: '/glc/preset/update', target: 'local' },
+  RPCGLCPresetDelete: { path: '/glc/preset/delete', target: 'local' },
+  RPCGLCPresetList: { path: '/glc/preset/list', target: 'local' },
+  RPCGLCShareCreateLink: { path: '/glc/share/create', target: 'local' },
+  RPCGLCShareGetShared: { path: '/glc/share/get', target: 'local' },
+  RPCGLCShareGetEmbedData: { path: '/glc/share/embed', target: 'local' },
+
+  // Analysis
+  RPCGetGraphStats: { path: '/analysis/stats', target: 'analysis' },
+  RPCAddNode: { path: '/analysis/node/add', target: 'analysis' },
+  RPCAddEdge: { path: '/analysis/edge/add', target: 'analysis' },
+  RPCGetNode: { path: '/analysis/node/get', target: 'analysis' },
+  RPCGetNeighbors: { path: '/analysis/neighbors', target: 'analysis' },
+  RPCFindPath: { path: '/analysis/path/find', target: 'analysis' },
+  RPCGetNodesByType: { path: '/analysis/nodes/by-type', target: 'analysis' },
+  RPCGetUEEStatus: { path: '/analysis/status', target: 'analysis' },
+  RPCBuildCVEGraph: { path: '/analysis/graph/build', target: 'analysis' },
+  RPCClearGraph: { path: '/analysis/graph/clear', target: 'analysis' },
+  RPCGetFSMState: { path: '/analysis/fsm/state', target: 'analysis' },
+  RPCPauseAnalysis: { path: '/analysis/fsm/pause', target: 'analysis' },
+  RPCResumeAnalysis: { path: '/analysis/fsm/resume', target: 'analysis' },
+  RPCSaveGraph: { path: '/analysis/graph/save', target: 'analysis' },
+  RPCLoadGraph: { path: '/analysis/graph/load', target: 'analysis' },
+
+  // System
+  RPCGetSysMetrics: { path: '/system/metrics', target: 'sysmon' },
+
+  // ETL
+  RPCGetEtlTree: { path: '/etl/tree', target: 'meta' },
+  RPCStartProvider: { path: '/etl/provider/start', target: 'meta' },
+  RPCPauseProvider: { path: '/etl/provider/pause', target: 'meta' },
+  RPCStopProvider: { path: '/etl/provider/stop', target: 'meta' },
+  RPCFSMStartAllProviders: { path: '/etl/provider/start-all', target: 'meta' },
+  RPCFSMStopAllProviders: { path: '/etl/provider/stop-all', target: 'meta' },
+  RPCFSMPauseAllProviders: { path: '/etl/provider/pause-all', target: 'meta' },
+  RPCFSMResumeAllProviders: { path: '/etl/provider/resume-all', target: 'meta' },
+  RPCFSMGetEtlTree: { path: '/etl/tree', target: 'meta' },
+  RPCUpdatePerformancePolicy: { path: '/etl/performance-policy', target: 'meta' },
+  RPCGetKernelMetrics: { path: '/etl/kernel-metrics', target: 'meta' },
+
+  // SSG
+  RPCSSGImportGuide: { path: '/ssg/import-guide', target: 'local' },
+  RPCSSGImportTable: { path: '/ssg/import-table', target: 'local' },
+  RPCSSGGetGuide: { path: '/ssg/guide', target: 'local' },
+  RPCSSGListGuides: { path: '/ssg/guides', target: 'local' },
+  RPCSSGListTables: { path: '/ssg/tables', target: 'local' },
+  RPCSSGGetTable: { path: '/ssg/table', target: 'local' },
+  RPCSSGGetTableEntries: { path: '/ssg/table-entries', target: 'local' },
+  RPCSSGGetTree: { path: '/ssg/tree', target: 'local' },
+  RPCSSGGetTreeNode: { path: '/ssg/tree-node', target: 'local' },
+  RPCSSGGetGroup: { path: '/ssg/group', target: 'local' },
+  RPCSSGGetChildGroups: { path: '/ssg/child-groups', target: 'local' },
+  RPCSSGGetRule: { path: '/ssg/rule', target: 'local' },
+  RPCSSGListRules: { path: '/ssg/rules', target: 'local' },
+  RPCSSGGetChildRules: { path: '/ssg/child-rules', target: 'local' },
+  RPCSSGImportManifest: { path: '/ssg/import-manifest', target: 'local' },
+  RPCSSGListManifests: { path: '/ssg/manifests', target: 'local' },
+  RPCSSGGetManifest: { path: '/ssg/manifest', target: 'local' },
+  RPCSSGListProfiles: { path: '/ssg/profiles', target: 'local' },
+  RPCSSGGetProfile: { path: '/ssg/profile', target: 'local' },
+  RPCSSGGetProfileRules: { path: '/ssg/profile-rules', target: 'local' },
+  RPCSSGImportDataStream: { path: '/ssg/import-datastream', target: 'local' },
+  RPCSSGListDataStreams: { path: '/ssg/datastreams', target: 'local' },
+  RPCSSGGetDataStream: { path: '/ssg/datastream', target: 'local' },
+  RPCSSGListDSProfiles: { path: '/ssg/ds-profiles', target: 'local' },
+  RPCSSGGetDSProfile: { path: '/ssg/ds-profile', target: 'local' },
+  RPCSSGGetDSProfileRules: { path: '/ssg/ds-profile-rules', target: 'local' },
+  RPCSSGListDSGroups: { path: '/ssg/ds-groups', target: 'local' },
+  RPCSSGListDSRules: { path: '/ssg/ds-rules', target: 'local' },
+  RPCSSGGetDSRule: { path: '/ssg/ds-rule', target: 'local' },
+  RPCSSGGetCrossReferences: { path: '/ssg/cross-references', target: 'local' },
+  RPCSSGFindRelatedObjects: { path: '/ssg/find-related', target: 'local' },
+  RPCSSGStartImportJob: { path: '/ssg/job/start', target: 'meta' },
+  RPCSSGStopImportJob: { path: '/ssg/job/stop', target: 'meta' },
+  RPCSSGPauseImportJob: { path: '/ssg/job/pause', target: 'meta' },
+  RPCSSGResumeImportJob: { path: '/ssg/job/resume', target: 'meta' },
+  RPCSSGGetImportStatus: { path: '/ssg/job/status', target: 'meta' },
+};
+
+function getPathForMethod(method: string): { path: string; target: string } | null {
+  return methodToPathMap[method] || null;
+}
+
+// ============================================================================
 // Default Configuration
 // ============================================================================
 
-// Detect if running in remote development environment
-const isRemoteDev = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+// Detect if running in development mode (both local and remote)
+const isDev = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1' ||
+  process.env.NODE_ENV === 'development'
+);
 
-const DEFAULT_API_BASE_URL = isRemoteDev
-  ? '/restful'  // Use relative path in remote dev (will be proxied)
-  : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';  // Local dev or fallback
+const DEFAULT_API_BASE_URL = isDev
+  ? '/restful'  // Use proxy rewrite in dev mode (Next.js rewrites /restful/* to backend)
+  : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 const DEFAULT_TIMEOUT = 120000; // 120 seconds (2 minutes) - increased for SSG operations
 const MOCK_DELAY_MS = 500; // 500ms delay for mock responses
 
@@ -432,20 +627,40 @@ async function cachedCall(
     target,
   };
 
+  // Check if we have a path-based route for this method
+  const pathRoute = getPathForMethod(method);
+  const usePathBased = pathRoute !== null;
+
   // Create promise for this request
   const requestPromise = (async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      logger.debug('Making RPC request', { method, target, params });
+      logger.debug('Making RPC request', { method, target, params, usePathBased });
 
-      const response = await fetch(`${baseUrl}/restful/rpc`, {
+      let url: string;
+      let body: string;
+
+      if (usePathBased && pathRoute) {
+        // Use path-based endpoint
+        const baseRpcPath = baseUrl.endsWith('/restful') ? '/rpc' : '/restful/rpc';
+        url = `${baseUrl}${baseRpcPath}${pathRoute.path}`;
+        // For path-based, params go directly in body
+        body = JSON.stringify(params ? convertKeysToSnakeCase(params) : {});
+      } else {
+        // Use generic RPC endpoint
+        const rpcPath = baseUrl.endsWith('/restful') ? '/rpc' : '/restful/rpc';
+        url = `${baseUrl}${rpcPath}`;
+        body = JSON.stringify(request);
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(request),
+        body,
         signal: controller.signal,
       });
 
@@ -454,14 +669,14 @@ async function cachedCall(
       const raw = await response.text();
 
       if (!response.ok) {
-        // HTTP-level error with full details for debugging
+        const rpcPath = baseUrl.endsWith('/restful') ? '/rpc' : '/restful/rpc';
         logger.error(`HTTP error: ${response.status} ${response.statusText}`, new Error(`HTTP ${response.status}`), {
-          url: `${baseUrl}/restful/rpc`,
+          url,
           method,
           target,
           status: response.status,
           statusText: response.statusText,
-          responseBody: raw.substring(0, 500), // First 500 chars
+          responseBody: raw.substring(0, 500),
         });
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -1843,6 +2058,22 @@ export class RPCClient {
     return this.call<{ providerId: string }, { success: boolean }>('RPCStopProvider', { providerId }, 'meta');
   }
 
+  async startAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMStartAllProviders', {}, 'meta');
+  }
+
+  async stopAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMStopAllProviders', {}, 'meta');
+  }
+
+  async pauseAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMPauseAllProviders', {}, 'meta');
+  }
+
+  async resumeAllProviders(): Promise<RPCResponse<{ success: boolean }>> {
+    return this.call<{}, { success: boolean }>('RPCFSMResumeAllProviders', {}, 'meta');
+  }
+
   async updatePerformancePolicy(providerId: string, policy: any): Promise<RPCResponse<{ success: boolean }>> {
     return this.call<{ providerId: string; policy: any }, { success: boolean }>('RPCUpdatePerformancePolicy', { providerId, policy }, 'meta');
   }
@@ -1905,7 +2136,7 @@ export class RPCClient {
         },
       };
     }
-    return this.call<{}, { tree: any }>('RPCGetEtlTree', {}, 'meta');
+    return this.call<{}, { tree: any }>('RPCFSMGetEtlTree', {}, 'meta');
   }
 
   /**

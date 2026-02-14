@@ -16,7 +16,7 @@ type BaseStrategy struct {
 
 // NewBaseStrategy creates a new base strategy
 func NewBaseStrategy(items []SecurityItem) *BaseStrategy {
-	viewed := make(map[string]bool)
+	viewed := make(map[string]bool, len(items))
 	for _, item := range items {
 		viewed[item.URN] = false
 	}
@@ -34,7 +34,7 @@ func (s *BaseStrategy) SetItems(items []SecurityItem) {
 	defer s.mu.Unlock()
 
 	s.items = items
-	s.viewed = make(map[string]bool)
+	s.viewed = make(map[string]bool, len(items))
 	for _, item := range items {
 		s.viewed[item.URN] = false
 	}

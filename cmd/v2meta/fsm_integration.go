@@ -181,6 +181,13 @@ func recoverRunningFSMProviders(logger *common.Logger) error {
 			// Skip recovery
 			logger.Info("Provider %s in %s state, skipping recovery", state.ID, state.State)
 
+		case fsm.ProviderAcquiring:
+			// Transient state from crash - reset to IDLE
+			logger.Info("Provider %s in ACQUIRING state (incomplete), resetting to IDLE", state.ID)
+			if err := provider.Transition(fsm.ProviderIdle); err != nil {
+				logger.Error("Failed to reset provider %s to IDLE: %v", state.ID, err)
+			}
+
 		default:
 			logger.Warn("Provider %s in unknown state %s", state.ID, state.State)
 		}
@@ -223,12 +230,20 @@ func CreateFSMRPCHandlers(logger *common.Logger) map[string]subprocess.Handler {
 		"RPCFSMGetProviderList":        createFSMGetProviderListHandler(logger),
 		"RPCFSMGetProviderCheckpoints": createFSMGetProviderCheckpointsHandler(logger),
 		"RPCFSMGetEtlTree":             createFSMGetEtlTreeHandler(logger),
+		"RPCFSMStartAllProviders":      createFSMStartAllProvidersHandler(logger),
+		"RPCFSMStopAllProviders":       createFSMStopAllProvidersHandler(logger),
+		"RPCFSMPauseAllProviders":      createFSMPauseAllProvidersHandler(logger),
+		"RPCFSMResumeAllProviders":     createFSMResumeAllProvidersHandler(logger),
 	}
 }
 
 // FSM RPC handlers
 func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -254,6 +269,10 @@ func createFSMStartProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMStopProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -283,6 +302,10 @@ func createFSMStopProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMPauseProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -312,6 +335,10 @@ func createFSMPauseProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMResumeProviderHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -341,6 +368,10 @@ func createFSMResumeProviderHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMGetProviderListHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		providers := make([]map[string]interface{}, 0, len(fsmProviders))
 
 		for id, provider := range fsmProviders {
@@ -360,6 +391,10 @@ func createFSMGetProviderListHandler(logger *common.Logger) subprocess.Handler {
 
 func createFSMGetProviderCheckpointsHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil || storageDB == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		var params map[string]interface{}
 		if err := subprocess.UnmarshalPayload(msg, &params); err != nil {
 			return subprocess.NewErrorResponse(msg, err.Error()), nil
@@ -414,6 +449,10 @@ func createFSMGetProviderCheckpointsHandler(logger *common.Logger) subprocess.Ha
 
 func createFSMGetEtlTreeHandler(logger *common.Logger) subprocess.Handler {
 	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
 		macroStats := macroFSM.GetStats()
 
 		providerStats := make([]map[string]interface{}, 0, len(fsmProviders))
@@ -423,8 +462,140 @@ func createFSMGetEtlTreeHandler(logger *common.Logger) subprocess.Handler {
 		}
 
 		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
-			"macro_fsm": macroStats,
-			"providers": providerStats,
+			"tree": map[string]interface{}{
+				"macro":     macroStats,
+				"providers": providerStats,
+			},
+		})
+	}
+}
+
+func createFSMStartAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
+		started := []string{}
+		failed := []string{}
+		failedReasons := map[string]string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state != "RUNNING" {
+				if err := macroFSM.StartProviderWithDependencyCheck(id); err != nil {
+					logger.Error("Failed to start provider %s: %v", id, err)
+					failed = append(failed, id)
+					failedReasons[id] = err.Error()
+				} else {
+					started = append(started, id)
+				}
+			}
+		}
+
+		logger.Info("Started all providers: %d/%d", len(started), len(fsmProviders))
+		response := map[string]interface{}{
+			"success": len(failed) == 0,
+			"started": started,
+			"failed":  failed,
+			"total":   len(fsmProviders),
+		}
+		if len(failedReasons) > 0 {
+			response["failed_reasons"] = failedReasons
+		}
+		return subprocess.NewSuccessResponse(msg, response)
+	}
+}
+
+func createFSMStopAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
+		stopped := []string{}
+		failed := []string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state == "RUNNING" || state == "PAUSED" {
+				if err := provider.Stop(); err != nil {
+					logger.Error("Failed to stop provider %s: %v", id, err)
+					failed = append(failed, id)
+				} else {
+					stopped = append(stopped, id)
+				}
+			}
+		}
+
+		logger.Info("Stopped all providers: %d/%d", len(stopped), len(fsmProviders))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": len(failed) == 0,
+			"stopped": stopped,
+			"failed":  failed,
+			"total":   len(fsmProviders),
+		})
+	}
+}
+
+func createFSMPauseAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
+		paused := []string{}
+		failed := []string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state == "RUNNING" {
+				if err := provider.Pause(); err != nil {
+					logger.Error("Failed to pause provider %s: %v", id, err)
+					failed = append(failed, id)
+				} else {
+					paused = append(paused, id)
+				}
+			}
+		}
+
+		logger.Info("Paused all providers: %d/%d", len(paused), len(fsmProviders))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": len(failed) == 0,
+			"paused":  paused,
+			"failed":  failed,
+			"total":   len(fsmProviders),
+		})
+	}
+}
+
+func createFSMResumeAllProvidersHandler(logger *common.Logger) subprocess.Handler {
+	return func(ctx context.Context, msg *subprocess.Message) (*subprocess.Message, error) {
+		if fsmProviders == nil || macroFSM == nil {
+			return subprocess.NewErrorResponse(msg, "FSM infrastructure not initialized"), nil
+		}
+
+		resumed := []string{}
+		failed := []string{}
+
+		for id, provider := range fsmProviders {
+			state := string(provider.GetState())
+			if state == "PAUSED" {
+				if err := provider.Resume(); err != nil {
+					logger.Error("Failed to resume provider %s: %v", id, err)
+					failed = append(failed, id)
+				} else {
+					resumed = append(resumed, id)
+				}
+			}
+		}
+
+		logger.Info("Resumed all providers: %d/%d", len(resumed), len(fsmProviders))
+		return subprocess.NewSuccessResponse(msg, map[string]interface{}{
+			"success": len(failed) == 0,
+			"resumed": resumed,
+			"failed":  failed,
+			"total":   len(fsmProviders),
 		})
 	}
 }

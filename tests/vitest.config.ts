@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     // Test file patterns
-    include: ['basic/**/*.test.ts', 'etl/**/*.test.ts', 'mcards/**/*.test.ts'],
+    include: ['basic/**/*.test.ts', 'etl/**/*.test.ts', 'mcards/**/*.test.ts', 'fsm/**/*.test.ts', 'steps/**/*.ts'],
 
     // Exclude config and node_modules
     exclude: ['**/node_modules/**', '**/dist/**'],

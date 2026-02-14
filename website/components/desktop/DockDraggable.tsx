@@ -11,7 +11,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Z_INDEX, WindowState } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
-import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 import { WindowThumbnail } from './MinimizeThumbnails';
@@ -32,7 +31,6 @@ interface DraggableDockItemProps {
 
 function DraggableDockItem({ app, isRunning, isIndicator, index, isDragging, onDragStart, onDragOver, onDragEnd }: DraggableDockItemProps) {
   const { openWindow, windows, minimizeWindow } = useDesktopStore();
-  const contextMenu = useContextMenu();
   const existingWindow = Object.values(windows).find(w => w.appId === app.id);
 
   const handleClick = useCallback(() => {
@@ -67,15 +65,6 @@ function DraggableDockItem({ app, isRunning, isIndicator, index, isDragging, onD
     }
   }, [app, existingWindow, openWindow, minimizeWindow]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const preset = isRunning
-      ? ContextMenuPresets.dockItemRunning(app.id)
-      : ContextMenuPresets.dockItemNotRunning(app.id);
-    contextMenu.show(e.clientX, e.clientY, preset);
-  }, [isRunning, app.id, contextMenu]);
-
   return (
     <div
       draggable
@@ -96,7 +85,6 @@ function DraggableDockItem({ app, isRunning, isIndicator, index, isDragging, onD
     >
       <button
         onClick={handleClick}
-        onContextMenu={handleContextMenu}
         className="relative flex flex-col items-center p-2 rounded-lg"
         aria-label={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
         title={`${isRunning ? 'Focus' : 'Launch'} ${app.name}`}
@@ -130,7 +118,6 @@ export function DockDraggable() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dockRef = useRef<HTMLDivElement>(null);
-  const contextMenu = useContextMenu();
 
   // Filter minimized windows
   const minimizedWindows = Object.values(windows).filter(w => w.isMinimized);
@@ -273,14 +260,6 @@ export function DockDraggable() {
           ))}
         </div>
       </nav>
-
-      {/* Dock context menu */}
-      <ContextMenu
-        isVisible={contextMenu.isVisible}
-        position={contextMenu.position}
-        items={contextMenu.items}
-        onClose={contextMenu.hide}
-      />
     </>
   );
 }

@@ -45,6 +45,7 @@ interface ETLTopologyViewerProps {
   data?: TopologyData | null;
   isLoading?: boolean;
   onProviderAction?: (providerId: string, action: 'start' | 'pause' | 'stop') => void;
+  onMacroAction?: (action: 'start' | 'stop' | 'pause' | 'resume') => void;
   onPolicyUpdate?: (providerId: string, policy: PerformancePolicy) => void;
 }
 
@@ -116,6 +117,7 @@ export function ETLTopologyViewer({
   data, 
   isLoading = false,
   onProviderAction,
+  onMacroAction,
   onPolicyUpdate
 }: ETLTopologyViewerProps) {
   const [selectedProvider, setSelectedProvider] = useState<ProviderNode | null>(null);
@@ -136,6 +138,12 @@ export function ETLTopologyViewer({
       onProviderAction(selectedProvider.id, action);
     }
   }, [selectedProvider, onProviderAction]);
+
+  const handleMacroAction = useCallback((action: 'start' | 'stop' | 'pause' | 'resume') => {
+    if (onMacroAction) {
+      onMacroAction(action);
+    }
+  }, [onMacroAction]);
 
   const handlePolicySubmit = useCallback(() => {
     if (selectedProvider && onPolicyUpdate) {
@@ -175,7 +183,7 @@ export function ETLTopologyViewer({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
             <div>
               <span className="text-muted-foreground">Total Providers:</span>
               <span className="ml-2 font-medium">{totalProviders}</span>
@@ -185,6 +193,50 @@ export function ETLTopologyViewer({
               <span className="ml-2 font-medium">{activeProviders}</span>
             </div>
           </div>
+          {onMacroAction && (
+            <div className="flex gap-2 pt-2 border-t">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => handleMacroAction('start')}
+                disabled={macro.state === 'ORCHESTRATING'}
+              >
+                <PlayCircle className="h-4 w-4 mr-1" />
+                Start All
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => handleMacroAction('pause')}
+                disabled={macro.state !== 'ORCHESTRATING'}
+              >
+                <Pause className="h-4 w-4 mr-1" />
+                Pause All
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => handleMacroAction('resume')}
+                disabled={macro.state === 'ORCHESTRATING'}
+              >
+                <PlayCircle className="h-4 w-4 mr-1" />
+                Resume All
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => handleMacroAction('stop')}
+                disabled={macro.state === 'IDLE'}
+              >
+                <StopCircle className="h-4 w-4 mr-1" />
+                Stop All
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -207,7 +259,7 @@ export function ETLTopologyViewer({
                   <div className="flex items-center gap-2">
                     {getStateIcon(provider.state)}
                     <CardTitle className="text-lg">
-                      {provider.providerType.toUpperCase()}
+                      {(provider.providerType || provider.id || 'UNKNOWN').toUpperCase()}
                     </CardTitle>
                   </div>
                   <Badge variant={getStateBadgeVariant(provider.state)}>
@@ -265,7 +317,7 @@ export function ETLTopologyViewer({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {getStateIcon(selectedProvider.state)}
-                Provider: {selectedProvider.providerType.toUpperCase()}
+                Provider: {(selectedProvider.providerType || selectedProvider.id || 'UNKNOWN').toUpperCase()}
               </DialogTitle>
               <DialogDescription className="font-mono text-xs">
                 {selectedProvider.id}

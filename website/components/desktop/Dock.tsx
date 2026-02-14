@@ -18,7 +18,6 @@ import {
 } from 'motion/react';
 import { Z_INDEX, WindowState } from '@/types/desktop';
 import { useDesktopStore } from '@/lib/desktop/store';
-import { ContextMenu, ContextMenuPresets, useContextMenu } from '@/components/desktop/ContextMenu';
 import { getActiveApps } from '@/lib/desktop/app-registry';
 import type { AppRegistryEntry } from '@/lib/desktop/app-registry';
 import {
@@ -82,7 +81,6 @@ function DockItem({
   magnification
 }: DockItemProps) {
   const { openWindow, windows, minimizeWindow } = useDesktopStore();
-  const contextMenu = useContextMenu();
   const existingWindow = Object.values(windows).find(w => w.appId === app.id);
   const ref = useRef<HTMLDivElement>(null);
   const isHovered = useMotionValue(0);
@@ -130,15 +128,6 @@ function DockItem({
     }
   }, [app, existingWindow, openWindow, minimizeWindow]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const preset = isRunning
-      ? ContextMenuPresets.dockItemRunning(app.id)
-      : ContextMenuPresets.dockItemNotRunning(app.id);
-    contextMenu.show(e.clientX, e.clientY, preset);
-  }, [isRunning, app.id, contextMenu]);
-
   const mouseDistance = useTransform(mouseX, val => {
     const rect = ref.current?.getBoundingClientRect() ?? {
       x: 0,
@@ -157,7 +146,6 @@ function DockItem({
       onHoverStart={() => isHovered.set(1)}
       onHoverEnd={() => isHovered.set(0)}
       onClick={handleClick}
-      onContextMenu={handleContextMenu}
       className="relative inline-flex items-center justify-center"
       tabIndex={0}
       role="button"
@@ -192,7 +180,6 @@ function DockItem({
  */
 export function Dock() {
   const { dock, windows, setDockVisibility } = useDesktopStore();
-  const contextMenu = useContextMenu();
   const [isHovering, setIsHovering] = useState(false);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -311,14 +298,6 @@ export function Dock() {
           );
         })}
       </motion.div>
-
-      {/* Dock context menu */}
-      <ContextMenu
-        isVisible={contextMenu.isVisible}
-        position={contextMenu.position}
-        items={contextMenu.items}
-        onClose={contextMenu.hide}
-      />
     </>
   );
 }

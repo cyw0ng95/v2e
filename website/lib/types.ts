@@ -465,7 +465,6 @@ export interface UpdateCVEResponse {
   /** CVE identifier */
   cveId: string;
   /** Updated CVE item */
-/  /** Temporal metrics */a /** Final severity (computed from sub-scores) */
   finalSeverity?: CVSSSeverity;
   cve: CVEItem;
 }
@@ -4440,6 +4439,8 @@ export interface CVSS3EnvironmentalMetrics {
   MI: 'H' | 'L' | 'N';
   /** Modified Availability (H/L/N) */
   MA: 'H' | 'L' | 'N';
+  /** Modified Privilege Required (H/L/N/X) */
+  MPR?: 'H' | 'L' | 'N' | 'X';
 }
 
 /**
